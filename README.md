@@ -1,2 +1,1 @@
-# KiriKiri-Z-Neuro-Integration
-Nero-sama ATRI -My Dear Moments- game integration
+# ATRI -My Dear Moments- Neuro-sama Game Integration

@@ -1,0 +1,3 @@
+[submodule "libneurosdk"]
+	path = libneurosdk
+	url = https://github.com/slendidev/libneurosdk.git
