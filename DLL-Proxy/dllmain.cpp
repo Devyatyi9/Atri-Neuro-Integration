@@ -35,7 +35,12 @@ WRAPPER_GENFUNC(VerLanguageNameW)
 WRAPPER_GENFUNC(VerQueryValueA)
 WRAPPER_GENFUNC(VerQueryValueW)
 
-#define WRAPPER_FUNC(name) orig_##name = GetProcAddress(hOriginalDll, ###name);
+#define WRAPPER_FUNC(name) \
+    if (hOriginalDll) { \
+        orig_##name = GetProcAddress(hOriginalDll, #name); \
+    } else { \
+        orig_##name = NULL; \
+    }
 
 void VersionDllInit()
 {

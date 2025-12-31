@@ -7,10 +7,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
                      )
 {
-    //DisableThreadLibraryCalls(hModule);
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        //DisableThreadLibraryCalls(hModule);
         CreateThread(NULL, 0, [](LPVOID) -> DWORD {
             MessageBox(NULL, L"Hello from Neuro integration dll", L"Neuro-integration", MB_OK);
             return 0;
