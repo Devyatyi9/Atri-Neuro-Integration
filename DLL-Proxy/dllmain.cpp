@@ -2,14 +2,12 @@
 
 void Payload()
 {
-	/*MessageBox(NULL, L"Hello from proxy dll", L"Payload", MB_OK);*/
 	HMODULE hModule = LoadLibraryW(L"Neuro-integration.dll");
 	if (hModule != NULL) {
 		OutputDebugStringW(L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
 	}
 	else {
 	}
-	LoadLibraryW(L"++version.dll");
 }
 
 #define WRAPPER_GENFUNC(name) \
@@ -61,10 +59,11 @@ void VersionDllInit()
 	WRAPPER_FUNC(VerQueryValueW);
 }
 
-BOOL WINAPI DllMain(HMODULE, DWORD r, LPVOID)
+BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID)
 {
 	if (r == DLL_PROCESS_ATTACH)
 	{
+		DisableThreadLibraryCalls(hModule);
 		VersionDllInit();
 		Payload();
 	}
