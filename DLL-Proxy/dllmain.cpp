@@ -2,7 +2,14 @@
 
 void Payload()
 {
-	MessageBox(NULL, L"Hello from proxy dll", L"Payload", MB_OK);
+	/*MessageBox(NULL, L"Hello from proxy dll", L"Payload", MB_OK);*/
+	HMODULE hModule = LoadLibraryW(L"Neuro-integration.dll");
+	if (hModule != NULL) {
+		OutputDebugStringW(L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
+	}
+	else {
+	}
+	LoadLibraryW(L"++version.dll");
 }
 
 #define WRAPPER_GENFUNC(name) \
