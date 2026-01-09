@@ -1,75 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
-#include <cstdint>
 #include <cstdio>
 
 // ============================================================================
-// Определения типов KiriKiri
+// KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
 // ============================================================================
-
-typedef int tjs_error;
-typedef int tjs_int;
-typedef unsigned int tjs_uint;
-typedef std::int64_t tjs_int64;
-typedef double tjs_real;
-typedef wchar_t tjs_char;
-
-#define TJS_S_OK 0
-#define TJS_E_FAIL 1
-#define TJS_INTF_METHOD __cdecl
-
-class iTJSDispatch2;
-
-struct tTJSVariant {
-    enum tTJSVariantType {
-        tvtVoid = 0,
-        tvtObject = 1,
-        tvtString = 2,
-        tvtOctet = 3,
-        tvtInteger = 4,
-        tvtReal = 5
-    } Type;
-
-    union {
-        tjs_int64 AsInteger;
-        tjs_real AsReal;
-        void* AsObject;
-        const tjs_char* AsString;
-    };
-
-    tTJSVariant() : Type(tvtVoid), AsInteger(0) {}
-
-    void operator=(const tjs_char* str) {
-        Type = tvtString;
-        AsString = str;
-    }
-
-    void operator=(tjs_int val) {
-        Type = tvtInteger;
-        AsInteger = val;
-    }
-};
-
-// ПРАВИЛЬНЫЙ интерфейс iTVPFunctionExporter для ATRI
-// QueryFunctionsByNarrowString находится на индексе 3!
-class iTVPFunctionExporter {
-public:
-    // Индекс 0 - неизвестный метод
-    virtual bool TJS_INTF_METHOD UnknownMethod0() = 0;
-
-    // Индекс 1 - неизвестный метод
-    virtual bool TJS_INTF_METHOD UnknownMethod1() = 0;
-
-    // Индекс 2 - неизвестный метод (вызывает exception, возможно деструктор или RTTI)
-    virtual void TJS_INTF_METHOD UnknownMethod2() = 0;
-
-    // Индекс 3 - QueryFunctionsByNarrowString (рабочий!)
-    virtual bool TJS_INTF_METHOD QueryFunctionsByNarrowString(
-        const char** name,
-        void** function,
-        tjs_uint count
-    ) = 0;
-};
+#include "../krkr-sdk/tp_stub.h"
 
 // ============================================================================
 // Логирование
@@ -88,7 +24,7 @@ void LogToFile(const char* message) {
 }
 
 // ============================================================================
-// ВАШИ ФУНКЦИИ ДЛЯ TJS
+// TJS функции (простые обёртки для регистрации через exporter)
 // ============================================================================
 
 static tjs_error TJS_INTF_METHOD NeuroTestFunction(
@@ -101,16 +37,14 @@ static tjs_error TJS_INTF_METHOD NeuroTestFunction(
     LogToFile(">>> NeuroTestFunction CALLED FROM TJS SCRIPT!\n");
 
     MessageBoxW(NULL,
-        L"🎉 SUCCESS! 🎉\n\n"
+        L"SUCCESS!\n\n"
         L"NeuroTestFunction was successfully called from TJS!\n\n"
-        L"Your Neuro-integration plugin is fully working!\n\n"
-        L"You can now implement any functionality you want!",
+        L"Your Neuro-integration plugin is fully working!",
         L"Neuro Plugin - Function Called!",
         MB_OK | MB_ICONINFORMATION);
 
     if (result) {
-        static const tjs_char response[] = L"Hello from Neuro-integration plugin! Everything works perfectly!";
-        *result = response;
+        *result = TJS_W("Hello from Neuro-integration plugin!");
     }
 
     return TJS_S_OK;
@@ -126,7 +60,7 @@ static tjs_error TJS_INTF_METHOD NeuroGetVersion(
     LogToFile(">>> NeuroGetVersion called\n");
 
     if (result) {
-        *result = (tjs_int)100; // Version 1.0.0
+        *result = (tTVInteger)100; // Version 1.0.0
     }
 
     return TJS_S_OK;
@@ -144,23 +78,21 @@ static tjs_error TJS_INTF_METHOD NeuroEcho(
     if (numparams > 0 && param && param[0]) {
         tTJSVariant* firstParam = param[0];
 
-        if (firstParam->Type == tTJSVariant::tvtString && firstParam->AsString) {
-            // Выводим переданную строку
-            MessageBoxW(NULL, firstParam->AsString, L"Neuro Echo", MB_OK | MB_ICONINFORMATION);
+        if (firstParam->Type() == tvtString) {
+            ttstr str = *firstParam;
+            MessageBoxW(NULL, str.c_str(), L"Neuro Echo", MB_OK | MB_ICONINFORMATION);
 
-            // Возвращаем её обратно
             if (result) {
-                *result = firstParam->AsString;
+                *result = *firstParam;
             }
         }
-        else if (firstParam->Type == tTJSVariant::tvtInteger) {
-            // Если передано число
+        else if (firstParam->Type() == tvtInteger) {
             wchar_t buffer[128];
-            wsprintf(buffer, L"Number received: %I64d", firstParam->AsInteger);
+            wsprintf(buffer, L"Number received: %I64d", (tTVInteger)*firstParam);
             MessageBoxW(NULL, buffer, L"Neuro Echo", MB_OK | MB_ICONINFORMATION);
 
             if (result) {
-                *result = (tjs_int)firstParam->AsInteger;
+                *result = *firstParam;
             }
         }
     }
@@ -168,7 +100,6 @@ static tjs_error TJS_INTF_METHOD NeuroEcho(
     return TJS_S_OK;
 }
 
-// Дополнительная функция - обмен данными
 static tjs_error TJS_INTF_METHOD NeuroSendData(
     tTJSVariant* result,
     tjs_int numparams,
@@ -181,21 +112,20 @@ static tjs_error TJS_INTF_METHOD NeuroSendData(
     sprintf_s(logMsg, sizeof(logMsg), "%d parameters\n", numparams);
     LogToFile(logMsg);
 
-    // Здесь вы можете обрабатывать данные из игры
-    // Например, отправлять их во внешнюю систему, в веб-сервис и т.д.
+    // TODO: Здесь будет интеграция с libneurosdk
 
     if (result) {
-        *result = (tjs_int)1; // Успешно отправлено
+        *result = (tTVInteger)1; // Успешно
     }
 
     return TJS_S_OK;
 }
 
 // ============================================================================
-// V2Link - регистрация плагина (ФИНАЛЬНАЯ ВЕРСИЯ)
+// V2Link - регистрация плагина (гибридный подход)
 // ============================================================================
 
-extern "C" __declspec(dllexport) HRESULT V2Link(iTVPFunctionExporter* exporter)
+extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* exporter)
 {
     OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
     LogToFile("\n\n=== V2Link called ===\n");
@@ -205,12 +135,20 @@ extern "C" __declspec(dllexport) HRESULT V2Link(iTVPFunctionExporter* exporter)
         return E_FAIL;
     }
 
-    // Регистрируем функции
+    // Инициализация tp_stub для будущего использования (консоль, TVPExecuteExpression)
+    // НЕ вызываем TVPGetScriptDispatch() здесь - TJS ещё не готов!
+    if (!TVPInitImportStub(exporter)) {
+        LogToFile("ERROR: TVPInitImportStub failed!\n");
+        return E_FAIL;
+    }
+    LogToFile("TVPInitImportStub OK (for later use)\n");
+
+    // Регистрируем функции через exporter->QueryFunctions (работает на ранней стадии)
     const char* functionNames[] = {
-        "neuroTest",       // Тестовая функция с MessageBox
-        "neuroGetVersion", // Возвращает версию плагина
-        "neuroEcho",       // Эхо - выводит переданный параметр
-        "neuroSendData"    // Отправка данных (для будущего функционала)
+        "neuroTest",
+        "neuroGetVersion",
+        "neuroEcho",
+        "neuroSendData"
     };
 
     void* functionPointers[] = {
@@ -220,11 +158,8 @@ extern "C" __declspec(dllexport) HRESULT V2Link(iTVPFunctionExporter* exporter)
         (void*)NeuroSendData
     };
 
-    bool success = exporter->QueryFunctionsByNarrowString(
-        functionNames,
-        functionPointers,
-        4  // 4 функции
-    );
+    LogToFile("Registering functions via exporter...\n");
+    bool success = exporter->QueryFunctions(functionNames, functionPointers, 4);
 
     if (success) {
         OutputDebugStringW(L"[NEURO PLUGIN] All functions registered successfully!\n");
@@ -235,13 +170,13 @@ extern "C" __declspec(dllexport) HRESULT V2Link(iTVPFunctionExporter* exporter)
         LogToFile("  - neuroSendData(...)\n");
 
         MessageBoxW(NULL,
-            L"✅ Neuro-integration plugin loaded successfully!\n\n"
+            L"Neuro-integration plugin loaded successfully!\n\n"
             L"Registered functions:\n"
-            L"  • neuroTest() - shows test message\n"
-            L"  • neuroGetVersion() - returns 100\n"
-            L"  • neuroEcho(text) - echoes parameter\n"
-            L"  • neuroSendData(...) - for future use\n\n"
-            L"You can now call these from TJS scripts!",
+            L"  - neuroTest() - shows test message\n"
+            L"  - neuroGetVersion() - returns 100\n"
+            L"  - neuroEcho(text) - echoes parameter\n"
+            L"  - neuroSendData(...) - for future use\n\n"
+            L"tp_stub initialized for console support!",
             L"Neuro Plugin - Ready!",
             MB_OK | MB_ICONINFORMATION);
 
@@ -260,15 +195,25 @@ extern "C" __declspec(dllexport) HRESULT V2Link(iTVPFunctionExporter* exporter)
     return E_FAIL;
 }
 
-extern "C" __declspec(dllexport) HRESULT V2Unlink()
+// ============================================================================
+// V2Unlink - выгрузка плагина
+// ============================================================================
+
+extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
 {
     OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
     LogToFile("V2Unlink called - cleaning up\n");
 
-    // Здесь освобождаем ресурсы если нужно
+    // Освобождаем tp_stub
+    TVPUninitImportStub();
 
+    LogToFile("Cleanup complete\n");
     return S_OK;
 }
+
+// ============================================================================
+// DllMain
+// ============================================================================
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
