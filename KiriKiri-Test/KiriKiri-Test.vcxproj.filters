@@ -20,9 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="plugin_export.def">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="Source.def">
       <Filter>Source Files</Filter>
     </None>

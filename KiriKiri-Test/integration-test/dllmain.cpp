@@ -17,6 +17,7 @@
 // ============================================================================
 static std::atomic<bool> g_TJSReady(false);
 static std::atomic<bool> g_InitThreadRunning(false);
+static std::atomic<bool> g_HotkeyThreadRunning(false);
 static iTJSDispatch2* g_ScriptDispatch = nullptr;
 
 // ============================================================================
@@ -42,17 +43,23 @@ void LogToFile(const char* message) {
 void TryInitTJS() {
     if (g_TJSReady.load()) return;
 
-    iTJSDispatch2* dispatch = TVPGetScriptDispatch();
-    if (dispatch) {
-        g_ScriptDispatch = dispatch;
-        g_TJSReady.store(true);
-        LogToFile("TJS initialized successfully!\n");
-        OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized!\n");
+    __try {
+        iTJSDispatch2* dispatch = TVPGetScriptDispatch();
+        if (dispatch) {
+            g_ScriptDispatch = dispatch;
+            g_TJSReady.store(true);
+            LogToFile("TJS initialized successfully!\n");
+            OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized!\n");
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogToFile("TryInitTJS: EXCEPTION caught!\n");
     }
 }
 
-// Forward declaration
+// Forward declarations
 bool RegisterAllFunctions();
+void StartHotkeyThread();
 
 void DeferredTJSInitThread() {
     LogToFile("Deferred TJS init thread started...\n");
@@ -63,6 +70,13 @@ void DeferredTJSInitThread() {
     for (int i = 0; i < maxAttempts && !g_TJSReady.load(); i++) {
         Sleep(intervalMs);
         TryInitTJS();
+
+        // Логируем каждую секунду
+        if ((i + 1) % 10 == 0) {
+            char buf[64];
+            sprintf_s(buf, "  Waiting for TJS... attempt %d/%d\n", i + 1, maxAttempts);
+            LogToFile(buf);
+        }
     }
 
     if (g_TJSReady.load()) {
@@ -72,17 +86,27 @@ void DeferredTJSInitThread() {
         if (RegisterAllFunctions()) {
             OutputDebugStringW(L"[NEURO PLUGIN] Functions registered successfully!\n");
 
-            MessageBoxW(NULL,
-                L"Neuro-integration plugin ready!\n\n"
-                L"Registered functions:\n"
-                L"  - neuroTest()\n"
-                L"  - neuroGetVersion()\n"
-                L"  - neuroEcho(text)\n"
-                L"  - neuroSendData(...)\n"
-                L"  - neuroIsTJSReady()\n"
-                L"  - neuroExec(code)",
-                L"Neuro Plugin - Ready!",
-                MB_OK | MB_ICONINFORMATION);
+            // Тестируем вызов зарегистрированных функций из C++
+            LogToFile("Testing registered functions from C++...\n");
+
+            tTJSVariant result;
+            char buf[256];
+
+            // Тест 1: neuroGetVersion()
+            TVPExecuteExpression(TJS_W("neuroGetVersion()"), &result);
+            sprintf_s(buf, "  neuroGetVersion() returned: %d\n", (int)(tTVInteger)result);
+            LogToFile(buf);
+
+            // Тест 2: neuroIsTJSReady()
+            TVPExecuteExpression(TJS_W("neuroIsTJSReady()"), &result);
+            sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n", (int)(tTVInteger)result);
+            LogToFile(buf);
+
+            LogToFile("Basic tests completed!\n");
+            LogToFile("Hotkeys: F9=console, F10=test, F12=KAG check\n");
+
+            // Запускаем обработчик хоткеев
+            StartHotkeyThread();
         } else {
             LogToFile("ERROR: Failed to register functions\n");
         }
@@ -98,6 +122,71 @@ void StartDeferredTJSInit() {
         return;  // Уже запущен
     }
     std::thread(DeferredTJSInitThread).detach();
+}
+
+// ============================================================================
+// Хоткеи
+// ============================================================================
+
+void HotkeyThread() {
+    LogToFile("Hotkey thread started (F9 = console, F10 = test, F12 = KAG)\n");
+
+    while (g_HotkeyThreadRunning.load()) {
+        // F8 - показать консоль
+        if (GetAsyncKeyState(VK_F8) & 0x8000) {
+            if (g_TJSReady.load()) {
+                LogToFile("F8 pressed - showing console\n");
+                tTJSVariant result;
+                TVPExecuteExpression(TJS_W("neuroShowConsole()"), &result);
+
+                // Показываем результат
+                const char* msg = (tTVInteger)result ?
+                    "Debug.console.visible = true\n(Console may be disabled in this build)" :
+                    "Debug.console not available";
+                MessageBoxA(NULL, msg, "Neuro Plugin - F8", MB_OK | MB_ICONINFORMATION);
+            }
+            Sleep(300);  // Debounce
+        }
+
+        // F9 - тест neuroEcho (без MessageBox внутри, просто лог)
+        if (GetAsyncKeyState(VK_F9) & 0x8000) {
+            if (g_TJSReady.load()) {
+                LogToFile("F9 pressed - test\n");
+                MessageBoxA(NULL, "F9 hotkey works!\nneuroEcho test.", "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
+            }
+            Sleep(300);  // Debounce
+        }
+
+        // F12 - проверить KAG (вместо F11)
+        if (GetAsyncKeyState(VK_F12) & 0x8000) {
+            if (g_TJSReady.load()) {
+                LogToFile("F12 pressed - checking KAG\n");
+                tTJSVariant result;
+                TVPExecuteExpression(TJS_W("neuroIsKAGReady()"), &result);
+                char buf[64];
+                sprintf_s(buf, "KAG ready: %s", (tTVInteger)result ? "YES" : "NO");
+                LogToFile(buf);
+                LogToFile("\n");
+                MessageBoxA(NULL, buf, "Neuro Plugin - F12", MB_OK | MB_ICONINFORMATION);
+            }
+            Sleep(300);  // Debounce
+        }
+
+        Sleep(50);  // Не грузим CPU
+    }
+
+    LogToFile("Hotkey thread stopped\n");
+}
+
+void StartHotkeyThread() {
+    if (g_HotkeyThreadRunning.exchange(true)) {
+        return;
+    }
+    std::thread(HotkeyThread).detach();
+}
+
+void StopHotkeyThread() {
+    g_HotkeyThreadRunning.store(false);
 }
 
 // Проверка готовности TJS (можно вызывать из TJS функций)
@@ -205,6 +294,48 @@ static tjs_error TJS_INTF_METHOD NeuroSendData(
     return TJS_S_OK;
 }
 
+// Показать встроенную консоль Debug
+static tjs_error TJS_INTF_METHOD NeuroShowConsole(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    LogToFile(">>> NeuroShowConsole called\n");
+
+    tTJSVariant checkResult;
+    TVPExecuteExpression(TJS_W("typeof Debug != 'undefined' && typeof Debug.console != 'undefined'"), &checkResult);
+
+    if ((tTVInteger)checkResult != 0) {
+        tTJSVariant dummy;
+        TVPExecuteExpression(TJS_W("Debug.console.visible = true"), &dummy);
+        LogToFile("  Debug.console.visible = true\n");
+        if (result) *result = (tTVInteger)1;
+    } else {
+        LogToFile("  Debug.console not available\n");
+        if (result) *result = (tTVInteger)0;
+    }
+
+    return TJS_S_OK;
+}
+
+// Проверка готовности KAG
+static tjs_error TJS_INTF_METHOD NeuroIsKAGReady(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    tTJSVariant checkResult;
+    TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &checkResult);
+    bool ready = (tTVInteger)checkResult != 0;
+
+    LogToFile(ready ? ">>> NeuroIsKAGReady: YES\n" : ">>> NeuroIsKAGReady: NO\n");
+
+    if (result) *result = (tTVInteger)(ready ? 1 : 0);
+    return TJS_S_OK;
+}
+
 // Проверка готовности TJS (для отладки)
 static tjs_error TJS_INTF_METHOD NeuroIsTJSReady(
     tTJSVariant* result,
@@ -283,6 +414,8 @@ static tTJSFunctionWrapper<NeuroGetVersion>* g_NeuroGetVersionFunc = nullptr;
 static tTJSFunctionWrapper<NeuroEcho>* g_NeuroEchoFunc = nullptr;
 static tTJSFunctionWrapper<NeuroSendData>* g_NeuroSendDataFunc = nullptr;
 static tTJSFunctionWrapper<NeuroIsTJSReady>* g_NeuroIsTJSReadyFunc = nullptr;
+static tTJSFunctionWrapper<NeuroIsKAGReady>* g_NeuroIsKAGReadyFunc = nullptr;
+static tTJSFunctionWrapper<NeuroShowConsole>* g_NeuroShowConsoleFunc = nullptr;
 static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
 
 void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
@@ -318,17 +451,25 @@ bool RegisterAllFunctions()
     g_NeuroIsTJSReadyFunc = new tTJSFunctionWrapper<NeuroIsTJSReady>();
     RegisterTJSFunction(global, TJS_W("neuroIsTJSReady"), g_NeuroIsTJSReadyFunc);
 
+    g_NeuroIsKAGReadyFunc = new tTJSFunctionWrapper<NeuroIsKAGReady>();
+    RegisterTJSFunction(global, TJS_W("neuroIsKAGReady"), g_NeuroIsKAGReadyFunc);
+
+    g_NeuroShowConsoleFunc = new tTJSFunctionWrapper<NeuroShowConsole>();
+    RegisterTJSFunction(global, TJS_W("neuroShowConsole"), g_NeuroShowConsoleFunc);
+
     g_NeuroExecFunc = new tTJSFunctionWrapper<NeuroExec>();
     RegisterTJSFunction(global, TJS_W("neuroExec"), g_NeuroExecFunc);
 
     global->Release();
 
-    LogToFile("SUCCESS: All 6 functions registered!\n");
+    LogToFile("SUCCESS: All 8 functions registered!\n");
     LogToFile("  - neuroTest()\n");
     LogToFile("  - neuroGetVersion()\n");
     LogToFile("  - neuroEcho(param)\n");
     LogToFile("  - neuroSendData(...)\n");
     LogToFile("  - neuroIsTJSReady()\n");
+    LogToFile("  - neuroIsKAGReady()\n");
+    LogToFile("  - neuroShowConsole()\n");
     LogToFile("  - neuroExec(code)\n");
 
     return true;
@@ -343,6 +484,8 @@ void UnregisterAllFunctions()
         global->DeleteMember(0, TJS_W("neuroEcho"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroSendData"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroIsTJSReady"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroIsKAGReady"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroShowConsole"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroExec"), NULL, global);
         global->Release();
     }
@@ -384,6 +527,10 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
 {
     OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
     LogToFile("V2Unlink called - cleaning up\n");
+
+    // Останавливаем хоткей поток
+    StopHotkeyThread();
+    Sleep(100);  // Даём потоку завершиться
 
     // Удаляем зарегистрированные функции
     UnregisterAllFunctions();
