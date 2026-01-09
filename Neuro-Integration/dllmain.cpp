@@ -4,7 +4,7 @@
 
 DWORD WINAPI InitThreadProc(LPVOID lpParameter){
     MessageBox(NULL, L"Hello from Neuro integration dll", L"Neuro-integration", MB_OK);
-    neurosdk_context_t ctx;
+    //neurosdk_context_t ctx;
     return FALSE;
 }
 
@@ -17,7 +17,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
     {
-        DisableThreadLibraryCalls(hModule);
+        DisableThreadLibraryCalls(hModule); // not necessarily
         HANDLE hThread = CreateThread(NULL, 0, InitThreadProc, NULL, 0, NULL);
         if (hThread) {
             CloseHandle(hThread);

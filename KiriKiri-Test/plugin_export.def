@@ -1,0 +1,4 @@
+LIBRARY "Neuro-integration"          ; Имя библиотеки - должно совпадать с именем DLL файла
+EXPORTS
+    V2Link    @1        ; Порядковый номер 1
+    V2Unlink  @2        ; Порядковый номер 2
