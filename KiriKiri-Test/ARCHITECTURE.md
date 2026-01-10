@@ -187,3 +187,71 @@ KiriKiri-Test/
 2. **Threading**: Регистрация функций должна происходить после готовности TJS
 3. **Reference counting**: tTJSDispatch использует подсчёт ссылок, Release() обязателен
 4. **Memory**: Адреса в памяти специфичны для версии игры (см. .CT файл)
+
+---
+
+## TJS2 Threading Model — КРИТИЧЕСКИ ВАЖНО!
+
+### TJS2 НЕ потокобезопасен!
+
+Все вызовы TJS API должны происходить из **главного потока** игры.
+
+| Безопасно из любого потока | ТОЛЬКО из главного потока |
+|---------------------------|---------------------------|
+| `TVPPostEvent()` | `TVPExecuteExpression()` |
+| C++ код (сеть, файлы) | `FuncCall()`, `PropGet()`, `PropSet()` |
+| Windows API | Любое взаимодействие с TJS объектами |
+| `TVPAddLog()` | Регистрация/удаление функций |
+
+### Механизмы синхронизации KiriKiri
+
+1. **tTJSCriticalSection** — обёртка над Windows CRITICAL_SECTION
+2. **tTJSCriticalSectionHolder** — RAII holder для критических секций
+3. **TVPPostEvent()** — thread-safe постинг события в главный поток
+4. **tTVPContinuousEventCallbackIntf** — callback вызываемый каждый кадр
+
+### Message Window Pattern (экспериментальный)
+
+Для безопасного вызова TJS из worker threads используется hidden window:
+
+```cpp
+// Worker thread (hotkey, websocket) отправляет команду:
+PostMessage(g_MessageWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
+
+// Message Window обрабатывает в контексте главного потока:
+case WM_TJS_EXECUTE:
+    TVPExecuteExpression(ttstr((wchar_t*)wParam), nullptr);
+    delete[] (wchar_t*)wParam;
+    return 0;
+```
+
+Доступны две функции:
+- `ExecuteTJSAsync(code)` — fire-and-forget, не ждёт результата
+- `ExecuteTJSSync(code, &result, timeout)` — ждёт результат (НЕ вызывать из главного потока!)
+
+### TJS исключения в плагинах
+
+**eTJS НЕ работает в плагинах!** Исключения обрабатываются внутри движка.
+Не используйте `try { } catch (const eTJS& e) { }` — это бесполезно.
+
+```cpp
+// НЕПРАВИЛЬНО:
+try {
+    TVPExecuteExpression(code, &result);
+} catch (const eTJS& e) {  // Никогда не сработает!
+    ...
+}
+
+// ПРАВИЛЬНО:
+TVPExecuteExpression(code, &result);
+// Ошибки выводятся в Debug.console движка
+```
+
+---
+
+## Ресурсы
+
+- TJS2 Reference: https://krkrz.github.io/docs/tjs2/j/contents/index.html
+- KAG System: https://krkrz.github.io/krkr2doc/kag3/
+- ncbind: https://github.com/wamsoft/ncbind
+- ScriptEnginePlugin: https://github.com/khjxiaogu/ScriptEnginePlugin

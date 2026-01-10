@@ -138,32 +138,26 @@ private:
             return;
         }
 
-        try {
-            tTJSVariant result;
+        // ПРИМЕЧАНИЕ: TJS исключения (eTJS) НЕ работают в плагинах!
+        // Они обрабатываются внутри движка KiriKiri.
+        // Поэтому try-catch с eTJS здесь бесполезен.
 
-            // Выполняем код
-            TVPExecuteExpression(ttstr(code), &result);
+        tTJSVariant result;
 
-            // Выводим результат
-            if (result.Type() != tvtVoid) {
-                ttstr resultStr = result;
-                AppendOutput(L"Result: ", RGB(0, 0, 255));
-                AppendOutput(resultStr.c_str(), RGB(0, 0, 0));
-                AppendOutput(L"\n", RGB(0, 0, 0));
-            }
-            else {
-                AppendOutput(L"OK\n", RGB(0, 150, 0));
-            }
-        }
-        catch (const eTJS& e) {
-            // TJS исключение
-            ttstr errorMsg = e.GetMessage();
-            AppendOutput(L"Error: ", RGB(255, 0, 0));
-            AppendOutput(errorMsg.c_str(), RGB(255, 0, 0));
+        // Выполняем код
+        // TVPExecuteExpression не бросает исключения в плагине,
+        // ошибки выводятся в Debug.console движка
+        TVPExecuteExpression(ttstr(code), &result);
+
+        // Выводим результат
+        if (result.Type() != tvtVoid) {
+            ttstr resultStr = result;
+            AppendOutput(L"Result: ", RGB(0, 0, 255));
+            AppendOutput(resultStr.c_str(), RGB(0, 0, 0));
             AppendOutput(L"\n", RGB(0, 0, 0));
         }
-        catch (...) {
-            AppendOutput(L"Error: Unknown exception\n", RGB(255, 0, 0));
+        else {
+            AppendOutput(L"OK\n", RGB(0, 150, 0));
         }
 
         global->Release();

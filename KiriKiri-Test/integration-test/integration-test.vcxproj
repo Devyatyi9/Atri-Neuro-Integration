@@ -86,7 +86,6 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
-    <ClCompile Include="NeuroConsole.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="neuro.def" />

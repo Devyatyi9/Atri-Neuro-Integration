@@ -19,6 +19,140 @@ static std::atomic<bool> g_TJSReady(false);
 static std::atomic<bool> g_InitThreadRunning(false);
 static std::atomic<bool> g_HotkeyThreadRunning(false);
 static iTJSDispatch2* g_ScriptDispatch = nullptr;
+// Forward declaration в начале файла (после includes)
+void LogToFile(const char* message);
+
+
+// ============================================================================
+// Message Window для thread-safe TJS вызовов
+// ============================================================================
+// ВАЖНО: TJS2 НЕ потокобезопасен! Все вызовы TVPExecuteExpression и т.п.
+// должны происходить из главного потока. Message Window позволяет
+// worker threads (hotkey, websocket) безопасно запрашивать выполнение TJS.
+// ============================================================================
+static HWND g_MessageWindow = nullptr;
+static const UINT WM_TJS_EXECUTE = WM_USER + 100;
+static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;  // Синхронный вызов с результатом
+
+// Структура для синхронного вызова
+struct TJSSyncCallData {
+    const wchar_t* code;
+    tTJSVariant* result;
+    HANDLE completedEvent;
+};
+
+// Window Procedure для Message Window
+LRESULT CALLBACK MessageWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_TJS_EXECUTE: {
+        // Асинхронный вызов - код передаётся как копия, нужно освободить
+        wchar_t* code = (wchar_t*)wParam;
+        if (code && g_TJSReady.load()) {
+            LogToFile("  [MessageWindow] Executing TJS async...\n");
+            tTJSVariant dummy;
+            TVPExecuteExpression(ttstr(code), &dummy);
+        }
+        delete[] code;
+        return 0;
+    }
+
+    case WM_TJS_EXECUTE_SYNC: {
+        // Синхронный вызов - возвращает результат
+        TJSSyncCallData* data = (TJSSyncCallData*)wParam;
+        if (data && data->code && g_TJSReady.load()) {
+            LogToFile("  [MessageWindow] Executing TJS sync...\n");
+            TVPExecuteExpression(ttstr(data->code), data->result);
+        }
+        if (data && data->completedEvent) {
+            SetEvent(data->completedEvent);
+        }
+        return 0;
+    }
+    }
+
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+// Создание Message Window (вызывать из главного потока!)
+bool CreateMessageWindow() {
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = MessageWindowProc;
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = L"NeuroPluginMessageWindow";
+
+    if (!RegisterClassW(&wc)) {
+        // Класс уже зарегистрирован - это нормально
+        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+            LogToFile("ERROR: RegisterClass failed\n");
+            return false;
+        }
+    }
+
+    // HWND_MESSAGE создаёт message-only window (не видимое)
+    g_MessageWindow = CreateWindowW(
+        L"NeuroPluginMessageWindow",
+        L"NeuroPluginIPC",
+        0, 0, 0, 0, 0,
+        HWND_MESSAGE,  // Message-only window
+        NULL,
+        GetModuleHandle(NULL),
+        NULL
+    );
+
+    if (!g_MessageWindow) {
+        LogToFile("ERROR: CreateWindow for message window failed\n");
+        return false;
+    }
+
+    LogToFile("Message Window created successfully\n");
+    return true;
+}
+
+// Уничтожение Message Window
+void DestroyMessageWindow() {
+    if (g_MessageWindow) {
+        DestroyWindow(g_MessageWindow);
+        g_MessageWindow = nullptr;
+        LogToFile("Message Window destroyed\n");
+    }
+}
+
+// ============================================================================
+// Thread-safe TJS execution functions
+// ============================================================================
+
+// Асинхронный вызов TJS (fire-and-forget)
+// Можно вызывать из любого потока!
+void ExecuteTJSAsync(const wchar_t* code) {
+    if (!g_MessageWindow || !code) return;
+
+    // Копируем строку (будет удалена в обработчике)
+    size_t len = wcslen(code) + 1;
+    wchar_t* codeCopy = new wchar_t[len];
+    wcscpy_s(codeCopy, len, code);
+
+    PostMessage(g_MessageWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
+}
+
+// Синхронный вызов TJS с ожиданием результата
+// Можно вызывать из любого потока, кроме главного (иначе deadlock)!
+bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 5000) {
+    if (!g_MessageWindow || !code) return false;
+
+    TJSSyncCallData data;
+    data.code = code;
+    data.result = result;
+    data.completedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    if (!data.completedEvent) return false;
+
+    PostMessage(g_MessageWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)&data, 0);
+
+    DWORD waitResult = WaitForSingleObject(data.completedEvent, timeoutMs);
+    CloseHandle(data.completedEvent);
+
+    return (waitResult == WAIT_OBJECT_0);
+}
 
 // ============================================================================
 // Логирование
@@ -82,6 +216,14 @@ void DeferredTJSInitThread() {
     if (g_TJSReady.load()) {
         LogToFile("Deferred TJS init: SUCCESS\n");
 
+        // Создаём Message Window для thread-safe IPC
+        // ПРИМЕЧАНИЕ: Это экспериментальный pattern. Message Window создаётся
+        // в отложенном потоке, но должен обрабатываться главным потоком.
+        // Если будут проблемы - можно попробовать создавать в V2Link.
+        if (!CreateMessageWindow()) {
+            LogToFile("WARNING: Message Window creation failed, hotkeys will be limited\n");
+        }
+
         // Регистрируем функции в TJS
         if (RegisterAllFunctions()) {
             OutputDebugStringW(L"[NEURO PLUGIN] Functions registered successfully!\n");
@@ -103,7 +245,7 @@ void DeferredTJSInitThread() {
             LogToFile(buf);
 
             LogToFile("Basic tests completed!\n");
-            LogToFile("Hotkeys: F9=console, F10=test, F12=KAG check\n");
+            LogToFile("Hotkeys: F8=about, F9=test, F12=KAG check\n");
 
             // Запускаем обработчик хоткеев
             StartHotkeyThread();
@@ -125,49 +267,49 @@ void StartDeferredTJSInit() {
 }
 
 // ============================================================================
-// Хоткеи
+// Хоткеи (thread-safe через Message Window)
 // ============================================================================
 
 void HotkeyThread() {
-    LogToFile("Hotkey thread started (F9 = console, F10 = test, F12 = KAG)\n");
+    LogToFile("Hotkey thread started (F8 = about, F9 = test, F12 = KAG)\n");
+    LogToFile("  Using thread-safe ExecuteTJSSync for TJS calls\n");
 
     while (g_HotkeyThreadRunning.load()) {
-        // F8 - показать консоль
+        // F8 - показать About (System.showAbout)
         if (GetAsyncKeyState(VK_F8) & 0x8000) {
-            if (g_TJSReady.load()) {
-                LogToFile("F8 pressed - showing console\n");
-                tTJSVariant result;
-                TVPExecuteExpression(TJS_W("neuroShowConsole()"), &result);
-
-                // Показываем результат
-                const char* msg = (tTVInteger)result ?
-                    "Debug.console.visible = true\n(Console may be disabled in this build)" :
-                    "Debug.console not available";
-                MessageBoxA(NULL, msg, "Neuro Plugin - F8", MB_OK | MB_ICONINFORMATION);
+            if (g_TJSReady.load() && g_MessageWindow) {
+                LogToFile("F8 pressed - showing About\n");
+                // Thread-safe вызов через Message Window
+                ExecuteTJSAsync(L"System.showAbout()");
             }
             Sleep(300);  // Debounce
         }
 
-        // F9 - тест neuroEcho (без MessageBox внутри, просто лог)
+        // F9 - тест (простой MessageBox, не требует TJS)
         if (GetAsyncKeyState(VK_F9) & 0x8000) {
             if (g_TJSReady.load()) {
                 LogToFile("F9 pressed - test\n");
-                MessageBoxA(NULL, "F9 hotkey works!\nneuroEcho test.", "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
+                MessageBoxA(NULL, "F9 hotkey works!\nThread-safe TJS calls enabled.", "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
             }
             Sleep(300);  // Debounce
         }
 
-        // F12 - проверить KAG (вместо F11)
+        // F12 - проверить KAG (синхронный вызов с результатом)
         if (GetAsyncKeyState(VK_F12) & 0x8000) {
-            if (g_TJSReady.load()) {
-                LogToFile("F12 pressed - checking KAG\n");
+            if (g_TJSReady.load() && g_MessageWindow) {
+                LogToFile("F12 pressed - checking KAG (sync)\n");
                 tTJSVariant result;
-                TVPExecuteExpression(TJS_W("neuroIsKAGReady()"), &result);
-                char buf[64];
-                sprintf_s(buf, "KAG ready: %s", (tTVInteger)result ? "YES" : "NO");
-                LogToFile(buf);
-                LogToFile("\n");
-                MessageBoxA(NULL, buf, "Neuro Plugin - F12", MB_OK | MB_ICONINFORMATION);
+                // Thread-safe синхронный вызов
+                if (ExecuteTJSSync(L"neuroIsKAGReady()", &result)) {
+                    char buf[64];
+                    sprintf_s(buf, "KAG ready: %s", (tTVInteger)result ? "YES" : "NO");
+                    LogToFile(buf);
+                    LogToFile("\n");
+                    MessageBoxA(NULL, buf, "Neuro Plugin - F12", MB_OK | MB_ICONINFORMATION);
+                } else {
+                    LogToFile("F12: ExecuteTJSSync timed out\n");
+                    MessageBoxA(NULL, "TJS call timed out", "Neuro Plugin - F12", MB_OK | MB_ICONWARNING);
+                }
             }
             Sleep(300);  // Debounce
         }
@@ -531,6 +673,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     // Останавливаем хоткей поток
     StopHotkeyThread();
     Sleep(100);  // Даём потоку завершиться
+
+    // Уничтожаем Message Window
+    DestroyMessageWindow();
 
     // Удаляем зарегистрированные функции
     UnregisterAllFunctions();

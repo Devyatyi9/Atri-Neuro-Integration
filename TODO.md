@@ -40,6 +40,4 @@ if (kagReady) {
 TVPExecuteExpression(TJS_W("System.showAbout()"), (tTJSVariant*)NULL);
 ```
 
-```cpp
-
-```
+использовать **Event Queue** в главном потоке игры
