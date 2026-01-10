@@ -19,36 +19,46 @@ static std::atomic<bool> g_TJSReady(false);
 static std::atomic<bool> g_InitThreadRunning(false);
 static std::atomic<bool> g_HotkeyThreadRunning(false);
 static iTJSDispatch2* g_ScriptDispatch = nullptr;
-// Forward declaration в начале файла (после includes)
+
+// Forward declaration
 void LogToFile(const char* message);
 
-
 // ============================================================================
-// Message Window для thread-safe TJS вызовов
+// Thread-safe TJS execution через Window Subclass
 // ============================================================================
 // ВАЖНО: TJS2 НЕ потокобезопасен! Все вызовы TVPExecuteExpression и т.п.
-// должны происходить из главного потока. Message Window позволяет
-// worker threads (hotkey, websocket) безопасно запрашивать выполнение TJS.
+// должны происходить из главного потока.
+//
+// Решение: Subclass главного окна игры и обрабатывать наши сообщения там.
+// Это гарантирует что сообщения обрабатываются в message loop игры.
 // ============================================================================
-static HWND g_MessageWindow = nullptr;
+static HWND g_GameWindow = nullptr;
+static WNDPROC g_OriginalWndProc = nullptr;
 static const UINT WM_TJS_EXECUTE = WM_USER + 100;
-static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;  // Синхронный вызов с результатом
+static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 
-// Структура для синхронного вызова
+// Структура для синхронного вызова с результатом
 struct TJSSyncCallData {
     const wchar_t* code;
     tTJSVariant* result;
     HANDLE completedEvent;
 };
 
-// Window Procedure для Message Window
-LRESULT CALLBACK MessageWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+// Счётчик для отладки - сколько раз вызван SubclassedWndProc
+static std::atomic<int> g_SubclassCallCount(0);
+
+// Subclassed Window Procedure
+LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // Считаем вызовы (для диагностики)
+    g_SubclassCallCount++;
+
     switch (msg) {
     case WM_TJS_EXECUTE: {
         // Асинхронный вызов - код передаётся как копия, нужно освободить
+        LogToFile("  [Subclass] WM_TJS_EXECUTE received!\n");
         wchar_t* code = (wchar_t*)wParam;
         if (code && g_TJSReady.load()) {
-            LogToFile("  [MessageWindow] Executing TJS async...\n");
+            LogToFile("  [Subclass] Executing TJS async\n");
             tTJSVariant dummy;
             TVPExecuteExpression(ttstr(code), &dummy);
         }
@@ -58,9 +68,10 @@ LRESULT CALLBACK MessageWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_TJS_EXECUTE_SYNC: {
         // Синхронный вызов - возвращает результат
+        LogToFile("  [Subclass] WM_TJS_EXECUTE_SYNC received!\n");
         TJSSyncCallData* data = (TJSSyncCallData*)wParam;
         if (data && data->code && g_TJSReady.load()) {
-            LogToFile("  [MessageWindow] Executing TJS sync...\n");
+            LogToFile("  [Subclass] Executing TJS sync\n");
             TVPExecuteExpression(ttstr(data->code), data->result);
         }
         if (data && data->completedEvent) {
@@ -70,51 +81,122 @@ LRESULT CALLBACK MessageWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     }
     }
 
-    return DefWindowProc(hwnd, msg, wParam, lParam);
+    // Передаём все остальные сообщения оригинальной процедуре
+    return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
 }
 
-// Создание Message Window (вызывать из главного потока!)
-bool CreateMessageWindow() {
-    WNDCLASSW wc = {};
-    wc.lpfnWndProc = MessageWindowProc;
-    wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = L"NeuroPluginMessageWindow";
+// Структура для передачи данных в EnumWindows
+struct EnumWindowsData {
+    HWND foundWindow;
+    HWND kirikiriWindow;  // Приоритетное окно KiriKiri
+};
 
-    if (!RegisterClassW(&wc)) {
-        // Класс уже зарегистрирован - это нормально
-        if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
-            LogToFile("ERROR: RegisterClass failed\n");
-            return false;
+// Callback для EnumWindows - ищем главное окно нашего процесса
+BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
+    DWORD windowPid;
+    GetWindowThreadProcessId(hwnd, &windowPid);
+
+    if (windowPid == GetCurrentProcessId()) {
+        // Проверяем что это видимое окно верхнего уровня
+        if (IsWindowVisible(hwnd) && GetParent(hwnd) == NULL) {
+            // Получаем класс окна
+            wchar_t className[256] = {0};
+            GetClassNameW(hwnd, className, 256);
+
+            EnumWindowsData* data = (EnumWindowsData*)lParam;
+
+            // Пропускаем диалоговые окна (#32770)
+            if (wcscmp(className, L"#32770") == 0) {
+                return TRUE;  // Продолжаем искать
+            }
+
+            // Приоритет для окна KiriKiri (TTVPWindowForm)
+            if (wcsstr(className, L"TTVPWindowForm") != nullptr ||
+                wcsstr(className, L"TVPMainWindow") != nullptr) {
+                data->kirikiriWindow = hwnd;
+                return FALSE;  // Нашли окно KiriKiri, прекращаем
+            }
+
+            // Сохраняем первое подходящее окно как fallback
+            if (!data->foundWindow) {
+                data->foundWindow = hwnd;
+            }
         }
     }
+    return TRUE;
+}
 
-    // HWND_MESSAGE создаёт message-only window (не видимое)
-    g_MessageWindow = CreateWindowW(
-        L"NeuroPluginMessageWindow",
-        L"NeuroPluginIPC",
-        0, 0, 0, 0, 0,
-        HWND_MESSAGE,  // Message-only window
-        NULL,
-        GetModuleHandle(NULL),
-        NULL
-    );
+// Subclass главного окна игры
+bool SubclassGameWindow() {
+    // Ждём появления окна игры (до 5 секунд)
+    LogToFile("Waiting for game window...\n");
 
-    if (!g_MessageWindow) {
-        LogToFile("ERROR: CreateWindow for message window failed\n");
+    for (int attempt = 0; attempt < 50; attempt++) {
+        EnumWindowsData enumData = {nullptr, nullptr};
+        EnumWindows(EnumWindowsCallback, (LPARAM)&enumData);
+
+        g_GameWindow = enumData.kirikiriWindow ? enumData.kirikiriWindow : enumData.foundWindow;
+
+        if (g_GameWindow) {
+            char buf[128];
+            sprintf_s(buf, "  Found window on attempt %d\n", attempt + 1);
+            LogToFile(buf);
+            break;
+        }
+
+        Sleep(100);  // Ждём 100мс между попытками
+    }
+
+    if (!g_GameWindow) {
+        LogToFile("ERROR: Could not find game window after 5 seconds\n");
         return false;
     }
 
-    LogToFile("Message Window created successfully\n");
+    char buf[512];
+    sprintf_s(buf, "Found game window: HWND=%p\n", g_GameWindow);
+    LogToFile(buf);
+
+    // Получаем информацию об окне для диагностики
+    wchar_t className[256] = {0};
+    wchar_t windowTitle[256] = {0};
+    GetClassNameW(g_GameWindow, className, 256);
+    GetWindowTextW(g_GameWindow, windowTitle, 256);
+
+    char diagBuf[1024];
+    sprintf_s(diagBuf, "  Window class: %ls\n  Window title: %ls\n",
+        className, windowTitle);
+    LogToFile(diagBuf);
+
+    // Проверяем thread ID окна
+    DWORD windowThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
+    DWORD currentThreadId = GetCurrentThreadId();
+    sprintf_s(diagBuf, "  Window thread: %lu, Current thread: %lu\n",
+        windowThreadId, currentThreadId);
+    LogToFile(diagBuf);
+
+    // Subclass окно
+    g_OriginalWndProc = (WNDPROC)SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)SubclassedWndProc);
+
+    if (!g_OriginalWndProc) {
+        DWORD err = GetLastError();
+        sprintf_s(diagBuf, "ERROR: SetWindowLongPtr failed, error=%lu\n", err);
+        LogToFile(diagBuf);
+        g_GameWindow = nullptr;
+        return false;
+    }
+
+    LogToFile("Game window subclassed successfully\n");
     return true;
 }
 
-// Уничтожение Message Window
-void DestroyMessageWindow() {
-    if (g_MessageWindow) {
-        DestroyWindow(g_MessageWindow);
-        g_MessageWindow = nullptr;
-        LogToFile("Message Window destroyed\n");
+// Восстановление оригинальной процедуры окна
+void UnsubclassGameWindow() {
+    if (g_GameWindow && g_OriginalWndProc) {
+        SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
+        LogToFile("Game window unsubclassed\n");
     }
+    g_GameWindow = nullptr;
+    g_OriginalWndProc = nullptr;
 }
 
 // ============================================================================
@@ -124,20 +206,20 @@ void DestroyMessageWindow() {
 // Асинхронный вызов TJS (fire-and-forget)
 // Можно вызывать из любого потока!
 void ExecuteTJSAsync(const wchar_t* code) {
-    if (!g_MessageWindow || !code) return;
+    if (!g_GameWindow || !code) return;
 
     // Копируем строку (будет удалена в обработчике)
     size_t len = wcslen(code) + 1;
     wchar_t* codeCopy = new wchar_t[len];
     wcscpy_s(codeCopy, len, code);
 
-    PostMessage(g_MessageWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
+    PostMessage(g_GameWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
 }
 
 // Синхронный вызов TJS с ожиданием результата
-// Можно вызывать из любого потока, кроме главного (иначе deadlock)!
+// Можно вызывать из любого потока, КРОМЕ главного (иначе deadlock)!
 bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 5000) {
-    if (!g_MessageWindow || !code) return false;
+    if (!g_GameWindow || !code) return false;
 
     TJSSyncCallData data;
     data.code = code;
@@ -146,10 +228,28 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 
 
     if (!data.completedEvent) return false;
 
-    PostMessage(g_MessageWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)&data, 0);
+    char diagBuf[256];
+    sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p, subclass calls so far: %d\n",
+        g_GameWindow, g_SubclassCallCount.load());
+    LogToFile(diagBuf);
+
+    BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)&data, 0);
+    if (!postResult) {
+        DWORD err = GetLastError();
+        sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n", err);
+        LogToFile(diagBuf);
+        CloseHandle(data.completedEvent);
+        return false;
+    }
 
     DWORD waitResult = WaitForSingleObject(data.completedEvent, timeoutMs);
     CloseHandle(data.completedEvent);
+
+    if (waitResult != WAIT_OBJECT_0) {
+        sprintf_s(diagBuf, "  [ExecuteTJSSync] TIMEOUT! Subclass calls after: %d\n",
+            g_SubclassCallCount.load());
+        LogToFile(diagBuf);
+    }
 
     return (waitResult == WAIT_OBJECT_0);
 }
@@ -216,12 +316,9 @@ void DeferredTJSInitThread() {
     if (g_TJSReady.load()) {
         LogToFile("Deferred TJS init: SUCCESS\n");
 
-        // Создаём Message Window для thread-safe IPC
-        // ПРИМЕЧАНИЕ: Это экспериментальный pattern. Message Window создаётся
-        // в отложенном потоке, но должен обрабатываться главным потоком.
-        // Если будут проблемы - можно попробовать создавать в V2Link.
-        if (!CreateMessageWindow()) {
-            LogToFile("WARNING: Message Window creation failed, hotkeys will be limited\n");
+        // Subclass окна игры для thread-safe TJS вызовов
+        if (!SubclassGameWindow()) {
+            LogToFile("WARNING: Window subclass failed, hotkeys will use direct calls\n");
         }
 
         // Регистрируем функции в TJS
@@ -245,7 +342,7 @@ void DeferredTJSInitThread() {
             LogToFile(buf);
 
             LogToFile("Basic tests completed!\n");
-            LogToFile("Hotkeys: F8=about, F9=test, F12=KAG check\n");
+            LogToFile("Hotkeys: F9=console, F10=test, F12=KAG check\n");
 
             // Запускаем обработчик хоткеев
             StartHotkeyThread();
@@ -267,38 +364,49 @@ void StartDeferredTJSInit() {
 }
 
 // ============================================================================
-// Хоткеи (thread-safe через Message Window)
+// Хоткеи (thread-safe через Window Subclass)
 // ============================================================================
 
 void HotkeyThread() {
-    LogToFile("Hotkey thread started (F8 = about, F9 = test, F12 = KAG)\n");
-    LogToFile("  Using thread-safe ExecuteTJSSync for TJS calls\n");
+    LogToFile("Hotkey thread started (F9 = console, F10 = test, F12 = KAG)\n");
+    LogToFile("  Using thread-safe ExecuteTJSAsync/Sync for TJS calls\n");
 
     while (g_HotkeyThreadRunning.load()) {
-        // F8 - показать About (System.showAbout)
-        if (GetAsyncKeyState(VK_F8) & 0x8000) {
-            if (g_TJSReady.load() && g_MessageWindow) {
-                LogToFile("F8 pressed - showing About\n");
-                // Thread-safe вызов через Message Window
-                ExecuteTJSAsync(L"System.showAbout()");
+        // F9 - показать консоль (синхронный вызов для получения результата)
+        if (GetAsyncKeyState(VK_F9) & 0x8000) {
+            if (g_TJSReady.load() && g_GameWindow) {
+                LogToFile("F9 pressed - showing console (sync)\n");
+                tTJSVariant result;
+
+                // Thread-safe синхронный вызов
+                if (ExecuteTJSSync(L"neuroShowConsole()", &result)) {
+                    const char* msg = (tTVInteger)result ?
+                        "Debug.console.visible = true\n(Console may be disabled in this build)" :
+                        "Debug.console not available";
+                    MessageBoxA(NULL, msg, "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
+                } else {
+                    LogToFile("F9: ExecuteTJSSync timed out\n");
+                    MessageBoxA(NULL, "TJS call timed out", "Neuro Plugin - F9", MB_OK | MB_ICONWARNING);
+                }
             }
             Sleep(300);  // Debounce
         }
 
-        // F9 - тест (простой MessageBox, не требует TJS)
-        if (GetAsyncKeyState(VK_F9) & 0x8000) {
+        // F10 - тест (просто MessageBox, не требует TJS)
+        if (GetAsyncKeyState(VK_F10) & 0x8000) {
             if (g_TJSReady.load()) {
-                LogToFile("F9 pressed - test\n");
-                MessageBoxA(NULL, "F9 hotkey works!\nThread-safe TJS calls enabled.", "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
+                LogToFile("F10 pressed - test\n");
+                MessageBoxA(NULL, "F10 hotkey works!\nThread-safe TJS calls enabled.", "Neuro Plugin - F10", MB_OK | MB_ICONINFORMATION);
             }
             Sleep(300);  // Debounce
         }
 
         // F12 - проверить KAG (синхронный вызов с результатом)
         if (GetAsyncKeyState(VK_F12) & 0x8000) {
-            if (g_TJSReady.load() && g_MessageWindow) {
+            if (g_TJSReady.load() && g_GameWindow) {
                 LogToFile("F12 pressed - checking KAG (sync)\n");
                 tTJSVariant result;
+
                 // Thread-safe синхронный вызов
                 if (ExecuteTJSSync(L"neuroIsKAGReady()", &result)) {
                     char buf[64];
@@ -562,7 +670,8 @@ static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
 
 void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
 {
-    tTJSVariant val(func);
+    // Используем конструктор с явным указанием объекта
+    tTJSVariant val(func, func);
     func->Release();  // val теперь держит ссылку
     global->PropSet(TJS_MEMBERENSURE, name, NULL, &val, global);
 }
@@ -674,8 +783,8 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     StopHotkeyThread();
     Sleep(100);  // Даём потоку завершиться
 
-    // Уничтожаем Message Window
-    DestroyMessageWindow();
+    // Восстанавливаем оригинальную процедуру окна
+    UnsubclassGameWindow();
 
     // Удаляем зарегистрированные функции
     UnregisterAllFunctions();
