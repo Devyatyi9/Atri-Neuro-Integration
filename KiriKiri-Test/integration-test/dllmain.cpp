@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
@@ -19,9 +20,32 @@ static std::atomic<bool> g_TJSReady(false);
 static std::atomic<bool> g_InitThreadRunning(false);
 static std::atomic<bool> g_HotkeyThreadRunning(false);
 static iTJSDispatch2* g_ScriptDispatch = nullptr;
+static std::thread g_HotkeyThread;  // Для корректного join()
+static DWORD g_MainThreadId = 0;    // ID главного потока игры
 
-// Forward declaration
-void LogToFile(const char* message);
+// ============================================================================
+// Буферизованное логирование
+// ============================================================================
+static FILE* g_LogFile = nullptr;
+static std::mutex g_LogMutex;
+
+void LogToFile(const char* message) {
+    std::lock_guard<std::mutex> lock(g_LogMutex);
+    if (!g_LogFile) {
+        g_LogFile = fopen("plugin_log.txt", "a");
+        if (!g_LogFile) return;
+    }
+    fprintf(g_LogFile, "%s", message);
+    fflush(g_LogFile);  // Гарантирует запись при краше
+}
+
+void CloseLogFile() {
+    std::lock_guard<std::mutex> lock(g_LogMutex);
+    if (g_LogFile) {
+        fclose(g_LogFile);
+        g_LogFile = nullptr;
+    }
+}
 
 // ============================================================================
 // Thread-safe TJS execution через Window Subclass
@@ -37,12 +61,20 @@ static WNDPROC g_OriginalWndProc = nullptr;
 static const UINT WM_TJS_EXECUTE = WM_USER + 100;
 static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 
-// Структура для синхронного вызова с результатом
+// Структура для синхронного вызова с результатом (выделяется в куче!)
 struct TJSSyncCallData {
     const wchar_t* code;
     tTJSVariant* result;
     HANDLE completedEvent;
+    std::atomic<bool> processed;  // Флаг обработки для безопасного удаления
+
+    TJSSyncCallData() : code(nullptr), result(nullptr), completedEvent(nullptr), processed(false) {}
 };
+
+// Проверка главного потока
+bool IsMainThread() {
+    return GetCurrentThreadId() == g_MainThreadId;
+}
 
 // Счётчик для отладки - сколько раз вызван SubclassedWndProc
 static std::atomic<int> g_SubclassCallCount(0);
@@ -70,12 +102,15 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // Синхронный вызов - возвращает результат
         LogToFile("  [Subclass] WM_TJS_EXECUTE_SYNC received!\n");
         TJSSyncCallData* data = (TJSSyncCallData*)wParam;
-        if (data && data->code && g_TJSReady.load()) {
-            LogToFile("  [Subclass] Executing TJS sync\n");
-            TVPExecuteExpression(ttstr(data->code), data->result);
-        }
-        if (data && data->completedEvent) {
-            SetEvent(data->completedEvent);
+        if (data) {
+            if (data->code && g_TJSReady.load()) {
+                LogToFile("  [Subclass] Executing TJS sync\n");
+                TVPExecuteExpression(ttstr(data->code), data->result);
+            }
+            data->processed.store(true);  // Помечаем как обработанное
+            if (data->completedEvent) {
+                SetEvent(data->completedEvent);
+            }
         }
         return 0;
     }
@@ -167,11 +202,11 @@ bool SubclassGameWindow() {
         className, windowTitle);
     LogToFile(diagBuf);
 
-    // Проверяем thread ID окна
-    DWORD windowThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
+    // Получаем и сохраняем thread ID окна (главный поток игры)
+    g_MainThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
     DWORD currentThreadId = GetCurrentThreadId();
-    sprintf_s(diagBuf, "  Window thread: %lu, Current thread: %lu\n",
-        windowThreadId, currentThreadId);
+    sprintf_s(diagBuf, "  Window thread (main): %lu, Current thread: %lu\n",
+        g_MainThreadId, currentThreadId);
     LogToFile(diagBuf);
 
     // Subclass окно
@@ -217,56 +252,69 @@ void ExecuteTJSAsync(const wchar_t* code) {
 }
 
 // Синхронный вызов TJS с ожиданием результата
-// Можно вызывать из любого потока, КРОМЕ главного (иначе deadlock)!
+// Можно вызывать из любого потока!
 bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 5000) {
-    if (!g_GameWindow || !code) return false;
+    if (!g_GameWindow || !IsWindow(g_GameWindow) || !code) return false;
 
-    TJSSyncCallData data;
-    data.code = code;
-    data.result = result;
-    data.completedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    // Если вызов из главного потока - выполняем напрямую (избегаем deadlock)
+    if (IsMainThread()) {
+        if (g_TJSReady.load()) {
+            TVPExecuteExpression(ttstr(code), result);
+            return true;
+        }
+        return false;
+    }
 
-    if (!data.completedEvent) return false;
+    // Выделяем в куче для безопасности при timeout
+    TJSSyncCallData* data = new TJSSyncCallData();
+    data->code = code;
+    data->result = result;
+    data->completedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    if (!data->completedEvent) {
+        delete data;
+        return false;
+    }
 
     char diagBuf[256];
     sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p, subclass calls so far: %d\n",
         g_GameWindow, g_SubclassCallCount.load());
     LogToFile(diagBuf);
 
-    BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)&data, 0);
+    BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)data, 0);
     if (!postResult) {
         DWORD err = GetLastError();
         sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n", err);
         LogToFile(diagBuf);
-        CloseHandle(data.completedEvent);
+        CloseHandle(data->completedEvent);
+        delete data;
         return false;
     }
 
-    DWORD waitResult = WaitForSingleObject(data.completedEvent, timeoutMs);
-    CloseHandle(data.completedEvent);
+    DWORD waitResult = WaitForSingleObject(data->completedEvent, timeoutMs);
+    CloseHandle(data->completedEvent);
+    data->completedEvent = nullptr;
 
-    if (waitResult != WAIT_OBJECT_0) {
+    if (waitResult == WAIT_OBJECT_0) {
+        // Успешно обработано - безопасно удаляем
+        delete data;
+        return true;
+    } else {
+        // Timeout! Сообщение может быть ещё в очереди.
+        // Проверяем, было ли обработано
         sprintf_s(diagBuf, "  [ExecuteTJSSync] TIMEOUT! Subclass calls after: %d\n",
             g_SubclassCallCount.load());
         LogToFile(diagBuf);
-    }
 
-    return (waitResult == WAIT_OBJECT_0);
-}
-
-// ============================================================================
-// Логирование
-// ============================================================================
-
-void LogToFile(const char* message) {
-    HANDLE hFile = CreateFileW(L"plugin_log.txt",
-        GENERIC_WRITE, FILE_SHARE_READ, NULL,
-        OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile != INVALID_HANDLE_VALUE) {
-        DWORD written;
-        SetFilePointer(hFile, 0, NULL, FILE_END);
-        WriteFile(hFile, message, (DWORD)strlen(message), &written, NULL);
-        CloseHandle(hFile);
+        if (data->processed.load()) {
+            // Обработано после timeout - безопасно удаляем
+            delete data;
+        } else {
+            // НЕ удаляем! Оставляем утечку - лучше чем crash
+            // Сообщение ещё в очереди и будет обрабатывать этот указатель
+            LogToFile("  [ExecuteTJSSync] WARNING: Memory leak to prevent use-after-free\n");
+        }
+        return false;
     }
 }
 
@@ -432,11 +480,14 @@ void StartHotkeyThread() {
     if (g_HotkeyThreadRunning.exchange(true)) {
         return;
     }
-    std::thread(HotkeyThread).detach();
+    g_HotkeyThread = std::thread(HotkeyThread);
 }
 
 void StopHotkeyThread() {
     g_HotkeyThreadRunning.store(false);
+    if (g_HotkeyThread.joinable()) {
+        g_HotkeyThread.join();  // Ждём корректного завершения
+    }
 }
 
 // Проверка готовности TJS (можно вызывать из TJS функций)
@@ -779,9 +830,8 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
     LogToFile("V2Unlink called - cleaning up\n");
 
-    // Останавливаем хоткей поток
+    // Останавливаем хоткей поток (join ждёт завершения)
     StopHotkeyThread();
-    Sleep(100);  // Даём потоку завершиться
 
     // Восстанавливаем оригинальную процедуру окна
     UnsubclassGameWindow();
@@ -800,6 +850,10 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     TVPUninitImportStub();
 
     LogToFile("Cleanup complete\n");
+
+    // Закрываем файл лога
+    CloseLogFile();
+
     return S_OK;
 }
 
