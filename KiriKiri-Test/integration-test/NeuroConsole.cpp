@@ -7,7 +7,13 @@
 #include <string>
 #include <vector>
 
-#pragma comment(lib, "Msftedit.lib") // Для RichEdit
+// RichEdit загружается динамически через LoadLibrary("Msftedit.dll") в Create()
+
+// KiriKiri SDK
+#pragma warning(push)
+#pragma warning(disable: 26495)
+#include "../krkr-sdk/tp_stub.h"
+#pragma warning(pop)
 
 class NeuroConsole {
 private:
@@ -385,4 +391,35 @@ static tjs_error TJS_INTF_METHOD NeuroConsoleLog(
     // TODO: Получить текст из param[0] и вывести в консоль
 
     return TJS_S_OK;
+}
+
+// ============================================================================
+// Экспортируемые функции для использования из dllmain.cpp
+// ============================================================================
+
+void InitNeuroConsole() {
+    if (!g_Console) {
+        g_Console = new NeuroConsole();
+        g_Console->Create();
+    }
+}
+
+void ShutdownNeuroConsole() {
+    if (g_Console) {
+        delete g_Console;
+        g_Console = nullptr;
+    }
+}
+
+void ToggleNeuroConsole() {
+    if (!g_Console) {
+        InitNeuroConsole();
+    }
+    if (g_Console) {
+        g_Console->Toggle();
+    }
+}
+
+bool IsNeuroConsoleVisible() {
+    return g_Console && g_Console->IsVisible();
 }

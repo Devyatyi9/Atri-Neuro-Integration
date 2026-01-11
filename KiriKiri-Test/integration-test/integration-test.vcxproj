@@ -121,6 +121,7 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="NeuroConsole.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
   </ItemGroup>
   <ItemGroup>

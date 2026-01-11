@@ -1,9 +1,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <cstdio>
+#include <cstring>
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <vector>
+#include <string>
+#include "../include/neurosdk.h"
+#include "NeuroConsole.h"
 
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
@@ -22,6 +27,20 @@ static std::atomic<bool> g_HotkeyThreadRunning(false);
 static iTJSDispatch2* g_ScriptDispatch = nullptr;
 static std::thread g_HotkeyThread;  // Для корректного join()
 static DWORD g_MainThreadId = 0;    // ID главного потока игры
+
+// ============================================================================
+// Neuro SDK - глобальные переменные
+// ============================================================================
+static neurosdk_context_t g_NeuroContext = nullptr;
+static std::atomic<bool> g_NeuroConnected(false);
+static std::atomic<bool> g_NeuroPollThreadRunning(false);
+static std::thread g_NeuroPollThread;
+static std::string g_NeuroGameName = "ATRI-MyDearMoments";
+static std::string g_NeuroURL = "ws://localhost:8000";
+
+// Registered actions (для отслеживания)
+static std::vector<std::string> g_RegisteredActions;
+static std::mutex g_ActionsMutex;
 
 // ============================================================================
 // Буферизованное логирование
@@ -45,6 +64,301 @@ void CloseLogFile() {
         fclose(g_LogFile);
         g_LogFile = nullptr;
     }
+}
+
+// ============================================================================
+// Neuro SDK - Callback и вспомогательные функции
+// ============================================================================
+
+// Callback для логов от Neuro SDK
+void NeuroLogCallback(neurosdk_severity_e severity, char* message, void* user_data) {
+    const char* severityStr = "???";
+    switch (severity) {
+        case NeuroSDK_Severity_Debug: severityStr = "DEBUG"; break;
+        case NeuroSDK_Severity_Info:  severityStr = "INFO"; break;
+        case NeuroSDK_Severity_Warn:  severityStr = "WARN"; break;
+        case NeuroSDK_Severity_Error: severityStr = "ERROR"; break;
+    }
+
+    char buf[1024];
+    sprintf_s(buf, "[NeuroSDK %s] %s\n", severityStr, message ? message : "(null)");
+    LogToFile(buf);
+}
+
+// Forward declarations для TJS execution
+void ExecuteTJSAsync(const wchar_t* code);
+bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs);
+
+// Обработка входящего Action от Neuro
+void HandleNeuroAction(const char* id, const char* name, const char* data) {
+    char logBuf[512];
+    sprintf_s(logBuf, "[Neuro] Action received: id=%s, name=%s\n",
+        id ? id : "(null)", name ? name : "(null)");
+    LogToFile(logBuf);
+
+    if (data) {
+        sprintf_s(logBuf, "[Neuro] Action data: %s\n", data);
+        LogToFile(logBuf);
+    }
+
+    // Формируем вызов TJS обработчика: neuroOnAction(id, name, data)
+    // Экранируем строки для TJS
+    wchar_t tjsCode[2048];
+
+    // Простой вызов глобальной функции если она существует
+    swprintf_s(tjsCode, 2048,
+        L"if (typeof global.neuroOnAction !== 'undefined') { "
+        L"global.neuroOnAction('%hs', '%hs', '%hs'); "
+        L"}",
+        id ? id : "",
+        name ? name : "",
+        data ? data : "");
+
+    // Асинхронный вызов в главном потоке игры
+    ExecuteTJSAsync(tjsCode);
+}
+
+// Polling thread для Neuro SDK
+void NeuroPollThread() {
+    LogToFile("[Neuro] Poll thread started\n");
+
+    while (g_NeuroPollThreadRunning.load() && g_NeuroConnected.load()) {
+        if (!neurosdk_context_connected(&g_NeuroContext)) {
+            LogToFile("[Neuro] Connection lost!\n");
+            g_NeuroConnected.store(false);
+            break;
+        }
+
+        neurosdk_message_t* messages = nullptr;
+        int count = 0;
+
+        neurosdk_error_e err = neurosdk_context_poll(&g_NeuroContext, &messages, &count);
+
+        if (err != NeuroSDK_None) {
+            char buf[256];
+            sprintf_s(buf, "[Neuro] Poll error: %s\n", neurosdk_error_string(err));
+            LogToFile(buf);
+
+            // Некоторые ошибки не фатальны
+            if (err == NeuroSDK_UnknownCommand) {
+                Sleep(100);
+                continue;
+            }
+            break;
+        }
+
+        // Обрабатываем полученные сообщения
+        for (int i = 0; i < count; i++) {
+            neurosdk_message_t* msg = &messages[i];
+
+            if (msg->kind == NeuroSDK_MessageKind_Action) {
+                HandleNeuroAction(
+                    msg->value.action.id,
+                    msg->value.action.name,
+                    msg->value.action.data);
+            }
+
+            neurosdk_message_destroy(msg);
+        }
+
+        Sleep(50);  // poll interval
+    }
+
+    LogToFile("[Neuro] Poll thread stopped\n");
+}
+
+// Подключение к Neuro
+bool NeuroConnect(const char* url, const char* gameName) {
+    if (g_NeuroConnected.load()) {
+        LogToFile("[Neuro] Already connected\n");
+        return true;
+    }
+
+    if (url) g_NeuroURL = url;
+    if (gameName) g_NeuroGameName = gameName;
+
+    char buf[512];
+    sprintf_s(buf, "[Neuro] Connecting to %s as '%s'...\n",
+        g_NeuroURL.c_str(), g_NeuroGameName.c_str());
+    LogToFile(buf);
+
+    neurosdk_context_create_desc_t desc;
+    memset(&desc, 0, sizeof(desc));
+    desc.url = g_NeuroURL.c_str();
+    desc.game_name = g_NeuroGameName.c_str();
+    desc.poll_ms = 100;
+    desc.user_data = nullptr;
+    desc.callback_log = NeuroLogCallback;
+    desc.flags = NeuroSDK_ContextCreateFlags_None;
+
+    neurosdk_error_e err = neurosdk_context_create(&g_NeuroContext, &desc);
+    if (err != NeuroSDK_None) {
+        sprintf_s(buf, "[Neuro] Connection failed: %s\n", neurosdk_error_string(err));
+        LogToFile(buf);
+        return false;
+    }
+
+    g_NeuroConnected.store(true);
+    LogToFile("[Neuro] Connected successfully!\n");
+
+    // Запускаем polling thread
+    g_NeuroPollThreadRunning.store(true);
+    g_NeuroPollThread = std::thread(NeuroPollThread);
+
+    return true;
+}
+
+// Отключение от Neuro
+void NeuroDisconnect() {
+    if (!g_NeuroConnected.load()) {
+        return;
+    }
+
+    LogToFile("[Neuro] Disconnecting...\n");
+
+    // Останавливаем polling thread
+    g_NeuroPollThreadRunning.store(false);
+    g_NeuroConnected.store(false);
+
+    if (g_NeuroPollThread.joinable()) {
+        g_NeuroPollThread.join();
+    }
+
+    // Уничтожаем контекст
+    if (g_NeuroContext) {
+        neurosdk_context_destroy(&g_NeuroContext);
+        g_NeuroContext = nullptr;
+    }
+
+    // Очищаем список actions
+    {
+        std::lock_guard<std::mutex> lock(g_ActionsMutex);
+        g_RegisteredActions.clear();
+    }
+
+    LogToFile("[Neuro] Disconnected\n");
+}
+
+// Отправка контекста в Neuro
+bool NeuroSendContext(const char* message, bool silent) {
+    if (!g_NeuroConnected.load() || !g_NeuroContext) {
+        LogToFile("[Neuro] Cannot send context: not connected\n");
+        return false;
+    }
+
+    neurosdk_message_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.kind = NeuroSDK_MessageKind_Context;
+    msg.value.context.message = const_cast<char*>(message);
+    msg.value.context.silent = silent;
+
+    neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
+    if (err != NeuroSDK_None) {
+        char buf[256];
+        sprintf_s(buf, "[Neuro] Send context failed: %s\n", neurosdk_error_string(err));
+        LogToFile(buf);
+        return false;
+    }
+
+    char buf[512];
+    sprintf_s(buf, "[Neuro] Context sent: %s\n", message);
+    LogToFile(buf);
+    return true;
+}
+
+// Регистрация action в Neuro
+bool NeuroRegisterAction(const char* name, const char* description, const char* jsonSchema) {
+    if (!g_NeuroConnected.load() || !g_NeuroContext) {
+        LogToFile("[Neuro] Cannot register action: not connected\n");
+        return false;
+    }
+
+    neurosdk_action_t action;
+    action.name = const_cast<char*>(name);
+    action.description = const_cast<char*>(description);
+    action.json_schema = const_cast<char*>(jsonSchema ? jsonSchema : "{}");
+
+    neurosdk_message_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.kind = NeuroSDK_MessageKind_ActionsRegister;
+    msg.value.actions_register.actions = &action;
+    msg.value.actions_register.actions_len = 1;
+
+    neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
+    if (err != NeuroSDK_None) {
+        char buf[256];
+        sprintf_s(buf, "[Neuro] Register action failed: %s\n", neurosdk_error_string(err));
+        LogToFile(buf);
+        return false;
+    }
+
+    // Сохраняем в список
+    {
+        std::lock_guard<std::mutex> lock(g_ActionsMutex);
+        g_RegisteredActions.push_back(name);
+    }
+
+    char buf[256];
+    sprintf_s(buf, "[Neuro] Action registered: %s\n", name);
+    LogToFile(buf);
+    return true;
+}
+
+// Отправка результата action
+bool NeuroSendActionResult(const char* id, bool success, const char* message) {
+    if (!g_NeuroConnected.load() || !g_NeuroContext) {
+        LogToFile("[Neuro] Cannot send result: not connected\n");
+        return false;
+    }
+
+    neurosdk_message_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.kind = NeuroSDK_MessageKind_ActionResult;
+    msg.value.action_result.id = const_cast<char*>(id);
+    msg.value.action_result.success = success;
+    msg.value.action_result.message = const_cast<char*>(message ? message : "");
+
+    neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
+    if (err != NeuroSDK_None) {
+        char buf[256];
+        sprintf_s(buf, "[Neuro] Send result failed: %s\n", neurosdk_error_string(err));
+        LogToFile(buf);
+        return false;
+    }
+
+    char buf[256];
+    sprintf_s(buf, "[Neuro] Result sent for %s: %s\n", id, success ? "success" : "failure");
+    LogToFile(buf);
+    return true;
+}
+
+// Force action (попросить Neuro выполнить действие)
+bool NeuroForceAction(const char* state, const char* query, const char** actionNames, int actionCount, bool ephemeral) {
+    if (!g_NeuroConnected.load() || !g_NeuroContext) {
+        LogToFile("[Neuro] Cannot force action: not connected\n");
+        return false;
+    }
+
+    neurosdk_message_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.kind = NeuroSDK_MessageKind_ActionsForce;
+    msg.value.actions_force.state = const_cast<char*>(state ? state : "");
+    msg.value.actions_force.query = const_cast<char*>(query ? query : "");
+    msg.value.actions_force.ephemeral_context = ephemeral;
+    msg.value.actions_force.action_names = const_cast<char**>(actionNames);
+    msg.value.actions_force.action_names_len = actionCount;
+    msg.value.actions_force.priority = NeuroSDK_Priority_Medium;
+
+    neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
+    if (err != NeuroSDK_None) {
+        char buf[256];
+        sprintf_s(buf, "[Neuro] Force action failed: %s\n", neurosdk_error_string(err));
+        LogToFile(buf);
+        return false;
+    }
+
+    LogToFile("[Neuro] Force action sent\n");
+    return true;
 }
 
 // ============================================================================
@@ -209,7 +523,7 @@ bool SubclassGameWindow() {
         g_MainThreadId, currentThreadId);
     LogToFile(diagBuf);
 
-    // Subclass окно
+    // Subclass окно через SetWindowLongPtr
     g_OriginalWndProc = (WNDPROC)SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)SubclassedWndProc);
 
     if (!g_OriginalWndProc) {
@@ -420,23 +734,10 @@ void HotkeyThread() {
     LogToFile("  Using thread-safe ExecuteTJSAsync/Sync for TJS calls\n");
 
     while (g_HotkeyThreadRunning.load()) {
-        // F9 - показать консоль (синхронный вызов для получения результата)
+        // F9 - показать/скрыть Neuro Console
         if (GetAsyncKeyState(VK_F9) & 0x8000) {
-            if (g_TJSReady.load() && g_GameWindow) {
-                LogToFile("F9 pressed - showing console (sync)\n");
-                tTJSVariant result;
-
-                // Thread-safe синхронный вызов
-                if (ExecuteTJSSync(L"neuroShowConsole()", &result)) {
-                    const char* msg = (tTVInteger)result ?
-                        "Debug.console.visible = true\n(Console may be disabled in this build)" :
-                        "Debug.console not available";
-                    MessageBoxA(NULL, msg, "Neuro Plugin - F9", MB_OK | MB_ICONINFORMATION);
-                } else {
-                    LogToFile("F9: ExecuteTJSSync timed out\n");
-                    MessageBoxA(NULL, "TJS call timed out", "Neuro Plugin - F9", MB_OK | MB_ICONWARNING);
-                }
-            }
+            LogToFile("F9 pressed - toggling Neuro Console\n");
+            ToggleNeuroConsole();
             Sleep(300);  // Debounce
         }
 
@@ -832,6 +1133,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
 
     // Останавливаем хоткей поток (join ждёт завершения)
     StopHotkeyThread();
+
+    // Закрываем консоль
+    ShutdownNeuroConsole();
 
     // Восстанавливаем оригинальную процедуру окна
     UnsubclassGameWindow();
