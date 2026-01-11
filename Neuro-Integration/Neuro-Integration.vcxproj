@@ -57,8 +57,22 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>../libneurosdk/libneurosdk_static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libneurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+if not exist "$(SolutionDir)libneurosdk\build\Release\libneurosdk.lib" (
+  echo Building libneurosdk...
+  cd "$(SolutionDir)libneurosdk"
+  if exist "build" rmdir /s /q build
+  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON
+  cmake --build build --config Release
+  echo libneurosdk built successfully
+)
+      </Command>
+      <Message>Build libneurosdk</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -76,8 +90,22 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>../libneurosdk/libneurosdk_static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libneurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+if not exist "$(SolutionDir)libneurosdk\build\Release\libneurosdk.lib" (
+  echo Building libneurosdk...
+  cd "$(SolutionDir)libneurosdk"
+  if exist "build" rmdir /s /q build
+  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON
+  cmake --build build --config Release
+  echo libneurosdk built successfully
+)
+      </Command>
+      <Message>Build libneurosdk</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
