@@ -11,10 +11,12 @@
 - [x] tp_stub connected
 - [x] Debug console check (F9 hotkey)
 - [x] KAG ready check (F12 hotkey)
+- [x] NeuroConsole — своя консоль для TJS команд (F9)
+- [x] libneurosdk интеграция (C++ функции готовы, TJS обёртки pending)
 
 ## In Progress
 
-- [ ] Integrate libneurosdk for WebSocket communication
+- [ ] Проверить компиляцию и работу NeuroConsole
 
 ## Planned
 
@@ -37,8 +39,24 @@ struct TJSCommandBatch {
 - Заголовки из krkrz_dev для доступа к внутренним классам
 - Возможно WindowEx, KAGParser и другие модули
 
+### Перехват Debug.console
+Встроенная консоль KiriKiri часто отключена в релизных билдах игр.
+Идея: перехватить вывод в Debug.console и перенаправить в NeuroConsole.
+Варианты:
+- Hook функции Debug.message через TJS
+- Заменить/обернуть Debug объект
+- Найти и перехватить внутренний callback для консоли
+
+### TJS функции для Neuro API
+- [ ] neuroConnect(url, gameName) - подключение к Neuro API
+- [ ] neuroDisconnect() - отключение
+- [ ] neuroSendContext(message, silent) - отправка контекста
+- [ ] neuroRegisterAction(name, description, schema) - регистрация action
+- [ ] neuroSendActionResult(id, success, message) - результат action
+- [ ] neuroIsConnected() - проверка подключения
+
 ### Другие улучшения
-- [ ] SetWindowSubclass вместо SetWindowLongPtr (более безопасный API)
+- [ ] SetWindowSubclass вместо SetWindowLongPtr (требует вызова из main thread — через SendMessage)
 - [ ] Обработка TJS исключений через tTJSVariantClosure
 
 ## Notes
