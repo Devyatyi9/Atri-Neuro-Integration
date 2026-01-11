@@ -105,11 +105,11 @@ void LoadAndLinkPlugin() {
     }
 
     OutputDebugStringW(L"[Version.dll] Plugin successfully loaded and linked!\n");
-    MessageBoxW(nullptr,
+    /*MessageBoxW(nullptr,
         L"Plugin successfully loaded and linked!\n"
         L"iTVPFunctionExporter: 0x007B4538\n"
         L"VTable: 0x00774A50",
-        L"Plugin Loader Success", MB_OK | MB_ICONINFORMATION);
+        L"Plugin Loader Success", MB_OK | MB_ICONINFORMATION);*/
 }
 
 // ============================================================================

@@ -21,6 +21,7 @@
 ## Planned
 
 ### Batching for async TJS calls
+
 При множественных командах от Neuro SDK возможны подвисания окна игры.
 Решение: собирать команды в batch и выполнять за один message pump cycle.
 
@@ -34,20 +35,34 @@ struct TJSCommandBatch {
 ```
 
 ### ncbind и дополнительные заголовки
+
 Для глубокой интеграции (не просто добавление функций, а взаимодействие с внутренними структурами движка) могут понадобиться:
+
 - ncbind - для привязки C++ классов к TJS
 - Заголовки из krkrz_dev для доступа к внутренним классам
 - Возможно WindowEx, KAGParser и другие модули
+  
+  ```
+  ncbind
+    └── tjsVariant.h
+          └── tjsString.h
+                └── tjsCommHead.h
+                      └── tjs.h (iTJSDispatch2)
+  
+  ```
 
 ### Перехват Debug.console
+
 Встроенная консоль KiriKiri часто отключена в релизных билдах игр.
 Идея: перехватить вывод в Debug.console и перенаправить в NeuroConsole.
 Варианты:
+
 - Hook функции Debug.message через TJS
 - Заменить/обернуть Debug объект
 - Найти и перехватить внутренний callback для консоли
 
 ### TJS функции для Neuro API
+
 - [ ] neuroConnect(url, gameName) - подключение к Neuro API
 - [ ] neuroDisconnect() - отключение
 - [ ] neuroSendContext(message, silent) - отправка контекста
@@ -56,16 +71,19 @@ struct TJSCommandBatch {
 - [ ] neuroIsConnected() - проверка подключения
 
 ### Другие улучшения
+
 - [ ] SetWindowSubclass вместо SetWindowLongPtr (требует вызова из main thread — через SendMessage)
 - [ ] Обработка TJS исключений через tTJSVariantClosure
 
 ## Notes
 
 ### Thread Safety
+
 TJS2 НЕ потокобезопасен. Все вызовы TVPExecuteExpression должны быть из главного потока.
 Текущее решение: Window Subclass + PostMessage для cross-thread communication.
 
 ### KAG Ready Check
+
 ```cpp
 TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &result);
 ```
