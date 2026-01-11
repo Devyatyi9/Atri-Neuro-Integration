@@ -69,7 +69,7 @@ void CloseLogFile() {
 // ============================================================================
 // Neuro SDK - Callback и вспомогательные функции
 // ============================================================================
-
+#pragma region Neuro
 // Callback для логов от Neuro SDK
 void NeuroLogCallback(neurosdk_severity_e severity, char* message, void* user_data) {
     const char* severityStr = "???";
@@ -84,11 +84,12 @@ void NeuroLogCallback(neurosdk_severity_e severity, char* message, void* user_da
     sprintf_s(buf, "[NeuroSDK %s] %s\n", severityStr, message ? message : "(null)");
     LogToFile(buf);
 }
-
+#pragma endregion
 // Forward declarations для TJS execution
 void ExecuteTJSAsync(const wchar_t* code);
 bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs);
 
+#pragma region Neuro2
 // Обработка входящего Action от Neuro
 void HandleNeuroAction(const char* id, const char* name, const char* data) {
     char logBuf[512];
@@ -360,7 +361,7 @@ bool NeuroForceAction(const char* state, const char* query, const char** actionN
     LogToFile("[Neuro] Force action sent\n");
     return true;
 }
-
+#pragma endregion
 // ============================================================================
 // Thread-safe TJS execution через Window Subclass
 // ============================================================================
