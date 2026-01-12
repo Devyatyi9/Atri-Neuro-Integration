@@ -6,8 +6,9 @@
 // Окно для ввода и выполнения TJS команд.
 // Реализация в NeuroConsole.cpp
 
-// Forward declaration класса
+// Forward declarations
 class NeuroConsole;
+class tTJSVariant;
 
 // Глобальный экземпляр консоли (определён в NeuroConsole.cpp)
 extern NeuroConsole* g_Console;
@@ -20,3 +21,6 @@ bool IsNeuroConsoleVisible();
 
 // Добавить текст в вывод консоли (для перехвата Debug.message)
 void AppendToNeuroConsole(const wchar_t* text, unsigned int color = 0x646464);
+
+// Thread-safe TJS execution (определена в dllmain.cpp)
+bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, unsigned long timeoutMs = 5000);

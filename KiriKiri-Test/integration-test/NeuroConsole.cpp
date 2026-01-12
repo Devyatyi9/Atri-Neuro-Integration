@@ -18,6 +18,8 @@
 #include "../krkr-sdk/tp_stub.h"
 #pragma warning(pop)
 
+#include "NeuroConsole.h"  // ExecuteTJSSync declaration
+
 // Флаг для включения/выключения debug output
 static std::atomic<bool> g_DebugOutputEnabled(true);
 
@@ -45,7 +47,7 @@ private:
                 if (s_Instance) {
                     s_Instance->ExecuteCommand();
                 }
-                return 0;  // Не передаём Enter дальше (иначе будет beep)
+                return 0;  // Не передаём Enter дальше
             }
             else if (wParam == VK_UP) {
                 // Стрелка вверх - предыдущая команда из истории
@@ -66,6 +68,10 @@ private:
                 SendMessage(hwnd, EM_SETSEL, 0, -1);
                 return 0;
             }
+        }
+        // Блокируем WM_CHAR для Enter (иначе будет beep)
+        if (msg == WM_CHAR && wParam == '\r') {
+            return 0;
         }
         // Все остальные сообщения - оригинальной процедуре
         return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
@@ -244,23 +250,13 @@ private:
     }
 
     void ExecuteTJSCommand(const wchar_t* code) {
-        // Получаем глобальный объект TJS
-        iTJSDispatch2* global = TVPGetScriptDispatch();
-        if (!global) {
-            AppendOutput(L"Error: Cannot get script dispatch\n", RGB(255, 0, 0));
-            return;
-        }
-
-        // ПРИМЕЧАНИЕ: TJS исключения (eTJS) НЕ работают в плагинах!
-        // Они обрабатываются внутри движка KiriKiri.
-        // Поэтому try-catch с eTJS здесь бесполезен.
-
         tTJSVariant result;
 
-        // Выполняем код
-        // TVPExecuteExpression не бросает исключения в плагине,
-        // ошибки выводятся в Debug.console движка
-        TVPExecuteExpression(ttstr(code), &result);
+        // Выполняем через thread-safe механизм (PostMessage -> главный поток)
+        if (!ExecuteTJSSync(code, &result)) {
+            AppendOutput(L"Error: TJS execution failed or timed out\n", RGB(255, 0, 0));
+            return;
+        }
 
         // Выводим результат в зависимости от типа
         tTJSVariantType type = result.Type();
@@ -313,8 +309,6 @@ private:
             AppendOutput(resultStr.c_str(), RGB(0, 0, 0));
             AppendOutput(L"\n", RGB(0, 0, 0));
         }
-
-        global->Release();
     }
 
     void ClearOutput() {
@@ -365,7 +359,7 @@ public:
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         RegisterClassW(&wc);
 
-        // Создаём главное окно (без TOPMOST - добавим после показа)
+        // Создаём независимое окно
         m_hWnd = CreateWindowExW(
             WS_EX_TOOLWINDOW,
             L"NeuroConsoleClass",

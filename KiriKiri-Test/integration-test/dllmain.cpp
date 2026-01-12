@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
+#include <commctrl.h>  // SetWindowSubclass
 #include <cstdio>
 #include <cstring>
 #include <thread>
@@ -9,6 +10,8 @@
 #include <string>
 #include "../include/neurosdk.h"
 #include "NeuroConsole.h"
+
+#pragma comment(lib, "comctl32.lib")
 
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
@@ -568,7 +571,7 @@ void ExecuteTJSAsync(const wchar_t* code) {
 
 // Синхронный вызов TJS с ожиданием результата
 // Можно вызывать из любого потока!
-bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 5000) {
+bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
     if (!g_GameWindow || !IsWindow(g_GameWindow) || !code) return false;
 
     // Если вызов из главного потока - выполняем напрямую (избегаем deadlock)
@@ -681,7 +684,7 @@ void DeferredTJSInitThread() {
 
         // Subclass окна игры для thread-safe TJS вызовов
         if (!SubclassGameWindow()) {
-            LogToFile("WARNING: Window subclass failed, hotkeys will use direct calls\n");
+            LogToFile("WARNING: Window subclass failed, TJS calls may be unsafe\n");
         }
 
         // Регистрируем функции в TJS
@@ -705,7 +708,7 @@ void DeferredTJSInitThread() {
             LogToFile(buf);
 
             LogToFile("Basic tests completed!\n");
-            LogToFile("Hotkeys: F9=console, F10=test, F12=KAG check\n");
+            LogToFile("Hotkey: F12=console\n");
 
             // Запускаем обработчик хоткеев
             StartHotkeyThread();
@@ -731,44 +734,13 @@ void StartDeferredTJSInit() {
 // ============================================================================
 
 void HotkeyThread() {
-    LogToFile("Hotkey thread started (F9 = console, F10 = test, F12 = KAG)\n");
-    LogToFile("  Using thread-safe ExecuteTJSAsync/Sync for TJS calls\n");
+    LogToFile("Hotkey thread started (F12 = console)\n");
 
     while (g_HotkeyThreadRunning.load()) {
-        // F9 - показать/скрыть Neuro Console
-        if (GetAsyncKeyState(VK_F9) & 0x8000) {
-            LogToFile("F9 pressed - toggling Neuro Console\n");
-            ToggleNeuroConsole();
-            Sleep(300);  // Debounce
-        }
-
-        // F10 - тест (просто MessageBox, не требует TJS)
-        if (GetAsyncKeyState(VK_F10) & 0x8000) {
-            if (g_TJSReady.load()) {
-                LogToFile("F10 pressed - test\n");
-                MessageBoxA(NULL, "F10 hotkey works!\nThread-safe TJS calls enabled.", "Neuro Plugin - F10", MB_OK | MB_ICONINFORMATION);
-            }
-            Sleep(300);  // Debounce
-        }
-
-        // F12 - проверить KAG (синхронный вызов с результатом)
+        // F12 - показать/скрыть Neuro Console
         if (GetAsyncKeyState(VK_F12) & 0x8000) {
-            if (g_TJSReady.load() && g_GameWindow) {
-                LogToFile("F12 pressed - checking KAG (sync)\n");
-                tTJSVariant result;
-
-                // Thread-safe синхронный вызов
-                if (ExecuteTJSSync(L"neuroIsKAGReady()", &result)) {
-                    char buf[64];
-                    sprintf_s(buf, "KAG ready: %s", (tTVInteger)result ? "YES" : "NO");
-                    LogToFile(buf);
-                    LogToFile("\n");
-                    MessageBoxA(NULL, buf, "Neuro Plugin - F12", MB_OK | MB_ICONINFORMATION);
-                } else {
-                    LogToFile("F12: ExecuteTJSSync timed out\n");
-                    MessageBoxA(NULL, "TJS call timed out", "Neuro Plugin - F12", MB_OK | MB_ICONWARNING);
-                }
-            }
+            //LogToFile("F12 pressed - toggling Neuro Console\n");
+            ToggleNeuroConsole();
             Sleep(300);  // Debounce
         }
 
@@ -1283,7 +1255,7 @@ bool RegisterAllFunctions()
     LogToFile("  - neuroIsKAGReady()\n");
     LogToFile("  - neuroShowConsole()\n");
     LogToFile("  - neuroExec(code)\n");
-    LogToFile("  - neuroConsoleLog(line)\n");
+    LogToFile("  - neuroConsoleLog(\"text\")\n");
     LogToFile("  - neuroDump(obj)\n");
 
     // Регистрируем перехват Debug.message -> NeuroConsole
