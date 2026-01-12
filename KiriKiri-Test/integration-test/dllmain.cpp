@@ -1259,9 +1259,9 @@ bool RegisterAllFunctions()
     LogToFile("  - neuroDump(obj)\n");
 
     // Регистрируем перехват Debug.message -> NeuroConsole
+    // ВАЖНО: используем ExecuteTJSAsync т.к. мы в init thread, не в main thread
     LogToFile("Setting up Debug.addLoggingHandler...\n");
-    tTJSVariant dummy;
-    TVPExecuteExpression(TJS_W("Debug.addLoggingHandler(neuroConsoleLog)"), &dummy);
+    ExecuteTJSAsync(L"Debug.addLoggingHandler(neuroConsoleLog)");
     LogToFile("Debug logging handler registered!\n");
 
     return true;
