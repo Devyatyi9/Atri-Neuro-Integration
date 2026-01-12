@@ -70,6 +70,85 @@ void CloseLogFile() {
 }
 
 // ============================================================================
+// Self-linking: поиск iTVPFunctionExporter в памяти
+// ============================================================================
+// RVA адреса для ATRI -My Dear Moments- (обновить для другой игры/версии)
+const DWORD RVA_EXPORTER = 0x003B4538;
+const DWORD RVA_VTABLE = 0x00374A50;
+
+static DWORD g_BaseAddress = 0;
+
+iTVPFunctionExporter* WaitForExporterInit(int maxWaitMs = 10000) {
+    int elapsed = 0;
+    const int checkInterval = 100;
+    bool mismatchReported = false;
+
+    char logBuf[256];
+    sprintf_s(logBuf, "Waiting for exporter (RVA=0x%08X, vtable RVA=0x%08X)...\n",
+        RVA_EXPORTER, RVA_VTABLE);
+    LogToFile(logBuf);
+
+    while (elapsed < maxWaitMs) {
+        HMODULE hMain = GetModuleHandle(nullptr);
+        if (!hMain) {
+            Sleep(checkInterval);
+            elapsed += checkInterval;
+            continue;
+        }
+
+        BYTE* baseAddress = (BYTE*)hMain;
+        g_BaseAddress = (DWORD)baseAddress;
+        iTVPFunctionExporter* exporter = (iTVPFunctionExporter*)(baseAddress + RVA_EXPORTER);
+
+        if (!IsBadReadPtr(exporter, sizeof(void*))) {
+            void** vtable = *(void***)exporter;
+            void* expectedVTable = (void*)(baseAddress + RVA_VTABLE);
+
+            if (vtable == expectedVTable) {
+                sprintf_s(logBuf, "Exporter found after %d ms at 0x%08X\n", elapsed, (DWORD)exporter);
+                LogToFile(logBuf);
+                return exporter;
+            }
+
+            // VTable не совпадает — сразу показываем ошибку (один раз)
+            if (!mismatchReported && vtable != nullptr) {
+                mismatchReported = true;
+
+                DWORD actualRVA = (DWORD)((BYTE*)vtable - baseAddress);
+
+                sprintf_s(logBuf, "ERROR: VTable mismatch! Expected RVA=0x%08X, Actual RVA=0x%08X\n",
+                    RVA_VTABLE, actualRVA);
+                LogToFile(logBuf);
+
+                wchar_t msg[512];
+                swprintf_s(msg,
+                    L"VTable mismatch detected!\n\n"
+                    L"Expected: 0x%08X (RVA: 0x%08X)\n"
+                    L"Actual:   0x%08X\n\n"
+                    L"Update RVA_VTABLE in plugin dllmain.cpp\n"
+                    L"Actual RVA = 0x%08X",
+                    (DWORD)expectedVTable, RVA_VTABLE,
+                    (DWORD)vtable, actualRVA);
+
+                MessageBoxW(nullptr, msg, L"Neuro Plugin - RVA Error", MB_OK | MB_ICONWARNING);
+                return nullptr;
+            }
+        }
+
+        Sleep(checkInterval);
+        elapsed += checkInterval;
+
+        if (elapsed % 1000 == 0) {
+            sprintf_s(logBuf, "Still waiting... %d/%d ms\n", elapsed, maxWaitMs);
+            LogToFile(logBuf);
+        }
+    }
+
+    LogToFile("ERROR: Exporter init timeout!\n");
+    return nullptr;
+}
+
+// ============================================================================
 // Neuro SDK - Callback и вспомогательные функции
 // ============================================================================
 #pragma region Neuro
@@ -1290,7 +1369,39 @@ void UnregisterAllFunctions()
 }
 
 // ============================================================================
-// V2Link - регистрация плагина
+// InitPlugin - точка входа для self-linking
+// Вызывается из proxy DLL вместо прямого V2Link
+// ============================================================================
+
+// Forward declaration
+extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* exporter);
+
+extern "C" __declspec(dllexport) bool InitPlugin()
+{
+    LogToFile("\n\n=== InitPlugin called (self-linking) ===\n");
+    OutputDebugStringW(L"[NEURO PLUGIN] === InitPlugin called ===\n");
+
+    // Ищем iTVPFunctionExporter в памяти игры
+    iTVPFunctionExporter* exporter = WaitForExporterInit(10000);
+
+    if (!exporter) {
+        LogToFile("ERROR: Failed to find iTVPFunctionExporter!\n");
+        return false;
+    }
+
+    // Вызываем V2Link для инициализации
+    HRESULT hr = V2Link(exporter);
+    if (FAILED(hr)) {
+        LogToFile("ERROR: V2Link failed!\n");
+        return false;
+    }
+
+    LogToFile("InitPlugin completed successfully\n");
+    return true;
+}
+
+// ============================================================================
+// V2Link - регистрация плагина (теперь вызывается из InitPlugin)
 // ============================================================================
 
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* exporter)
