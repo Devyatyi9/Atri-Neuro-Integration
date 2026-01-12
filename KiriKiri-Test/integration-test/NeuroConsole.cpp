@@ -6,6 +6,9 @@
 #include <richedit.h>
 #include <string>
 #include <vector>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 // RichEdit загружается динамически через LoadLibrary("Msftedit.dll") в Create()
 
@@ -293,6 +296,8 @@ public:
         return true;
     }
 
+    HWND GetHWND() const { return m_hWnd; }
+
     void Show() {
         if (m_hWnd) {
             ShowWindow(m_hWnd, SW_SHOW);
@@ -332,65 +337,59 @@ public:
 NeuroConsole* NeuroConsole::s_Instance = nullptr;
 
 // ============================================================================
-// Глобальный экземпляр консоли
+// Console Thread - создаёт окно и запускает message loop
 // ============================================================================
 
 static NeuroConsole* g_Console = nullptr;
+static std::thread g_ConsoleThread;
+static std::atomic<bool> g_ConsoleThreadRunning(false);
+static std::atomic<bool> g_ConsoleReady(false);
+static HWND g_ConsoleHWND = nullptr;  // Для кросс-поточной коммуникации
 
-// ============================================================================
-// TJS функции для управления консолью
-// ============================================================================
+// Custom messages для управления консолью из других потоков
+static const UINT WM_CONSOLE_TOGGLE = WM_USER + 200;
+static const UINT WM_CONSOLE_SHUTDOWN = WM_USER + 201;
 
-// Показать/скрыть консоль
-static tjs_error TJS_INTF_METHOD NeuroShowConsole(
-    tTJSVariant* result,
-    tjs_int numparams,
-    tTJSVariant** param,
-    iTJSDispatch2* objthis)
-{
-    if (!g_Console) {
-        g_Console = new NeuroConsole();
-        if (!g_Console->Create()) {
-            delete g_Console;
-            g_Console = nullptr;
-            return TJS_E_FAIL;
+// Поток консоли с собственным message loop
+void ConsoleThreadProc() {
+    // Создаём консоль В ЭТОМ потоке
+    g_Console = new NeuroConsole();
+    if (!g_Console->Create()) {
+        delete g_Console;
+        g_Console = nullptr;
+        g_ConsoleReady.store(false);
+        return;
+    }
+
+    g_ConsoleHWND = g_Console->GetHWND();
+    g_ConsoleReady.store(true);
+
+    // Message loop для консоли - ЭТО КРИТИЧЕСКИ ВАЖНО!
+    // Без этого окно не будет обрабатывать события
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        // Обрабатываем наши custom messages
+        if (msg.hwnd == g_ConsoleHWND || msg.hwnd == NULL) {
+            if (msg.message == WM_CONSOLE_TOGGLE) {
+                if (g_Console) g_Console->Toggle();
+                continue;
+            }
+            if (msg.message == WM_CONSOLE_SHUTDOWN) {
+                break;  // Выход из message loop
+            }
         }
+
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
-    // Если передан параметр - показать/скрыть по значению
-    if (numparams > 0) {
-        // TODO: Получить bool из param[0]
-        // bool show = ...;
-        // if (show) g_Console->Show(); else g_Console->Hide();
+    // Cleanup после выхода из loop
+    if (g_Console) {
+        delete g_Console;
+        g_Console = nullptr;
     }
-    else {
-        // Без параметра - toggle
-        g_Console->Toggle();
-    }
-
-    if (result) {
-        *result = (tjs_int)(g_Console->IsVisible() ? 1 : 0);
-    }
-
-    return TJS_S_OK;
-}
-
-// Вывести сообщение в консоль
-static tjs_error TJS_INTF_METHOD NeuroConsoleLog(
-    tTJSVariant* result,
-    tjs_int numparams,
-    tTJSVariant** param,
-    iTJSDispatch2* objthis)
-{
-    if (numparams < 1) return TJS_E_BADPARAMCOUNT;
-
-    if (!g_Console || !g_Console->IsVisible()) {
-        return TJS_S_OK; // Консоль не открыта - игнорируем
-    }
-
-    // TODO: Получить текст из param[0] и вывести в консоль
-
-    return TJS_S_OK;
+    g_ConsoleHWND = nullptr;
+    g_ConsoleReady.store(false);
 }
 
 // ============================================================================
@@ -398,25 +397,46 @@ static tjs_error TJS_INTF_METHOD NeuroConsoleLog(
 // ============================================================================
 
 void InitNeuroConsole() {
-    if (!g_Console) {
-        g_Console = new NeuroConsole();
-        g_Console->Create();
+    if (g_ConsoleThreadRunning.load()) {
+        return;  // Уже запущен
+    }
+
+    g_ConsoleThreadRunning.store(true);
+    g_ConsoleThread = std::thread(ConsoleThreadProc);
+
+    // Ждём готовности консоли (до 2 секунд)
+    for (int i = 0; i < 20 && !g_ConsoleReady.load(); i++) {
+        Sleep(100);
     }
 }
 
 void ShutdownNeuroConsole() {
-    if (g_Console) {
-        delete g_Console;
-        g_Console = nullptr;
+    if (!g_ConsoleThreadRunning.load()) {
+        return;
     }
+
+    // Отправляем сообщение о закрытии в поток консоли
+    if (g_ConsoleHWND) {
+        PostMessage(g_ConsoleHWND, WM_CONSOLE_SHUTDOWN, 0, 0);
+    }
+
+    // Ждём завершения потока
+    if (g_ConsoleThread.joinable()) {
+        g_ConsoleThread.join();
+    }
+
+    g_ConsoleThreadRunning.store(false);
 }
 
 void ToggleNeuroConsole() {
-    if (!g_Console) {
+    // Если поток не запущен - запускаем
+    if (!g_ConsoleThreadRunning.load()) {
         InitNeuroConsole();
     }
-    if (g_Console) {
-        g_Console->Toggle();
+
+    // Отправляем сообщение toggle в поток консоли
+    if (g_ConsoleHWND) {
+        PostMessage(g_ConsoleHWND, WM_CONSOLE_TOGGLE, 0, 0);
     }
 }
 
