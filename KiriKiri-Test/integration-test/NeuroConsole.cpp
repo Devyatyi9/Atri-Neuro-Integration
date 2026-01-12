@@ -30,6 +30,20 @@ private:
     int m_historyIndex;
 
     static NeuroConsole* s_Instance;
+    static WNDPROC s_OriginalEditProc;  // Для subclass Edit control
+
+    // Subclass процедура для поля ввода - обработка Enter
+    static LRESULT CALLBACK InputEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (msg == WM_KEYDOWN && wParam == VK_RETURN) {
+            // Enter нажат - выполняем команду
+            if (s_Instance) {
+                s_Instance->ExecuteCommand();
+            }
+            return 0;  // Не передаём Enter дальше (иначе будет beep)
+        }
+        // Все остальные сообщения - оригинальной процедуре
+        return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
+    }
 
     // Window Procedure
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -55,15 +69,13 @@ private:
         }
 
         case WM_COMMAND: {
-            if ((HWND)lParam == console->m_hExecute ||
-                ((HWND)lParam == console->m_hInput && HIWORD(wParam) == EN_CHANGE)) {
-                // Enter в поле ввода или клик на Execute
-                if (GetAsyncKeyState(VK_RETURN) & 0x8000 || (HWND)lParam == console->m_hExecute) {
-                    console->ExecuteCommand();
-                }
+            // Клик на кнопку Execute
+            if ((HWND)lParam == console->m_hExecute) {
+                console->ExecuteCommand();
                 return 0;
             }
 
+            // Клик на кнопку Clear
             if ((HWND)lParam == console->m_hClear) {
                 console->ClearOutput();
                 return 0;
@@ -259,6 +271,9 @@ public:
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        // Subclass Edit для обработки Enter
+        s_OriginalEditProc = (WNDPROC)SetWindowLongPtr(m_hInput, GWLP_WNDPROC, (LONG_PTR)InputEditProc);
+
         // Создаём кнопки
         m_hExecute = CreateWindowW(
             L"BUTTON",
@@ -335,6 +350,7 @@ public:
 };
 
 NeuroConsole* NeuroConsole::s_Instance = nullptr;
+WNDPROC NeuroConsole::s_OriginalEditProc = nullptr;
 
 // ============================================================================
 // Console Thread - создаёт окно и запускает message loop
