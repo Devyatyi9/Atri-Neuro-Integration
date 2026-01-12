@@ -13,39 +13,75 @@ public:
 // ============================================================================
 // Загрузка плагина через iTVPFunctionExporter
 // ============================================================================
-iTVPFunctionExporter* GetFunctionExporterFromMemory() {
-    HMODULE hMain = GetModuleHandle(nullptr);
-    if (!hMain) return nullptr;
-
-    BYTE* baseAddress = (BYTE*)hMain;
-    const DWORD RVA_EXPORTER = 0x003B4538;
-
-    iTVPFunctionExporter* exporter = (iTVPFunctionExporter*)(baseAddress + RVA_EXPORTER);
-
-    if (!IsBadReadPtr(exporter, sizeof(void*))) {
-        void** vtable = *(void***)exporter;
-        if (vtable && !IsBadReadPtr(vtable, sizeof(void*))) {
-            return exporter;
-        }
-    }
-
-    return nullptr;
-}
+const DWORD RVA_EXPORTER = 0x003B4538;
+const DWORD RVA_VTABLE = 0x00374A50;
+DWORD dbaseAddress;
 
 iTVPFunctionExporter* WaitForExporterInit(int maxWaitMs = 10000) {
     int elapsed = 0;
     const int checkInterval = 100;
+    bool mismatchReported = false;
+
+    wchar_t initMsg[256];
+    swprintf_s(initMsg, L"[Version.dll] Waiting for exporter (RVA=0x%08X, vtable RVA=0x%08X)...\n",
+        RVA_EXPORTER, RVA_VTABLE);
+    OutputDebugStringW(initMsg);
 
     while (elapsed < maxWaitMs) {
-        iTVPFunctionExporter* exporter = GetFunctionExporterFromMemory();
-        if (exporter) {
-            return exporter;
+        HMODULE hMain = GetModuleHandle(nullptr);
+        if (!hMain) {
+            Sleep(checkInterval);
+            elapsed += checkInterval;
+            continue;
+        }
+
+        BYTE* baseAddress = (BYTE*)hMain;
+        dbaseAddress = (DWORD)baseAddress;
+        iTVPFunctionExporter* exporter = (iTVPFunctionExporter*)(baseAddress + RVA_EXPORTER);
+
+        if (!IsBadReadPtr(exporter, sizeof(void*))) {
+            void** vtable = *(void***)exporter;
+            void* expectedVTable = (void*)(baseAddress + RVA_VTABLE);
+
+            if (vtable == expectedVTable) {
+                wchar_t dbg[128];
+                swprintf_s(dbg, L"[Version.dll] Exporter found after %d ms\n", elapsed);
+                OutputDebugStringW(dbg);
+                return exporter;
+            }
+
+            // VTable не совпадает — сразу показываем ошибку (один раз)
+            if (!mismatchReported && vtable != nullptr) {
+                mismatchReported = true;
+
+                wchar_t msg[512];
+                swprintf_s(msg,
+                    L"VTable mismatch detected!\n\n"
+                    L"Expected: 0x%08X (RVA: 0x%08X)\n"
+                    L"Actual:   0x%08X\n\n"
+                    L"Update RVA_VTABLE in dllmain.cpp\n"
+                    L"Actual RVA = 0x%08X",
+                    (DWORD)expectedVTable, RVA_VTABLE,
+                    (DWORD)vtable,
+                    (DWORD)((BYTE*)vtable - baseAddress));
+
+                OutputDebugStringW(L"[Version.dll] VTable mismatch - showing error\n");
+                MessageBoxW(nullptr, msg, L"Plugin Loader - RVA Error", MB_OK | MB_ICONWARNING);
+                return nullptr;  // Не ждём 10 секунд, сразу выходим
+            }
         }
 
         Sleep(checkInterval);
         elapsed += checkInterval;
+
+        if (elapsed % 1000 == 0) {
+            wchar_t progress[64];
+            swprintf_s(progress, L"[Version.dll] Still waiting... %d/%d ms\n", elapsed, maxWaitMs);
+            OutputDebugStringW(progress);
+        }
     }
 
+    OutputDebugStringW(L"[Version.dll] Exporter init timeout!\n");
     return nullptr;
 }
 
@@ -54,11 +90,30 @@ void LoadAndLinkPlugin() {
     iTVPFunctionExporter* exporter = WaitForExporterInit(10000);
 
     if (!exporter) {
-        MessageBoxW(nullptr,
-            L"Failed to get iTVPFunctionExporter after 10 seconds.\n"
-            L"Address: 0x007B4538 (RVA: 0x003B4538)\n"
-            L"VTable should be at: 0x00774A50 (RVA: 0x00374A50)",
-            L"Plugin Loader Error", MB_OK | MB_ICONERROR);
+        wchar_t message[1024];
+        DWORD absExporter = dbaseAddress + RVA_EXPORTER;
+        DWORD absVTable = dbaseAddress + RVA_VTABLE;
+
+        // Попробуем прочитать фактический vtable для диагностики
+        void* actualVTable = nullptr;
+        iTVPFunctionExporter* testExporter = (iTVPFunctionExporter*)(dbaseAddress + RVA_EXPORTER);
+        if (!IsBadReadPtr(testExporter, sizeof(void*))) {
+            actualVTable = *(void**)testExporter;
+        }
+
+        OutputDebugStringW(L"[Version.dll] Failed to get iTVPFunctionExporter after 10 seconds.\n");
+
+        swprintf_s(message,
+            L"Failed to get iTVPFunctionExporter after 10 seconds.\n\n"
+            L"Expected exporter at: 0x%08X (RVA: 0x%08X)\n"
+            L"Expected VTable at: 0x%08X (RVA: 0x%08X)\n"
+            L"Actual VTable found: 0x%08X\n\n"
+            L"If VTable mismatch - update RVA constants in dllmain.cpp",
+            absExporter, RVA_EXPORTER,
+            absVTable, RVA_VTABLE,
+            (DWORD)actualVTable);
+
+        MessageBoxW(nullptr, message, L"Plugin Loader Error", MB_OK | MB_ICONERROR);
         return;
     }
 
