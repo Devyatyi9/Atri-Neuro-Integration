@@ -184,7 +184,14 @@ private:
         global->Release();
     }
 
+    void ClearOutput() {
+        SetWindowTextW(m_hOutput, L"");
+    }
+
+public:
     void AppendOutput(const wchar_t* text, COLORREF color) {
+        if (!m_hOutput) return;
+
         // Переходим в конец текста
         CHARRANGE cr;
         cr.cpMin = -1;
@@ -206,11 +213,6 @@ private:
         SendMessageW(m_hOutput, WM_VSCROLL, SB_BOTTOM, 0);
     }
 
-    void ClearOutput() {
-        SetWindowTextW(m_hOutput, L"");
-    }
-
-public:
     NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
         m_hExecute(NULL), m_hClear(NULL), m_historyIndex(0) {
         s_Instance = this;
@@ -365,6 +367,13 @@ static HWND g_ConsoleHWND = nullptr;  // Для кросс-поточной ко
 // Custom messages для управления консолью из других потоков
 static const UINT WM_CONSOLE_TOGGLE = WM_USER + 200;
 static const UINT WM_CONSOLE_SHUTDOWN = WM_USER + 201;
+static const UINT WM_CONSOLE_APPEND = WM_USER + 202;
+
+// Структура для передачи данных через PostMessage
+struct ConsoleAppendData {
+    wchar_t* text;
+    COLORREF color;
+};
 
 // Поток консоли с собственным message loop
 void ConsoleThreadProc() {
@@ -392,6 +401,15 @@ void ConsoleThreadProc() {
             }
             if (msg.message == WM_CONSOLE_SHUTDOWN) {
                 break;  // Выход из message loop
+            }
+            if (msg.message == WM_CONSOLE_APPEND) {
+                ConsoleAppendData* data = (ConsoleAppendData*)msg.wParam;
+                if (data && g_Console) {
+                    g_Console->AppendOutput(data->text, data->color);
+                    delete[] data->text;
+                    delete data;
+                }
+                continue;
             }
         }
 
@@ -458,4 +476,25 @@ void ToggleNeuroConsole() {
 
 bool IsNeuroConsoleVisible() {
     return g_Console && g_Console->IsVisible();
+}
+
+void AppendToNeuroConsole(const wchar_t* text, unsigned int color) {
+    if (!g_ConsoleReady.load() || !g_Console || !text) return;
+
+    // Копируем текст (будет удалён в обработчике)
+    size_t len = wcslen(text) + 1;
+    wchar_t* textCopy = new wchar_t[len];
+    wcscpy_s(textCopy, len, text);
+
+    ConsoleAppendData* data = new ConsoleAppendData();
+    data->text = textCopy;
+    data->color = (COLORREF)color;
+
+    // Отправляем в поток консоли
+    if (g_ConsoleHWND) {
+        PostMessage(g_ConsoleHWND, WM_CONSOLE_APPEND, (WPARAM)data, 0);
+    } else {
+        delete[] textCopy;
+        delete data;
+    }
 }

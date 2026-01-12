@@ -956,6 +956,27 @@ static tjs_error TJS_INTF_METHOD NeuroIsTJSReady(
     return TJS_S_OK;
 }
 
+// Добавить текст в NeuroConsole (для перехвата Debug.message)
+static tjs_error TJS_INTF_METHOD NeuroConsoleLog(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (numparams < 1 || !param || !param[0]) {
+        return TJS_S_OK;  // Просто игнорируем если нет параметра
+    }
+
+    ttstr line = *param[0];
+    if (!line.IsEmpty()) {
+        // Добавляем перевод строки
+        ttstr lineWithNL = line + TJS_W("\n");
+        AppendToNeuroConsole(lineWithNL.c_str(), RGB(100, 100, 100));
+    }
+
+    return TJS_S_OK;
+}
+
 // Выполнение TJS кода (для консоли/отладки)
 static tjs_error TJS_INTF_METHOD NeuroExec(
     tTJSVariant* result,
@@ -1020,6 +1041,7 @@ static tTJSFunctionWrapper<NeuroIsTJSReady>* g_NeuroIsTJSReadyFunc = nullptr;
 static tTJSFunctionWrapper<NeuroIsKAGReady>* g_NeuroIsKAGReadyFunc = nullptr;
 static tTJSFunctionWrapper<NeuroShowConsole>* g_NeuroShowConsoleFunc = nullptr;
 static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
+static tTJSFunctionWrapper<NeuroConsoleLog>* g_NeuroConsoleLogFunc = nullptr;
 
 void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
 {
@@ -1064,9 +1086,12 @@ bool RegisterAllFunctions()
     g_NeuroExecFunc = new tTJSFunctionWrapper<NeuroExec>();
     RegisterTJSFunction(global, TJS_W("neuroExec"), g_NeuroExecFunc);
 
+    g_NeuroConsoleLogFunc = new tTJSFunctionWrapper<NeuroConsoleLog>();
+    RegisterTJSFunction(global, TJS_W("neuroConsoleLog"), g_NeuroConsoleLogFunc);
+
     global->Release();
 
-    LogToFile("SUCCESS: All 8 functions registered!\n");
+    LogToFile("SUCCESS: All 9 functions registered!\n");
     LogToFile("  - neuroTest()\n");
     LogToFile("  - neuroGetVersion()\n");
     LogToFile("  - neuroEcho(param)\n");
@@ -1075,6 +1100,13 @@ bool RegisterAllFunctions()
     LogToFile("  - neuroIsKAGReady()\n");
     LogToFile("  - neuroShowConsole()\n");
     LogToFile("  - neuroExec(code)\n");
+    LogToFile("  - neuroConsoleLog(line)\n");
+
+    // Регистрируем перехват Debug.message -> NeuroConsole
+    LogToFile("Setting up Debug.addLoggingHandler...\n");
+    tTJSVariant dummy;
+    TVPExecuteExpression(TJS_W("Debug.addLoggingHandler(neuroConsoleLog)"), &dummy);
+    LogToFile("Debug logging handler registered!\n");
 
     return true;
 }
@@ -1083,6 +1115,10 @@ void UnregisterAllFunctions()
 {
     iTJSDispatch2* global = TVPGetScriptDispatch();
     if (global) {
+        // Удаляем logging handler перед удалением функции
+        tTJSVariant dummy;
+        TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"), &dummy);
+
         global->DeleteMember(0, TJS_W("neuroTest"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroGetVersion"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroEcho"), NULL, global);
@@ -1091,6 +1127,7 @@ void UnregisterAllFunctions()
         global->DeleteMember(0, TJS_W("neuroIsKAGReady"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroShowConsole"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroExec"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroConsoleLog"), NULL, global);
         global->Release();
     }
 }

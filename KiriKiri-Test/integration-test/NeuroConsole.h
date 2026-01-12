@@ -17,3 +17,6 @@ void InitNeuroConsole();
 void ShutdownNeuroConsole();
 void ToggleNeuroConsole();
 bool IsNeuroConsoleVisible();
+
+// Добавить текст в вывод консоли (для перехвата Debug.message)
+void AppendToNeuroConsole(const wchar_t* text, unsigned int color = 0x646464);
