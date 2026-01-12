@@ -977,6 +977,185 @@ static tjs_error TJS_INTF_METHOD NeuroConsoleLog(
     return TJS_S_OK;
 }
 
+// Класс для перечисления членов объекта (для EnumMembers)
+class tEnumMemberCallback : public tTJSDispatch
+{
+public:
+    int m_count;
+    int m_maxCount;
+
+    tEnumMemberCallback(int maxCount = 50) : m_count(0), m_maxCount(maxCount) {}
+
+    tjs_error TJS_INTF_METHOD FuncCall(
+        tjs_uint32 flag, const tjs_char* membername, tjs_uint32* hint,
+        tTJSVariant* result, tjs_int numparams, tTJSVariant** param,
+        iTJSDispatch2* objthis) override
+    {
+        // EnumMembers вызывает callback(name, flags, value)
+        if (numparams < 3) return TJS_S_OK;
+
+        ttstr name = *param[0];
+        // param[1] = flags
+        tTJSVariant* value = param[2];
+
+        if (name.IsEmpty()) return TJS_S_OK;
+
+        if (m_count >= m_maxCount) {
+            if (m_count == m_maxCount) {
+                wchar_t buf[64];
+                swprintf_s(buf, L"  ... (more than %d members)\n", m_maxCount);
+                AppendToNeuroConsole(buf, RGB(128, 128, 128));
+            }
+            m_count++;
+            return TJS_S_OK;
+        }
+        m_count++;
+
+        // Имя члена
+        AppendToNeuroConsole(L"  ", RGB(0, 0, 0));
+        AppendToNeuroConsole(name.c_str(), RGB(0, 128, 128));
+        AppendToNeuroConsole(L": ", RGB(0, 0, 0));
+
+        // Тип и значение
+        if (!value) {
+            AppendToNeuroConsole(L"(no value)\n", RGB(128, 128, 128));
+            return TJS_S_OK;
+        }
+
+        tTJSVariantType vtype = value->Type();
+        wchar_t buf[128];
+
+        switch (vtype) {
+            case tvtVoid:
+                AppendToNeuroConsole(L"void\n", RGB(128, 128, 128));
+                break;
+            case tvtObject: {
+                iTJSDispatch2* memberObj = value->AsObjectNoAddRef();
+                if (memberObj) {
+                    tTJSVariant memberClass;
+                    if (TJS_SUCCEEDED(memberObj->ClassInstanceInfo(TJS_CII_GET, 0, &memberClass))) {
+                        ttstr mcStr = memberClass;
+                        AppendToNeuroConsole(L"[", RGB(0, 0, 255));
+                        AppendToNeuroConsole(mcStr.c_str(), RGB(128, 0, 128));
+                        AppendToNeuroConsole(L"]\n", RGB(0, 0, 255));
+                    } else {
+                        AppendToNeuroConsole(L"[Object]\n", RGB(0, 0, 255));
+                    }
+                } else {
+                    AppendToNeuroConsole(L"null\n", RGB(128, 128, 128));
+                }
+                break;
+            }
+            case tvtString: {
+                ttstr str = *value;
+                // Обрезаем длинные строки
+                if (str.GetLen() > 50) {
+                    str = ttstr(str.c_str(), 50) + TJS_W("...");
+                }
+                AppendToNeuroConsole(L"\"", RGB(0, 128, 0));
+                AppendToNeuroConsole(str.c_str(), RGB(0, 128, 0));
+                AppendToNeuroConsole(L"\"\n", RGB(0, 128, 0));
+                break;
+            }
+            case tvtInteger:
+                swprintf_s(buf, L"%lld\n", value->AsInteger());
+                AppendToNeuroConsole(buf, RGB(0, 0, 128));
+                break;
+            case tvtReal:
+                swprintf_s(buf, L"%g\n", value->AsReal());
+                AppendToNeuroConsole(buf, RGB(0, 0, 128));
+                break;
+            default:
+                swprintf_s(buf, L"(type %d)\n", (int)vtype);
+                AppendToNeuroConsole(buf, RGB(128, 128, 128));
+                break;
+        }
+        return TJS_S_OK;
+    }
+};
+
+// Дамп объекта - показывает все члены объекта
+// Использование: neuroDump(obj) или neuroDump(obj, maxCount)
+static tjs_error TJS_INTF_METHOD NeuroDump(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (numparams < 1 || !param || !param[0]) {
+        AppendToNeuroConsole(L"Usage: neuroDump(object [, maxCount])\n", RGB(255, 0, 0));
+        return TJS_S_OK;
+    }
+
+    int maxCount = 50;
+    if (numparams >= 2 && param[1] && param[1]->Type() == tvtInteger) {
+        maxCount = (int)param[1]->AsInteger();
+        if (maxCount < 1) maxCount = 1;
+        if (maxCount > 1000) maxCount = 1000;
+    }
+
+    tTJSVariantType type = param[0]->Type();
+
+    if (type != tvtObject) {
+        // Не объект - просто выводим значение
+        wchar_t buf[256];
+        swprintf_s(buf, L"Not an object. Type: %d\n", (int)type);
+        AppendToNeuroConsole(buf, RGB(255, 128, 0));
+
+        if (type == tvtString) {
+            ttstr str = *param[0];
+            AppendToNeuroConsole(L"Value: \"", RGB(0, 0, 255));
+            AppendToNeuroConsole(str.c_str(), RGB(0, 128, 0));
+            AppendToNeuroConsole(L"\"\n", RGB(0, 0, 255));
+        } else if (type == tvtInteger) {
+            swprintf_s(buf, L"Value: %lld\n", param[0]->AsInteger());
+            AppendToNeuroConsole(buf, RGB(0, 0, 128));
+        } else if (type == tvtReal) {
+            swprintf_s(buf, L"Value: %g\n", param[0]->AsReal());
+            AppendToNeuroConsole(buf, RGB(0, 0, 128));
+        }
+        return TJS_S_OK;
+    }
+
+    iTJSDispatch2* obj = param[0]->AsObjectNoAddRef();
+    if (!obj) {
+        AppendToNeuroConsole(L"Object is null\n", RGB(255, 0, 0));
+        return TJS_S_OK;
+    }
+
+    // Получаем имя класса
+    tTJSVariant className;
+    if (TJS_SUCCEEDED(obj->ClassInstanceInfo(TJS_CII_GET, 0, &className))) {
+        ttstr classStr = className;
+        AppendToNeuroConsole(L"=== Object: ", RGB(0, 100, 200));
+        AppendToNeuroConsole(classStr.c_str(), RGB(128, 0, 128));
+        AppendToNeuroConsole(L" ===\n", RGB(0, 100, 200));
+    } else {
+        AppendToNeuroConsole(L"=== Object (unknown class) ===\n", RGB(0, 100, 200));
+    }
+
+    // Создаём callback для перечисления
+    tEnumMemberCallback* callback = new tEnumMemberCallback(maxCount);
+    tTJSVariantClosure closure(callback, NULL);
+
+    tjs_error err = obj->EnumMembers(0, &closure, obj);
+
+    int memberCount = callback->m_count;
+    callback->Release();
+
+    if (TJS_FAILED(err)) {
+        AppendToNeuroConsole(L"  (cannot enumerate members)\n", RGB(255, 0, 0));
+    } else if (memberCount == 0) {
+        AppendToNeuroConsole(L"  (no members)\n", RGB(128, 128, 128));
+    }
+
+    wchar_t buf[64];
+    swprintf_s(buf, L"Total: %d members\n", memberCount);
+    AppendToNeuroConsole(buf, RGB(100, 100, 100));
+
+    return TJS_S_OK;
+}
+
 // Выполнение TJS кода (для консоли/отладки)
 static tjs_error TJS_INTF_METHOD NeuroExec(
     tTJSVariant* result,
@@ -1042,6 +1221,7 @@ static tTJSFunctionWrapper<NeuroIsKAGReady>* g_NeuroIsKAGReadyFunc = nullptr;
 static tTJSFunctionWrapper<NeuroShowConsole>* g_NeuroShowConsoleFunc = nullptr;
 static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
 static tTJSFunctionWrapper<NeuroConsoleLog>* g_NeuroConsoleLogFunc = nullptr;
+static tTJSFunctionWrapper<NeuroDump>* g_NeuroDumpFunc = nullptr;
 
 void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
 {
@@ -1089,9 +1269,12 @@ bool RegisterAllFunctions()
     g_NeuroConsoleLogFunc = new tTJSFunctionWrapper<NeuroConsoleLog>();
     RegisterTJSFunction(global, TJS_W("neuroConsoleLog"), g_NeuroConsoleLogFunc);
 
+    g_NeuroDumpFunc = new tTJSFunctionWrapper<NeuroDump>();
+    RegisterTJSFunction(global, TJS_W("neuroDump"), g_NeuroDumpFunc);
+
     global->Release();
 
-    LogToFile("SUCCESS: All 9 functions registered!\n");
+    LogToFile("SUCCESS: All 10 functions registered!\n");
     LogToFile("  - neuroTest()\n");
     LogToFile("  - neuroGetVersion()\n");
     LogToFile("  - neuroEcho(param)\n");
@@ -1101,6 +1284,7 @@ bool RegisterAllFunctions()
     LogToFile("  - neuroShowConsole()\n");
     LogToFile("  - neuroExec(code)\n");
     LogToFile("  - neuroConsoleLog(line)\n");
+    LogToFile("  - neuroDump(obj)\n");
 
     // Регистрируем перехват Debug.message -> NeuroConsole
     LogToFile("Setting up Debug.addLoggingHandler...\n");
@@ -1128,6 +1312,7 @@ void UnregisterAllFunctions()
         global->DeleteMember(0, TJS_W("neuroShowConsole"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroExec"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroConsoleLog"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroDump"), NULL, global);
         global->Release();
     }
 }

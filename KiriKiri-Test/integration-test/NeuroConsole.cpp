@@ -18,6 +18,9 @@
 #include "../krkr-sdk/tp_stub.h"
 #pragma warning(pop)
 
+// Флаг для включения/выключения debug output
+static std::atomic<bool> g_DebugOutputEnabled(true);
+
 class NeuroConsole {
 private:
     HWND m_hWnd;
@@ -25,6 +28,8 @@ private:
     HWND m_hInput;   // Edit для ввода команд
     HWND m_hExecute; // Кнопка Execute
     HWND m_hClear;   // Кнопка Clear
+    HWND m_hAlwaysOnTop; // Чекбокс AlwaysOnTop
+    HWND m_hDebugOutput; // Чекбокс Debug Output
 
     std::vector<std::wstring> m_history; // История команд
     int m_historyIndex;
@@ -32,14 +37,35 @@ private:
     static NeuroConsole* s_Instance;
     static WNDPROC s_OriginalEditProc;  // Для subclass Edit control
 
-    // Subclass процедура для поля ввода - обработка Enter
+    // Subclass процедура для поля ввода - обработка Enter, стрелок и Ctrl+A
     static LRESULT CALLBACK InputEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        if (msg == WM_KEYDOWN && wParam == VK_RETURN) {
-            // Enter нажат - выполняем команду
-            if (s_Instance) {
-                s_Instance->ExecuteCommand();
+        if (msg == WM_KEYDOWN) {
+            if (wParam == VK_RETURN) {
+                // Enter нажат - выполняем команду
+                if (s_Instance) {
+                    s_Instance->ExecuteCommand();
+                }
+                return 0;  // Не передаём Enter дальше (иначе будет beep)
             }
-            return 0;  // Не передаём Enter дальше (иначе будет beep)
+            else if (wParam == VK_UP) {
+                // Стрелка вверх - предыдущая команда из истории
+                if (s_Instance) {
+                    s_Instance->HistoryUp();
+                }
+                return 0;
+            }
+            else if (wParam == VK_DOWN) {
+                // Стрелка вниз - следующая команда из истории
+                if (s_Instance) {
+                    s_Instance->HistoryDown();
+                }
+                return 0;
+            }
+            else if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                // Ctrl+A - выделить всё
+                SendMessage(hwnd, EM_SETSEL, 0, -1);
+                return 0;
+            }
         }
         // Все остальные сообщения - оригинальной процедуре
         return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
@@ -80,6 +106,18 @@ private:
                 console->ClearOutput();
                 return 0;
             }
+
+            // Чекбокс AlwaysOnTop
+            if ((HWND)lParam == console->m_hAlwaysOnTop) {
+                console->OnAlwaysOnTopChanged();
+                return 0;
+            }
+
+            // Чекбокс Debug Output
+            if ((HWND)lParam == console->m_hDebugOutput) {
+                console->OnDebugOutputChanged();
+                return 0;
+            }
             break;
         }
 
@@ -97,11 +135,13 @@ private:
     void OnResize(int width, int height) {
         const int buttonHeight = 30;
         const int inputHeight = 25;
+        const int checkboxHeight = 20;
         const int padding = 5;
         const int buttonWidth = 80;
+        const int checkboxWidth = 120;
 
-        // Output занимает почти всё окно
-        int outputHeight = height - inputHeight - buttonHeight - padding * 3;
+        // Output занимает почти всё окно (минус место для чекбоксов внизу)
+        int outputHeight = height - inputHeight - checkboxHeight - padding * 4;
         SetWindowPos(m_hOutput, NULL, padding, padding,
             width - padding * 2, outputHeight,
             SWP_NOZORDER);
@@ -123,6 +163,58 @@ private:
         SetWindowPos(m_hClear, NULL, clearX, inputY,
             buttonWidth, inputHeight,
             SWP_NOZORDER);
+
+        // Checkboxes row (внизу)
+        int checkboxY = inputY + inputHeight + padding;
+        SetWindowPos(m_hAlwaysOnTop, NULL, padding, checkboxY,
+            checkboxWidth, checkboxHeight,
+            SWP_NOZORDER);
+
+        SetWindowPos(m_hDebugOutput, NULL, padding + checkboxWidth + padding, checkboxY,
+            checkboxWidth, checkboxHeight,
+            SWP_NOZORDER);
+    }
+
+    void OnAlwaysOnTopChanged() {
+        BOOL checked = (SendMessage(m_hAlwaysOnTop, BM_GETCHECK, 0, 0) == BST_CHECKED);
+        HWND insertAfter = checked ? HWND_TOPMOST : HWND_NOTOPMOST;
+        SetWindowPos(m_hWnd, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    }
+
+    void OnDebugOutputChanged() {
+        BOOL checked = (SendMessage(m_hDebugOutput, BM_GETCHECK, 0, 0) == BST_CHECKED);
+        g_DebugOutputEnabled.store(checked == TRUE);
+    }
+
+    void HistoryUp() {
+        if (m_history.empty()) return;
+
+        if (m_historyIndex > 0) {
+            m_historyIndex--;
+        }
+
+        if (m_historyIndex < (int)m_history.size()) {
+            SetWindowTextW(m_hInput, m_history[m_historyIndex].c_str());
+            // Курсор в конец
+            SendMessage(m_hInput, EM_SETSEL, -1, -1);
+        }
+    }
+
+    void HistoryDown() {
+        if (m_history.empty()) return;
+
+        if (m_historyIndex < (int)m_history.size()) {
+            m_historyIndex++;
+        }
+
+        if (m_historyIndex < (int)m_history.size()) {
+            SetWindowTextW(m_hInput, m_history[m_historyIndex].c_str());
+        } else {
+            // После последней команды - пустая строка
+            SetWindowTextW(m_hInput, L"");
+        }
+        // Курсор в конец
+        SendMessage(m_hInput, EM_SETSEL, -1, -1);
     }
 
     void ExecuteCommand() {
@@ -170,15 +262,56 @@ private:
         // ошибки выводятся в Debug.console движка
         TVPExecuteExpression(ttstr(code), &result);
 
-        // Выводим результат
-        if (result.Type() != tvtVoid) {
+        // Выводим результат в зависимости от типа
+        tTJSVariantType type = result.Type();
+        if (type == tvtVoid) {
+            AppendOutput(L"\n", RGB(0, 150, 0));
+        }
+        else if (type == tvtObject) {
+            // Объекты (Dictionary, Array и т.д.) нельзя напрямую преобразовать в строку
+            // Это вызывает краш. Выводим информацию о типе объекта.
+            iTJSDispatch2* obj = result.AsObjectNoAddRef();
+            if (obj) {
+                // Пробуем получить класс объекта
+                tTJSVariant className;
+                if (TJS_SUCCEEDED(obj->ClassInstanceInfo(TJS_CII_GET, 0, &className))) {
+                    ttstr classStr = className;
+                    AppendOutput(L"Result: [Object: ", RGB(0, 0, 255));
+                    AppendOutput(classStr.c_str(), RGB(128, 0, 128));
+                    AppendOutput(L"]\n", RGB(0, 0, 255));
+                } else {
+                    AppendOutput(L"Result: [Object]\n", RGB(0, 0, 255));
+                }
+            } else {
+                AppendOutput(L"Result: [null object]\n", RGB(0, 0, 255));
+            }
+        }
+        else if (type == tvtString) {
+            ttstr resultStr = result;
+            AppendOutput(L"Result: \"", RGB(0, 0, 255));
+            AppendOutput(resultStr.c_str(), RGB(0, 128, 0));
+            AppendOutput(L"\"\n", RGB(0, 0, 255));
+        }
+        else if (type == tvtInteger) {
+            wchar_t buf[64];
+            swprintf_s(buf, L"%lld", result.AsInteger());
+            AppendOutput(L"Result: ", RGB(0, 0, 255));
+            AppendOutput(buf, RGB(0, 0, 128));
+            AppendOutput(L"\n", RGB(0, 0, 255));
+        }
+        else if (type == tvtReal) {
+            wchar_t buf[64];
+            swprintf_s(buf, L"%g", result.AsReal());
+            AppendOutput(L"Result: ", RGB(0, 0, 255));
+            AppendOutput(buf, RGB(0, 0, 128));
+            AppendOutput(L"\n", RGB(0, 0, 255));
+        }
+        else {
+            // Другие типы (Octet и т.д.) - безопасно преобразуем
             ttstr resultStr = result;
             AppendOutput(L"Result: ", RGB(0, 0, 255));
             AppendOutput(resultStr.c_str(), RGB(0, 0, 0));
             AppendOutput(L"\n", RGB(0, 0, 0));
-        }
-        else {
-            AppendOutput(L"OK\n", RGB(0, 150, 0));
         }
 
         global->Release();
@@ -214,7 +347,8 @@ public:
     }
 
     NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
-        m_hExecute(NULL), m_hClear(NULL), m_historyIndex(0) {
+        m_hExecute(NULL), m_hClear(NULL), m_hAlwaysOnTop(NULL), m_hDebugOutput(NULL),
+        m_historyIndex(0) {
         s_Instance = this;
     }
 
@@ -231,9 +365,9 @@ public:
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         RegisterClassW(&wc);
 
-        // Создаём главное окно
+        // Создаём главное окно (без TOPMOST - добавим после показа)
         m_hWnd = CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            WS_EX_TOOLWINDOW,
             L"NeuroConsoleClass",
             L"Neuro Console - TJS Command Executor",
             WS_OVERLAPPEDWINDOW,
@@ -293,6 +427,27 @@ public:
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        // Создаём чекбоксы
+        m_hAlwaysOnTop = CreateWindowW(
+            L"BUTTON",
+            L"Always On Top",
+            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+            0, 0, 0, 0,
+            m_hWnd, NULL, GetModuleHandle(NULL), NULL
+        );
+        // По умолчанию выключён (окно создано без WS_EX_TOPMOST)
+        SendMessage(m_hAlwaysOnTop, BM_SETCHECK, BST_UNCHECKED, 0);
+
+        m_hDebugOutput = CreateWindowW(
+            L"BUTTON",
+            L"Debug Output",
+            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+            0, 0, 0, 0,
+            m_hWnd, NULL, GetModuleHandle(NULL), NULL
+        );
+        // По умолчанию включён
+        SendMessage(m_hDebugOutput, BM_SETCHECK, BST_CHECKED, 0);
+
         // Устанавливаем шрифт
         HFONT hFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -300,6 +455,8 @@ public:
         SendMessageW(m_hInput, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hExecute, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hClear, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessageW(m_hAlwaysOnTop, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Приветственное сообщение
         AppendOutput(L"=== Neuro Console Ready ===\n", RGB(0, 100, 200));
@@ -480,6 +637,9 @@ bool IsNeuroConsoleVisible() {
 
 void AppendToNeuroConsole(const wchar_t* text, unsigned int color) {
     if (!g_ConsoleReady.load() || !g_Console || !text) return;
+
+    // Проверяем, включён ли debug output
+    if (!g_DebugOutputEnabled.load()) return;
 
     // Копируем текст (будет удалён в обработчике)
     size_t len = wcslen(text) + 1;
