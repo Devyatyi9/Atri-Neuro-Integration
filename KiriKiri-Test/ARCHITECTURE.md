@@ -210,20 +210,39 @@ KiriKiri-Test/
 3. **TVPPostEvent()** — thread-safe постинг события в главный поток
 4. **tTVPContinuousEventCallbackIntf** — callback вызываемый каждый кадр
 
-### Message Window Pattern (экспериментальный)
+### Window Subclass для cross-thread TJS вызовов
 
-Для безопасного вызова TJS из worker threads используется hidden window:
+Для безопасного вызова TJS из worker threads (консоль, hotkeys, websocket) используется subclass окна игры:
 
 ```cpp
-// Worker thread (hotkey, websocket) отправляет команду:
-PostMessage(g_MessageWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
+// Worker thread отправляет команду:
+PostMessage(g_GameWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
 
-// Message Window обрабатывает в контексте главного потока:
+// Subclassed WndProc обрабатывает в контексте главного потока:
 case WM_TJS_EXECUTE:
     TVPExecuteExpression(ttstr((wchar_t*)wParam), nullptr);
     delete[] (wchar_t*)wParam;
     return 0;
 ```
+
+**Два способа сделать subclass:**
+
+| Метод | Плюсы | Минусы |
+|-------|-------|--------|
+| `SetWindowLongPtr` | Работает из любого потока | При множественных subclass порядок снятия важен (LIFO) |
+| `SetWindowSubclass` | Безопасен при множественных subclass, можно снимать в любом порядке | **Требует вызова из потока-владельца окна** (error 122 иначе) |
+
+**Текущее решение: `SetWindowLongPtr`** — работает из init thread, достаточно для одного subclass.
+
+**Когда subclass нужен:**
+- Консоль (свой поток) → TJS
+- Neuro SDK websocket callbacks → TJS
+- Hotkey thread → TJS
+- Batching (PostMessage для отложенного выполнения)
+
+**Когда subclass НЕ нужен:**
+- TJS функции вызываются из скриптов игры (уже в главном потоке)
+- Polling из TJS (скрипт сам вызывает `neuroGetMessages()`)
 
 Доступны две функции:
 - `ExecuteTJSAsync(code)` — fire-and-forget, не ждёт результата
