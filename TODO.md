@@ -87,38 +87,30 @@ TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &result);
 
 Через TJS можно читать файлы напрямую из архивов игры:
 
-```cpp
-bool ReadGameFileText(const wchar_t* filename, std::wstring& outContent) {
-    // Проверяем существование файла в VFS
-    ttstr cmdCheck = ttstr(L"Storages.isExistentStorage(\"") + filename + L"\")";
-    tTJSVariant exists;
-    TVPExecuteExpression(cmdCheck, &exists);
-
-    if (!exists.AsInteger()) {
-        return false;
-    }
-
-    // Читаем текст (автоконвертация кодировки в Unicode)
-    ttstr cmdRead = ttstr(L"Storages.getText(\"") + filename + L"\")";
-    tTJSVariant result;
-    TVPExecuteExpression(cmdRead, &result);
-
-    if (result.Type() == tvtString) {
-        outContent = result.GetString();
-        return true;
-    }
-    return false;
-}
+```js
+(function() { var a = []; if(!a.load("main/Config.tjs")) return "FAIL"; return a.join("\n"); })()
 ```
 
 **Протоколы путей:**
+
 - `storage://` — корень данных/архивов
 - `appdata://` — папка настроек пользователя
 - `file://` — физический файл на диске
 
-**Проверка в консоли:**
+**Проверка существования в консоли:**
+
 ```
-Debug.message(Storages.isExistentStorage("main/script.tjs"))
+Debug.message(Storages.isExistentStorage("main/Config.tjs"))
 ```
 
 **Для бинарных файлов:** `TVPCreateIStream` → `tTJSBinaryStream*`
+
+#### Проверка расположения по имени в консоли:
+
+`Debug.message(Storages.getPlacedPath("Config.tjs"))`
+
+#### Получение содержимого файла через TJS-скрипт:
+
+```js
+(function() { var a = []; if(!a.load("main/Config.tjs")) return "FAIL"; return a.join("\n"); })()
+```
