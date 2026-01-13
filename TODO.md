@@ -11,12 +11,18 @@
 - [x] tp_stub connected
 - [x] NeuroConsole — своя консоль для TJS команд (F12)
 - [x] libneurosdk интеграция (C++ функции готовы, TJS обёртки pending)
+- [x] Проверить компиляцию и работу NeuroConsole
 
 ## In Progress
 
-- [x] Проверить компиляцию и работу NeuroConsole
+- [ ] 
 
 ## Planned
+
+### Исследование игры
+
+- [ ] Изучить какие команды нужно использовать для получения необходимых значений и команды воздействия на контролы игры
+- [ ] Распаковать .tjs и .ks файлы для более глубокого анализа игры чтобы определить недостающие команды
 
 ### Batching for async TJS calls
 
@@ -37,7 +43,9 @@ struct TJSCommandBatch {
 Для глубокой интеграции (не просто добавление функций, а взаимодействие с внутренними структурами движка) могут понадобиться:
 
 - ncbind - для привязки C++ классов к TJS
+
 - Заголовки из krkrz_dev для доступа к внутренним классам
+
 - Возможно WindowEx, KAGParser и другие модули
   
   ```
@@ -46,8 +54,12 @@ struct TJSCommandBatch {
           └── tjsString.h
                 └── tjsCommHead.h
                       └── tjs.h (iTJSDispatch2)
-  
   ```
+
+### Другие улучшения
+
+- [ ] SetWindowSubclass вместо SetWindowLongPtr (требует вызова из main thread — через SendMessage)
+- [ ] Обработка TJS исключений через tTJSVariantClosure (некритично)
 
 ### TJS функции для Neuro API
 
@@ -57,11 +69,6 @@ struct TJSCommandBatch {
 - [ ] neuroRegisterAction(name, description, schema) - регистрация action
 - [ ] neuroSendActionResult(id, success, message) - результат action
 - [ ] neuroIsConnected() - проверка подключения
-
-### Другие улучшения
-
-- [ ] SetWindowSubclass вместо SetWindowLongPtr (требует вызова из main thread — через SendMessage)
-- [ ] Обработка TJS исключений через tTJSVariantClosure
 
 ## Notes
 
@@ -75,3 +82,43 @@ TJS2 НЕ потокобезопасен. Все вызовы TVPExecuteExpressi
 ```cpp
 TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &result);
 ```
+
+### Чтение файлов из VFS (XP3 архивов)
+
+Через TJS можно читать файлы напрямую из архивов игры:
+
+```cpp
+bool ReadGameFileText(const wchar_t* filename, std::wstring& outContent) {
+    // Проверяем существование файла в VFS
+    ttstr cmdCheck = ttstr(L"Storages.isExistentStorage(\"") + filename + L"\")";
+    tTJSVariant exists;
+    TVPExecuteExpression(cmdCheck, &exists);
+
+    if (!exists.AsInteger()) {
+        return false;
+    }
+
+    // Читаем текст (автоконвертация кодировки в Unicode)
+    ttstr cmdRead = ttstr(L"Storages.getText(\"") + filename + L"\")";
+    tTJSVariant result;
+    TVPExecuteExpression(cmdRead, &result);
+
+    if (result.Type() == tvtString) {
+        outContent = result.GetString();
+        return true;
+    }
+    return false;
+}
+```
+
+**Протоколы путей:**
+- `storage://` — корень данных/архивов
+- `appdata://` — папка настроек пользователя
+- `file://` — физический файл на диске
+
+**Проверка в консоли:**
+```
+Debug.message(Storages.isExistentStorage("main/script.tjs"))
+```
+
+**Для бинарных файлов:** `TVPCreateIStream` → `tTJSBinaryStream*`

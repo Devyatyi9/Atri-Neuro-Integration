@@ -72,7 +72,7 @@ void CloseLogFile() {
 // ============================================================================
 // Self-linking: поиск iTVPFunctionExporter в памяти
 // ============================================================================
-// RVA адреса для ATRI -My Dear Moments- (обновить для другой игры/версии)
+// RVA адреса для ATRI -My Dear Moments-
 const DWORD RVA_EXPORTER = 0x003B4538;
 const DWORD RVA_VTABLE = 0x00374A50;
 
