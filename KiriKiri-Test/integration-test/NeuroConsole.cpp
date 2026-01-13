@@ -37,7 +37,29 @@ private:
     int m_historyIndex;
 
     static NeuroConsole* s_Instance;
-    static WNDPROC s_OriginalEditProc;  // Для subclass Edit control
+    static WNDPROC s_OriginalEditProc;    // Для subclass Edit control (ввод)
+    static WNDPROC s_OriginalOutputProc;  // Для subclass RichEdit control (вывод)
+
+    // Subclass процедура для поля вывода - обработка Esc и Ctrl+A
+    static LRESULT CALLBACK OutputEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (msg == WM_KEYDOWN) {
+            if (wParam == VK_ESCAPE) {
+                if (s_Instance && s_Instance->m_hWnd) {
+                    ShowWindow(s_Instance->m_hWnd, SW_HIDE);
+                }
+                return 0;
+            }
+            else if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                SendMessage(hwnd, EM_SETSEL, 0, -1);
+                return 0;
+            }
+        }
+        // Блокируем WM_CHAR для Esc и Ctrl+A (иначе будет beep)
+        if (msg == WM_CHAR && (wParam == 27 || wParam == 1)) {
+            return 0;
+        }
+        return CallWindowProc(s_OriginalOutputProc, hwnd, msg, wParam, lParam);
+    }
 
     // Subclass процедура для поля ввода - обработка Enter, стрелок и Ctrl+A
     static LRESULT CALLBACK InputEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -68,9 +90,17 @@ private:
                 SendMessage(hwnd, EM_SETSEL, 0, -1);
                 return 0;
             }
+            else if (wParam == VK_ESCAPE) {
+                // Esc - скрыть консоль
+                OutputDebugStringW(L"[NeuroConsole] ESC pressed in input\n");
+                if (s_Instance && s_Instance->m_hWnd) {
+                    ShowWindow(s_Instance->m_hWnd, SW_HIDE);
+                }
+                return 0;
+            }
         }
-        // Блокируем WM_CHAR для Enter (иначе будет beep)
-        if (msg == WM_CHAR && wParam == '\r') {
+        // Блокируем WM_CHAR для Enter, Esc и Ctrl+A (иначе будет beep)
+        if (msg == WM_CHAR && (wParam == '\r' || wParam == 27 || wParam == 1)) {
             return 0;
         }
         // Все остальные сообщения - оригинальной процедуре
@@ -126,6 +156,13 @@ private:
             }
             break;
         }
+
+        case WM_KEYDOWN:
+            if (wParam == VK_ESCAPE) {
+                console->Hide();
+                return 0;
+            }
+            break;
 
         case WM_CLOSE:
             console->Hide();
@@ -381,6 +418,9 @@ public:
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        // Subclass RichEdit для обработки Esc и Ctrl+A
+        s_OriginalOutputProc = (WNDPROC)SetWindowLongPtr(m_hOutput, GWLP_WNDPROC, (LONG_PTR)OutputEditProc);
+
         // Устанавливаем шрифт для output
         CHARFORMAT2W cf;
         ZeroMemory(&cf, sizeof(cf));
@@ -504,6 +544,7 @@ public:
 
 NeuroConsole* NeuroConsole::s_Instance = nullptr;
 WNDPROC NeuroConsole::s_OriginalEditProc = nullptr;
+WNDPROC NeuroConsole::s_OriginalOutputProc = nullptr;
 
 // ============================================================================
 // Console Thread - создаёт окно и запускает message loop
