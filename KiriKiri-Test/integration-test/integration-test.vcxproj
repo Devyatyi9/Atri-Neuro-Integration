@@ -127,6 +127,9 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
   <ItemGroup>
     <None Include="neuro.def" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NeuroConsole.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

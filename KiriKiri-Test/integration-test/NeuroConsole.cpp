@@ -287,64 +287,57 @@ private:
     }
 
     void ExecuteTJSCommand(const wchar_t* code) {
+        if (!code || wcslen(code) == 0) return;
+        std::wstring cleanCode = code;
+
+        while (!cleanCode.empty() && (cleanCode.back() == L';' || cleanCode.back() == L' ' || cleanCode.back() == L'\r' || cleanCode.back() == L'\n')) {
+            cleanCode.pop_back();
+        }
+        if (cleanCode.empty()) return;
+
         tTJSVariant result;
+        // Вызываем синхронную функцию из dllmain
+        if (ExecuteTJSSync(cleanCode.c_str(), &result)) {
 
-        // Выполняем через thread-safe механизм (PostMessage -> главный поток)
-        if (!ExecuteTJSSync(code, &result)) {
-            AppendOutput(L"Error: TJS execution failed or timed out\n", RGB(255, 0, 0));
-            return;
-        }
-
-        // Выводим результат в зависимости от типа
-        tTJSVariantType type = result.Type();
-        if (type == tvtVoid) {
-            AppendOutput(L"\n", RGB(0, 150, 0));
-        }
-        else if (type == tvtObject) {
-            // Объекты (Dictionary, Array и т.д.) нельзя напрямую преобразовать в строку
-            // Это вызывает краш. Выводим информацию о типе объекта.
-            iTJSDispatch2* obj = result.AsObjectNoAddRef();
-            if (obj) {
-                // Пробуем получить класс объекта
-                tTJSVariant className;
-                if (TJS_SUCCEEDED(obj->ClassInstanceInfo(TJS_CII_GET, 0, &className))) {
-                    ttstr classStr = className;
-                    AppendOutput(L"Result: [Object: ", RGB(0, 0, 255));
-                    AppendOutput(classStr.c_str(), RGB(128, 0, 128));
-                    AppendOutput(L"]\n", RGB(0, 0, 255));
-                } else {
-                    AppendOutput(L"Result: [Object]\n", RGB(0, 0, 255));
+            // 1. Проверяем на исключение (наша обертка !!!TJS_EXCEPTION!!!)
+            if (result.Type() == tvtString) {
+				// Используем .GetString() для получения указателя на внутреннюю строку
+                std::wstring strVal = result.GetString();
+                if (strVal.find(L"!!!TJS_EXCEPTION!!!") == 0) {
+                    std::wstring errMsg = strVal.substr(20);
+                    AppendOutput((L"TJS Error: " + errMsg + L"\n").c_str(), RGB(255, 50, 50));
+                    return;
                 }
-            } else {
-                AppendOutput(L"Result: [null object]\n", RGB(0, 0, 255));
             }
-        }
-        else if (type == tvtString) {
-            ttstr resultStr = result;
-            AppendOutput(L"Result: \"", RGB(0, 0, 255));
-            AppendOutput(resultStr.c_str(), RGB(0, 128, 0));
-            AppendOutput(L"\"\n", RGB(0, 0, 255));
-        }
-        else if (type == tvtInteger) {
-            wchar_t buf[64];
-            swprintf_s(buf, L"%lld", result.AsInteger());
-            AppendOutput(L"Result: ", RGB(0, 0, 255));
-            AppendOutput(buf, RGB(0, 0, 128));
-            AppendOutput(L"\n", RGB(0, 0, 255));
-        }
-        else if (type == tvtReal) {
-            wchar_t buf[64];
-            swprintf_s(buf, L"%g", result.AsReal());
-            AppendOutput(L"Result: ", RGB(0, 0, 255));
-            AppendOutput(buf, RGB(0, 0, 128));
-            AppendOutput(L"\n", RGB(0, 0, 255));
+
+            // 2. Определяем тип для вывода
+            std::wstring typeStr = L"Unknown";
+            switch (result.Type()) {
+            case tvtVoid:    typeStr = L"Void";    break;
+            case tvtObject:  typeStr = L"Object";  break;
+            case tvtString:  typeStr = L"String";  break;
+            case tvtInteger: typeStr = L"Integer"; break;
+            case tvtReal:    typeStr = L"Real";    break;
+            case tvtOctet:   typeStr = L"Octet";   break;
+            }
+
+            // 3. Безопасно конвертируем результат в строку
+            // Используем явное приведение к ttstr, а затем к c_str()
+            std::wstring valStr;
+            if (result.Type() == tvtVoid) {
+                valStr = L"void";
+            }
+            else {
+                // Самый надежный способ конвертации в KiriKiri SDK
+                valStr = ttstr(result).c_str();
+            }
+
+            std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";
+            AppendOutput(output.c_str(), RGB(0, 255, 0)); // Зеленый для успеха
+
         }
         else {
-            // Другие типы (Octet и т.д.) - безопасно преобразуем
-            ttstr resultStr = result;
-            AppendOutput(L"Result: ", RGB(0, 0, 255));
-            AppendOutput(resultStr.c_str(), RGB(0, 0, 0));
-            AppendOutput(L"\n", RGB(0, 0, 0));
+            AppendOutput(L"Critical Error: TJS execution failed or timed out.\n", RGB(255, 0, 0));
         }
     }
 
@@ -447,7 +440,7 @@ public:
         // Создаём кнопки
         m_hExecute = CreateWindowW(
             L"BUTTON",
-            L"Execute",
+            L"Run",
             WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
             0, 0, 0, 0,
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
