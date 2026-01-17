@@ -460,12 +460,12 @@ static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 
 // Структура для синхронного вызова с результатом (выделяется в куче!)
 struct TJSSyncCallData {
-    const wchar_t* code;
+    std::wstring code; // ИЗМЕНЕНО: std::wstring вместо указателя для безопасности памяти
     tTJSVariant* result;
     HANDLE completedEvent;
     std::atomic<bool> processed;  // Флаг обработки для безопасного удаления
 
-    TJSSyncCallData() : code(nullptr), result(nullptr), completedEvent(nullptr), processed(false) {}
+    TJSSyncCallData() : result(nullptr), completedEvent(nullptr), processed(false) {}
 };
 
 // Проверка главного потока
@@ -497,12 +497,13 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     case WM_TJS_EXECUTE_SYNC: {
         // Синхронный вызов - возвращает результат
-        LogToFile("  [Subclass] WM_TJS_EXECUTE_SYNC received!\n");
+        // LogToFile("  [Subclass] WM_TJS_EXECUTE_SYNC received!\n"); // Можно раскомментировать для отладки
         TJSSyncCallData* data = (TJSSyncCallData*)wParam;
         if (data) {
-            if (data->code && g_TJSReady.load()) {
-                LogToFile("  [Subclass] Executing TJS sync\n");
-                TVPExecuteExpression(ttstr(data->code), data->result);
+            // ИЗМЕНЕНО: используем !data->code.empty() и .c_str()
+            if (!data->code.empty() && g_TJSReady.load()) {
+                // LogToFile("  [Subclass] Executing TJS sync\n");
+                TVPExecuteExpression(ttstr(data->code.c_str()), data->result);
             }
             data->processed.store(true);  // Помечаем как обработанное
             if (data->completedEvent) {
@@ -653,18 +654,33 @@ void ExecuteTJSAsync(const wchar_t* code) {
 bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
     if (!g_GameWindow || !IsWindow(g_GameWindow) || !code) return false;
 
-    // Если вызов из главного потока - выполняем напрямую (избегаем deadlock)
+    // 1. ОБОРАЧИВАЕМ КОД
+    // Создаем строку, которая перехватывает ошибки TJS и возвращает их как текст.
+    std::wstring wrappedCode =
+        L"(function(){ try { return (" + std::wstring(code) +
+        L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + e.message; } })()";
+
+    // Хелпер для быстрой проверки результата на наличие ошибки (опционально)
+    // NeuroConsole сама разберет ошибку, но здесь мы можем вернуть true, чтобы цепочка не прервалась
+
+    // ==========================================
+    // СЦЕНАРИЙ А: Вызов из главного потока
+    // ==========================================
     if (IsMainThread()) {
         if (g_TJSReady.load()) {
-            TVPExecuteExpression(ttstr(code), result);
+            TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
             return true;
         }
         return false;
     }
 
-    // Выделяем в куче для безопасности при timeout
+    // ==========================================
+    // СЦЕНАРИЙ Б: Вызов из другого потока
+    // ==========================================
+
+    // Выделяем в куче. Теперь code - это std::wstring, данные копируются внутрь.
     TJSSyncCallData* data = new TJSSyncCallData();
-    data->code = code;
+    data->code = wrappedCode; // БЕЗОПАСНОЕ КОПИРОВАНИЕ
     data->result = result;
     data->completedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
@@ -673,16 +689,15 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
         return false;
     }
 
-    char diagBuf[256];
-    sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p, subclass calls so far: %d\n",
-        g_GameWindow, g_SubclassCallCount.load());
-    LogToFile(diagBuf);
+    // char diagBuf[256];
+    // sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p\n", g_GameWindow);
+    // LogToFile(diagBuf);
 
     BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)data, 0);
     if (!postResult) {
-        DWORD err = GetLastError();
-        sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n", err);
-        LogToFile(diagBuf);
+        // DWORD err = GetLastError();
+        // sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n", err);
+        // LogToFile(diagBuf);
         CloseHandle(data->completedEvent);
         delete data;
         return false;
@@ -696,20 +711,21 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
         // Успешно обработано - безопасно удаляем
         delete data;
         return true;
-    } else {
-        // Timeout! Сообщение может быть ещё в очереди.
-        // Проверяем, было ли обработано
-        sprintf_s(diagBuf, "  [ExecuteTJSSync] TIMEOUT! Subclass calls after: %d\n",
-            g_SubclassCallCount.load());
-        LogToFile(diagBuf);
+    }
+    else {
+        // Timeout! 
+        // sprintf_s(diagBuf, "  [ExecuteTJSSync] TIMEOUT!\n");
+        // LogToFile(diagBuf);
 
         if (data->processed.load()) {
             // Обработано после timeout - безопасно удаляем
             delete data;
-        } else {
-            // НЕ удаляем! Оставляем утечку - лучше чем crash
-            // Сообщение ещё в очереди и будет обрабатывать этот указатель
-            LogToFile("  [ExecuteTJSSync] WARNING: Memory leak to prevent use-after-free\n");
+        }
+        else {
+            // НЕ удаляем! Оставляем утечку - лучше чем crash.
+            // Благодаря std::wstring в структуре, данные строки тоже выживут 
+            // и будут корректно использованы (или проигнорированы) главным потоком, когда он проснется.
+            LogToFile("  [ExecuteTJSSync] WARNING: Memory leak to prevent use-after-free (Timeout)\n");
         }
         return false;
     }
