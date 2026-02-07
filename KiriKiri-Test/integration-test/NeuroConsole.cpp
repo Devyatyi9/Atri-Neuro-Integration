@@ -139,25 +139,25 @@ private:
         case WM_COMMAND: {
             // Клик на кнопку Execute
             if ((HWND)lParam == console->m_hExecute) {
-                console->ExecuteCommand();
+                if (console) console->ExecuteCommand();
                 return 0;
             }
 
             // Клик на кнопку Clear
             if ((HWND)lParam == console->m_hClear) {
-                console->ClearOutput();
+                if (console) console->ClearOutput();
                 return 0;
             }
 
             // Чекбокс AlwaysOnTop
             if ((HWND)lParam == console->m_hAlwaysOnTop) {
-                console->OnAlwaysOnTopChanged();
+                if (console) console->OnAlwaysOnTopChanged();
                 return 0;
             }
 
             // Чекбокс Debug Output
             if ((HWND)lParam == console->m_hDebugOutput) {
-                console->OnDebugOutputChanged();
+                if (console) console->OnDebugOutputChanged();
                 return 0;
             }
 
