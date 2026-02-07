@@ -1,0 +1,299 @@
+Folder PATH listing for volume NewElders
+Volume serial number is CF15-DFEF
+D:.
+│   AppConfig.tjs
+│   currev.ini
+│   structure.txt
+│   
+├───font
+│       embfontlist.tjs
+│       
+├───image
+│   └───anim
+│           manpu_ase02L.asd
+│           manpu_ase02LL.asd
+│           manpu_ase02M.asd
+│           manpu_ase02S.asd
+│           manpu_aseriL.asd
+│           manpu_aseriLL.asd
+│           manpu_aseriM.asd
+│           manpu_aseriS.asd
+│           manpu_bonoL_L.asd
+│           manpu_bonoL_M.asd
+│           manpu_bonoL_S.asd
+│           manpu_bonoR_L.asd
+│           manpu_bonoR_M.asd
+│           manpu_bonoR_S.asd
+│           manpu_fire01LL.asd
+│           manpu_fire01LS.asd
+│           manpu_fire03LL.asd
+│           manpu_fire03LS.asd
+│           manpu_guruguruL_L.asd
+│           manpu_guruguruL_LL.asd
+│           manpu_guruguruL_M.asd
+│           manpu_guruguruL_S.asd
+│           manpu_guruguruR_L.asd
+│           manpu_guruguruR_LL.asd
+│           manpu_guruguruR_M.asd
+│           manpu_guruguruR_S.asd
+│           manpu_ikariL.asd
+│           manpu_ikariLL.asd
+│           manpu_ikariL_L.asd
+│           manpu_ikariL_LL.asd
+│           manpu_ikariL_M.asd
+│           manpu_ikariL_S.asd
+│           manpu_ikariM.asd
+│           manpu_ikariR_L.asd
+│           manpu_ikariR_LL.asd
+│           manpu_ikariR_M.asd
+│           manpu_ikariR_S.asd
+│           manpu_ikariS.asd
+│           manpu_kiraL.asd
+│           manpu_kiraLL.asd
+│           manpu_kiraM.asd
+│           manpu_kiraS.asd
+│           manpu_tenL_L.asd
+│           manpu_tenL_LL.asd
+│           manpu_tenL_M.asd
+│           manpu_tenL_S.asd
+│           manpu_tenR_L.asd
+│           manpu_tenR_LL.asd
+│           manpu_tenR_M.asd
+│           manpu_tenR_S.asd
+│           manpu_waraiL.asd
+│           manpu_waraiL_L.asd
+│           manpu_waraiL_M.asd
+│           manpu_waraiL_S.asd
+│           manpu_waraiM.asd
+│           manpu_waraiR_L.asd
+│           manpu_waraiR_M.asd
+│           manpu_waraiR_S.asd
+│           manpu_waraiS.asd
+│           
+├───main
+│       bgmtitle.func
+│       cglist.csv
+│       charlist.csv
+│       charvoice.csv
+│       Config.tjs
+│       config_jp.func
+│       config_tw.func
+│       credits.ks
+│       custom.ks
+│       custom.tjs
+│       default.tjs
+│       drefasd.tjs
+│       envinit.tjs
+│       FAQover.ini
+│       file.func
+│       flagedit.ini
+│       help_conf.txt
+│       help_conf_cn.txt
+│       help_conf_jp.txt
+│       help_conf_tw.txt
+│       help_file.txt
+│       help_file_cn.txt
+│       help_file_jp.txt
+│       help_file_tw.txt
+│       help_voice.txt
+│       help_voice_cn.txt
+│       help_voice_jp.txt
+│       help_voice_tw.txt
+│       imagediffmap.txt
+│       imagedressmap.txt
+│       imagemulti.txt
+│       imagenamemap.txt
+│       imagepropmap.txt
+│       langsel_popup.func
+│       nextprevscn.tjs
+│       ngword.csv
+│       novel.func
+│       novel2.func
+│       novel3.func
+│       qlpopup.func
+│       savelist.csv
+│       scenelist.csv
+│       select.func
+│       soundgain.csv
+│       soundlist.csv
+│       speech_app_en.txt
+│       speech_defdic.txt
+│       speech_defdic_en.txt
+│       speech_help_en.txt
+│       standoffset.tjs
+│       Storages.tjs
+│       submenu.func
+│       syslangtext.tjs
+│       syslangtext_cn.ini
+│       syslangtext_en.ini
+│       syslangtext_jp.ini
+│       syslangtext_tw.ini
+│       sysmenu.ks
+│       sysse.ini
+│       systrans.ini
+│       uimain.tjs
+│       version.ks
+│       voice.ks
+│       weblinkpanel.tjs
+│       window.func
+│       
+├───scenario
+│   │   !scnlist.txt
+│   │   dummy_replay.ks
+│   │   macro.ks
+│   │   macro_old.ks
+│   │   movie.ks
+│   │   parsermacro.ks
+│   │   start.ks
+│   │   trial_end.ks
+│   │   
+│   ├───scripts
+│   │       script_kirie.tjs
+│   │       script_lightedge.tjs
+│   │       script_mosaic.tjs
+│   │       
+│   └───transitions
+│           trans_blurfade.tjs
+│           trans_book.tjs
+│           trans_crossfade.tjs
+│           trans_flutter.tjs
+│           trans_honeyturn.tjs
+│           trans_laytranstest.tjs
+│           trans_mosaic.tjs
+│           trans_multiripple.tjs
+│           trans_ripple.tjs
+│           trans_rotateswap.tjs
+│           trans_rotatevanish.tjs
+│           trans_rotatezoom.tjs
+│           trans_scanline.tjs
+│           trans_scroll.tjs
+│           trans_showfade.tjs
+│           trans_showslide.tjs
+│           trans_showstand.tjs
+│           trans_showzoom.tjs
+│           trans_spin.tjs
+│           trans_turn.tjs
+│           trans_universal.tjs
+│           trans_wave.tjs
+│           trans_zoomfade.tjs
+│           
+├───sysscn
+│       about.ks
+│       afterstory.ks
+│       backlog.ks
+│       brows.ks
+│       brows_conf.ks
+│       brows_help.ks
+│       cgmode.ks
+│       compat.ks
+│       end.ks
+│       envplay.ks
+│       exchview.ks
+│       first.ks
+│       load.ks
+│       loadinit.ks
+│       name.ks
+│       option.ks
+│       save.ks
+│       scenemode.ks
+│       snapcapture_datefmt.txt
+│       snapcapture_twitter.txt
+│       soundmode.ks
+│       speech_app.txt
+│       speech_help.txt
+│       title.ks
+│       voicemode.ks
+│       
+├───system
+│       enginerev.ini
+│       LineBreak.asd
+│       PageBreak.asd
+│       
+└───uipsd
+    │   autoglyph.asd
+    │   automode.csv
+    │   backlog.func
+    │   backlog.ini
+    │   backlog.pimg
+    │   bgmtitle.csv
+    │   config.func
+    │   config.ini
+    │   config_cn.func
+    │   config_cn.ini
+    │   config_jp.csv
+    │   config_jp.func
+    │   config_jp.ini
+    │   config_tw.csv
+    │   config_tw.ini
+    │   conf_0base.func
+    │   conf_1display.func
+    │   conf_2system.func
+    │   conf_3text.func
+    │   conf_4sound.func
+    │   conf_5dialog.func
+    │   conf_6touch.func
+    │   conf_7shortcut.func
+    │   dialog.func
+    │   dialog.ini
+    │   dialog_cn.func
+    │   dialog_cn.ini
+    │   dialog_jp.func
+    │   dialog_jp.ini
+    │   dialog_tw.ini
+    │   extra.func
+    │   extra.ini
+    │   file.csv
+    │   file.func
+    │   file_common.func
+    │   file_common.ini
+    │   file_common_cn.func
+    │   file_common_cn.ini
+    │   file_common_jp.func
+    │   file_common_jp.ini
+    │   file_common_tw.ini
+    │   file_edit.func
+    │   file_edit.ini
+    │   file_edit_cn.func
+    │   file_edit_cn.ini
+    │   file_edit_jp.func
+    │   file_edit_jp.ini
+    │   file_edit_tw.ini
+    │   file_load.func
+    │   file_load.ini
+    │   file_qload.func
+    │   file_qload.ini
+    │   file_qsave.func
+    │   file_qsave.ini
+    │   file_save.func
+    │   file_save.ini
+    │   file_voice.func
+    │   file_voice.ini
+    │   information.func
+    │   information.ini
+    │   langselect.func
+    │   langselect.ini
+    │   langsel_popup.csv
+    │   novel.csv
+    │   qlpopup.csv
+    │   qlpopup.func
+    │   quickmenu.func
+    │   quickmenu.ini
+    │   select.csv
+    │   submenu.csv
+    │   submenu.func
+    │   submenu.ini
+    │   submenu.pimg
+    │   sysvosel_popup.func
+    │   title.event
+    │   title.func
+    │   title.ini
+    │   waitglyph.asd
+    │   window.csv
+    │   _button.func
+    │   
+    └───disabler
+            dsui_conf_1display.func
+            dsui_conf_2system.func
+            dsui_conf_6touch.func
+            dsui_file_edit.func
+            

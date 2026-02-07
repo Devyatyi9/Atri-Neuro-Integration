@@ -1,0 +1,2355 @@
+Folder PATH listing for volume NewElders
+Volume serial number is CF15-DFEF
+D:.
+│   AppConfig.tjs
+│   currev.ini
+│   startup.tjs
+│   structure.txt
+│   
+├───bgm
+│       ATRI ED[Inst Mix]Game size1_s_vtest.ogg
+│       BGM01.ogg
+│       BGM01b.ogg
+│       BGM01s.ogg
+│       BGM02.ogg
+│       BGM03.ogg
+│       BGM03s.ogg
+│       BGM04.ogg
+│       BGM04sa.ogg
+│       BGM04sb.ogg
+│       BGM05.ogg
+│       BGM05s.ogg
+│       BGM06.ogg
+│       BGM07.ogg
+│       BGM07b.ogg
+│       BGM07c.ogg
+│       BGM08.ogg
+│       BGM08b.ogg
+│       BGM09.ogg
+│       BGM10.ogg
+│       BGM11.ogg
+│       BGM11b.ogg
+│       BGM12.ogg
+│       BGM12b.ogg
+│       BGM13.ogg
+│       BGM14.ogg
+│       BGM15.ogg
+│       BGM16.ogg
+│       BGM16s.ogg
+│       BGM17.ogg
+│       BGM17b.ogg
+│       BGM18.ogg
+│       BGM18b.ogg
+│       BGM19.ogg
+│       BGM20.ogg
+│       ed.ogg
+│       ed_inst.ogg
+│       ed_short1.ogg
+│       ed_short1_inst.ogg
+│       ed_short2.ogg
+│       ed_short2_inst.ogg
+│       ed_short_voonly.ogg
+│       ed_voonly.ogg
+│       op_short.ogg
+│       op_short_inst.ogg
+│       
+├───dmmcloud
+│       dmmcloud.tjs
+│       uidisabler.tjs
+│       
+├───font
+│       embfontlist.tjs
+│       GenJyuuGothicX-Bold.ttf
+│       GenJyuuGothicX-Heavy.ttf
+│       GenJyuuGothicX-LICENSE.txt
+│       GenJyuuGothicX-Medium.ttf
+│       MTLc3m.ttf
+│       MTLmr3m.ttf
+│       MTL_NOTICE.txt
+│       namefont_27_cn.tft
+│       namefont_27_tw.tft
+│       namefont_license.txt
+│       SourceHanSansAndSerifJP-LICENSE.txt
+│       SourceHanSansAndSerifSC-LICENSE.txt
+│       SourceHanSansAndSerifTC-LICENSE.txt
+│       SourceHanSansJP-Bold.otf
+│       SourceHanSansJP-Heavy.otf
+│       SourceHanSansJP-Regular.otf
+│       SourceHanSansSC-Bold.otf
+│       SourceHanSansSC-Heavy.otf
+│       SourceHanSansSC-Regular.otf
+│       SourceHanSansTC-Bold.otf
+│       SourceHanSansTC-Heavy.otf
+│       SourceHanSansTC-Regular.otf
+│       SourceHanSerifJP-Bold.otf
+│       SourceHanSerifJP-Heavy.otf
+│       SourceHanSerifSC-Bold.otf
+│       SourceHanSerifSC-Heavy.otf
+│       SourceHanSerifTC-Bold.otf
+│       SourceHanSerifTC-Heavy.otf
+│       
+├───image
+│   │   aboutdialog.png
+│   │   brandlogo.png
+│   │   brandlogo2.png
+│   │   brandlogo3.png
+│   │   brandlogo_effect.png
+│   │   deactivelogo.png
+│   │   FIN01.png
+│   │   FIN02.png
+│   │   fw_logo_bg.png
+│   │   fw_logo_font.png
+│   │   fw_logo_mark.png
+│   │   sqscrmask.png
+│   │   THEEND.png
+│   │   title_base.png
+│   │   title_base2.png
+│   │   title_logo_cn.png
+│   │   title_logo_en.png
+│   │   title_logo_jp.png
+│   │   title_logo_tw.png
+│   │   warning1.png
+│   │   warning2.png
+│   │   warning2_cn.png
+│   │   warning2_tw.png
+│   │   _title_base.png
+│   │   __title_base.png
+│   │   
+│   ├───anim
+│   │       manpu_ase01L.png
+│   │       manpu_ase01LL.png
+│   │       manpu_ase01M.png
+│   │       manpu_ase02L.asd
+│   │       manpu_ase02L.png
+│   │       manpu_ase02LL.asd
+│   │       manpu_ase02LL.png
+│   │       manpu_ase02M.asd
+│   │       manpu_ase02M.png
+│   │       manpu_ase02S.asd
+│   │       manpu_ase02S.png
+│   │       manpu_aseriL.asd
+│   │       manpu_aseriL.png
+│   │       manpu_aseriLL.asd
+│   │       manpu_aseriLL.png
+│   │       manpu_aseriM.asd
+│   │       manpu_aseriM.png
+│   │       manpu_aseriS.asd
+│   │       manpu_aseriS.png
+│   │       manpu_bansokoL.png
+│   │       manpu_bansokoLL.png
+│   │       manpu_bansokoM.png
+│   │       manpu_bansokoS.png
+│   │       manpu_bonoL_L.asd
+│   │       manpu_bonoL_L.png
+│   │       manpu_bonoL_M.asd
+│   │       manpu_bonoL_M.png
+│   │       manpu_bonoL_S.asd
+│   │       manpu_bonoL_S.png
+│   │       manpu_bonoR_L.asd
+│   │       manpu_bonoR_L.png
+│   │       manpu_bonoR_M.asd
+│   │       manpu_bonoR_M.png
+│   │       manpu_bonoR_S.asd
+│   │       manpu_bonoR_S.png
+│   │       manpu_fire01LL.asd
+│   │       manpu_fire01LL.png
+│   │       manpu_fire01LS.asd
+│   │       manpu_fire01LS.png
+│   │       manpu_fire03LL.asd
+│   │       manpu_fire03LL.png
+│   │       manpu_fire03LS.asd
+│   │       manpu_fire03LS.png
+│   │       manpu_gogogo.png
+│   │       manpu_guruguruL_L.asd
+│   │       manpu_guruguruL_L.png
+│   │       manpu_guruguruL_LL.asd
+│   │       manpu_guruguruL_LL.png
+│   │       manpu_guruguruL_M.asd
+│   │       manpu_guruguruL_M.png
+│   │       manpu_guruguruL_S.asd
+│   │       manpu_guruguruL_S.png
+│   │       manpu_guruguruR_L.asd
+│   │       manpu_guruguruR_L.png
+│   │       manpu_guruguruR_LL.asd
+│   │       manpu_guruguruR_LL.png
+│   │       manpu_guruguruR_M.asd
+│   │       manpu_guruguruR_M.png
+│   │       manpu_guruguruR_S.asd
+│   │       manpu_guruguruR_S.png
+│   │       manpu_hatenaL_L.png
+│   │       manpu_hatenaL_LL.png
+│   │       manpu_hatenaL_M.png
+│   │       manpu_hatenaR_L.png
+│   │       manpu_hatenaR_LL.png
+│   │       manpu_hatenaR_M.png
+│   │       manpu_hoshiL.png
+│   │       manpu_hoshiLL.png
+│   │       manpu_hoshiM.png
+│   │       manpu_ikariL.asd
+│   │       manpu_ikariL.png
+│   │       manpu_ikariLL.asd
+│   │       manpu_ikariLL.png
+│   │       manpu_ikariL_L.asd
+│   │       manpu_ikariL_L.png
+│   │       manpu_ikariL_LL.asd
+│   │       manpu_ikariL_LL.png
+│   │       manpu_ikariL_M.asd
+│   │       manpu_ikariL_M.png
+│   │       manpu_ikariL_S.asd
+│   │       manpu_ikariL_S.png
+│   │       manpu_ikariM.asd
+│   │       manpu_ikariM.png
+│   │       manpu_ikariR_L.asd
+│   │       manpu_ikariR_L.png
+│   │       manpu_ikariR_LL.asd
+│   │       manpu_ikariR_LL.png
+│   │       manpu_ikariR_M.asd
+│   │       manpu_ikariR_M.png
+│   │       manpu_ikariR_S.asd
+│   │       manpu_ikariR_S.png
+│   │       manpu_ikariS.asd
+│   │       manpu_ikariS.png
+│   │       manpu_kidukiL.png
+│   │       manpu_kidukiLL.png
+│   │       manpu_kidukiL_L.png
+│   │       manpu_kidukiL_LL.png
+│   │       manpu_kidukiL_M.png
+│   │       manpu_kidukiM.png
+│   │       manpu_kidukiR_l.png
+│   │       manpu_kidukiR_ll.png
+│   │       manpu_kidukiR_m.png
+│   │       manpu_kiraL.asd
+│   │       manpu_kiraL.png
+│   │       manpu_kiraLL.asd
+│   │       manpu_kiraLL.png
+│   │       manpu_kiraM.asd
+│   │       manpu_kiraM.png
+│   │       manpu_kirariL.png
+│   │       manpu_kirariLL.png
+│   │       manpu_kirariM.png
+│   │       manpu_kirariS.png
+│   │       manpu_kiraS.asd
+│   │       manpu_kiraS.png
+│   │       manpu_loveL_L.png
+│   │       manpu_loveL_LL.png
+│   │       manpu_loveL_M.png
+│   │       manpu_loveL_S.png
+│   │       manpu_loveR_L.png
+│   │       manpu_loveR_LL.png
+│   │       manpu_loveR_M.png
+│   │       manpu_loveR_S.png
+│   │       manpu_odorokiL.png
+│   │       manpu_odorokiLL.png
+│   │       manpu_odorokiL_L.png
+│   │       manpu_odorokiL_LL.png
+│   │       manpu_odorokiL_M.png
+│   │       manpu_odorokiM.png
+│   │       manpu_odorokiR_l.png
+│   │       manpu_odorokiR_ll.png
+│   │       manpu_odorokiR_m.png
+│   │       manpu_onpuL.png
+│   │       manpu_onpuLL.png
+│   │       manpu_onpuM.png
+│   │       manpu_onpuS.png
+│   │       manpu_pikonL_L.png
+│   │       manpu_pikonL_LL.png
+│   │       manpu_pikonL_M.png
+│   │       manpu_pikonL_S.png
+│   │       manpu_pikonR_L.png
+│   │       manpu_pikonR_LL.png
+│   │       manpu_pikonR_M.png
+│   │       manpu_pikonR_S.png
+│   │       manpu_sigumaL.png
+│   │       manpu_sigumaLL.png
+│   │       manpu_sigumaL_L.png
+│   │       manpu_sigumaL_LL.png
+│   │       manpu_sigumaL_M.png
+│   │       manpu_sigumaM.png
+│   │       manpu_sigumaR_l.png
+│   │       manpu_sigumaR_ll.png
+│   │       manpu_sigumaR_m.png
+│   │       manpu_tameikiL.png
+│   │       manpu_tameikiLL.png
+│   │       manpu_tameikiL_L.png
+│   │       manpu_tameikiL_LL.png
+│   │       manpu_tameikiL_M.png
+│   │       manpu_tameikiM.png
+│   │       manpu_tameikiR_l.png
+│   │       manpu_tameikiR_ll.png
+│   │       manpu_tameikiR_m.png
+│   │       manpu_tenL_L.asd
+│   │       manpu_tenL_L.png
+│   │       manpu_tenL_LL.asd
+│   │       manpu_tenL_LL.png
+│   │       manpu_tenL_M.asd
+│   │       manpu_tenL_M.png
+│   │       manpu_tenL_S.asd
+│   │       manpu_tenL_S.png
+│   │       manpu_tenR_L.asd
+│   │       manpu_tenR_L.png
+│   │       manpu_tenR_LL.asd
+│   │       manpu_tenR_LL.png
+│   │       manpu_tenR_M.asd
+│   │       manpu_tenR_M.png
+│   │       manpu_tenR_S.asd
+│   │       manpu_tenR_S.png
+│   │       manpu_waraiL.asd
+│   │       manpu_waraiL.png
+│   │       manpu_waraiL_L.asd
+│   │       manpu_waraiL_L.png
+│   │       manpu_waraiL_M.asd
+│   │       manpu_waraiL_M.png
+│   │       manpu_waraiL_S.asd
+│   │       manpu_waraiL_S.png
+│   │       manpu_waraiM.asd
+│   │       manpu_waraiM.png
+│   │       manpu_waraiR_L.asd
+│   │       manpu_waraiR_L.png
+│   │       manpu_waraiR_M.asd
+│   │       manpu_waraiR_M.png
+│   │       manpu_waraiR_S.asd
+│   │       manpu_waraiR_S.png
+│   │       manpu_waraiS.asd
+│   │       manpu_waraiS.png
+│   │       mp！L.png
+│   │       parts_hukiA_BL_c.png
+│   │       parts_hukiA_BL_l.png
+│   │       parts_hukiA_BL_r.png
+│   │       parts_hukiA_BR_c.png
+│   │       parts_hukiA_BR_l.png
+│   │       parts_hukiA_BR_r.png
+│   │       parts_hukiA_maskL_c.png
+│   │       parts_hukiA_maskL_l.png
+│   │       parts_hukiA_maskL_r.png
+│   │       parts_hukiA_maskR_c.png
+│   │       parts_hukiA_maskR_l.png
+│   │       parts_hukiA_maskR_r.png
+│   │       parts_hukiA_PL_c.png
+│   │       parts_hukiA_PL_l.png
+│   │       parts_hukiA_PL_r.png
+│   │       parts_hukiA_PR_c.png
+│   │       parts_hukiA_PR_l.png
+│   │       parts_hukiA_PR_r.png
+│   │       parts_hukiA_RL_c.png
+│   │       parts_hukiA_RL_l.png
+│   │       parts_hukiA_RL_r.png
+│   │       parts_hukiA_RR_c.png
+│   │       parts_hukiA_RR_l.png
+│   │       parts_hukiA_RR_r.png
+│   │       parts_hukiA_WL_c.png
+│   │       parts_hukiA_WL_l.png
+│   │       parts_hukiA_WL_r.png
+│   │       parts_hukiA_WR_c.png
+│   │       parts_hukiA_WR_l.png
+│   │       parts_hukiA_WR_r.png
+│   │       parts_hukiA_YL_c.png
+│   │       parts_hukiA_YL_l.png
+│   │       parts_hukiA_YL_r.png
+│   │       parts_hukiA_YR_c.png
+│   │       parts_hukiA_YR_l.png
+│   │       parts_hukiA_YR_r.png
+│   │       parts_hukiB_B_c.png
+│   │       parts_hukiB_B_l.png
+│   │       parts_hukiB_B_r.png
+│   │       parts_hukiB_mask_c.png
+│   │       parts_hukiB_mask_l.png
+│   │       parts_hukiB_mask_r.png
+│   │       parts_hukiB_R_c.png
+│   │       parts_hukiB_R_l.png
+│   │       parts_hukiB_R_r.png
+│   │       parts_hukiB_W_c.png
+│   │       parts_hukiB_W_l.png
+│   │       parts_hukiB_W_r.png
+│   │       parts_hukiB_Y_c.png
+│   │       parts_hukiB_Y_l.png
+│   │       parts_hukiB_Y_r.png
+│   │       str2_line.png
+│   │       str3_linel.png
+│   │       str3_liner.png
+│   │       toudai.amv
+│   │       tutikemuri.amv
+│   │       wide_line.png
+│   │       
+│   ├───bgmtitle
+│   │   ├───cn
+│   │   │       bgmtitle_bgm01b_cn.png
+│   │   │       bgmtitle_bgm01s_cn.png
+│   │   │       bgmtitle_bgm01_cn.png
+│   │   │       bgmtitle_bgm02_cn.png
+│   │   │       bgmtitle_bgm03s_cn.png
+│   │   │       bgmtitle_bgm03_cn.png
+│   │   │       bgmtitle_bgm04sa_cn.png
+│   │   │       bgmtitle_bgm04sb_cn.png
+│   │   │       bgmtitle_bgm04_cn.png
+│   │   │       bgmtitle_bgm05s_cn.png
+│   │   │       bgmtitle_bgm05_cn.png
+│   │   │       bgmtitle_bgm06_cn.png
+│   │   │       bgmtitle_bgm07b_cn.png
+│   │   │       bgmtitle_bgm07c_cn.png
+│   │   │       bgmtitle_bgm07_cn.png
+│   │   │       bgmtitle_bgm08b_cn.png
+│   │   │       bgmtitle_bgm08_cn.png
+│   │   │       bgmtitle_bgm09_cn.png
+│   │   │       bgmtitle_bgm10_cn.png
+│   │   │       bgmtitle_bgm11b_cn.png
+│   │   │       bgmtitle_bgm11_cn.png
+│   │   │       bgmtitle_bgm12b_cn.png
+│   │   │       bgmtitle_bgm12_cn.png
+│   │   │       bgmtitle_bgm13_cn.png
+│   │   │       bgmtitle_bgm14_cn.png
+│   │   │       bgmtitle_bgm15_cn.png
+│   │   │       bgmtitle_bgm16s_cn.png
+│   │   │       bgmtitle_bgm16_cn.png
+│   │   │       bgmtitle_bgm17b_cn.png
+│   │   │       bgmtitle_bgm17_cn.png
+│   │   │       bgmtitle_bgm18b_cn.png
+│   │   │       bgmtitle_bgm18_cn.png
+│   │   │       bgmtitle_bgm19_cn.png
+│   │   │       bgmtitle_bgm20_cn.png
+│   │   │       
+│   │   ├───en
+│   │   │       bgmtitle_bgm01b_en.png
+│   │   │       bgmtitle_bgm01s_en.png
+│   │   │       bgmtitle_bgm01_en.png
+│   │   │       bgmtitle_bgm02_en.png
+│   │   │       bgmtitle_bgm03s_en.png
+│   │   │       bgmtitle_bgm03_en.png
+│   │   │       bgmtitle_bgm04sa_en.png
+│   │   │       bgmtitle_bgm04sb_en.png
+│   │   │       bgmtitle_bgm04_en.png
+│   │   │       bgmtitle_bgm05s_en.png
+│   │   │       bgmtitle_bgm05_en.png
+│   │   │       bgmtitle_bgm06_en.png
+│   │   │       bgmtitle_bgm07b_en.png
+│   │   │       bgmtitle_bgm07c_en.png
+│   │   │       bgmtitle_bgm07_en.png
+│   │   │       bgmtitle_bgm08b_en.png
+│   │   │       bgmtitle_bgm08_en.png
+│   │   │       bgmtitle_bgm09_en.png
+│   │   │       bgmtitle_bgm10_en.png
+│   │   │       bgmtitle_bgm11b_en.png
+│   │   │       bgmtitle_bgm11_en.png
+│   │   │       bgmtitle_bgm12b_en.png
+│   │   │       bgmtitle_bgm12_en.png
+│   │   │       bgmtitle_bgm13_en.png
+│   │   │       bgmtitle_bgm14_en.png
+│   │   │       bgmtitle_bgm15_en.png
+│   │   │       bgmtitle_bgm16s_en.png
+│   │   │       bgmtitle_bgm16_en.png
+│   │   │       bgmtitle_bgm17b_en.png
+│   │   │       bgmtitle_bgm17_en.png
+│   │   │       bgmtitle_bgm18b_en.png
+│   │   │       bgmtitle_bgm18_en.png
+│   │   │       bgmtitle_bgm19_en.png
+│   │   │       bgmtitle_bgm20_en.png
+│   │   │       
+│   │   ├───jp
+│   │   │       bgmtitle_bgm01.png
+│   │   │       bgmtitle_bgm01b.png
+│   │   │       bgmtitle_bgm01s.png
+│   │   │       bgmtitle_bgm02.png
+│   │   │       bgmtitle_bgm03.png
+│   │   │       bgmtitle_bgm03s.png
+│   │   │       bgmtitle_bgm04.png
+│   │   │       bgmtitle_bgm04sa.png
+│   │   │       bgmtitle_bgm04sb.png
+│   │   │       bgmtitle_bgm05.png
+│   │   │       bgmtitle_bgm05s.png
+│   │   │       bgmtitle_bgm06.png
+│   │   │       bgmtitle_bgm07.png
+│   │   │       bgmtitle_bgm07b.png
+│   │   │       bgmtitle_bgm07c.png
+│   │   │       bgmtitle_bgm08.png
+│   │   │       bgmtitle_bgm08b.png
+│   │   │       bgmtitle_bgm09.png
+│   │   │       bgmtitle_bgm10.png
+│   │   │       bgmtitle_bgm11.png
+│   │   │       bgmtitle_bgm11b.png
+│   │   │       bgmtitle_bgm12.png
+│   │   │       bgmtitle_bgm12b.png
+│   │   │       bgmtitle_bgm13.png
+│   │   │       bgmtitle_bgm14.png
+│   │   │       bgmtitle_bgm15.png
+│   │   │       bgmtitle_bgm16.png
+│   │   │       bgmtitle_bgm16s.png
+│   │   │       bgmtitle_bgm17.png
+│   │   │       bgmtitle_bgm17b.png
+│   │   │       bgmtitle_bgm18.png
+│   │   │       bgmtitle_bgm18b.png
+│   │   │       bgmtitle_bgm19.png
+│   │   │       bgmtitle_bgm20.png
+│   │   │       
+│   │   └───tw
+│   │           bgmtitlelist.psd
+│   │           bgmtitle_bgm01b_tw.png
+│   │           bgmtitle_bgm01s_tw.png
+│   │           bgmtitle_bgm01_tw.png
+│   │           bgmtitle_bgm02_tw.png
+│   │           bgmtitle_bgm03s_tw.png
+│   │           bgmtitle_bgm03_tw.png
+│   │           bgmtitle_bgm04sa_tw.png
+│   │           bgmtitle_bgm04sb_tw.png
+│   │           bgmtitle_bgm04_tw.png
+│   │           bgmtitle_bgm05s_tw.png
+│   │           bgmtitle_bgm05_tw.png
+│   │           bgmtitle_bgm06_tw.png
+│   │           bgmtitle_bgm07b_tw.png
+│   │           bgmtitle_bgm07c_tw.png
+│   │           bgmtitle_bgm07_tw.png
+│   │           bgmtitle_bgm08b_tw.png
+│   │           bgmtitle_bgm08_tw.png
+│   │           bgmtitle_bgm09_tw.png
+│   │           bgmtitle_bgm10_tw.png
+│   │           bgmtitle_bgm11b_tw.png
+│   │           bgmtitle_bgm11_tw.png
+│   │           bgmtitle_bgm12b_tw.png
+│   │           bgmtitle_bgm12_tw.png
+│   │           bgmtitle_bgm13_tw.png
+│   │           bgmtitle_bgm14_tw.png
+│   │           bgmtitle_bgm15_tw.png
+│   │           bgmtitle_bgm16s_tw.png
+│   │           bgmtitle_bgm16_tw.png
+│   │           bgmtitle_bgm17b_tw.png
+│   │           bgmtitle_bgm17_tw.png
+│   │           bgmtitle_bgm18b_tw.png
+│   │           bgmtitle_bgm18_tw.png
+│   │           bgmtitle_bgm19_tw.png
+│   │           bgmtitle_bgm20_tw.png
+│   │           
+│   ├───clip
+│   │       clip_circleL.png
+│   │       clip_circleM.png
+│   │       clip_circleS.png
+│   │       clip_delteL.png
+│   │       clip_delteR.png
+│   │       clip_h.png
+│   │       clip_sd.png
+│   │       clip_sideL.png
+│   │       clip_sideR.png
+│   │       clip_str2L.png
+│   │       clip_str2R.png
+│   │       clip_str3C.png
+│   │       clip_str3L.png
+│   │       clip_str3L_gpt.png
+│   │       clip_str3R.png
+│   │       clip_str3R_gpt.png
+│   │       clip_str4CL.png
+│   │       clip_str4CR.png
+│   │       clip_str4L.png
+│   │       clip_str4R.png
+│   │       clip_w.png
+│   │       
+│   └───item
+│           item043.png
+│           item043_cn.png
+│           item043_en.png
+│           item043_tw.png
+│           item052.png
+│           item060.png
+│           item077.png
+│           item080a.png
+│           item080b.png
+│           item080c.png
+│           item080d.png
+│           item080e.png
+│           item080f.png
+│           item080g.png
+│           item080h.png
+│           item080i.png
+│           item080j.png
+│           item080k.png
+│           item080m.png
+│           item080n.png
+│           item080o.png
+│           item080p.png
+│           item080q.png
+│           item080r.png
+│           item080s.png
+│           
+├───k2compat
+│       k2compat.tjs
+│       k2compat_console.tjs
+│       k2compat_controller.tjs
+│       k2compat_deskinfo.tjs
+│       k2compat_fontselect.tjs
+│       k2compat_inputstring.tjs
+│       k2compat_modeless.tjs
+│       k2compat_pad.tjs
+│       k2compat_padcommon.tjs
+│       k2compat_scrinfo.tjs
+│       k2compat_touchmouse.tjs
+│       
+├───main
+│       bgmtitle.func
+│       cglist.csv
+│       charlist.csv
+│       charvoice.csv
+│       Config.tjs
+│       config_jp.func
+│       config_tw.func
+│       credits.ks
+│       custom.ks
+│       custom.tjs
+│       default.tjs
+│       drefasd.tjs
+│       envinit.tjs
+│       FAQover.ini
+│       file.func
+│       flagedit.ini
+│       help_conf.txt
+│       help_conf_cn.txt
+│       help_conf_jp.txt
+│       help_conf_tw.txt
+│       help_file.txt
+│       help_file_cn.txt
+│       help_file_jp.txt
+│       help_file_tw.txt
+│       help_voice.txt
+│       help_voice_cn.txt
+│       help_voice_jp.txt
+│       help_voice_tw.txt
+│       imagediffmap.txt
+│       imagedressmap.txt
+│       imagemulti.txt
+│       imagenamemap.txt
+│       imagepropmap.txt
+│       langsel_popup.func
+│       nextprevscn.tjs
+│       ngword.csv
+│       novel.func
+│       novel2.func
+│       novel3.func
+│       numvalue_10.tft
+│       qlpopup.func
+│       savelist.csv
+│       scenelist.csv
+│       select.func
+│       soundgain.csv
+│       soundlist.csv
+│       speech_app_en.txt
+│       speech_defdic.txt
+│       speech_defdic_en.txt
+│       speech_help_en.txt
+│       standoffset.tjs
+│       Storages.tjs
+│       submenu.func
+│       syslangtext.tjs
+│       syslangtext_cn.ini
+│       syslangtext_en.ini
+│       syslangtext_jp.ini
+│       syslangtext_tw.ini
+│       sysmenu.ks
+│       sysse.ini
+│       systrans.ini
+│       uimain.tjs
+│       version.ks
+│       voice.ks
+│       weblinkpanel.tjs
+│       window.func
+│       
+├───rule
+│       map00.png
+│       map01.png
+│       map02.png
+│       map02b.png
+│       map03.png
+│       map03b.png
+│       map04.png
+│       map05.png
+│       map05b.png
+│       map06.png
+│       map07.png
+│       map08.png
+│       map08b.png
+│       map09.png
+│       map09b.png
+│       map10.png
+│       map11.png
+│       map12.png
+│       map13.png
+│       map14.png
+│       map15.png
+│       map16.png
+│       map17.png
+│       map18.png
+│       map18b.png
+│       map19.png
+│       map20.png
+│       map21.png
+│       map22.png
+│       map23.png
+│       map24.png
+│       map25.png
+│       map25b.png
+│       map26.png
+│       map26b.png
+│       map27.png
+│       map28.png
+│       map29.png
+│       map29b.png
+│       map30.png
+│       map31.png
+│       map501.png
+│       map501b.png
+│       map502.png
+│       map502b.png
+│       map502b2.png
+│       map502c.png
+│       map502c2.png
+│       map503.png
+│       map503b.png
+│       map504a.png
+│       map504b.png
+│       map504c.png
+│       map505a.png
+│       map505b.png
+│       map505c.png
+│       map506.png
+│       map507.png
+│       map508.png
+│       map508b.png
+│       map509.png
+│       map510.png
+│       map601.png
+│       map601b.png
+│       map602.png
+│       map602b.png
+│       map603.png
+│       map603b.png
+│       map604.png
+│       map604b.png
+│       map605.png
+│       map605b.png
+│       wipe01.png
+│       wipe01b.png
+│       wipe01c.png
+│       wipe01d.png
+│       wipe02.png
+│       wipe02b.png
+│       wipe03.png
+│       wipe03b.png
+│       wipe04.png
+│       wipe04b.png
+│       wipe05.png
+│       wipe05b.png
+│       wipe06.png
+│       wipe06b.png
+│       wipe07.png
+│       wipe08.png
+│       wipe09.png
+│       wipe10.png
+│       wipe11.png
+│       wipe12.png
+│       wipe13.png
+│       wipe14.png
+│       wipe14b.png
+│       wipe15.png
+│       wipe16.png
+│       wipe17.png
+│       wipe17b.png
+│       wipe18.png
+│       wipe18b.png
+│       wipe19.png
+│       wipe19b.png
+│       wipe19c.png
+│       wipe19d.png
+│       wipe20.png
+│       wipe20b.png
+│       wipe20c.png
+│       wipe20d.png
+│       wipe20e.png
+│       wipe21.png
+│       wipe22.png
+│       wipe22b.png
+│       wipe22c.png
+│       wipe22d.png
+│       wipe23.png
+│       
+├───scenario
+│   │   !scnlist.txt
+│   │   dummy_replay.ks
+│   │   macro.ks
+│   │   macro_old.ks
+│   │   movie.ks
+│   │   parsermacro.ks
+│   │   start.ks
+│   │   trial_end.ks
+│   │   
+│   ├───scripts
+│   │       script_kirie.tjs
+│   │       script_lightedge.tjs
+│   │       script_mosaic.tjs
+│   │       
+│   └───transitions
+│           trans_blurfade.tjs
+│           trans_book.tjs
+│           trans_crossfade.tjs
+│           trans_flutter.tjs
+│           trans_honeyturn.tjs
+│           trans_laytranstest.tjs
+│           trans_mosaic.tjs
+│           trans_multiripple.tjs
+│           trans_ripple.tjs
+│           trans_rotateswap.tjs
+│           trans_rotatevanish.tjs
+│           trans_rotatezoom.tjs
+│           trans_scanline.tjs
+│           trans_scroll.tjs
+│           trans_showfade.tjs
+│           trans_showslide.tjs
+│           trans_showstand.tjs
+│           trans_showzoom.tjs
+│           trans_spin.tjs
+│           trans_turn.tjs
+│           trans_universal.tjs
+│           trans_wave.tjs
+│           trans_zoomfade.tjs
+│           
+├───scn
+│       dummy.txt.scn
+│       
+├───sound
+│       jingle1.ogg
+│       jingle2.ogg
+│       se001.ogg
+│       se001b.ogg
+│       se002.ogg
+│       se003.ogg
+│       se003b.ogg
+│       se004.ogg
+│       se005.ogg
+│       se006.ogg
+│       se007.ogg
+│       se008.ogg
+│       se008b.ogg
+│       se009.ogg
+│       se009b.ogg
+│       se010.ogg
+│       se011.ogg
+│       se012.ogg
+│       se013.ogg
+│       se014.ogg
+│       se015.ogg
+│       se015b.ogg
+│       se016.ogg
+│       se017.ogg
+│       se017b.ogg
+│       se018.ogg
+│       se019.ogg
+│       se019b.ogg
+│       se019c.ogg
+│       se019d.ogg
+│       se020.ogg
+│       se020b.ogg
+│       se020c.ogg
+│       se021.ogg
+│       se021b.ogg
+│       se022.ogg
+│       se023.ogg
+│       se023b.ogg
+│       se023c.ogg
+│       se024.ogg
+│       se024b.ogg
+│       se024c.ogg
+│       se025.ogg
+│       se025b.ogg
+│       se025c.ogg
+│       se025d.ogg
+│       se025e.ogg
+│       se025f.ogg
+│       se025g.ogg
+│       se025h.ogg
+│       se026.ogg
+│       se027.ogg
+│       se028.ogg
+│       se029.ogg
+│       se029b.ogg
+│       se029c.ogg
+│       se030.ogg
+│       se030b.ogg
+│       se031.ogg
+│       se031b.ogg
+│       se032.ogg
+│       se032b.ogg
+│       se032c.ogg
+│       se032d.ogg
+│       se032e.ogg
+│       se033.ogg
+│       se033b.ogg
+│       se033c.ogg
+│       se034.ogg
+│       se035.ogg
+│       se035b.ogg
+│       se035c.ogg
+│       se036.ogg
+│       se036b.ogg
+│       se037.ogg
+│       se037b.ogg
+│       se037c.ogg
+│       se037d.ogg
+│       se037e.ogg
+│       se037f.ogg
+│       se037g.ogg
+│       se037h.ogg
+│       se037i.ogg
+│       se038.ogg
+│       se038b.ogg
+│       se038c.ogg
+│       se038d.ogg
+│       se038e.ogg
+│       se038f.ogg
+│       se038g.ogg
+│       se038h.ogg
+│       se039.ogg
+│       se040.ogg
+│       se041.ogg
+│       se041b.ogg
+│       se041c.ogg
+│       se042.ogg
+│       se042b.ogg
+│       se043.ogg
+│       se043b.ogg
+│       se044.ogg
+│       se044b.ogg
+│       se044c.ogg
+│       se045.ogg
+│       se045b.ogg
+│       se045c.ogg
+│       se045d.ogg
+│       se046.ogg
+│       se046b.ogg
+│       se047.ogg
+│       se047b.ogg
+│       se047c.ogg
+│       se048.ogg
+│       se048b.ogg
+│       se049.ogg
+│       se049b.ogg
+│       se049c.ogg
+│       se049d.ogg
+│       se049e.ogg
+│       se050.ogg
+│       se050b.ogg
+│       se050c.ogg
+│       se050d.ogg
+│       se050e.ogg
+│       se051.ogg
+│       se052.ogg
+│       se052b.ogg
+│       se052c.ogg
+│       se052d.ogg
+│       se053.ogg
+│       se054.ogg
+│       se054b.ogg
+│       se054c.ogg
+│       se054d.ogg
+│       se054e.ogg
+│       se054f.ogg
+│       se054g.ogg
+│       se055.ogg
+│       se055b.ogg
+│       se055c.ogg
+│       se056.ogg
+│       se057.ogg
+│       se058.ogg
+│       se059.ogg
+│       se059b.ogg
+│       se059c.ogg
+│       se059d.ogg
+│       se060.ogg
+│       se060b.ogg
+│       se060c.ogg
+│       se061.ogg
+│       se061b.ogg
+│       se061c.ogg
+│       se061d.ogg
+│       se061e.ogg
+│       se061f.ogg
+│       se062.ogg
+│       se062b.ogg
+│       se062c.ogg
+│       se062d.ogg
+│       se062e.ogg
+│       se063.ogg
+│       se064.ogg
+│       se064b.ogg
+│       se065.ogg
+│       se065b.ogg
+│       se065c.ogg
+│       se066.ogg
+│       se066b.ogg
+│       se067.ogg
+│       se068.ogg
+│       se069.ogg
+│       se069b.ogg
+│       se069c.ogg
+│       se069d.ogg
+│       se069e.ogg
+│       se070.ogg
+│       se070b.ogg
+│       se071.ogg
+│       se071b.ogg
+│       se071c.ogg
+│       se071d.ogg
+│       se071e.ogg
+│       se071f.ogg
+│       se071g.ogg
+│       se071h.ogg
+│       se072.ogg
+│       se072b.ogg
+│       se072c.ogg
+│       se073.ogg
+│       se073b.ogg
+│       se073c.ogg
+│       se073d.ogg
+│       se074.ogg
+│       se074b.ogg
+│       se075.ogg
+│       se076.ogg
+│       se077.ogg
+│       se077b.ogg
+│       se077c.ogg
+│       se077d.ogg
+│       se078.ogg
+│       se079.ogg
+│       se080.ogg
+│       se081.ogg
+│       se082.ogg
+│       se083.ogg
+│       se083b.ogg
+│       se084.ogg
+│       se084b.ogg
+│       se084c.ogg
+│       se085.ogg
+│       se085b.ogg
+│       se085c.ogg
+│       se086.ogg
+│       se086b.ogg
+│       se086c.ogg
+│       se086d.ogg
+│       se087.ogg
+│       se087b.ogg
+│       se088.ogg
+│       se089.ogg
+│       se089b.ogg
+│       se089c.ogg
+│       se090.ogg
+│       se091.ogg
+│       se091b.ogg
+│       se091c.ogg
+│       se092.ogg
+│       se092b.ogg
+│       se093.ogg
+│       se093b.ogg
+│       se093c.ogg
+│       se094.ogg
+│       se095.ogg
+│       se096.ogg
+│       se097.ogg
+│       se097b.ogg
+│       se097c.ogg
+│       se097d.ogg
+│       se098.ogg
+│       se099.ogg
+│       se099b.ogg
+│       se100.ogg
+│       se100b.ogg
+│       se100c.ogg
+│       se101.ogg
+│       se102.ogg
+│       se102b.ogg
+│       se102c.ogg
+│       se102d.ogg
+│       se103.ogg
+│       se103b.ogg
+│       se103c.ogg
+│       se103d.ogg
+│       se104.ogg
+│       se105.ogg
+│       se105b.ogg
+│       se106.ogg
+│       se106b.ogg
+│       se106c.ogg
+│       se106d.ogg
+│       se106e.ogg
+│       se107.ogg
+│       se107b.ogg
+│       se107c.ogg
+│       se108.ogg
+│       se108b.ogg
+│       se108c.ogg
+│       se108d.ogg
+│       se108e.ogg
+│       se108f.ogg
+│       se109.ogg
+│       se109b.ogg
+│       se109c.ogg
+│       se109d.ogg
+│       se110.ogg
+│       se110b.ogg
+│       se110c.ogg
+│       se110d.ogg
+│       se110e.ogg
+│       se111.ogg
+│       se112.ogg
+│       se112b.ogg
+│       se112c.ogg
+│       se112d.ogg
+│       se113.ogg
+│       se113b.ogg
+│       se114.ogg
+│       se114b.ogg
+│       se114c.ogg
+│       se114d.ogg
+│       se114e.ogg
+│       se115.ogg
+│       se116.ogg
+│       se116b.ogg
+│       se116c.ogg
+│       se116d.ogg
+│       se116e.ogg
+│       se117.ogg
+│       se118.ogg
+│       se118b.ogg
+│       se119.ogg
+│       se120.ogg
+│       se121.ogg
+│       se121b.ogg
+│       se121c.ogg
+│       se122.ogg
+│       se122b.ogg
+│       se122c.ogg
+│       se122d.ogg
+│       se122e.ogg
+│       se123.ogg
+│       se123b.ogg
+│       se124.ogg
+│       se124b.ogg
+│       se125.ogg
+│       se125b.ogg
+│       se125c.ogg
+│       se126.ogg
+│       se126b.ogg
+│       se127.ogg
+│       se127b.ogg
+│       se128.ogg
+│       se128b.ogg
+│       se129.ogg
+│       se129b.ogg
+│       se130.ogg
+│       se130b.ogg
+│       se131.ogg
+│       se131b.ogg
+│       se131c.ogg
+│       se131d.ogg
+│       se132.ogg
+│       se132b.ogg
+│       se132c.ogg
+│       se132d.ogg
+│       se132e.ogg
+│       se132f.ogg
+│       se133.ogg
+│       se133b.ogg
+│       se133c.ogg
+│       se133d.ogg
+│       se133e.ogg
+│       se134.ogg
+│       se134b.ogg
+│       se134c.ogg
+│       se134d.ogg
+│       se135.ogg
+│       se135b.ogg
+│       se135c.ogg
+│       se136.ogg
+│       se137.ogg
+│       se138.ogg
+│       se139.ogg
+│       se139b.ogg
+│       se139c.ogg
+│       se140.ogg
+│       se141.ogg
+│       se141b.ogg
+│       se141c.ogg
+│       se142.ogg
+│       se143.ogg
+│       se143b.ogg
+│       se143c.ogg
+│       se144.ogg
+│       se144b.ogg
+│       se144c.ogg
+│       se144d.ogg
+│       se144e.ogg
+│       se145.ogg
+│       se145b.ogg
+│       se146.ogg
+│       se147.ogg
+│       se147b.ogg
+│       se148.ogg
+│       se149.ogg
+│       se150.ogg
+│       se151.ogg
+│       se151b.ogg
+│       se152.ogg
+│       se152b.ogg
+│       se152c.ogg
+│       se152d.ogg
+│       se153.ogg
+│       se153b.ogg
+│       se153c.ogg
+│       se153d.ogg
+│       se153e.ogg
+│       se153f.ogg
+│       se154.ogg
+│       se155.ogg
+│       se155b.ogg
+│       se156.ogg
+│       se156b.ogg
+│       se156c.ogg
+│       se156d.ogg
+│       se156e.ogg
+│       se157.ogg
+│       se157b.ogg
+│       se158.ogg
+│       se159.ogg
+│       se159b.ogg
+│       se160.ogg
+│       se161.ogg
+│       se162.ogg
+│       se162b.ogg
+│       se162c.ogg
+│       se163.ogg
+│       se164.ogg
+│       se164b.ogg
+│       se164c.ogg
+│       se165.ogg
+│       se165b.ogg
+│       se165c.ogg
+│       se165d.ogg
+│       se166.ogg
+│       se167.ogg
+│       se167b.ogg
+│       se168.ogg
+│       se169.ogg
+│       se170.ogg
+│       se170b.ogg
+│       se170c.ogg
+│       se171.ogg
+│       se171b.ogg
+│       se172.ogg
+│       se172b.ogg
+│       se173.ogg
+│       se173b.ogg
+│       se174.ogg
+│       se174b.ogg
+│       se175.ogg
+│       se175b.ogg
+│       se176.ogg
+│       se177.ogg
+│       se178.ogg
+│       se178b.ogg
+│       se178c.ogg
+│       se179.ogg
+│       se179b.ogg
+│       se179c.ogg
+│       se180.ogg
+│       se180b.ogg
+│       se181.ogg
+│       se181b.ogg
+│       se182.ogg
+│       se183.ogg
+│       se183b.ogg
+│       se183c.ogg
+│       se184.ogg
+│       se184b.ogg
+│       se184c.ogg
+│       se185.ogg
+│       se186.ogg
+│       se186b.ogg
+│       se186c.ogg
+│       se187.ogg
+│       se187b.ogg
+│       se188.ogg
+│       se188b.ogg
+│       se188c.ogg
+│       se188d.ogg
+│       se188e.ogg
+│       se188f.ogg
+│       se189.ogg
+│       se189b.ogg
+│       se190.ogg
+│       se190b.ogg
+│       se190c.ogg
+│       se190d.ogg
+│       se190e.ogg
+│       se191.ogg
+│       se191b.ogg
+│       se192.ogg
+│       se192b.ogg
+│       se192c.ogg
+│       se192d.ogg
+│       se192e.ogg
+│       se192f.ogg
+│       se192g.ogg
+│       se192h.ogg
+│       se193.ogg
+│       se193b.ogg
+│       se193c.ogg
+│       se194.ogg
+│       se195.ogg
+│       se195b.ogg
+│       se195c.ogg
+│       se196.ogg
+│       se196b.ogg
+│       se196c.ogg
+│       se196d.ogg
+│       se196e.ogg
+│       se197.ogg
+│       se198.ogg
+│       se198b.ogg
+│       se199.ogg
+│       se199b.ogg
+│       se199c.ogg
+│       se199d.ogg
+│       se199e.ogg
+│       se200.ogg
+│       se200b.ogg
+│       se201.ogg
+│       se201b.ogg
+│       se202.ogg
+│       se202b.ogg
+│       se202c.ogg
+│       se202d.ogg
+│       se202e.ogg
+│       se202f.ogg
+│       se203.ogg
+│       se203b.ogg
+│       se203c.ogg
+│       se203d.ogg
+│       se203e.ogg
+│       se204.ogg
+│       se205.ogg
+│       se206.ogg
+│       se206b.ogg
+│       se206c.ogg
+│       se207.ogg
+│       se207b.ogg
+│       se207c.ogg
+│       se208.ogg
+│       se208b.ogg
+│       se209.ogg
+│       se209b.ogg
+│       se210.ogg
+│       se210b.ogg
+│       se211.ogg
+│       se211b.ogg
+│       se211c.ogg
+│       se212.ogg
+│       se212b.ogg
+│       se213.ogg
+│       se213b.ogg
+│       se213c.ogg
+│       se213d.ogg
+│       se213e.ogg
+│       se214.ogg
+│       se215.ogg
+│       se216.ogg
+│       se217.ogg
+│       se217b.ogg
+│       se217c.ogg
+│       se217d.ogg
+│       se217e.ogg
+│       se217f.ogg
+│       se218.ogg
+│       se218b.ogg
+│       se218c.ogg
+│       se218d.ogg
+│       se218e.ogg
+│       se218f.ogg
+│       se218g.ogg
+│       se219.ogg
+│       se219b.ogg
+│       se219c.ogg
+│       se219d.ogg
+│       se220.ogg
+│       se220b.ogg
+│       se221.ogg
+│       se222.ogg
+│       se222b.ogg
+│       se222c.ogg
+│       se222d.ogg
+│       se223.ogg
+│       se224.ogg
+│       se225.ogg
+│       se226.ogg
+│       se227.ogg
+│       se228.ogg
+│       se229.ogg
+│       se229b.ogg
+│       se229c.ogg
+│       se230.ogg
+│       se230b.ogg
+│       se231.ogg
+│       se232.ogg
+│       se233.ogg
+│       se234.ogg
+│       se235.ogg
+│       se236.ogg
+│       se237.ogg
+│       se237b.ogg
+│       se238.ogg
+│       se238b.ogg
+│       se238c.ogg
+│       se239.ogg
+│       se239b.ogg
+│       se240.ogg
+│       se240b.ogg
+│       se241.ogg
+│       se241b.ogg
+│       se241c.ogg
+│       se242.ogg
+│       se242b.ogg
+│       se242c.ogg
+│       se242d.ogg
+│       se243.ogg
+│       se243b.ogg
+│       se243c.ogg
+│       se243d.ogg
+│       se243e.ogg
+│       se243f.ogg
+│       se244.ogg
+│       se244b.ogg
+│       se244c.ogg
+│       se244d.ogg
+│       se244e.ogg
+│       se245.ogg
+│       se245b.ogg
+│       se246.ogg
+│       se247.ogg
+│       se248.ogg
+│       se248b.ogg
+│       se249.ogg
+│       se249b.ogg
+│       se250.ogg
+│       se251.ogg
+│       se252.ogg
+│       se252b.ogg
+│       se252c.ogg
+│       se253.ogg
+│       se254.ogg
+│       se255.ogg
+│       se255b.ogg
+│       se255c.ogg
+│       se256.ogg
+│       se256b.ogg
+│       se256c.ogg
+│       se257.ogg
+│       se258.ogg
+│       se259.ogg
+│       se260.ogg
+│       se261.ogg
+│       se262.ogg
+│       se262b.ogg
+│       se263.ogg
+│       se264.ogg
+│       se265.ogg
+│       se266.ogg
+│       se267.ogg
+│       se268.ogg
+│       se268b.ogg
+│       se269.ogg
+│       se270.ogg
+│       se270b.ogg
+│       se271.ogg
+│       se271b.ogg
+│       se272.ogg
+│       se273.ogg
+│       se273b.ogg
+│       se273c.ogg
+│       se274.ogg
+│       se274b.ogg
+│       se274c.ogg
+│       se274d.ogg
+│       se274e.ogg
+│       se275.ogg
+│       se275b.ogg
+│       se276.ogg
+│       se276b.ogg
+│       se276c.ogg
+│       se276d.ogg
+│       se276e.ogg
+│       se276f.ogg
+│       se276g.ogg
+│       se276h.ogg
+│       se277.ogg
+│       se278.ogg
+│       se278b.ogg
+│       se279.ogg
+│       se280.ogg
+│       se281.ogg
+│       se281b.ogg
+│       se282.ogg
+│       se282b.ogg
+│       se282c.ogg
+│       se282d.ogg
+│       se282e.ogg
+│       se282f.ogg
+│       se283.ogg
+│       se283b.ogg
+│       se284.ogg
+│       se285.ogg
+│       se285b.ogg
+│       se285c.ogg
+│       se286.ogg
+│       se287.ogg
+│       se287b.ogg
+│       se287c.ogg
+│       se288.ogg
+│       se288b.ogg
+│       se289.ogg
+│       se290.ogg
+│       se290b.ogg
+│       se290c.ogg
+│       se290c2.ogg
+│       se290c3.ogg
+│       se290d.ogg
+│       se290e.ogg
+│       se290f.ogg
+│       se290g.ogg
+│       se290h.ogg
+│       se290i.ogg
+│       se290j.ogg
+│       se290k.ogg
+│       se290l.ogg
+│       se290m.ogg
+│       se290n.ogg
+│       se291.ogg
+│       se292.ogg
+│       se293.ogg
+│       se293b.ogg
+│       se293c.ogg
+│       se294.ogg
+│       se294b.ogg
+│       se294c.ogg
+│       se295.ogg
+│       se295b.ogg
+│       se295c.ogg
+│       se295d.ogg
+│       se295e.ogg
+│       se295f.ogg
+│       se295g.ogg
+│       SE500.ogg
+│       SE501.ogg
+│       SE502.ogg
+│       SE503.ogg
+│       SE504.ogg
+│       SE505.ogg
+│       SE505b.ogg
+│       SE506.ogg
+│       SE507.ogg
+│       SE507b.ogg
+│       SE507c.ogg
+│       SE508.ogg
+│       SE509.ogg
+│       SE510.ogg
+│       SE511.ogg
+│       SE512.ogg
+│       SE513.ogg
+│       SE514.ogg
+│       SE515.ogg
+│       SE515b.ogg
+│       SE516.ogg
+│       SE517.ogg
+│       SE517b.ogg
+│       SE517c.ogg
+│       SE518.ogg
+│       SE519.ogg
+│       SE520.ogg
+│       SE521.ogg
+│       SE522.ogg
+│       SE523.ogg
+│       SE524.ogg
+│       SE524b.ogg
+│       SE525.ogg
+│       SE526.ogg
+│       SE527.ogg
+│       SE528.ogg
+│       SE529.ogg
+│       SE530.ogg
+│       SE530b.ogg
+│       SE531.ogg
+│       SE532.ogg
+│       SE533.ogg
+│       SE534.ogg
+│       SE535.ogg
+│       SE536.ogg
+│       SE537.ogg
+│       SE538.ogg
+│       SE538b.ogg
+│       SE539.ogg
+│       SE540.ogg
+│       SE540b.ogg
+│       SE540c.ogg
+│       SE540d.ogg
+│       SE540e.ogg
+│       SE541.ogg
+│       SE541b.ogg
+│       SE541c.ogg
+│       SE542.ogg
+│       SE542b.ogg
+│       SE543.ogg
+│       SE543b.ogg
+│       SE543c.ogg
+│       SE543d.ogg
+│       SE543e.ogg
+│       SE544.ogg
+│       SE544b.ogg
+│       SE545.ogg
+│       SE545b.ogg
+│       SE546.ogg
+│       SE546b.ogg
+│       SE546c.ogg
+│       SE546d.ogg
+│       SE546e.ogg
+│       SE547.ogg
+│       SE547b.ogg
+│       SE547c.ogg
+│       SE548.ogg
+│       SE548b.ogg
+│       SE549.ogg
+│       SE550.ogg
+│       SE550b.ogg
+│       SE550c.ogg
+│       SE551.ogg
+│       SE552.ogg
+│       SE552b.ogg
+│       SE553.ogg
+│       SE554.ogg
+│       SE555.ogg
+│       SE556.ogg
+│       SE557.ogg
+│       SE558.ogg
+│       SE559.ogg
+│       SE560.ogg
+│       SE561.ogg
+│       SE562.ogg
+│       SE562b.ogg
+│       SE562c.ogg
+│       SE562d.ogg
+│       SE562e.ogg
+│       SE562f.ogg
+│       SE562g.ogg
+│       SE563.ogg
+│       SE564.ogg
+│       SE565.ogg
+│       SE566.ogg
+│       SE567.ogg
+│       SE568.ogg
+│       SE569.ogg
+│       SE570.ogg
+│       SE571.ogg
+│       SE572.ogg
+│       SE573.ogg
+│       SE574.ogg
+│       SE574b.ogg
+│       SE575.ogg
+│       SE576.ogg
+│       SE577.ogg
+│       SE578.ogg
+│       SE579.ogg
+│       SE580.ogg
+│       SE580b.ogg
+│       SE581.ogg
+│       SE582.ogg
+│       SE582b.ogg
+│       SE582c.ogg
+│       SE583.ogg
+│       SE584.ogg
+│       SE585.ogg
+│       SE585b.ogg
+│       SE585c.ogg
+│       SE586.ogg
+│       SE587.ogg
+│       SE588.ogg
+│       SE589.ogg
+│       SE590.ogg
+│       SE591.ogg
+│       SE592.ogg
+│       SE593.ogg
+│       SE594.ogg
+│       SE595.ogg
+│       SE595b.ogg
+│       SE596.ogg
+│       SE596b.ogg
+│       SE597.ogg
+│       SE598.ogg
+│       SE598b.ogg
+│       SE599.ogg
+│       SE600.ogg
+│       SE601.ogg
+│       SE602.ogg
+│       SE602b.ogg
+│       SE603.ogg
+│       SE604.ogg
+│       SE605.ogg
+│       SE606.ogg
+│       SE607.ogg
+│       SE608.ogg
+│       SE609.ogg
+│       SE609b.ogg
+│       SE610.ogg
+│       SE611.ogg
+│       SE612.ogg
+│       SE613.ogg
+│       SE614.ogg
+│       SE615.ogg
+│       SE616.ogg
+│       SE616b.ogg
+│       SE617.ogg
+│       SE617b.ogg
+│       SE617c.ogg
+│       SE618.ogg
+│       SE618b.ogg
+│       SE619.ogg
+│       SE620.ogg
+│       SE620b.ogg
+│       SE620c.ogg
+│       SE620d.ogg
+│       SE621.ogg
+│       SE621b.ogg
+│       SE622.ogg
+│       SE622b.ogg
+│       SE623.ogg
+│       SE624.ogg
+│       SE625.ogg
+│       SE625b.ogg
+│       SE626.ogg
+│       SE626b.ogg
+│       SE626c.ogg
+│       SE627.ogg
+│       SE627b.ogg
+│       SE627c.ogg
+│       SE628.ogg
+│       SE628b.ogg
+│       SE629.ogg
+│       SE630.ogg
+│       SE631.ogg
+│       SE631b.ogg
+│       SE632.ogg
+│       SE633.ogg
+│       SE634.ogg
+│       SE635.ogg
+│       SE635b.ogg
+│       SE636.ogg
+│       SE637.ogg
+│       SE639.ogg
+│       SE639b.ogg
+│       SE640.ogg
+│       SE641.ogg
+│       SE642.ogg
+│       SE643.ogg
+│       SE644.ogg
+│       SE645.ogg
+│       SE646.ogg
+│       SE647.ogg
+│       SE647b.ogg
+│       SE648.ogg
+│       SE649.ogg
+│       SE650.ogg
+│       SE651.ogg
+│       SE652.ogg
+│       SE653.ogg
+│       SE654.ogg
+│       SE655.ogg
+│       SE656.ogg
+│       SE656b.ogg
+│       SE657.ogg
+│       SE657b.ogg
+│       SE658.ogg
+│       SE659.ogg
+│       SE660.ogg
+│       SE661.ogg
+│       SE662.ogg
+│       SE663.ogg
+│       SE664.ogg
+│       SE665.ogg
+│       SE666.ogg
+│       SE667.ogg
+│       SE668.ogg
+│       SE669.ogg
+│       SE670.ogg
+│       SE671.ogg
+│       SE672.ogg
+│       SE673.ogg
+│       SE673b.ogg
+│       SE673c.ogg
+│       SE673d.ogg
+│       SE674.ogg
+│       SE675.ogg
+│       SE676.ogg
+│       SE676b.ogg
+│       SE677.ogg
+│       SE678.ogg
+│       SE679.ogg
+│       SE679b.ogg
+│       SE679c.ogg
+│       SE680.ogg
+│       SE680b.ogg
+│       SE681.ogg
+│       SE682.ogg
+│       SE683.ogg
+│       SE684.ogg
+│       SE685.ogg
+│       SE686.ogg
+│       SE687.ogg
+│       SE688.ogg
+│       SE689.ogg
+│       SE690.ogg
+│       SE691.ogg
+│       SE692.ogg
+│       SE693.ogg
+│       SE694.ogg
+│       SE695.ogg
+│       SE696.ogg
+│       SE697.ogg
+│       SE698.ogg
+│       SE699.ogg
+│       SE700.ogg
+│       SE701.ogg
+│       SE702.ogg
+│       SE703.ogg
+│       SE704.ogg
+│       SE705.ogg
+│       SE706.ogg
+│       SE707.ogg
+│       SE708.ogg
+│       SE709.ogg
+│       SE710.ogg
+│       SE711.ogg
+│       SE712.ogg
+│       SE713.ogg
+│       SE714.ogg
+│       SE715.ogg
+│       SE716.ogg
+│       SE716b.ogg
+│       SE717.ogg
+│       SE718.ogg
+│       SE718b.ogg
+│       SE718c.ogg
+│       SE719.ogg
+│       SE720.ogg
+│       SE720b.ogg
+│       SE721.ogg
+│       SE722.ogg
+│       SE723.ogg
+│       SE724.ogg
+│       SE725.ogg
+│       SE725b.ogg
+│       SE726.ogg
+│       SE726b.ogg
+│       SE727.ogg
+│       SE728.ogg
+│       SE729.ogg
+│       SE730.ogg
+│       SE731.ogg
+│       SE732.ogg
+│       SE733.ogg
+│       SE734.ogg
+│       SE734b.ogg
+│       SE734c.ogg
+│       SE735.ogg
+│       SE736.ogg
+│       SE737.ogg
+│       SE738.ogg
+│       SE739.ogg
+│       SE740.ogg
+│       SE741.ogg
+│       SE742.ogg
+│       SE743.ogg
+│       SE744.ogg
+│       SE745.ogg
+│       SE746.ogg
+│       SE747.ogg
+│       SE747b.ogg
+│       SE748.ogg
+│       SE749.ogg
+│       SE750.ogg
+│       SE751.ogg
+│       SE752.ogg
+│       SE753.ogg
+│       SE754.ogg
+│       SE754b.ogg
+│       SE755.ogg
+│       SE756.ogg
+│       SE757.ogg
+│       SE758.ogg
+│       SE759.ogg
+│       SE760.ogg
+│       SE761.ogg
+│       SE762.ogg
+│       SE763.ogg
+│       SE763b.ogg
+│       SE764.ogg
+│       se765.ogg
+│       se766.ogg
+│       SE767.ogg
+│       SE768.ogg
+│       se769.ogg
+│       se770.ogg
+│       se900.ogg
+│       se901.ogg
+│       se902.ogg
+│       
+├───sysscn
+│       about.ks
+│       advancedmenu.tjs
+│       AfterInit.tjs
+│       afterstory.ks
+│       append_init.tjs
+│       autoskipmark.tjs
+│       backlog.ks
+│       backlog.tjs
+│       bgmtitleindicator.tjs
+│       brows.ks
+│       browswindow.tjs
+│       brows_back.png
+│       brows_check.png
+│       brows_conf.ks
+│       brows_ext.png
+│       brows_fore.png
+│       brows_help.ks
+│       brows_push.png
+│       brows_radoff.png
+│       brows_radon.png
+│       brows_unchk.png
+│       cgmode.ks
+│       cgmode.tjs
+│       cgview.tjs
+│       compat.ks
+│       designmscur.tjs
+│       diffimage.tjs
+│       diffimage2.tjs
+│       dirutil.tjs
+│       dragutil.tjs
+│       drawtextparam.tjs
+│       editcomment.tjs
+│       embFontLoader.tjs
+│       encyclopedia.tjs
+│       end.ks
+│       envplay.ks
+│       exchview.ks
+│       exchview.tjs
+│       exgallery.tjs
+│       exgamepad.tjs
+│       exmenuintf.tjs
+│       exroll.tjs
+│       facethumbdraw.tjs
+│       first.ks
+│       fonteffect.tjs
+│       gamecont.tjs
+│       gesture.tjs
+│       GFX_Motion.tjs
+│       GFX_Noise.tjs
+│       GFX_Texture.tjs
+│       helptextman.tjs
+│       help_aspect.png
+│       help_env.png
+│       help_fszoom.png
+│       help_resize.png
+│       hsvcpick.tjs
+│       iconfader.tjs
+│       keybinder.tjs
+│       load.ks
+│       loadinit.ks
+│       mixinclass.tjs
+│       movieqsel.tjs
+│       mscurautohide.tjs
+│       msghack.tjs
+│       multilang.tjs
+│       MyHistoryLayer.tjs
+│       MyMapSelectLayer.tjs
+│       MyYesNoDialog.tjs
+│       name.ks
+│       name.tjs
+│       nameframe.tjs
+│       nocfchkdialog.tjs
+│       option.ks
+│       option.tjs
+│       optrevundo.tjs
+│       Override.tjs
+│       pagebase.tjs
+│       PreRenderFontEx.tjs
+│       qlpopup.tjs
+│       quickmenu.tjs
+│       rendermsgwin.tjs
+│       rndvoice.tjs
+│       rotatesave.tjs
+│       save.ks
+│       saveload.tjs
+│       scenemode.ks
+│       scenemode.tjs
+│       scrollutil.tjs
+│       showdate.tjs
+│       snapcapture.tjs
+│       snapcapture_datefmt.txt
+│       snapcapture_twitter.txt
+│       soundmode.ks
+│       soundmode.tjs
+│       speech.tjs
+│       speech_app.tjs
+│       speech_app.txt
+│       speech_dlg.tjs
+│       speech_help.txt
+│       speech_ole.tjs
+│       sqscr.tjs
+│       stayontop.tjs
+│       stopdeactive.tjs
+│       syslangtext.tjs
+│       syssechk.tjs
+│       system.tjs
+│       sysvoice.tjs
+│       textspeedex.tjs
+│       title.ks
+│       touchui.tjs
+│       vcutfade.tjs
+│       voiceboost.tjs
+│       voiceeffect.tjs
+│       voicematch.tjs
+│       voicemode.ks
+│       voicemode.tjs
+│       voiceprogress.tjs
+│       zoommap.tjs
+│       
+├───system
+│       Action.tjs
+│       AffineLayer.tjs
+│       AffineMatrix.tjs
+│       AffineSource.tjs
+│       AffineSourceASD.tjs
+│       AffineSourceBishamon.tjs
+│       AffineSourceBitmap.tjs
+│       AffineSourceBMPBase.tjs
+│       AffineSourceFlip.tjs
+│       AffineSourceImage.tjs
+│       AffineSourceMotion.tjs
+│       AffineSourceNoise.tjs
+│       AffineSourcePSD.tjs
+│       AffineSourceStand.tjs
+│       AffineSourceTile.tjs
+│       AffineSourceVector.tjs
+│       AnimationLayer.tjs
+│       AnimKAGLayer.tjs
+│       autoface.tjs
+│       BaseLayer.tjs
+│       BGM.tjs
+│       bishamon.tjs
+│       ButtonLayer.tjs
+│       check.png
+│       CheckBoxLayer.tjs
+│       Conductor.tjs
+│       D3D.tjs
+│       D3DAffineSource.tjs
+│       D3DaffineSourceEmote.tjs
+│       D3DAffineSourceImage.tjs
+│       D3DAffineSourceMotion.tjs
+│       D3DAffineSourcePicture.tjs
+│       DefaultMover.tjs
+│       DialogLayer.tjs
+│       EditLayer.tjs
+│       emotetalk.tjs
+│       emotion.tjs
+│       enginerev.ini
+│       ExecDialog.tjs
+│       GenericFlip.tjs
+│       GFX_AMovie.tjs
+│       GFX_Fire.tjs
+│       GFX_Flash.tjs
+│       GFX_Movie.tjs
+│       GFX_Particle.tjs
+│       HistoryLayer.tjs
+│       Initialize.tjs
+│       KAGEnvBase.tjs
+│       KAGEnvEditData.tjs
+│       KAGEnvHistoryData.tjs
+│       KAGEnvImage.tjs
+│       KAGEnvImageMapperStage.tjs
+│       KAGEnvImageMapperStand.tjs
+│       KAGEnvironment.tjs
+│       KAGEnvMiniPlayer.tjs
+│       KAGEnvMiniPlayerLayer.tjs
+│       KAGEnvMusic.tjs
+│       KAGEnvParsePlayer.tjs
+│       KAGEnvParser.tjs
+│       KAGEnvPlayer.tjs
+│       KAGEnvSound.tjs
+│       KAGEnvTrans.tjs
+│       KAGLayer.tjs
+│       langfileparser.tjs
+│       LangRender.tjs
+│       LayerEx.tjs
+│       LineBreak.asd
+│       LineBreak.png
+│       LineBreak_a.png
+│       LineMode.tjs
+│       LineModeEx.tjs
+│       LogWindow.tjs
+│       LoopVoice.tjs
+│       MainWindow.tjs
+│       MapSelectLayer.tjs
+│       Menus.tjs
+│       MessageLayer.tjs
+│       motion.tjs
+│       Movie.tjs
+│       MultiResolution.tjs
+│       PageBreak.asd
+│       PageBreak.png
+│       PageBreak_a.png
+│       Plugin.tjs
+│       psdlayer.tjs
+│       SceneParserBase.tjs
+│       SE.tjs
+│       SelectLayer.tjs
+│       SliderLayer.tjs
+│       StandImage.tjs
+│       StandInformation.tjs
+│       StandLayer.tjs
+│       StorageData.tjs
+│       SubTitleLayer.tjs
+│       TagTextConverter.tjs
+│       TagTextConverterEx.tjs
+│       TextRender.tjs
+│       TextTagConverter.tjs
+│       TransLayer.tjs
+│       UILoader.tjs
+│       uipsdinfo.tjs
+│       UpdateConfig.tjs
+│       UpdateRegion.tjs
+│       Utils.tjs
+│       Voice.tjs
+│       win32dialog.tjs
+│       world.tjs
+│       YAML.tjs
+│       YesNoDialog.tjs
+│       
+├───uipsd
+│   │   autoglyph.asd
+│   │   autoglyph.png
+│   │   automode.csv
+│   │   automode@auto%base.png
+│   │   automode@cancel%base.png
+│   │   automode@q__saved%base.png
+│   │   backlog.func
+│   │   backlog.ini
+│   │   backlog.pimg
+│   │   bgmtitle.csv
+│   │   config.func
+│   │   config.ini
+│   │   config.pimg
+│   │   config_cn.func
+│   │   config_cn.ini
+│   │   config_cn.pimg
+│   │   config_jp.csv
+│   │   config_jp.func
+│   │   config_jp.ini
+│   │   config_jp.pimg
+│   │   config_tw.csv
+│   │   config_tw.ini
+│   │   config_tw.pimg
+│   │   conf_0base.func
+│   │   conf_1display.func
+│   │   conf_2system.func
+│   │   conf_3text.func
+│   │   conf_4sound.func
+│   │   conf_5dialog.func
+│   │   conf_6touch.func
+│   │   conf_7shortcut.func
+│   │   dialog.func
+│   │   dialog.ini
+│   │   dialog.pimg
+│   │   dialog_cn.func
+│   │   dialog_cn.ini
+│   │   dialog_cn.pimg
+│   │   dialog_jp.func
+│   │   dialog_jp.ini
+│   │   dialog_jp.pimg
+│   │   dialog_tw.ini
+│   │   dialog_tw.pimg
+│   │   extra.func
+│   │   extra.ini
+│   │   extra.pimg
+│   │   file.csv
+│   │   file.func
+│   │   file@item%button;thum.png
+│   │   file_common.func
+│   │   file_common.ini
+│   │   file_common.pimg
+│   │   file_common_cn.func
+│   │   file_common_cn.ini
+│   │   file_common_cn.pimg
+│   │   file_common_jp.func
+│   │   file_common_jp.ini
+│   │   file_common_jp.pimg
+│   │   file_common_tw.ini
+│   │   file_common_tw.pimg
+│   │   file_edit.func
+│   │   file_edit.ini
+│   │   file_edit.pimg
+│   │   file_edit_cn.func
+│   │   file_edit_cn.ini
+│   │   file_edit_cn.pimg
+│   │   file_edit_jp.func
+│   │   file_edit_jp.ini
+│   │   file_edit_jp.pimg
+│   │   file_edit_tw.ini
+│   │   file_edit_tw.pimg
+│   │   file_load.func
+│   │   file_load.ini
+│   │   file_load.pimg
+│   │   file_qload.func
+│   │   file_qload.ini
+│   │   file_qload.pimg
+│   │   file_qsave.func
+│   │   file_qsave.ini
+│   │   file_qsave.pimg
+│   │   file_save.func
+│   │   file_save.ini
+│   │   file_save.pimg
+│   │   file_voice.func
+│   │   file_voice.ini
+│   │   file_voice.pimg
+│   │   information.func
+│   │   information.ini
+│   │   information.pimg
+│   │   langselect.func
+│   │   langselect.ini
+│   │   langselect.pimg
+│   │   langsel_popup.csv
+│   │   langsel_popup@base__dw1%base.png
+│   │   langsel_popup@base__dw2%base.png
+│   │   langsel_popup@base__dw3%base.png
+│   │   langsel_popup@base__dw4%base.png
+│   │   langsel_popup@base__up1%base.png
+│   │   langsel_popup@base__up2%base.png
+│   │   langsel_popup@base__up3%base.png
+│   │   langsel_popup@base__up4%base.png
+│   │   langsel_popup@item%button;nm__cn.png
+│   │   langsel_popup@item%button;nm__en.png
+│   │   langsel_popup@item%button;nm__jp.png
+│   │   langsel_popup@item%button;nm__off.png
+│   │   langsel_popup@item%button;nm__tw.png
+│   │   langsel_popup@item%button;over.png
+│   │   langsel_popup@item%button;ov__cn.png
+│   │   langsel_popup@item%button;ov__en.png
+│   │   langsel_popup@item%button;ov__jp.png
+│   │   langsel_popup@item%button;ov__off.png
+│   │   langsel_popup@item%button;ov__tw.png
+│   │   novel.csv
+│   │   novel@attention%layer.png
+│   │   novel@base%base.png
+│   │   qlpopup.csv
+│   │   qlpopup.func
+│   │   qlpopup@base%base.png
+│   │   quickmenu.func
+│   │   quickmenu.ini
+│   │   quickmenu.pimg
+│   │   select.csv
+│   │   select@normal%base.png
+│   │   select@on%base.png
+│   │   select@over%base.png
+│   │   submenu.csv
+│   │   submenu.func
+│   │   submenu.ini
+│   │   submenu.pimg
+│   │   submenu@auto%button;normal.png
+│   │   submenu@auto%button;on.png
+│   │   submenu@auto%button;over.png
+│   │   submenu@close%button;normal.png
+│   │   submenu@close%button;on.png
+│   │   submenu@close%button;over.png
+│   │   submenu@config%button;normal.png
+│   │   submenu@config%button;on.png
+│   │   submenu@config%button;over.png
+│   │   submenu@load%button;normal.png
+│   │   submenu@load%button;on.png
+│   │   submenu@load%button;over.png
+│   │   submenu@lock__off%button;normal.png
+│   │   submenu@lock__off%button;on.png
+│   │   submenu@lock__off%button;over.png
+│   │   submenu@lock__on%button;normal.png
+│   │   submenu@lock__on%button;on.png
+│   │   submenu@lock__on%button;over.png
+│   │   submenu@log%button;normal.png
+│   │   submenu@log%button;on.png
+│   │   submenu@log%button;over.png
+│   │   submenu@next%button;normal.png
+│   │   submenu@next%button;on.png
+│   │   submenu@next%button;over.png
+│   │   submenu@prev%button;normal.png
+│   │   submenu@prev%button;on.png
+│   │   submenu@prev%button;over.png
+│   │   submenu@qload%button;normal.png
+│   │   submenu@qload%button;on.png
+│   │   submenu@qload%button;over.png
+│   │   submenu@qsave%button;normal.png
+│   │   submenu@qsave%button;on.png
+│   │   submenu@qsave%button;over.png
+│   │   submenu@save%button;normal.png
+│   │   submenu@save%button;on.png
+│   │   submenu@save%button;over.png
+│   │   submenu@skip%button;normal.png
+│   │   submenu@skip%button;on.png
+│   │   submenu@skip%button;over.png
+│   │   sysvosel_popup.func
+│   │   title.event
+│   │   title.func
+│   │   title.ini
+│   │   title.pimg
+│   │   waitglyph.asd
+│   │   waitglyph.png
+│   │   window.csv
+│   │   window@attention%layer.png
+│   │   window@base%base.png
+│   │   window@frame%layer.png
+│   │   window@namebase%layer.png
+│   │   window@nameframe%layer.png
+│   │   window@vreplay%button;off.png
+│   │   window@vreplay%button;on.png
+│   │   window@vreplay%button;over.png
+│   │   window@vsave%button;off.png
+│   │   window@vsave%button;on.png
+│   │   window@vsave%button;over.png
+│   │   _button.func
+│   │   
+│   └───disabler
+│           dsui_conf_1display.func
+│           dsui_conf_2system.func
+│           dsui_conf_6touch.func
+│           dsui_file_edit.func
+│           
+└───video
+        ame.amv
+        ame.png
+        asufarutotue.amv
+        dennoukuukan.amv
+        dennoukuukan.png
+        hizashi.amv
+        hizashi01.amv
+        kaitei.amv
+        kaitei.png
+        kihou.amv
+        kihou.png
+        kiri.amv
+        kiri.png
+        logo.amv
+        maitirusakura.amv
+        mizusibuki2.amv
+        sukuryuawa.amv
+        tatinoboruawa.amv
+        tatinoboruawa.png
+        temotihanabi.amv
+        tindenbutu.amv
+        tindenbutu.png
+        tirusakura.amv
+        toudai.amv
+        tutikemuri.amv
+        utiagehanabi.amv
+        

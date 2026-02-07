@@ -10,19 +10,31 @@
 - [x] IsWindow() validation
 - [x] tp_stub connected
 - [x] NeuroConsole — своя консоль для TJS команд (F12)
-- [x] libneurosdk интеграция (C++ функции готовы, TJS обёртки pending)
+- [x] libneurosdk интеграция (C++ функции готовы)
 - [x] Проверить компиляцию и работу NeuroConsole
+- [x] Self-linking — RVA константы перенесены в плагин, proxy DLL упрощена
+- [x] Консоль: Esc для скрытия, Ctrl+A без звуков
+- [x] Распаковать .tjs и .ks файлы (нескомпилированные)
 
 ## In Progress
 
-- [ ] 
+- [ ] Исследование kag.conductor и других объектов игры
+- [ ] Обработка уже завёрнутых TJS функций (не заворачивать повторно)
+
+### Улучшения консоли
+
+- [ ] Чекбокс "No Wrapper" — выполнять код без обёртки try-catch
+- [ ] Многострочный режим ввода (переключатель или отдельное окно)
+- [ ] TVPExecuteScript для многострочного, TVPExecuteExpression для однострочного
+- [ ] Улучшить очистку ввода от лишних символов (`\r` тоже может вызывать Syntax error)
 
 ## Planned
 
 ### Исследование игры
 
-- [ ] Изучить какие команды нужно использовать для получения необходимых значений и команды воздействия на контролы игры
-- [ ] Распаковать .tjs и .ks файлы для более глубокого анализа игры чтобы определить недостающие команды
+- [ ] Изучить команды для получения значений и управления контролами
+- [ ] Найти где хранятся локализованные имена персонажей (сейчас выводятся на японском)
+- [ ] Документировать найденное в отдельный .md файл
 
 ### Batching for async TJS calls
 
@@ -63,6 +75,8 @@ struct TJSCommandBatch {
 
 ### TJS функции для Neuro API
 
+Планируется использовать отдельные .tjs файлы в папке `Scripts/` рядом с DLL (или запаковать в .xp3).
+
 - [ ] neuroConnect(url, gameName) - подключение к Neuro API
 - [ ] neuroDisconnect() - отключение
 - [ ] neuroSendContext(message, silent) - отправка контекста
@@ -85,32 +99,6 @@ TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &result);
 
 ### Чтение файлов из VFS (XP3 архивов)
 
-Через TJS можно читать файлы напрямую из архивов игры:
-
-```js
-(function() { var a = []; if(!a.load("main/Config.tjs")) return "FAIL"; return a.join("\n"); })()
-```
-
-**Протоколы путей:**
-
-- `storage://` — корень данных/архивов
-- `appdata://` — папка настроек пользователя
-- `file://` — физический файл на диске
-
-**Проверка существования в консоли:**
-
-```
-Debug.message(Storages.isExistentStorage("main/Config.tjs"))
-```
-
 **Для бинарных файлов:** `TVPCreateIStream` → `tTJSBinaryStream*`
 
-#### Проверка расположения по имени в консоли:
-
-`Debug.message(Storages.getPlacedPath("Config.tjs"))`
-
-#### Получение содержимого файла через TJS-скрипт:
-
-```js
-(function() { var a = []; if(!a.load("main/Config.tjs")) return "FAIL"; return a.join("\n"); })()
-```
+См. `docs/TJS-Commands.md` для команд работы с файлами и объектами игры.
