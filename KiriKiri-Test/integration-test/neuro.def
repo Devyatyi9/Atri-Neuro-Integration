@@ -1,4 +1,4 @@
-LIBRARY "Neuro-integration"
+LIBRARY "Neuro-Integration"
 EXPORTS
     InitPlugin
     V2Link

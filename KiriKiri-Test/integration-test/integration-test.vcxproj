@@ -122,6 +122,7 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="NeuroConsole.cpp" />
+    <ClCompile Include="ScriptingWindow.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -129,6 +130,7 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NeuroConsole.h" />
+    <ClInclude Include="ScriptingWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

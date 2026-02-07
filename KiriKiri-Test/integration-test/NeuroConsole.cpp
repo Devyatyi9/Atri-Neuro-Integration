@@ -20,6 +20,7 @@
 #pragma warning(pop)
 
 #include "NeuroConsole.h"  // ExecuteTJSSync declaration
+#include "ScriptingWindow.h"
 
 // Флаг для включения/выключения debug output
 static std::atomic<bool> g_DebugOutputEnabled(true);
@@ -137,9 +138,18 @@ private:
         }
 
         case WM_COMMAND: {
-            // Клик на кнопку Execute
+            // Клик на кнопку Execute (или Script Mode)
             if ((HWND)lParam == console->m_hExecute) {
-                if (console) console->ExecuteCommand();
+                if (console) {
+                    // Проверяем состояние Modifier клавиши
+                    if (GetKeyState(VK_SHIFT) & 0x8000) {
+                        // Shift+Execute → Scripting Window
+                        ToggleScriptingWindow();
+                    } else {
+                        // Обычное нажатие → Execute command
+                        console->ExecuteCommand();
+                    }
+                }
                 return 0;
             }
 
@@ -613,6 +623,46 @@ NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
 NeuroConsole* NeuroConsole::s_Instance = nullptr;
 WNDPROC NeuroConsole::s_OriginalEditProc = nullptr;
 WNDPROC NeuroConsole::s_OriginalOutputProc = nullptr;
+
+// ============================================================================
+// Реализация глобальных функций для Scripting Window
+// ============================================================================
+
+void InitScriptingWindow() {
+    // Создаём Scripting Window в основном потоке
+    ScriptingWindow* window = new ScriptingWindow();
+    if (window->Create()) {
+        g_ScriptingWindow.store(window);
+        window->Show();
+    } else {
+        delete window;
+        g_ScriptingWindow.store(nullptr);
+    }
+}
+
+void ShutdownScriptingWindow() {
+    ScriptingWindow* window = g_ScriptingWindow.load();
+    if (window) {
+        delete window;
+        g_ScriptingWindow.store(nullptr);
+    }
+}
+
+void ToggleScriptingWindow() {
+    if (!g_ScriptingWindow.load()) {
+        InitScriptingWindow();
+    } else {
+        ScriptingWindow* window = g_ScriptingWindow.load();
+        if (window) {
+            window->Toggle();
+        }
+    }
+}
+
+bool IsScriptingWindowVisible() {
+    ScriptingWindow* window = g_ScriptingWindow.load();
+    return window && window->IsVisible();
+}
 
 // ============================================================================
 // Console Thread - создаёт окно и запускает message loop
