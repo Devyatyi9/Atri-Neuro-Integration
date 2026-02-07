@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <cwctype>
 
 // RichEdit загружается динамически через LoadLibrary("Msftedit.dll") в Create()
 
@@ -32,9 +33,14 @@ private:
     HWND m_hClear;   // Кнопка Clear
     HWND m_hAlwaysOnTop; // Чекбокс AlwaysOnTop
     HWND m_hDebugOutput; // Чекбокс Debug Output
+    HWND m_hNoWrapper; // Чекбокс No Wrapper
 
     std::vector<std::wstring> m_history; // История команд
     int m_historyIndex;
+
+    // Управление ресурсами для предотвращения утечек
+    HMODULE m_hRichEditDll;
+    std::vector<HFONT> m_fonts; // Хранилище созданных шрифтов
 
     static NeuroConsole* s_Instance;
     static WNDPROC s_OriginalEditProc;    // Для subclass Edit control (ввод)
@@ -64,54 +70,46 @@ private:
     // Subclass процедура для поля ввода - обработка Enter, стрелок и Ctrl+A
     static LRESULT CALLBACK InputEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (msg == WM_KEYDOWN) {
-            bool ctrlPressed = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
-
-            // ENTER: Ctrl+Enter = Выполнить, Enter = Новая строка
             if (wParam == VK_RETURN) {
-                if (ctrlPressed) {
-                    if (s_Instance) s_Instance->ExecuteCommand();
-                    return 0;
+                // Enter нажат - выполняем команду
+                if (s_Instance) {
+                    s_Instance->ExecuteCommand();
                 }
-                // Обычный Enter пропускаем (пусть Edit сам переносит строку)
-                return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
+                return 0;  // Не передаём Enter дальше
             }
-
-            // СТРЕЛКИ: История, если пусто или зажат Ctrl
             else if (wParam == VK_UP) {
-                // Проверяем длину текста
-                int textLen = GetWindowTextLength(hwnd);
-                if (ctrlPressed || textLen == 0) {
-                    if (s_Instance) s_Instance->HistoryUp();
-                    return 0;
+                // Стрелка вверх - предыдущая команда из истории
+                if (s_Instance) {
+                    s_Instance->HistoryUp();
                 }
+                return 0;
             }
             else if (wParam == VK_DOWN) {
-                int textLen = GetWindowTextLength(hwnd);
-                if (ctrlPressed || textLen == 0) {
-                    if (s_Instance) s_Instance->HistoryDown();
-                    return 0;
+                // Стрелка вниз - следующая команда из истории
+                if (s_Instance) {
+                    s_Instance->HistoryDown();
                 }
+                return 0;
             }
-            // Выделить всё по Ctrl+A
-            else if (wParam == 'A' && ctrlPressed) {
+            else if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                // Ctrl+A - выделить всё
                 SendMessage(hwnd, EM_SETSEL, 0, -1);
                 return 0;
             }
-            // Esc - скрыть
             else if (wParam == VK_ESCAPE) {
-                if (s_Instance && s_Instance->m_hWnd) ShowWindow(s_Instance->m_hWnd, SW_HIDE);
+                // Esc - скрыть консоль
+                OutputDebugStringW(L"[NeuroConsole] ESC pressed in input\n");
+                if (s_Instance && s_Instance->m_hWnd) {
+                    ShowWindow(s_Instance->m_hWnd, SW_HIDE);
+                }
                 return 0;
             }
         }
-
-        // Чтобы Enter работал корректно в Multiline, нельзя блокировать char '\r' (код 13)
-        // Но нужно блокировать Esc (27) и Ctrl+A (1), чтобы не пищало
-        if (msg == WM_CHAR) {
-            if (wParam == 27 || wParam == 1) return 0;
-            // Ctrl+Enter генерирует char 10 (\n), его тоже можно погасить, чтобы не было лишнего символа
-            if (wParam == 10 && (GetKeyState(VK_CONTROL) & 0x8000)) return 0;
+        // Блокируем WM_CHAR для Enter, Esc и Ctrl+A (иначе будет beep)
+        if (msg == WM_CHAR && (wParam == '\r' || wParam == 27 || wParam == 1)) {
+            return 0;
         }
-
+        // Все остальные сообщения - оригинальной процедуре
         return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
     }
 
@@ -162,6 +160,12 @@ private:
                 console->OnDebugOutputChanged();
                 return 0;
             }
+
+            // Чекбокс No Wrapper
+            if ((HWND)lParam == console->m_hNoWrapper) {
+                // Нет специальной обработки - состояние проверяется при выполнении
+                return 0;
+            }
             break;
         }
 
@@ -184,12 +188,12 @@ private:
     }
 
     void OnResize(int width, int height) {
-        const int buttonHeight = 25;
-        const int inputHeight = 80;
+        const int buttonHeight = 30;
+        const int inputHeight = 25;
         const int checkboxHeight = 20;
         const int padding = 5;
         const int buttonWidth = 80;
-        const int checkboxWidth = 120;
+        const int checkboxWidth = 100; // Уменьшил для 3 чекбоксов
 
         // Output занимает почти всё окно (минус место для чекбоксов внизу)
         int outputHeight = height - inputHeight - checkboxHeight - padding * 4;
@@ -199,27 +203,35 @@ private:
 
         // Input field
         int inputY = outputHeight + padding * 2;
-        int inputWidth = width - buttonWidth - padding * 3;
-
-        // Если кнопки Run/Clear хочешь справа от поля:
         SetWindowPos(m_hInput, NULL, padding, inputY,
-            width - buttonWidth - padding * 3, inputHeight,
+            width - buttonWidth * 2 - padding * 4, inputHeight,
             SWP_NOZORDER);
 
-        // 3. Кнопки Run и Clear (ставим их справа от поля ввода друг под другом)
-        SetWindowPos(m_hExecute, NULL, width - buttonWidth - padding, inputY,
-            buttonWidth, buttonHeight, SWP_NOZORDER);
+        // Execute button
+        int executeX = width - buttonWidth * 2 - padding * 2;
+        SetWindowPos(m_hExecute, NULL, executeX, inputY,
+            buttonWidth, inputHeight,
+            SWP_NOZORDER);
 
-        SetWindowPos(m_hClear, NULL, width - buttonWidth - padding, inputY + buttonHeight + padding,
-            buttonWidth, buttonHeight, SWP_NOZORDER);
+        // Clear button
+        int clearX = width - buttonWidth - padding;
+        SetWindowPos(m_hClear, NULL, clearX, inputY,
+            buttonWidth, inputHeight,
+            SWP_NOZORDER);
 
-        // 4. Чекбоксы в самом низу
+        // Checkboxes row (внизу) - теперь 3 чекбокса
         int checkboxY = inputY + inputHeight + padding;
         SetWindowPos(m_hAlwaysOnTop, NULL, padding, checkboxY,
-            checkboxWidth, checkboxHeight, SWP_NOZORDER);
+            checkboxWidth, checkboxHeight,
+            SWP_NOZORDER);
 
         SetWindowPos(m_hDebugOutput, NULL, padding + checkboxWidth + padding, checkboxY,
-            checkboxWidth, checkboxHeight, SWP_NOZORDER);
+            checkboxWidth, checkboxHeight,
+            SWP_NOZORDER);
+
+        SetWindowPos(m_hNoWrapper, NULL, padding + checkboxWidth * 2 + padding * 2, checkboxY,
+            checkboxWidth, checkboxHeight,
+            SWP_NOZORDER);
     }
 
     void OnAlwaysOnTopChanged() {
@@ -265,11 +277,19 @@ private:
     }
 
     void ExecuteCommand() {
-        // Получаем текст команды
-        wchar_t command[4096];
-        GetWindowTextW(m_hInput, command, 4096);
+        // Получаем текст команды безопасно
+        int textLength = GetWindowTextLengthW(m_hInput);
+        if (textLength == 0) return;
+        
+        if (textLength > MAX_COMMAND_LENGTH) {
+            AppendOutput(L"Error: Command too long\n", RGB(255, 0, 0));
+            return;
+        }
 
-        if (wcslen(command) == 0) return;
+        std::wstring command;
+        command.resize(textLength + 1);
+        GetWindowTextW(m_hInput, &command[0], textLength + 1);
+        command.resize(wcslen(command.c_str()));
 
         // Добавляем в историю
         m_history.push_back(command);
@@ -277,11 +297,11 @@ private:
 
         // Выводим команду
         AppendOutput(L">> ", RGB(0, 150, 0));
-        AppendOutput(command, RGB(0, 0, 0));
+        AppendOutput(command.c_str(), RGB(0, 0, 0));
         AppendOutput(L"\n", RGB(0, 0, 0));
 
         // Выполняем TJS код
-        ExecuteTJSCommand(command);
+        ExecuteTJSCommand(command.c_str());
 
         // Очищаем поле ввода
         SetWindowTextW(m_hInput, L"");
@@ -294,14 +314,27 @@ private:
         if (!code || wcslen(code) == 0) return;
         std::wstring cleanCode = code;
 
-        while (!cleanCode.empty() && (cleanCode.back() == L';' || cleanCode.back() == L' ' || cleanCode.back() == L'\r' || cleanCode.back() == L'\n')) {
+        // Безопасная очистка с использованием iswspace()
+        while (!cleanCode.empty() && (cleanCode.back() == L';' || iswspace(cleanCode.back()))) {
             cleanCode.pop_back();
         }
         if (cleanCode.empty()) return;
 
+        // Проверяем состояние чекбокса "No Wrapper"
+        BOOL noWrapperChecked = (SendMessage(m_hNoWrapper, BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+        std::wstring finalCode;
+        if (noWrapperChecked) {
+            // Выполняем код без обёртки
+            finalCode = cleanCode;
+        } else {
+            // Оборачиваем в try-catch для безопасности
+            finalCode = L"(function(){ try { return (" + cleanCode + L"); } catch(e) { return \"!!!TJS_EXCEPTION!!! \" + e.message; } })()";
+        }
+
         tTJSVariant result;
         // Вызываем синхронную функцию из dllmain
-        if (ExecuteTJSSync(cleanCode.c_str(), &result)) {
+        if (ExecuteTJSSync(finalCode.c_str(), &result)) {
 
             // 1. Проверяем на исключение (наша обертка !!!TJS_EXCEPTION!!!)
             if (result.Type() == tvtString) {
@@ -370,19 +403,27 @@ public:
         // Добавляем текст
         SendMessageW(m_hOutput, EM_REPLACESEL, FALSE, (LPARAM)text);
 
-        // Прокручиваем вниз
-        SendMessageW(m_hOutput, WM_VSCROLL, SB_BOTTOM, 0);
+        // Прокручиваем вниз только каждые 5 операций для производительности
+        static int appendCount = 0;
+        appendCount++;
+        if (appendCount >= 5 || wcslen(text) > 100) {
+            SendMessageW(m_hOutput, WM_VSCROLL, SB_BOTTOM, 0);
+            appendCount = 0;
+        }
     }
 
-    NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
+NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
         m_hExecute(NULL), m_hClear(NULL), m_hAlwaysOnTop(NULL), m_hDebugOutput(NULL),
-        m_historyIndex(0) {
+        m_hNoWrapper(NULL), m_historyIndex(0), m_hRichEditDll(NULL) {
         s_Instance = this;
     }
 
     bool Create() {
         // Загружаем RichEdit DLL
-        LoadLibraryW(L"Msftedit.dll");
+        m_hRichEditDll = LoadLibraryW(L"Msftedit.dll");
+        if (!m_hRichEditDll) {
+            return false;
+        }
 
         // Регистрируем класс окна
         WNDCLASSW wc = {};
@@ -391,7 +432,12 @@ public:
         wc.lpszClassName = L"NeuroConsoleClass";
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        RegisterClassW(&wc);
+        if (!RegisterClassW(&wc)) {
+            DWORD error = GetLastError();
+            if (error != ERROR_CLASS_ALREADY_EXISTS) {
+                return false;
+            }
+        }
 
         // Создаём независимое окно
         m_hWnd = CreateWindowExW(
@@ -403,7 +449,11 @@ public:
             NULL, NULL, GetModuleHandle(NULL), this
         );
 
-        if (!m_hWnd) return false;
+        if (!m_hWnd) {
+            // Используем MessageBox до создания консоли
+            MessageBoxW(NULL, L"Failed to create main console window", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
 
         // Создаём RichEdit для вывода
         m_hOutput = CreateWindowExW(
@@ -415,15 +465,28 @@ public:
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        if (!m_hOutput) {
+            MessageBoxW(NULL, L"Failed to create RichEdit output control", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
+
         // Subclass RichEdit для обработки Esc и Ctrl+A
         s_OriginalOutputProc = (WNDPROC)SetWindowLongPtr(m_hOutput, GWLP_WNDPROC, (LONG_PTR)OutputEditProc);
+        if (!s_OriginalOutputProc) {
+            AppendOutput(L"Error: Failed to subclass RichEdit output control\n", RGB(255, 0, 0));
+            return false;
+        }
 
         // Устанавливаем шрифт для output
         CHARFORMAT2W cf;
         ZeroMemory(&cf, sizeof(cf));
         cf.cbSize = sizeof(cf);
         cf.dwMask = CFM_FACE | CFM_SIZE | CFM_CHARSET;
-        wcscpy_s(cf.szFaceName, L"Consolas");
+        errno_t err = wcscpy_s(cf.szFaceName, L"Consolas");
+        if (err != 0) {
+            // Fallback на системный шрифт
+            wcscpy_s(cf.szFaceName, L"Courier New");
+        }
         cf.yHeight = 200; // 10pt * 20
         cf.bCharSet = DEFAULT_CHARSET;
         SendMessageW(m_hOutput, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
@@ -433,13 +496,22 @@ public:
             WS_EX_CLIENTEDGE,
             L"EDIT",
             L"",
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
+            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
             0, 0, 0, 0,
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        if (!m_hInput) {
+            MessageBoxW(NULL, L"Failed to create input control", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
+
         // Subclass Edit для обработки Enter
         s_OriginalEditProc = (WNDPROC)SetWindowLongPtr(m_hInput, GWLP_WNDPROC, (LONG_PTR)InputEditProc);
+        if (!s_OriginalEditProc) {
+            AppendOutput(L"Error: Failed to subclass input control\n", RGB(255, 0, 0));
+            return false;
+        }
 
         // Создаём кнопки
         m_hExecute = CreateWindowW(
@@ -450,6 +522,16 @@ public:
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        if (!m_hExecute) {
+            MessageBoxW(NULL, L"Failed to create Execute button", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
+
+        if (!m_hClear) {
+            MessageBoxW(NULL, L"Failed to create Clear button", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
+
         m_hClear = CreateWindowW(
             L"BUTTON",
             L"Clear",
@@ -457,6 +539,11 @@ public:
             0, 0, 0, 0,
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
+
+        if (!m_hClear) {
+            AppendOutput(L"Error: Failed to create Clear button\n", RGB(255, 0, 0));
+            return false;
+        }
 
         // Создаём чекбоксы
         m_hAlwaysOnTop = CreateWindowW(
@@ -466,6 +553,10 @@ public:
             0, 0, 0, 0,
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
+        if (!m_hAlwaysOnTop) {
+            MessageBoxW(NULL, L"Failed to create AlwaysOnTop checkbox", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
         // По умолчанию выключён (окно создано без WS_EX_TOPMOST)
         SendMessage(m_hAlwaysOnTop, BM_SETCHECK, BST_UNCHECKED, 0);
 
@@ -476,18 +567,41 @@ public:
             0, 0, 0, 0,
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
+        if (!m_hDebugOutput) {
+            MessageBoxW(NULL, L"Failed to create DebugOutput checkbox", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
         // По умолчанию включён
         SendMessage(m_hDebugOutput, BM_SETCHECK, BST_CHECKED, 0);
+
+        m_hNoWrapper = CreateWindowW(
+            L"BUTTON",
+            L"No Wrapper",
+            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+            0, 0, 0, 0,
+            m_hWnd, NULL, GetModuleHandle(NULL), NULL
+        );
+        if (!m_hNoWrapper) {
+            MessageBoxW(NULL, L"Failed to create NoWrapper checkbox", L"NeuroConsole Error", MB_ICONERROR);
+            return false;
+        }
+        // По умолчанию выключен
+        SendMessage(m_hNoWrapper, BM_SETCHECK, BST_UNCHECKED, 0);
 
         // Устанавливаем шрифт
         HFONT hFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        
+        // Сохраняем шрифт для последующего удаления
+        m_fonts.push_back(hFont);
+        
         SendMessageW(m_hInput, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hExecute, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hClear, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hAlwaysOnTop, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessageW(m_hNoWrapper, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Приветственное сообщение
         AppendOutput(L"=== Neuro Console Ready ===\n", RGB(0, 100, 200));
@@ -533,6 +647,26 @@ public:
     }
 
     ~NeuroConsole() {
+        // Восстанавливаем оригинальные процедуры перед удалением
+        if (m_hOutput && s_OriginalOutputProc) {
+            SetWindowLongPtr(m_hOutput, GWLP_WNDPROC, (LONG_PTR)s_OriginalOutputProc);
+        }
+        if (m_hInput && s_OriginalEditProc) {
+            SetWindowLongPtr(m_hInput, GWLP_WNDPROC, (LONG_PTR)s_OriginalEditProc);
+        }
+
+        // Удаляем все созданные шрифты
+        for (HFONT font : m_fonts) {
+            DeleteObject(font);
+        }
+        m_fonts.clear();
+
+        // Освобождаем RichEdit DLL
+        if (m_hRichEditDll) {
+            FreeLibrary(m_hRichEditDll);
+            m_hRichEditDll = nullptr;
+        }
+
         if (m_hWnd) {
             DestroyWindow(m_hWnd);
         }
@@ -547,16 +681,17 @@ WNDPROC NeuroConsole::s_OriginalOutputProc = nullptr;
 // Console Thread - создаёт окно и запускает message loop
 // ============================================================================
 
-static NeuroConsole* g_Console = nullptr;
+static std::atomic<NeuroConsole*> g_Console{nullptr};
 static std::thread g_ConsoleThread;
-static std::atomic<bool> g_ConsoleThreadRunning(false);
-static std::atomic<bool> g_ConsoleReady(false);
-static HWND g_ConsoleHWND = nullptr;  // Для кросс-поточной коммуникации
+static std::atomic<bool> g_ConsoleThreadRunning{false};
+static std::atomic<bool> g_ConsoleReady{false};
+static std::atomic<HWND> g_ConsoleHWND{nullptr};  // Для кросс-поточной коммуникации
+static std::mutex g_ConsoleMutex;  // Для thread-safe операций
+static std::condition_variable g_ConsoleReadyCV;  // Для event-based ожидания
+static std::mutex g_ConsoleReadyMutex;  // Для CV
 
 // Custom messages для управления консолью из других потоков
-static const UINT WM_CONSOLE_TOGGLE = WM_USER + 200;
-static const UINT WM_CONSOLE_SHUTDOWN = WM_USER + 201;
-static const UINT WM_CONSOLE_APPEND = WM_USER + 202;
+// (определены в NeuroConsole.h)
 
 // Структура для передачи данных через PostMessage
 struct ConsoleAppendData {
@@ -567,51 +702,69 @@ struct ConsoleAppendData {
 // Поток консоли с собственным message loop
 void ConsoleThreadProc() {
     // Создаём консоль В ЭТОМ потоке
-    g_Console = new NeuroConsole();
-    if (!g_Console->Create()) {
-        delete g_Console;
-        g_Console = nullptr;
+    NeuroConsole* console = new NeuroConsole();
+    g_Console.store(console);
+    if (!g_Console.load()->Create()) {
+        delete g_Console.load();
+        g_Console.store(nullptr);
         g_ConsoleReady.store(false);
         return;
     }
 
-    g_ConsoleHWND = g_Console->GetHWND();
+    g_ConsoleHWND.store(g_Console.load()->GetHWND());
     g_ConsoleReady.store(true);
+    g_ConsoleReadyCV.notify_one();  // Сообщаем об готовности
 
     // Message loop для консоли - ЭТО КРИТИЧЕСКИ ВАЖНО!
     // Без этого окно не будет обрабатывать события
     MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        // Обрабатываем наши custom messages
-        if (msg.hwnd == g_ConsoleHWND || msg.hwnd == NULL) {
-            if (msg.message == WM_CONSOLE_TOGGLE) {
-                if (g_Console) g_Console->Toggle();
-                continue;
+    while (g_ConsoleThreadRunning.load()) {
+        // Используем PeekMessage с timeout для лучшей отзывчивости
+        BOOL result = PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+        
+        if (result) {
+            if (msg.message == WM_QUIT) {
+                break;
             }
-            if (msg.message == WM_CONSOLE_SHUTDOWN) {
-                break;  // Выход из message loop
-            }
-            if (msg.message == WM_CONSOLE_APPEND) {
-                ConsoleAppendData* data = (ConsoleAppendData*)msg.wParam;
-                if (data && g_Console) {
-                    g_Console->AppendOutput(data->text, data->color);
-                    delete[] data->text;
-                    delete data;
+            
+            // Обрабатываем наши custom messages
+            if (msg.hwnd == g_ConsoleHWND.load() || msg.hwnd == NULL) {
+                if (msg.message == WM_CONSOLE_TOGGLE) {
+                    NeuroConsole* console = g_Console.load();
+                    if (console) console->Toggle();
+                    continue;
                 }
-                continue;
+                if (msg.message == WM_CONSOLE_SHUTDOWN) {
+                    break;  // Выход из message loop
+                }
+                if (msg.message == WM_CONSOLE_APPEND) {
+                    std::lock_guard<std::mutex> lock(g_ConsoleMutex);
+                    ConsoleAppendData* data = (ConsoleAppendData*)msg.wParam;
+                    NeuroConsole* console = g_Console.load();
+                    if (data && console) {
+                        console->AppendOutput(data->text, data->color);
+                        delete[] data->text;
+                        delete data;
+                    }
+                    continue;
+                }
             }
-        }
 
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        } else {
+            // Нет сообщений - небольшая пауза чтобы не нагружать CPU
+            Sleep(1);
+        }
     }
 
     // Cleanup после выхода из loop
-    if (g_Console) {
-        delete g_Console;
-        g_Console = nullptr;
+    NeuroConsole* consoleToDelete = g_Console.load();
+    if (consoleToDelete) {
+        delete consoleToDelete;
+        g_Console.store(nullptr);
     }
-    g_ConsoleHWND = nullptr;
+    g_ConsoleHWND.store(nullptr);
     g_ConsoleReady.store(false);
 }
 
@@ -627,10 +780,10 @@ void InitNeuroConsole() {
     g_ConsoleThreadRunning.store(true);
     g_ConsoleThread = std::thread(ConsoleThreadProc);
 
-    // Ждём готовности консоли (до 2 секунд)
-    for (int i = 0; i < 20 && !g_ConsoleReady.load(); i++) {
-        Sleep(100);
-    }
+    // Ждём готовности консоли через condition variable (до 2 секунд)
+    std::unique_lock<std::mutex> lock(g_ConsoleReadyMutex);
+    g_ConsoleReadyCV.wait_for(lock, std::chrono::seconds(2), 
+        []{ return g_ConsoleReady.load(); });
 }
 
 void ShutdownNeuroConsole() {
@@ -664,27 +817,41 @@ void ToggleNeuroConsole() {
 }
 
 bool IsNeuroConsoleVisible() {
-    return g_Console && g_Console->IsVisible();
+    NeuroConsole* console = g_Console.load();
+    return console && console->IsVisible();
 }
 
 void AppendToNeuroConsole(const wchar_t* text, unsigned int color) {
-    if (!g_ConsoleReady.load() || !g_Console || !text) return;
+    if (!g_ConsoleReady.load() || !g_Console.load() || !text) return;
 
     // Проверяем, включён ли debug output
     if (!g_DebugOutputEnabled.load()) return;
 
+    // Безопасная проверка длины текста
+    size_t len = wcslen(text);
+    if (len == 0) return;
+    
+    if (len > MAX_CONSOLE_TEXT_LENGTH) {
+        len = MAX_CONSOLE_TEXT_LENGTH;
+    }
+
     // Копируем текст (будет удалён в обработчике)
-    size_t len = wcslen(text) + 1;
-    wchar_t* textCopy = new wchar_t[len];
-    wcscpy_s(textCopy, len, text);
+    wchar_t* textCopy = new wchar_t[len + 1];
+    wcscpy_s(textCopy, len + 1, text);
+    textCopy[len] = L'\0';
 
     ConsoleAppendData* data = new ConsoleAppendData();
     data->text = textCopy;
     data->color = (COLORREF)color;
 
-    // Отправляем в поток консоли
-    if (g_ConsoleHWND) {
-        PostMessage(g_ConsoleHWND, WM_CONSOLE_APPEND, (WPARAM)data, 0);
+    // Отправляем в поток консоли с проверкой
+    HWND consoleHwnd = g_ConsoleHWND.load();
+    if (consoleHwnd) {
+        if (!PostMessage(consoleHwnd, WM_CONSOLE_APPEND, (WPARAM)data, 0)) {
+            // Если PostMessage не сработал, очищаем память
+            delete[] textCopy;
+            delete data;
+        }
     } else {
         delete[] textCopy;
         delete data;

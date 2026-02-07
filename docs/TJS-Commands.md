@@ -65,3 +65,47 @@ TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &result);
 ```
 Debug.message("Сообщение");  // вывод в консоль отладки
 ```
+
+## Исследование объектов
+
+### Безопасное перечисление ключей объекта
+
+```javascript
+(function(){ var k = Scripts.getObjectKeys(objectName); k.sort(); return k.join(", "); })()
+```
+
+### Перечисление ключей kag.fore
+
+```javascript
+(function(){ var k = Scripts.getObjectKeys(kag.fore); k.sort(); return k.join(", "); })()
+```
+
+### Перечисление ключей kag.back
+
+```javascript
+(function(){ var k = Scripts.getObjectKeys(kag.back); k.sort(); return k.join(", "); })()
+```
+
+### Поиск активных выборов (попытка 1)
+
+```javascript
+(function(){ var k = Scripts.getObjectKeys(kag); k.sort(); return k.filter(function(key){ return key.toLowerCase().indexOf('select')>=0; }).join(", "); })()
+```
+
+### Проверка kag.selectList (альтернативное имя)
+
+```javascript
+(function(){ try { var k = Scripts.getObjectKeys(kag.selectList); return "selectList found: " + k.join(", "); } catch(e) { return "selectList not found: " + e.message; } })()
+```
+
+### Поиск объектов с 'select' в названии
+
+```javascript
+(function(){ var keys = Scripts.getObjectKeys(kag); var selects = []; for(var i=0;i<keys.length;i++){ if(keys[i].toLowerCase().indexOf('select')!=-1){ selects.push(keys[i]); } } return selects.join(", "); })()
+```
+
+### Проверка текущего состояния игры
+
+```javascript
+(function(){ var keys = Scripts.getObjectKeys(kag); var status = []; for(var i=0;i<keys.length;i++){ var key = keys[i]; if(typeof kag[key]==='object' && kag[key]!==null){ var subkeys = Scripts.getObjectKeys(kag[key]); if(subkeys.length>0 && subkeys.length<10){ status.push(key+": ["+subkeys.join(", ")+"]"); } } } return status.slice(0,5).join("\n"); })()
+```
