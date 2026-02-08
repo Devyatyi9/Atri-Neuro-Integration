@@ -1,0 +1,42 @@
+// Дамп всех ключей объекта в файл
+function DumpKeys(objectName, fileName) {
+    var keys = Scripts.getObjectKeys(objectName);
+    if (!keys || keys.length === 0) {
+        AppendToNeuroConsole(L"No keys found for object: " + objectName + "\"\n", RGB(255, 128, 128));
+        return;
+    }
+    
+    keys.sort();
+    
+    // Создаём текст для записи
+    var content = objectName + " contains " + keys.length + " keys:\n\n";
+    
+    // Записываем в файл
+    try {
+        std::ofstream file(fileName);
+        if (file.is_open()) {
+            file << content;
+            AppendToNeuroConsole((objectName + " saved to " + fileName + "\"\n").c_str(), RGB(0, 200, 0));
+        } else {
+            AppendToNeuroConsole((objectName + " failed to save to " + fileName + "\"\n").c_str(), RGB(255, 0, 0));
+        }
+    } catch (...) {
+        AppendToNeuroConsole((objectName + " error saving keys: " + std::exception().what() + "\"\n").c_str(), RGB(255, 0, 0));
+    }
+}
+
+    AppendToNeuroConsole((objectName + " analysis complete. Total keys: " + std::to_wstring(keys.length) + "\n"));
+}
+
+// Пример использования
+/*
+// Сохранить все ключи kag
+DumpKeys("kag", "kag-full.txt");
+
+// Сохранить только полезные ключи
+DumpKeys("kag", "kag-useful.txt");
+
+// Сохранить ключи для быстрого доступа
+DumpKeys("kag", "kag-quick.txt", "select", "choice", "current");
+*/
+```

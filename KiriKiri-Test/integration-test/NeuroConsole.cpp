@@ -32,6 +32,7 @@ private:
     HWND m_hInput;   // Edit для ввода команд
     HWND m_hExecute; // Кнопка Execute
     HWND m_hClear;   // Кнопка Clear
+    HWND m_hScriptMode; // Кнопка Script Mode
     HWND m_hAlwaysOnTop; // Чекбокс AlwaysOnTop
     HWND m_hDebugOutput; // Чекбокс Debug Output
     HWND m_hNoWrapper; // Чекбокс No Wrapper
@@ -138,18 +139,17 @@ private:
         }
 
         case WM_COMMAND: {
-            // Клик на кнопку Execute (или Script Mode)
+        // Клик на кнопку Execute
             if ((HWND)lParam == console->m_hExecute) {
                 if (console) {
-                    // Проверяем состояние Modifier клавиши
-                    if (GetKeyState(VK_SHIFT) & 0x8000) {
-                        // Shift+Execute → Scripting Window
-                        ToggleScriptingWindow();
-                    } else {
-                        // Обычное нажатие → Execute command
-                        console->ExecuteCommand();
-                    }
+                    console->ExecuteCommand();
                 }
+                return 0;
+            }
+
+            // Клик на кнопку Script Mode
+            if ((HWND)lParam == console->m_hScriptMode) {
+                ToggleScriptingWindow();
                 return 0;
             }
 
@@ -203,7 +203,8 @@ private:
         const int checkboxHeight = 20;
         const int padding = 5;
         const int buttonWidth = 80;
-        const int checkboxWidth = 100; // Уменьшил для 3 чекбоксов
+        const int scriptModeWidth = 100;
+        const int checkboxWidth = 100;
 
         // Output занимает почти всё окно (минус место для чекбоксов внизу)
         int outputHeight = height - inputHeight - checkboxHeight - padding * 4;
@@ -214,7 +215,13 @@ private:
         // Input field
         int inputY = outputHeight + padding * 2;
         SetWindowPos(m_hInput, NULL, padding, inputY,
-            width - buttonWidth * 2 - padding * 4, inputHeight,
+            width - buttonWidth * 2 - scriptModeWidth - padding * 5, inputHeight,
+            SWP_NOZORDER);
+
+        // Script Mode button (opens multi-line editor)
+        int scriptModeX = width - buttonWidth * 2 - scriptModeWidth - padding * 3;
+        SetWindowPos(m_hScriptMode, NULL, scriptModeX, inputY,
+            scriptModeWidth, inputHeight,
             SWP_NOZORDER);
 
         // Execute button
@@ -418,7 +425,7 @@ public:
     }
 
 NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
-        m_hExecute(NULL), m_hClear(NULL), m_hAlwaysOnTop(NULL), m_hDebugOutput(NULL),
+        m_hExecute(NULL), m_hClear(NULL), m_hScriptMode(NULL), m_hAlwaysOnTop(NULL), m_hDebugOutput(NULL),
         m_hNoWrapper(NULL), m_historyIndex(0), m_hRichEditDll(NULL) {
         s_Instance = this;
     }
@@ -504,6 +511,15 @@ NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
             m_hWnd, NULL, GetModuleHandle(NULL), NULL
         );
 
+        // Создаём кнопку Script Mode для открытия многострочного редактора
+        m_hScriptMode = CreateWindowW(
+            L"BUTTON",
+            L"Script Mode",
+            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            0, 0, 0, 0,
+            m_hWnd, NULL, GetModuleHandle(NULL), NULL
+        );
+
         // Создаём чекбоксы
         m_hAlwaysOnTop = CreateWindowW(
             L"BUTTON",
@@ -546,6 +562,7 @@ NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
         SendMessageW(m_hInput, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hExecute, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hClear, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessageW(m_hScriptMode, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hAlwaysOnTop, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
         SendMessageW(m_hNoWrapper, WM_SETFONT, (WPARAM)hFont, TRUE);
@@ -558,6 +575,12 @@ NeuroConsole() : m_hWnd(NULL), m_hOutput(NULL), m_hInput(NULL),
         AppendOutput(L"  Debug.message('Hello')\n", RGB(0, 150, 0));
         AppendOutput(L"  2 + 2\n", RGB(0, 150, 0));
         AppendOutput(L"  System.title\n\n", RGB(0, 150, 0));
+        AppendOutput(L"Game Exploration:\n", RGB(0, 0, 0));
+        AppendOutput(L"  Scripts.getObjectKeys(kag) - List kag properties\n", RGB(0, 150, 0));
+        AppendOutput(L"  Scripts.dumpKeys(kag, 'kag_keys.txt') - Dump to file\n", RGB(0, 150, 0));
+        AppendOutput(L"  kag.conductor.curStorage + ':' + kag.conductor.curLabel - Current position\n", RGB(0, 150, 0));
+        AppendOutput(L"  kag.conductor.getAliasName() - Current character\n", RGB(0, 150, 0));
+        AppendOutput(L"  typeof kag.selectLayer != 'undefined' - Check if selecting\n\n", RGB(0, 150, 0));
 
         return true;
     }
