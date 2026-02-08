@@ -1,0 +1,1 @@
+KAGLayer, adjustColorKey, assignImages, assignVisibleState, beginMove, finalize, loadImages, moveFinalFunction, restore, setOptions, stopMove, store

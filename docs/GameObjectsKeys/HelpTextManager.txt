@@ -1,0 +1,1 @@
+HelpTextManager, _drawHelpTipText, _mergeDictionary, allClearAndUnload, canCheckHelpTipArea, clearHelpTipText, createTipsLayer, drawHelpTipTag, drawHelpTipText, finalize, getHelpBindFromCursor, getHelpBindFromPos, getHelpBindFromUI, getHelpTipTargetLayer, isvalidTipsLayer, onMouseMove, reload, reset, setNonFadeOpacity, setup, showHideHelpTip, startFade, stopFade, updateDrawOption

@@ -1,0 +1,1 @@
+EmotionPlugin, clearEmotion, doEmotion, getEmotionInfo, getPos, onEnvEventDelete, onEnvEventDisp, onEnvEventSetOption, onEnvMatch, onResetAll

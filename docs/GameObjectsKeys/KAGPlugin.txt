@@ -1,0 +1,1 @@
+KAGPlugin, finalize, onCopyLayer, onExchangeForeBack, onMessageHiddenStateChanged, onRestore, onSaveSystemVariables, onStableStateChanged, onStore

@@ -1,0 +1,1 @@
+createHelpObject, delayDrawWeakHelp, drawWeakHelp, getModeHelpTag, initHelpManager, onForceHelp, onHelpVisible, reloadHelp, resetHelp, setWeakHelp, setupHelpManager, termHelpManager

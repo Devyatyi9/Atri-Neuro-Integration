@@ -1,0 +1,1 @@
+ExecGame, __origDebugLevel, bgchange, lastSystemVoiceChara, playmovie, recollect

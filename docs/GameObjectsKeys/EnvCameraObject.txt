@@ -1,0 +1,1 @@
+EnvCameraObject, basezoom, cameraox, cameraoy, camerarotate, camerax, cameray, cameraz, camerazoom, init, msgoffx, msgoffy, shiftx, shifty, updateCamera, updateMessage, updateWind, windgoal, windmax, windmin, windspeed, windstart, zcenterx, zcentery, zoomx, zoomy
