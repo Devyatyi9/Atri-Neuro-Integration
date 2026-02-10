@@ -344,6 +344,7 @@ LRESULT CALLBACK ScriptingWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wParam,
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
+    return 0;
 }
 
 // ============================================================================

@@ -8,10 +8,25 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <d3d9.h>
+
 #include "../include/neurosdk.h"
+#include "MinHook.h"
 #include "NeuroConsole.h"
 
 #pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "libMinHook.x86.lib")
+#pragma comment(lib, "d3d9.lib")
+
+// Global game window handle
+extern HWND g_GameWindow;
+
+// ============================================================================
+// ImGui + DX9 Hook includes
+// ============================================================================
+#include "imgui.h"
+#include "backends/imgui_impl_dx9.h"
+#include "backends/imgui_impl_win32.h"
 
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
@@ -44,6 +59,143 @@ static std::string g_NeuroURL = "ws://localhost:8000";
 // Registered actions (для отслеживания)
 static std::vector<std::string> g_RegisteredActions;
 static std::mutex g_ActionsMutex;
+
+// Forward declaration for logging
+void LogToFile(const char* message);
+
+// ============================================================================
+// DX9 Hook для ImGui
+// ============================================================================
+
+typedef HRESULT(WINAPI* EndScene_t)(IDirect3DDevice9*);
+static EndScene_t g_OriginalEndScene = nullptr;
+static IDirect3DDevice9* g_GameDevice = nullptr;
+static bool g_ImGuiHookReady = false;
+
+// Forward declarations
+void InitImGuiHook();
+void ShutdownImGuiHook();
+void ImGui_NewFrame();
+void ImGui_Render();
+void RenderImGuiWindows();
+void ToggleImGui();
+bool IsImGuiVisible();
+
+// EndScene hook - здесь рендерим ImGui
+static HRESULT WINAPI hkEndScene(IDirect3DDevice9* pDevice) {
+    g_GameDevice = pDevice;
+
+    if (!g_ImGuiHookReady) {
+        InitImGuiHook();
+    }
+
+    // Проверяем F12 для toggle
+    static bool f12Pressed = false;
+    if (GetAsyncKeyState(VK_F12) & 0x8000) {
+        if (!f12Pressed) {
+            ToggleImGui();
+            f12Pressed = true;
+        }
+    } else {
+        f12Pressed = false;
+    }
+
+    // Рендерим ImGui только когда включён
+    if (g_ImGuiHookReady && IsImGuiVisible()) {
+        ImGui_NewFrame();
+        RenderImGuiWindows();
+        ImGui_Render();
+    }
+
+    return g_OriginalEndScene(pDevice);
+}
+
+// Создать Dummy Window для получения EndScene адреса
+bool CreateDummyWindowAndHook() {
+    // Создаём скрытое окно
+    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
+    wc.lpfnWndProc = DefWindowProcW;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.lpszClassName = L"DummyDX9Class";
+    RegisterClassExW(&wc);
+
+    HWND hwnd = CreateWindowExW(0, L"DummyDX9Class", L"Dummy",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr,
+        GetModuleHandleW(nullptr), nullptr);
+
+    // Создаём D3D9
+    IDirect3D9* d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d9) {
+        LogToFile("[DX9] Failed to create D3D9\n");
+        return false;
+    }
+
+    // Параметры device
+    D3DPRESENT_PARAMETERS pp = {};
+    pp.BackBufferWidth = 1;
+    pp.BackBufferHeight = 1;
+    pp.BackBufferFormat = D3DFMT_UNKNOWN;
+    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    pp.hDeviceWindow = hwnd;
+    pp.Windowed = TRUE;
+
+    // Создаём device
+    IDirect3DDevice9* dummyDevice = nullptr;
+    HRESULT hr = d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd,
+        D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &dummyDevice);
+
+    if (FAILED(hr) || !dummyDevice) {
+        LogToFile("[DX9] Failed to create dummy device\n");
+        d3d9->Release();
+        return false;
+    }
+
+    // Получаем VTable и EndScene адрес
+    void** vtable = *(void***)dummyDevice;
+    EndScene_t endSceneAddr = (EndScene_t)vtable[42];  // EndScene is at index 42
+
+    LogToFile("[DX9] EndScene address obtained\n");
+
+    // Удаляем dummy device и окно
+    dummyDevice->Release();
+    d3d9->Release();
+    DestroyWindow(hwnd);
+    UnregisterClassW(L"DummyDX9Class", GetModuleHandleW(nullptr));
+
+    // Инициализируем MinHook
+    MH_Initialize();
+
+    // Создаём hook
+    MH_CreateHook(endSceneAddr, hkEndScene, (void**)&g_OriginalEndScene);
+    MH_EnableHook(endSceneAddr);
+
+    LogToFile("[DX9] EndScene hooked successfully\n");
+    return true;
+}
+
+void InitImGuiHook() {
+    if (g_ImGuiHookReady || !g_GameDevice) return;
+
+    extern void ImGui_Init(IDirect3DDevice9*, HWND);
+
+    // Получаем HWND игры (из существующего кода)
+    ImGui_Init(g_GameDevice, g_GameWindow);
+    // g_ImGuiVisible остаётся false - пользователь включает вручную через F12
+
+    g_ImGuiHookReady = true;
+    LogToFile("[ImGui] Hook initialized\n");
+}
+
+void ShutdownImGuiHook() {
+    extern void ImGui_Shutdown();
+    ImGui_Shutdown();
+
+    MH_DisableHook(MH_ALL_HOOKS);
+    MH_Uninitialize();
+
+    g_ImGuiHookReady = false;
+}
 
 // ============================================================================
 // Буферизованное логирование
@@ -803,7 +955,7 @@ void DeferredTJSInitThread() {
             LogToFile(buf);
 
             LogToFile("Basic tests completed!\n");
-            LogToFile("Hotkey: F12=console\n");
+            LogToFile("Hotkey: F12=Imgui\n");
 
             // Запускаем обработчик хоткеев
             StartHotkeyThread();
@@ -828,28 +980,28 @@ void StartDeferredTJSInit() {
 // Хоткеи (thread-safe через Window Subclass)
 // ============================================================================
 
-void HotkeyThread() {
-    LogToFile("Hotkey thread started (F12 = console)\n");
-
-    while (g_HotkeyThreadRunning.load()) {
-        // F12 - показать/скрыть Neuro Console
-        if (GetAsyncKeyState(VK_F12) & 0x8000) {
-            //LogToFile("F12 pressed - toggling Neuro Console\n");
-            ToggleNeuroConsole();
-            Sleep(300);  // Debounce
-        }
-
-        Sleep(50);  // Не грузим CPU
-    }
-
-    LogToFile("Hotkey thread stopped\n");
-}
+//void HotkeyThread() {
+//    LogToFile("Hotkey thread started (F12 = console)\n");
+//
+//    while (g_HotkeyThreadRunning.load()) {
+//        // F12 - показать/скрыть Neuro Console
+//        if (GetAsyncKeyState(VK_F12) & 0x8000) {
+//            //LogToFile("F12 pressed - toggling Neuro Console\n");
+//            ToggleNeuroConsole();
+//            Sleep(300);  // Debounce
+//        }
+//
+//        Sleep(50);  // Не грузим CPU
+//    }
+//
+//    LogToFile("Hotkey thread stopped\n");
+//}
 
 void StartHotkeyThread() {
     if (g_HotkeyThreadRunning.exchange(true)) {
         return;
     }
-    g_HotkeyThread = std::thread(HotkeyThread);
+    //g_HotkeyThread = std::thread(HotkeyThread);
 }
 
 void StopHotkeyThread() {
@@ -1437,6 +1589,14 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* e
     }
     LogToFile("TVPInitImportStub OK\n");
 
+    // Инициализируем DX9 Hook для ImGui
+    LogToFile("Initializing DX9 hook for ImGui...\n");
+    if (CreateDummyWindowAndHook()) {
+        LogToFile("DX9 hook initialized successfully\n");
+    } else {
+        LogToFile("WARNING: DX9 hook failed - ImGui will not be available\n");
+    }
+
     // Запускаем отложенную инициализацию TJS в фоне
     LogToFile("Starting deferred TJS initialization...\n");
     StartDeferredTJSInit();
@@ -1471,6 +1631,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
         g_ScriptDispatch = nullptr;
     }
     g_TJSReady.store(false);
+
+    // Выключаем ImGui hook
+    ShutdownImGuiHook();
 
     // Освобождаем tp_stub
     TVPUninitImportStub();

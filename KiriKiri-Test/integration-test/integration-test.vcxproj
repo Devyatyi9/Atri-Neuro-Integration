@@ -57,15 +57,16 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\libneurosdk\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\dear-imgui;..\MinHook\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
-      <AdditionalDependencies>libneurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libneurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;..\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
       <Command>
@@ -93,15 +94,16 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\libneurosdk\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\dear-imgui;..\MinHook\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
-      <AdditionalDependencies>libneurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libneurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;..\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
       <Command>
@@ -120,17 +122,35 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\dear-imgui\backends\imgui_impl_dx9.cpp" />
+    <ClCompile Include="..\dear-imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\dear-imgui\imgui.cpp" />
+    <ClCompile Include="..\dear-imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\dear-imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\dear-imgui\imgui_widgets.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="NeuroConsole.cpp" />
     <ClCompile Include="ScriptingWindow.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
+    <ClCompile Include="ImGuiInit.cpp" />
+    <ClCompile Include="ImGuiWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="neuro.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\dear-imgui\backends\imgui_impl_dx9.h" />
+    <ClInclude Include="..\dear-imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="..\dear-imgui\imgui.h" />
+    <ClInclude Include="..\dear-imgui\imgui_internal.h" />
+    <ClInclude Include="..\dear-imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\dear-imgui\imstb_textedit.h" />
+    <ClInclude Include="..\dear-imgui\imstb_truetype.h" />
+    <ClInclude Include="..\krkr-sdk\tp_stub.h" />
     <ClInclude Include="NeuroConsole.h" />
     <ClInclude Include="ScriptingWindow.h" />
+    <ClInclude Include="ImGuiInit.h" />
+    <ClInclude Include="ImGuiWindows.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
