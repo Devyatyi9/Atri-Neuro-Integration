@@ -636,12 +636,11 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     // Считаем вызовы (для диагностики)
     g_SubclassCallCount++;
 
-    // Блокируем ввод игры когда ImGui хочет захватить мышь
+    // Блокируем ввод игры когда ImGui видим - передаём ВСЕ сообщения мыши в ImGui
     if (g_ImGuiHookReady && IsImGuiVisible()) {
-        ImGuiIO& io = ImGui::GetIO();
         bool isMouseMsg = (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST) || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHOVER;
-        if (isMouseMsg && io.WantCaptureMouse) {
-            // Передаём сообщение в ImGui
+        if (isMouseMsg) {
+            // Всегда передаём в ImGui - он сам решит обрабатывать или нет
             if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
                 return 0;  // ImGui обработал
             }
