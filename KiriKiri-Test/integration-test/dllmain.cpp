@@ -28,6 +28,9 @@ extern HWND g_GameWindow;
 #include "backends/imgui_impl_dx9.h"
 #include "backends/imgui_impl_win32.h"
 
+// ImGui Win32 handler - declaration (commented out in imgui_impl_win32.h)
+LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
 // ============================================================================
@@ -632,6 +635,18 @@ static std::atomic<int> g_SubclassCallCount(0);
 LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     // Считаем вызовы (для диагностики)
     g_SubclassCallCount++;
+
+    // Блокируем ввод игры когда ImGui хочет захватить мышь
+    if (g_ImGuiHookReady && IsImGuiVisible()) {
+        ImGuiIO& io = ImGui::GetIO();
+        bool isMouseMsg = (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST) || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHOVER;
+        if (isMouseMsg && io.WantCaptureMouse) {
+            // Передаём сообщение в ImGui
+            if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
+                return 0;  // ImGui обработал
+            }
+        }
+    }
 
     switch (msg) {
     case WM_TJS_EXECUTE: {
