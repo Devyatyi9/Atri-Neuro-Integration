@@ -644,6 +644,10 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
                 return 0;  // ImGui обработал
             }
+            // Если ImGui хочет захватить мышь, блокируем для игры
+            if (ImGui::GetIO().WantCaptureMouse) {
+                return 0;
+            }
         }
     }
 
