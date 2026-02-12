@@ -902,6 +902,211 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
 }
 
 // ============================================================================
+// ImGui Object Inspector Helper Functions
+// ============================================================================
+
+// Результаты для ImGui (глобальные буферы)
+static std::string g_ImGuiKeysResult;
+static std::string g_ImGuiValueResult;
+static std::string g_ImGuiTypeResult;
+static int g_ImGuiKeysCount = 0;
+
+// Helper function to convert TJS string to std::string
+static std::string TJSStringToStdString(const ttstr& tjsStr) {
+    const tjs_char* wstr = tjsStr.c_str();
+    size_t len = 0;
+    while (wstr[len]) len++;
+    
+    if (len == 0) return "";
+    
+    // Convert wide string to narrow string
+    size_t narrowLen = len * 2 + 1;
+    char* narrowStr = new char[narrowLen];
+    WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, narrowStr, (int)narrowLen, nullptr, nullptr);
+    narrowStr[narrowLen - 1] = '\0';
+    
+    std::string result(narrowStr);
+    delete[] narrowStr;
+    return result;
+}
+
+// Получить ключи объекта (lazy loading)
+// Возвращает: ключи разделённые \n, начиная с offset, не более count
+extern "C" __declspec(dllexport) const char* neuroImGuiGetKeys(const char* objectName, int offset, int count) {
+    g_ImGuiKeysResult.clear();
+    g_ImGuiKeysCount = 0;
+
+    if (!g_TJSReady.load()) {
+        g_ImGuiKeysResult = "TJS not ready";
+        return g_ImGuiKeysResult.c_str();
+    }
+
+    char code[1024];
+    snprintf(code, sizeof(code),
+        "(function() {"
+        "  try {"
+        "    var keys = Scripts.getObjectKeys(%s);"
+        "    var total = keys.length;"
+        "    var start = Math.min(%d, total);"
+        "    var end = Math.min(start + %d, total);"
+        "    var result = [];"
+        "    for (var i = start; i < end; i++) { result.push(keys[i]); }"
+        "    return total + '|' + result.join('\\n');"
+        "  } catch(e) { return '0|Error: ' + e.message; }"
+        "})()",
+        objectName, offset, count);
+
+    // Используем ExecuteTJSSync для thread safety
+    tTJSVariant result;
+    wchar_t wcode[1024];
+    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
+    
+    if (ExecuteTJSSync(wcode, &result, 5000)) {
+        ttstr str = result;
+        std::string fullResult = TJSStringToStdString(str);
+        
+        // Парсим: "total|key1\nkey2\n..."
+        size_t pipePos = fullResult.find('|');
+        if (pipePos != std::string::npos) {
+            g_ImGuiKeysCount = atoi(fullResult.substr(0, pipePos).c_str());
+            g_ImGuiKeysResult = fullResult.substr(pipePos + 1);
+        }
+    } else {
+        g_ImGuiKeysResult = "Execution failed";
+    }
+
+    return g_ImGuiKeysResult.c_str();
+}
+
+extern "C" __declspec(dllexport) int neuroImGuiGetKeysCount() {
+    return g_ImGuiKeysCount;
+}
+
+// Получить тип свойства: "function", "object", "string", "number", "undefined", "unknown"
+extern "C" __declspec(dllexport) const char* neuroImGuiGetPropertyType(const char* objectName, const char* propName) {
+    g_ImGuiTypeResult.clear();
+
+    if (!g_TJSReady.load()) {
+        g_ImGuiTypeResult = "unknown";
+        return g_ImGuiTypeResult.c_str();
+    }
+
+    char code[512];
+    snprintf(code, sizeof(code),
+        "(function() {"
+        "  try {"
+        "    var obj = %s;"
+        "    if (obj === undefined || obj === null) return 'undefined';"
+        "    var val = obj[%s];"
+        "    if (val === undefined) return 'undefined';"
+        "    var t = typeof val;"
+        "    if (t === 'function') return 'function';"
+        "    if (t === 'object') return 'object';"
+        "    return 'value';"
+        "  } catch(e) { return 'unknown'; }"
+        "})()",
+        objectName, propName);
+
+    // Используем ExecuteTJSSync для thread safety
+    tTJSVariant result;
+    wchar_t wcode[512];
+    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
+    
+    if (ExecuteTJSSync(wcode, &result, 5000)) {
+        ttstr str = result;
+        g_ImGuiTypeResult = TJSStringToStdString(str);
+    } else {
+        g_ImGuiTypeResult = "execution failed";
+    }
+
+    return g_ImGuiTypeResult.c_str();
+}
+
+// Получить значение свойства (как строка)
+extern "C" __declspec(dllexport) const char* neuroImGuiGetPropertyValue(const char* objectName, const char* propName) {
+    g_ImGuiValueResult.clear();
+
+    if (!g_TJSReady.load()) {
+        g_ImGuiValueResult = "TJS not ready";
+        return g_ImGuiValueResult.c_str();
+    }
+
+    char code[1024];
+    snprintf(code, sizeof(code),
+        "(function() {"
+        "  try {"
+        "    var obj = %s;"
+        "    if (obj === undefined || obj === null) return '[undefined]';"
+        "    var val = obj[%s];"
+        "    if (val === undefined) return '[undefined]';"
+        "    if (typeof val === 'function') return '[function]';"
+        "    if (typeof val === 'object') return '[object]';"
+        "    if (typeof val === 'string') return val;"
+        "    return String(val);"
+        "  } catch(e) { return '[error]'; }"
+        "})()",
+        objectName, propName);
+
+    // Используем ExecuteTJSSync для thread safety
+    tTJSVariant result;
+    wchar_t wcode[1024];
+    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
+    
+    if (ExecuteTJSSync(wcode, &result, 5000)) {
+        ttstr str = result;
+        g_ImGuiValueResult = TJSStringToStdString(str);
+    } else {
+        g_ImGuiValueResult = "execution failed";
+    }
+
+    return g_ImGuiValueResult.c_str();
+}
+
+// Получить переменные f (flags) - возвращает как строку "name=value\n..."
+extern "C" __declspec(dllexport) const char* neuroImGuiGetFlags(const char* flagType) {
+    g_ImGuiValueResult.clear();
+
+    if (!g_TJSReady.load()) {
+        g_ImGuiValueResult = "TJS not ready";
+        return g_ImGuiValueResult.c_str();
+    }
+
+    const char* varName = (strcmp(flagType, "sf") == 0) ? "sf" : (strcmp(flagType, "tf") == 0) ? "tf" : "f";
+
+    char code[512];
+    snprintf(code, sizeof(code),
+        "(function() {"
+        "  try {"
+        "    var vars = %s;"
+        "    if (!vars) return '';"
+        "    var names = Scripts.getObjectKeys(vars);"
+        "    var result = [];"
+        "    for (var i = 0, n = Math.min(names.length, 100); i < n; i++) {"
+        "      var val = vars[names[i]];"
+        "      if (val === undefined) continue;"
+        "      result.push(names[i] + '=' + String(val));"
+        "    }"
+        "    return result.join('\\n');"
+        "  } catch(e) { return 'Error: ' + e.message; }"
+        "})()",
+        varName);
+
+    // Используем ExecuteTJSSync для thread safety
+    tTJSVariant result;
+    wchar_t wcode[512];
+    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
+    
+    if (ExecuteTJSSync(wcode, &result, 5000)) {
+        ttstr str = result;
+        g_ImGuiValueResult = TJSStringToStdString(str);
+    } else {
+        g_ImGuiValueResult = "execution failed";
+    }
+
+    return g_ImGuiValueResult.c_str();
+}
+
+// ============================================================================
 // Отложенная инициализация TJS
 // ============================================================================
 
