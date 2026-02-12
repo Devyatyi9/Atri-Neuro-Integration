@@ -104,24 +104,10 @@ static void RenderObjectInspector() {
                     
                     std::string key = keysStr.substr(start, end - start);
                     if (!key.empty()) {
-                        // Получаем тип ключа
-                        extern const char* neuroImGuiGetPropertyType(const char*, const char*);
-                        const char* type = neuroImGuiGetPropertyType(node.fullPath.c_str(), key.c_str());
-                        
-                        // Определяем префикс и цвет
-                        ImVec4 color = ImVec4(1, 1, 1, 1);  // Белый - значение
-                        std::string prefix = "[v] ";
-                        
-                        if (strcmp(type, "function") == 0) {
-                            color = ImVec4(0.5f, 0.5f, 1, 1);  // Синий - функция
-                            prefix = "[f] ";
-                        } else if (strcmp(type, "object") == 0) {
-                            color = ImVec4(1, 0.9f, 0.3f, 1);  // Жёлтый - объект
-                            prefix = "[o] ";
-                        }
-                        
-                        // Показываем ключ с типом
-                        ImGui::TextColored(color, "%s%s", prefix.c_str(), key.c_str());
+                        // Показываем ключ (без проверки типа - слишком медленно)
+                        // Можно добавить позже с батчем
+                        ImVec4 color = ImVec4(1, 1, 1, 1);  // Белый
+                        ImGui::TextColored(color, "%s", key.c_str());
                     }
                     
                     start = (end < keysStr.size()) ? end + 1 : end;

@@ -837,16 +837,19 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
     // СЦЕНАРИЙ А: Вызов из главного потока
     // ==========================================
     if (IsMainThread()) {
+        LogToFile("[ExecuteTJSSync] Running on main thread\n");
         if (g_TJSReady.load()) {
             TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
             return true;
         }
+        LogToFile("[ExecuteTJSSync] TJS not ready on main thread\n");
         return false;
     }
 
     // ==========================================
     // СЦЕНАРИЙ Б: Вызов из другого потока
     // ==========================================
+    LogToFile("[ExecuteTJSSync] Running on worker thread, posting message\n");
 
     // Выделяем в куче. Теперь code - это std::wstring, данные копируются внутрь.
     TJSSyncCallData* data = new TJSSyncCallData();
@@ -911,27 +914,28 @@ static std::string g_ImGuiValueResult;
 static std::string g_ImGuiTypeResult;
 static int g_ImGuiKeysCount = 0;
 
-// Helper function to convert TJS string to std::string
+// Helper function to convert TJS string to std::string (with UTF-8 support for Japanese)
 static std::string TJSStringToStdString(const ttstr& tjsStr) {
     const tjs_char* wstr = tjsStr.c_str();
+    if (!wstr) return "";
+    
     size_t len = 0;
     while (wstr[len]) len++;
     
     if (len == 0) return "";
     
-    // Convert wide string to narrow string
-    size_t narrowLen = len * 2 + 1;
-    char* narrowStr = new char[narrowLen];
-    WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, narrowStr, (int)narrowLen, nullptr, nullptr);
-    narrowStr[narrowLen - 1] = '\0';
+    // Convert wide string (UTF-16) to UTF-8
+    int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, nullptr, 0, nullptr, nullptr);
+    if (requiredSize <= 0) return "";
     
-    std::string result(narrowStr);
-    delete[] narrowStr;
+    std::string result;
+    result.resize(requiredSize);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, &result[0], requiredSize, nullptr, nullptr);
+    
     return result;
 }
 
 // Получить ключи объекта (lazy loading)
-// Возвращает: ключи разделённые \n, начиная с offset, не более count
 extern "C" __declspec(dllexport) const char* neuroImGuiGetKeys(const char* objectName, int offset, int count) {
     g_ImGuiKeysResult.clear();
     g_ImGuiKeysCount = 0;
@@ -941,38 +945,30 @@ extern "C" __declspec(dllexport) const char* neuroImGuiGetKeys(const char* objec
         return g_ImGuiKeysResult.c_str();
     }
 
-    char code[1024];
-    snprintf(code, sizeof(code),
-        "(function() {"
-        "  try {"
-        "    var keys = Scripts.getObjectKeys(%s);"
-        "    var total = keys.length;"
-        "    var start = Math.min(%d, total);"
-        "    var end = Math.min(start + %d, total);"
-        "    var result = [];"
-        "    for (var i = start; i < end; i++) { result.push(keys[i]); }"
-        "    return total + '|' + result.join('\\n');"
-        "  } catch(e) { return '0|Error: ' + e.message; }"
-        "})()",
-        objectName, offset, count);
+    // Простейший TJS код - как в работающем Refresh
+    char code[512];
+    snprintf(code, sizeof(code), 
+        "Scripts.getObjectKeys(%s).join('\x0A')",
+        objectName);
 
-    // Используем ExecuteTJSSync для thread safety
     tTJSVariant result;
-    wchar_t wcode[1024];
+    wchar_t wcode[512];
     mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
     
-    if (ExecuteTJSSync(wcode, &result, 5000)) {
+    if (ExecuteTJSSync(wcode, &result, 10000)) {
         ttstr str = result;
         std::string fullResult = TJSStringToStdString(str);
         
-        // Парсим: "total|key1\nkey2\n..."
-        size_t pipePos = fullResult.find('|');
-        if (pipePos != std::string::npos) {
-            g_ImGuiKeysCount = atoi(fullResult.substr(0, pipePos).c_str());
-            g_ImGuiKeysResult = fullResult.substr(pipePos + 1);
+        // Просто сохраняем все ключи - ImGui сам покажет нужное количество
+        g_ImGuiKeysResult = fullResult;
+        
+        // Считаем количество ключей
+        g_ImGuiKeysCount = 0;
+        for (size_t i = 0; i < fullResult.size(); i++) {
+            if (fullResult[i] == '\x0A' || i == 0) g_ImGuiKeysCount++;
         }
     } else {
-        g_ImGuiKeysResult = "Execution failed";
+        g_ImGuiKeysResult = "error";
     }
 
     return g_ImGuiKeysResult.c_str();
@@ -1062,7 +1058,7 @@ extern "C" __declspec(dllexport) const char* neuroImGuiGetPropertyValue(const ch
     return g_ImGuiValueResult.c_str();
 }
 
-// Получить переменные f (flags) - возвращает как строку "name=value\n..."
+// Получить переменные f (flags)
 extern "C" __declspec(dllexport) const char* neuroImGuiGetFlags(const char* flagType) {
     g_ImGuiValueResult.clear();
 
@@ -1073,34 +1069,19 @@ extern "C" __declspec(dllexport) const char* neuroImGuiGetFlags(const char* flag
 
     const char* varName = (strcmp(flagType, "sf") == 0) ? "sf" : (strcmp(flagType, "tf") == 0) ? "tf" : "f";
 
-    char code[512];
-    snprintf(code, sizeof(code),
-        "(function() {"
-        "  try {"
-        "    var vars = %s;"
-        "    if (!vars) return '';"
-        "    var names = Scripts.getObjectKeys(vars);"
-        "    var result = [];"
-        "    for (var i = 0, n = Math.min(names.length, 100); i < n; i++) {"
-        "      var val = vars[names[i]];"
-        "      if (val === undefined) continue;"
-        "      result.push(names[i] + '=' + String(val));"
-        "    }"
-        "    return result.join('\\n');"
-        "  } catch(e) { return 'Error: ' + e.message; }"
-        "})()",
-        varName);
+    // Простейший TJS код - просто получить ключи
+    char code[256];
+    snprintf(code, sizeof(code), "Scripts.getObjectKeys(%s).join('\x0A')", varName);
 
-    // Используем ExecuteTJSSync для thread safety
     tTJSVariant result;
-    wchar_t wcode[512];
+    wchar_t wcode[256];
     mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
     
-    if (ExecuteTJSSync(wcode, &result, 5000)) {
+    if (ExecuteTJSSync(wcode, &result, 10000)) {
         ttstr str = result;
         g_ImGuiValueResult = TJSStringToStdString(str);
     } else {
-        g_ImGuiValueResult = "execution failed";
+        g_ImGuiValueResult = "error";
     }
 
     return g_ImGuiValueResult.c_str();
