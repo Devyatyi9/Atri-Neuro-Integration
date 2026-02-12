@@ -22,13 +22,13 @@ struct ObjectNodeData {
     int totalKeys = 0;          // Всего ключей
 };
 
-// Объекты для Object Inspector
+// Объекты для Object Inspector - только global для теста
 static ObjectNodeData g_ObjectNodes[] = {
-    {"kag", "kag", false, 0, 0},
-    {"kag.conductor", "kag.conductor", false, 0, 0},
-    {"System", "System", false, 0, 0},
     {"global", "global", false, 0, 0}
 };
+
+// Опция для перезагрузки при каждом открытии
+static bool g_AlwaysReloadObjects = false;
 
 static void RenderObjectInspector() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
@@ -40,6 +40,8 @@ static void RenderObjectInspector() {
     }
 
     ImGui::InputText("Search##inspector", g_SearchBufferInspector, sizeof(g_SearchBufferInspector));
+    ImGui::SameLine();
+    ImGui::Checkbox("Always reload", &g_AlwaysReloadObjects);
     ImGui::Separator();
 
     static ImGuiTreeNodeFlags base_flags =
@@ -63,65 +65,86 @@ static void RenderObjectInspector() {
         // Рендерим узел
         bool isOpen = ImGui::TreeNodeEx(node.name.c_str(), base_flags);
         
-        // Обновляем состояние раскрытия
-        if (isOpen && !node.expanded) {
+        // При открытии - загружаем ключи (при первом открытии или если Always reload включен)
+        bool shouldReload = (isOpen && node.loadedKeys == 0) || 
+                           (g_AlwaysReloadObjects && isOpen && node.expanded);
+        
+        if (shouldReload) {
             node.expanded = true;
-            // Показываем загруженные ключи
-            if (node.expanded && node.loadedKeys > 0) {
-                extern const char* neuroImGuiGetKeys(const char*, int, int);
-                const char* keys = neuroImGuiGetKeys(node.fullPath.c_str(), 0, node.loadedKeys);
+            // Если Always reload - сбрасываем счётчик для перезагрузки
+            if (g_AlwaysReloadObjects) {
+                node.loadedKeys = 0;
+            }
+            extern const char* neuroImGuiGetKeys(const char*, int, int);
+            extern int neuroImGuiGetKeysCount();
+            neuroImGuiGetKeys(node.fullPath.c_str(), 0, 30);
+            node.loadedKeys = 30;
+            node.totalKeys = neuroImGuiGetKeysCount();
+        }
+        
+        // При закрытии - обновляем флаг
+        if (!isOpen && node.expanded) {
+            node.expanded = false;
+        }
+        
+        // Показываем ключи если узел открыт
+        if (isOpen && node.loadedKeys > 0) {
+            extern const char* neuroImGuiGetKeys(const char*, int, int);
+            const char* keys = neuroImGuiGetKeys(node.fullPath.c_str(), 0, node.loadedKeys);
+            
+            if (keys && strlen(keys) > 0) {
+                ImGui::Indent();
                 
-                if (keys && strlen(keys) > 0) {
-                    ImGui::Indent();
+                // Разбиваем ключи по строкам
+                std::string keysStr = keys;
+                size_t start = 0;
+                while (start < keysStr.size()) {
+                    size_t end = keysStr.find('\n', start);
+                    if (end == std::string::npos) end = keysStr.size();
                     
-                    // Разбиваем ключи по строкам
-                    std::string keysStr = keys;
-                    size_t start = 0;
-                    while (start < keysStr.size()) {
-                        size_t end = keysStr.find('\n', start);
-                        if (end == std::string::npos) end = keysStr.size();
+                    std::string key = keysStr.substr(start, end - start);
+                    if (!key.empty()) {
+                        // Получаем тип ключа
+                        extern const char* neuroImGuiGetPropertyType(const char*, const char*);
+                        const char* type = neuroImGuiGetPropertyType(node.fullPath.c_str(), key.c_str());
                         
-                        std::string key = keysStr.substr(start, end - start);
-                        if (!key.empty()) {
-                            // Получаем тип ключа
-                            extern const char* neuroImGuiGetPropertyType(const char*, const char*);
-                            const char* type = neuroImGuiGetPropertyType(node.fullPath.c_str(), key.c_str());
-                            
-                            // Определяем префикс и цвет
-                            ImVec4 color = ImVec4(1, 1, 1, 1);  // Белый - значение
-                            std::string prefix = "[v] ";
-                            
-                            if (strcmp(type, "function") == 0) {
-                                color = ImVec4(0.5f, 0.5f, 1, 1);  // Синий - функция
-                                prefix = "[f] ";
-                            } else if (strcmp(type, "object") == 0) {
-                                color = ImVec4(1, 0.9f, 0.3f, 1);  // Жёлтый - объект
-                                prefix = "[o] ";
-                            }
-                            
-                            // Показываем ключ с типом
-                            ImGui::TextColored(color, "%s%s", prefix.c_str(), key.c_str());
+                        // Определяем префикс и цвет
+                        ImVec4 color = ImVec4(1, 1, 1, 1);  // Белый - значение
+                        std::string prefix = "[v] ";
+                        
+                        if (strcmp(type, "function") == 0) {
+                            color = ImVec4(0.5f, 0.5f, 1, 1);  // Синий - функция
+                            prefix = "[f] ";
+                        } else if (strcmp(type, "object") == 0) {
+                            color = ImVec4(1, 0.9f, 0.3f, 1);  // Жёлтый - объект
+                            prefix = "[o] ";
                         }
                         
-                        start = (end < keysStr.size()) ? end + 1 : end;
+                        // Показываем ключ с типом
+                        ImGui::TextColored(color, "%s%s", prefix.c_str(), key.c_str());
                     }
                     
-                    ImGui::Unindent();
-                }
-
-                // Кнопка "More..." если есть ещё ключи
-                if (node.loadedKeys < node.totalKeys) {
-                    if (ImGui::Button("More...")) {
-                        int newCount = node.loadedKeys + 30;
-                        if (newCount > node.totalKeys) newCount = node.totalKeys;
-                        node.loadedKeys = newCount;
-                    }
+                    start = (end < keysStr.size()) ? end + 1 : end;
                 }
                 
-                // Статистика
-                ImGui::TextDisabled("(%d/%d keys)", node.loadedKeys, node.totalKeys);
+                ImGui::Unindent();
             }
 
+            // Кнопка "More..." если есть ещё ключи
+            if (node.loadedKeys < node.totalKeys) {
+                if (ImGui::Button("More...")) {
+                    int newCount = node.loadedKeys + 30;
+                    if (newCount > node.totalKeys) newCount = node.totalKeys;
+                    node.loadedKeys = newCount;
+                }
+            }
+            
+            // Статистика
+            ImGui::TextDisabled("(%d/%d keys)", node.loadedKeys, node.totalKeys);
+        }
+
+        // Всегда вызываем TreePop для открытых узлов
+        if (isOpen) {
             ImGui::TreePop();
         }
     }
@@ -145,30 +168,23 @@ static void RenderVariablesPanel() {
         return;
     }
 
+    // Объявляем extern функции и переменные в правильном порядке
+    extern const char* neuroImGuiGetFlags(const char*);
+    static std::string fFlags = "";
+    static std::string tfFlags = "";
+    static std::string sfFlags = "";
+
     ImGui::InputText("Search##vars", g_SearchBufferVars, sizeof(g_SearchBufferVars));
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh")) {
+        fFlags = neuroImGuiGetFlags("f");
+        tfFlags = neuroImGuiGetFlags("tf");
+        sfFlags = neuroImGuiGetFlags("sf");
+    }
     ImGui::Separator();
 
     std::string searchLower = g_SearchBufferVars;
     for (auto& c : searchLower) c = (char)tolower(c);
-
-    // Получаем переменные
-    extern const char* neuroImGuiGetFlags(const char*);
-    
-    static std::string fFlags, tfFlags, sfFlags;
-    static bool fLoaded = false, tfLoaded = false, sfLoaded = false;
-    
-    if (!fLoaded) {
-        fFlags = neuroImGuiGetFlags("f");
-        fLoaded = true;
-    }
-    if (!tfLoaded) {
-        tfFlags = neuroImGuiGetFlags("tf");
-        tfLoaded = true;
-    }
-    if (!sfLoaded) {
-        sfFlags = neuroImGuiGetFlags("sf");
-        sfLoaded = true;
-    }
 
     static ImGuiTreeNodeFlags base_flags =
         ImGuiTreeNodeFlags_OpenOnArrow |
