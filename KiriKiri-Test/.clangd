@@ -1,0 +1,33 @@
+CompileFlags:
+  Add:
+    - -target
+    - i386-pc-windows-msvc
+    - -std=c++17
+    - -fms-extensions
+    - -fms-compatibility
+    - -D_CRT_SECURE_NO_WARNINGS
+    # ← сюда нужно перенести include-пути, они часть Add:
+    - -I../krkr-sdk
+    - -I../dear-imgui
+    - -I../dear-imgui/backends
+    - -I../MinHook/include
+    - -I../../libneurosdk/include
+    - -DWIN32
+    - -D_WINDOWS
+    - -D_USRDLL
+  Remove:
+    - -Werror
+    - -Werror=*
+
+Diagnostics:
+  Suppress:
+    - "*uninitialized*"
+    - "*unused*"
+
+---
+# Отдельный блок для подпапки — через --- разделитель
+If:
+  PathMatch: "integration-test/.*"
+CompileFlags:
+  Add:
+    - -I../../../libneurosdk/include
