@@ -1,6 +1,8 @@
 #include <Windows.h>
 #include <thread>
 
+#define WIN32_LEAN_AND_MEAN
+
 // ============================================================================
 // Минимальный загрузчик плагина (self-linking)
 // Вся логика поиска iTVPFunctionExporter теперь в плагине
