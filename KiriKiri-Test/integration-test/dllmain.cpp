@@ -17,6 +17,7 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "libMinHook.x86.lib")
 #pragma comment(lib, "d3d9.lib")
+#define WIN32_LEAN_AND_MEAN
 
 // Global game window handle
 extern HWND g_GameWindow;
