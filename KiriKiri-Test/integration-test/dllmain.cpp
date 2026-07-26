@@ -1142,34 +1142,34 @@ void DeferredTJSInitThread() {
             LogToFile("WARNING: Window subclass failed, TJS calls may be unsafe\n");
         }
 
-        // Регистрируем функции в TJS
-        if (RegisterAllFunctions()) {
-            OutputDebugStringW(L"[NEURO PLUGIN] Functions registered successfully!\n");
+        // Регистрируем функции в TJS через ncbind
+        LogToFile("Registering TJS functions via ncbind...\n");
+        ncbAutoRegister::AllRegist();
+        LogToFile("Functions registered via ncbind\n");
 
-            // Тестируем вызов зарегистрированных функций из C++
-            LogToFile("Testing registered functions from C++...\n");
+        // Регистрируем перехват Debug.message -> NeuroConsole
+        LogToFile("Setting up Debug.addLoggingHandler...\n");
+        ExecuteTJSAsync(L"Debug.addLoggingHandler(neuroConsoleLog)");
+        LogToFile("Debug logging handler registered!\n");
 
-            tTJSVariant result;
-            char buf[256];
+        // Тестируем вызов зарегистрированных функций из C++
+        LogToFile("Testing registered functions from C++...\n");
 
-            // Тест 1: neuroGetVersion()
-            TVPExecuteExpression(TJS_W("neuroGetVersion()"), &result);
-            sprintf_s(buf, "  neuroGetVersion() returned: %d\n", (int)(tTVInteger)result);
-            LogToFile(buf);
+        tTJSVariant result;
+        char buf[256];
 
-            // Тест 2: neuroIsTJSReady()
-            TVPExecuteExpression(TJS_W("neuroIsTJSReady()"), &result);
-            sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n", (int)(tTVInteger)result);
-            LogToFile(buf);
+        TVPExecuteExpression(TJS_W("neuroGetVersion()"), &result);
+        sprintf_s(buf, "  neuroGetVersion() returned: %d\n", (int)(tTVInteger)result);
+        LogToFile(buf);
 
-            LogToFile("Basic tests completed!\n");
-            LogToFile("Hotkey: F12=Imgui\n");
+        TVPExecuteExpression(TJS_W("neuroIsTJSReady()"), &result);
+        sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n", (int)(tTVInteger)result);
+        LogToFile(buf);
 
-            // Запускаем обработчик хоткеев
-            StartHotkeyThread();
-        } else {
-            LogToFile("ERROR: Failed to register functions\n");
-        }
+        LogToFile("Basic tests completed!\n");
+
+        // Запускаем обработчик хоткеев
+        StartHotkeyThread();
     } else {
         LogToFile("Deferred TJS init: TIMEOUT (TJS not ready after 10s)\n");
     }
@@ -1835,153 +1835,10 @@ static tjs_error TJS_INTF_METHOD NeuroExec(
 }
 
 // ============================================================================
-// Регистрация функций в TJS глобальном объекте
+// Регистрация функций через ncbind
 // ============================================================================
-
-// Класс-обёртка для TJS функции
-template<tjs_error (TJS_INTF_METHOD *Func)(tTJSVariant*, tjs_int, tTJSVariant**, iTJSDispatch2*)>
-class tTJSFunctionWrapper : public tTJSDispatch
-{
-public:
-    tjs_error TJS_INTF_METHOD FuncCall(
-        tjs_uint32 flag, const tjs_char* membername, tjs_uint32* hint,
-        tTJSVariant* result, tjs_int numparams, tTJSVariant** param,
-        iTJSDispatch2* objthis) override
-    {
-        if (membername) return TJS_E_MEMBERNOTFOUND;
-        return Func(result, numparams, param, objthis);
-    }
-};
-
-// Глобальные указатели на функции-обёртки
-static tTJSFunctionWrapper<NeuroTestFunction>* g_NeuroTestFunc = nullptr;
-static tTJSFunctionWrapper<NeuroGetVersion>* g_NeuroGetVersionFunc = nullptr;
-static tTJSFunctionWrapper<NeuroEcho>* g_NeuroEchoFunc = nullptr;
-static tTJSFunctionWrapper<NeuroSendData>* g_NeuroSendDataFunc = nullptr;
-static tTJSFunctionWrapper<NeuroIsTJSReady>* g_NeuroIsTJSReadyFunc = nullptr;
-static tTJSFunctionWrapper<NeuroIsKAGReady>* g_NeuroIsKAGReadyFunc = nullptr;
-static tTJSFunctionWrapper<NeuroShowConsole>* g_NeuroShowConsoleFunc = nullptr;
-static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
-static tTJSFunctionWrapper<NeuroConsoleLog>* g_NeuroConsoleLogFunc = nullptr;
-static tTJSFunctionWrapper<NeuroDump>* g_NeuroDumpFunc = nullptr;
-static tTJSFunctionWrapper<NeuroStartHooks>* g_NeuroStartHooksFunc = nullptr;
-static tTJSFunctionWrapper<NeuroStopHooks>* g_NeuroStopHooksFunc = nullptr;
-static tTJSFunctionWrapper<NeuroGetCurrentContext>* g_NeuroGetCurrentContextFunc = nullptr;
-static tTJSFunctionWrapper<NeuroBuildVoiceMap>* g_NeuroBuildVoiceMapFunc = nullptr;
-
-void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
-{
-    // Используем конструктор с явным указанием объекта
-    tTJSVariant val(func, func);
-    func->Release();  // val теперь держит ссылку
-    global->PropSet(TJS_MEMBERENSURE, name, NULL, &val, global);
-}
-
-bool RegisterAllFunctions()
-{
-    iTJSDispatch2* global = TVPGetScriptDispatch();
-    if (!global) {
-        LogToFile("RegisterAllFunctions: global is NULL\n");
-        return false;
-    }
-
-    LogToFile("Registering TJS functions via PropSet...\n");
-
-    // Создаём и регистрируем функции
-    g_NeuroTestFunc = new tTJSFunctionWrapper<NeuroTestFunction>();
-    RegisterTJSFunction(global, TJS_W("neuroTest"), g_NeuroTestFunc);
-
-    g_NeuroGetVersionFunc = new tTJSFunctionWrapper<NeuroGetVersion>();
-    RegisterTJSFunction(global, TJS_W("neuroGetVersion"), g_NeuroGetVersionFunc);
-
-    g_NeuroEchoFunc = new tTJSFunctionWrapper<NeuroEcho>();
-    RegisterTJSFunction(global, TJS_W("neuroEcho"), g_NeuroEchoFunc);
-
-    g_NeuroSendDataFunc = new tTJSFunctionWrapper<NeuroSendData>();
-    RegisterTJSFunction(global, TJS_W("neuroSendData"), g_NeuroSendDataFunc);
-
-    g_NeuroIsTJSReadyFunc = new tTJSFunctionWrapper<NeuroIsTJSReady>();
-    RegisterTJSFunction(global, TJS_W("neuroIsTJSReady"), g_NeuroIsTJSReadyFunc);
-
-    g_NeuroIsKAGReadyFunc = new tTJSFunctionWrapper<NeuroIsKAGReady>();
-    RegisterTJSFunction(global, TJS_W("neuroIsKAGReady"), g_NeuroIsKAGReadyFunc);
-
-    g_NeuroShowConsoleFunc = new tTJSFunctionWrapper<NeuroShowConsole>();
-    RegisterTJSFunction(global, TJS_W("neuroShowConsole"), g_NeuroShowConsoleFunc);
-
-    g_NeuroExecFunc = new tTJSFunctionWrapper<NeuroExec>();
-    RegisterTJSFunction(global, TJS_W("neuroExec"), g_NeuroExecFunc);
-
-    g_NeuroConsoleLogFunc = new tTJSFunctionWrapper<NeuroConsoleLog>();
-    RegisterTJSFunction(global, TJS_W("neuroConsoleLog"), g_NeuroConsoleLogFunc);
-
-    g_NeuroDumpFunc = new tTJSFunctionWrapper<NeuroDump>();
-    RegisterTJSFunction(global, TJS_W("neuroDump"), g_NeuroDumpFunc);
-
-    g_NeuroGetCurrentContextFunc = new tTJSFunctionWrapper<NeuroGetCurrentContext>();
-    RegisterTJSFunction(global, TJS_W("neuroGetCurrentContext"), g_NeuroGetCurrentContextFunc);
-
-    g_NeuroBuildVoiceMapFunc = new tTJSFunctionWrapper<NeuroBuildVoiceMap>();
-    RegisterTJSFunction(global, TJS_W("neuroBuildVoiceMap"), g_NeuroBuildVoiceMapFunc);
-
-    g_NeuroStartHooksFunc = new tTJSFunctionWrapper<NeuroStartHooks>();
-    RegisterTJSFunction(global, TJS_W("neuroStartHooks"), g_NeuroStartHooksFunc);
-
-    g_NeuroStopHooksFunc = new tTJSFunctionWrapper<NeuroStopHooks>();
-    RegisterTJSFunction(global, TJS_W("neuroStopHooks"), g_NeuroStopHooksFunc);
-
-    global->Release();
-
-    LogToFile("SUCCESS: All 14 functions registered!\n");
-    LogToFile("  - neuroTest()\n");
-    LogToFile("  - neuroGetVersion()\n");
-    LogToFile("  - neuroEcho(param)\n");
-    LogToFile("  - neuroSendData(...)\n");
-    LogToFile("  - neuroIsTJSReady()\n");
-    LogToFile("  - neuroIsKAGReady()\n");
-    LogToFile("  - neuroShowConsole()\n");
-    LogToFile("  - neuroExec(code)\n");
-    LogToFile("  - neuroConsoleLog(\"text\")\n");
-    LogToFile("  - neuroDump(obj)\n");
-    LogToFile("  - neuroGetCurrentContext()\n");
-    LogToFile("  - neuroBuildVoiceMap()\n");
-    LogToFile("  - neuroStartHooks()\n");
-    LogToFile("  - neuroStopHooks()\n");
-
-    // Регистрируем перехват Debug.message -> NeuroConsole
-    // ВАЖНО: используем ExecuteTJSAsync т.к. мы в init thread, не в main thread
-    LogToFile("Setting up Debug.addLoggingHandler...\n");
-    ExecuteTJSAsync(L"Debug.addLoggingHandler(neuroConsoleLog)");
-    LogToFile("Debug logging handler registered!\n");
-
-    return true;
-}
-
-void UnregisterAllFunctions()
-{
-    iTJSDispatch2* global = TVPGetScriptDispatch();
-    if (global) {
-        // Удаляем logging handler перед удалением функции
-        tTJSVariant dummy;
-        TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"), &dummy);
-
-        global->DeleteMember(0, TJS_W("neuroTest"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroGetVersion"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroEcho"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroSendData"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroIsTJSReady"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroIsKAGReady"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroShowConsole"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroExec"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroConsoleLog"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroDump"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroGetCurrentContext"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroBuildVoiceMap"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroStartHooks"), NULL, global);
-        global->DeleteMember(0, TJS_W("neuroStopHooks"), NULL, global);
-        global->Release();
-    }
-}
+// Макросы NCB_REGISTER_FUNCTION регистрируют функции в TJS при вызове
+// ncbAutoRegister::AllRegist(). Расположены в конце файла перед DllMain.
 
 // ============================================================================
 // InitPlugin - точка входа для self-linking
@@ -2024,15 +1881,12 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* e
     OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
     LogToFile("\n\n=== V2Link called ===\n");
 
-    TVPInitImportStub(exporter);
-    ncbAutoRegister::AllRegist();
-
+    // ncbAutoRegister::AllRegist() будет вызван в DeferredTJSInitThread после готовности TJS
     if (!exporter) {
         LogToFile("ERROR: exporter is NULL!\n");
         return E_FAIL;
     }
 
-    // Инициализация tp_stub
     if (!TVPInitImportStub(exporter)) {
         LogToFile("ERROR: TVPInitImportStub failed!\n");
         return E_FAIL;
@@ -2067,8 +1921,12 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     // Восстанавливаем оригинальную процедуру окна
     UnsubclassGameWindow();
 
-    // Удаляем зарегистрированные функции
-    UnregisterAllFunctions();
+    // Удаляем logging handler
+    tTJSVariant dummy;
+    TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"), &dummy);
+
+    // Отменяем регистрацию функций через ncbind
+    ncbAutoRegister::AllUnregist();
 
     // Освобождаем ScriptDispatch если был получен
     if (g_ScriptDispatch) {
@@ -2090,6 +1948,24 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
 
     return S_OK;
 }
+
+// ============================================================================
+// NCBIND — регистрация TJS функций
+// ============================================================================
+NCB_REGISTER_FUNCTION(neuroTest,           NeuroTestFunction);
+NCB_REGISTER_FUNCTION(neuroGetVersion,     NeuroGetVersion);
+NCB_REGISTER_FUNCTION(neuroEcho,           NeuroEcho);
+NCB_REGISTER_FUNCTION(neuroSendData,       NeuroSendData);
+NCB_REGISTER_FUNCTION(neuroIsTJSReady,     NeuroIsTJSReady);
+NCB_REGISTER_FUNCTION(neuroIsKAGReady,     NeuroIsKAGReady);
+NCB_REGISTER_FUNCTION(neuroShowConsole,    NeuroShowConsole);
+NCB_REGISTER_FUNCTION(neuroExec,           NeuroExec);
+NCB_REGISTER_FUNCTION(neuroConsoleLog,     NeuroConsoleLog);
+NCB_REGISTER_FUNCTION(neuroDump,           NeuroDump);
+NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
+NCB_REGISTER_FUNCTION(neuroBuildVoiceMap,  NeuroBuildVoiceMap);
+NCB_REGISTER_FUNCTION(neuroStartHooks,     NeuroStartHooks);
+NCB_REGISTER_FUNCTION(neuroStopHooks,      NeuroStopHooks);
 
 // ============================================================================
 // DllMain
