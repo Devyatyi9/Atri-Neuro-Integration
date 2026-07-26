@@ -130,7 +130,9 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
     <ClCompile Include="..\dear-imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\ncbind\ncbind_auto.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="ContextMonitor.cpp" />
     <ClCompile Include="NeuroConsole.cpp" />
+    <ClCompile Include="NeuroTCPServer.cpp" />
     <ClCompile Include="ScriptingWindow.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
     <ClCompile Include="ImGuiInit.cpp" />
@@ -151,7 +153,9 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
     <ClInclude Include="..\ncbind\ncbind.hpp" />
     <ClInclude Include="..\ncbind\ncb_foreach.h" />
     <ClInclude Include="..\ncbind\ncb_invoke.hpp" />
+    <ClInclude Include="ContextMonitor.h" />
     <ClInclude Include="NeuroConsole.h" />
+    <ClInclude Include="NeuroTCPServer.h" />
     <ClInclude Include="ScriptingWindow.h" />
     <ClInclude Include="ImGuiInit.h" />
     <ClInclude Include="ImGuiWindows.h" />

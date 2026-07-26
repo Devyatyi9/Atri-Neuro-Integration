@@ -14,6 +14,8 @@
 #include "ncbind.hpp"
 #include "MinHook.h"
 #include "NeuroConsole.h"
+#include "NeuroTCPServer.h"
+#include "ContextMonitor.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "libMinHook.x86.lib")
@@ -223,6 +225,26 @@ void CloseLogFile() {
     if (g_LogFile) {
         fclose(g_LogFile);
         g_LogFile = nullptr;
+    }
+}
+
+static FILE* g_TagLogFile = nullptr;
+
+void LogTagFile(const char* text) {
+    std::lock_guard<std::mutex> lock(g_LogMutex);
+    if (!g_TagLogFile) {
+        g_TagLogFile = fopen("neuro_tag_log.txt", "a");
+        if (!g_TagLogFile) return;
+    }
+    fprintf(g_TagLogFile, "%s", text);
+    fflush(g_TagLogFile);
+}
+
+void CloseTagLogFile() {
+    std::lock_guard<std::mutex> lock(g_LogMutex);
+    if (g_TagLogFile) {
+        fclose(g_TagLogFile);
+        g_TagLogFile = nullptr;
     }
 }
 
@@ -853,7 +875,7 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
     // ==========================================
     // СЦЕНАРИЙ Б: Вызов из другого потока
     // ==========================================
-    LogToFile("[ExecuteTJSSync] Running on worker thread, posting message\n");
+    // LogToFile("[ExecuteTJSSync] Running on worker thread, posting message\n");
 
     // Выделяем в куче. Теперь code - это std::wstring, данные копируются внутрь.
     TJSSyncCallData* data = new TJSSyncCallData();
@@ -1167,6 +1189,12 @@ void DeferredTJSInitThread() {
         LogToFile(buf);
 
         LogToFile("Basic tests completed!\n");
+
+        // Запускаем TCP сервер для удалённого выполнения TJS
+        StartTCPServer();
+
+        // Запускаем монитор контекста (опрос изменений)
+        StartContextMonitor();
 
         // Запускаем обработчик хоткеев
         StartHotkeyThread();
@@ -1577,7 +1605,9 @@ static tjs_error TJS_INTF_METHOD NeuroGetCurrentContext(
         L"    }"
         L"    if (typeof characterVoiceInfo !== 'undefined') {"
         L"      var vm = {};"
-        L"      for (var n in characterVoiceInfo) {"
+        L"      var _cviKeys = Scripts.getObjectKeys(characterVoiceInfo);"
+        L"      for (var _cviIdx = 0; _cviIdx < _cviKeys.count; _cviIdx++) {"
+        L"        var n = _cviKeys[_cviIdx];"
         L"        var f = characterVoiceInfo[n].file;"
         L"        if (f) vm[f] = n;"
         L"      }"
@@ -1679,6 +1709,222 @@ static tjs_error TJS_INTF_METHOD NeuroStopHooks(
     return TJS_S_OK;
 }
 
+// neuroStartTagLogger([fileName]) — сбор KAG тегов в файл
+// Устанавливает onTag хук, аккумулирует теги в буфере.
+// fileName — опциональный путь к файлу (по умолчанию neuro_tag_log.txt)
+// Храним имя файла лога в C++ (TJS-глобальные не выживают между TVPExecuteExpression)
+static std::wstring g_TagLogFileName = L"neuro_tag_log.txt";
+
+// neuroExecFile(filename) — читает .tjs файл из папки игры и выполняет
+static tjs_error TJS_INTF_METHOD NeuroExecFile(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (numparams < 1 || param[0]->Type() != tvtString) {
+        if (result) *result = TJS_W("error: filename required");
+        return TJS_S_OK;
+    }
+
+    ttstr filename = *param[0];
+
+    // Читаем файл
+    FILE* f = _wfopen(filename.c_str(), L"rb");
+    if (!f) {
+        if (result) *result = ttstr(L"error: cannot open '") + filename + L"'";
+        return TJS_S_OK;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::vector<char> buf(size + 1);
+    fread(buf.data(), 1, size, f);
+    buf[size] = 0;
+    fclose(f);
+
+    // UTF-8 → UTF-16
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
+    std::vector<wchar_t> wideBuf(wideLen);
+    MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
+
+    // silent (2-й параметр) — подавляет логирование
+    bool silent = (numparams >= 2 && param[1]->Type() == tvtInteger && (tjs_int)(*param[1]) != 0);
+
+    if (!silent) {
+        FILE* lf = fopen("plugin_log.txt", "a");
+        if (lf) {
+            auto toUtf8 = [](const wchar_t* w) -> std::string {
+                int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
+                if (len <= 0) return "";
+                std::vector<char> b(len);
+                WideCharToMultiByte(CP_UTF8, 0, w, -1, b.data(), len, NULL, NULL);
+                return std::string(b.data());
+            };
+            std::string fn8 = toUtf8(filename.c_str());
+            fprintf(lf, "\n=== EXEC FILE: %s ===\n", fn8.c_str());
+            std::string narrowCode(buf.data());
+            if (narrowCode.size() > 500) narrowCode.resize(500);
+            fprintf(lf, "%s\n", narrowCode.c_str());
+            fprintf(lf, "--- RESULT ---\n");
+            fclose(lf);
+        }
+    }
+
+    // Выполняем (может кинуть C++ исключение при syntax error — консоль покажет)
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
+
+    if (!silent) {
+        FILE* lf = fopen("plugin_log.txt", "a");
+        if (lf) {
+            auto toUtf8 = [](const wchar_t* w) -> std::string {
+                int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
+                if (len <= 0) return "";
+                std::vector<char> b(len);
+                WideCharToMultiByte(CP_UTF8, 0, w, -1, b.data(), len, NULL, NULL);
+                return std::string(b.data());
+            };
+            ttstr resultStr(execResult);
+            std::string res8 = toUtf8(resultStr.c_str());
+            fprintf(lf, "%s\n", res8.c_str());
+            fprintf(lf, "=== END ===\n");
+            fclose(lf);
+        }
+    }
+
+    if (result) *result = execResult;
+    return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroStartTagLogger(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("error: TJS not ready");
+        return TJS_S_OK;
+    }
+
+    // Имя файла для лога (может быть передан параметром)
+    g_TagLogFileName = L"neuro_tag_log.txt";
+    if (numparams >= 1 && param[0]->Type() != tvtVoid) {
+        ttstr fn(*param[0]);
+        g_TagLogFileName = fn.c_str();
+    }
+
+    // Читаем и выполняем скрипт из файла
+    const wchar_t* scriptPath = L"neuro_scripts\\tag_logger_start.tjs";
+    FILE* f = _wfopen(scriptPath, L"rb");
+    if (!f) {
+        if (result) *result = ttstr(L"error: cannot open ") + scriptPath;
+        return TJS_S_OK;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::vector<char> buf(size + 1);
+    fread(buf.data(), 1, size, f);
+    buf[size] = 0;
+    fclose(f);
+
+    // UTF-8 → UTF-16
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
+    std::vector<wchar_t> wideBuf(wideLen);
+    MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
+    if (result) *result = execResult;
+    return TJS_S_OK;
+}
+
+// neuroStopTagLogger() — останавливает сбор, сбрасывает буфер в файл
+static tjs_error TJS_INTF_METHOD NeuroStopTagLogger(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("error: TJS not ready");
+        return TJS_S_OK;
+    }
+
+    const wchar_t* scriptPath = L"neuro_scripts\\tag_logger_stop.tjs";
+    FILE* f = _wfopen(scriptPath, L"rb");
+    if (!f) {
+        if (result) *result = ttstr(L"error: cannot open ") + scriptPath;
+        return TJS_S_OK;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::vector<char> buf(size + 1);
+    fread(buf.data(), 1, size, f);
+    buf[size] = 0;
+    fclose(f);
+
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
+    std::vector<wchar_t> wideBuf(wideLen);
+    MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
+
+    // Пишем результат в файл
+    FILE* lf = _wfopen(g_TagLogFileName.c_str(), L"a, ccs=UTF-8");
+    if (lf) {
+        fwprintf(lf, L"%s\n", execResult.GetString());
+        fclose(lf);
+    }
+
+    if (result) *result = execResult;
+    return TJS_S_OK;
+}
+
+// neuroFlushTagLog() — сбрасывает накопленные теги на диск, очищает буфер
+static tjs_error TJS_INTF_METHOD NeuroFlushTagLog(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("error: TJS not ready");
+        return TJS_S_OK;
+    }
+
+    tTJSVariant entriesJson;
+    TVPExecuteExpression(TJS_W("(function(){"
+        "  if (typeof global._neuroTagLoggerEntries == 'undefined') return '[]';"
+        "  var e = System.toJSONString(global._neuroTagLoggerEntries);"
+        "  global._neuroTagLoggerEntries = [];"
+        "  return e;"
+        "})()"), &entriesJson);
+
+    ttstr entries = entriesJson;
+
+    if (entries.c_str()[0]) {
+        FILE* f = _wfopen(g_TagLogFileName.c_str(), L"a+, ccs=UTF-8");
+        if (f) {
+            fwprintf(f, L"%s\n", entries.c_str());
+            fclose(f);
+        }
+    }
+
+    if (result) *result = TJS_W("flushed");
+    return TJS_S_OK;
+}
+
 // neuroBuildVoiceMap() — возвращает JSON: prefix → characterName
 static tjs_error TJS_INTF_METHOD NeuroBuildVoiceMap(
     tTJSVariant* result,
@@ -1696,7 +1942,9 @@ static tjs_error TJS_INTF_METHOD NeuroBuildVoiceMap(
         L"  try {"
         L"    if (typeof characterVoiceInfo === 'undefined') return '{}';"
         L"    var vm = {};"
-        L"    for (var n in characterVoiceInfo) {"
+        L"    var keys = Scripts.getObjectKeys(characterVoiceInfo);"
+        L"    for (var i = 0; i < keys.count; i++) {"
+        L"      var n = keys[i];"
         L"      var f = characterVoiceInfo[n].file;"
         L"      if (f) vm[f] = n;"
         L"    }"
@@ -1915,6 +2163,12 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     // Останавливаем хоткей поток (join ждёт завершения)
     StopHotkeyThread();
 
+    // Останавливаем монитор контекста
+    StopContextMonitor();
+
+    // Останавливаем TCP сервер
+    StopTCPServer();
+
     // Закрываем консоль
     ShutdownNeuroConsole();
 
@@ -1966,6 +2220,10 @@ NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
 NCB_REGISTER_FUNCTION(neuroBuildVoiceMap,  NeuroBuildVoiceMap);
 NCB_REGISTER_FUNCTION(neuroStartHooks,     NeuroStartHooks);
 NCB_REGISTER_FUNCTION(neuroStopHooks,      NeuroStopHooks);
+NCB_REGISTER_FUNCTION(neuroExecFile,       NeuroExecFile);
+NCB_REGISTER_FUNCTION(neuroStartTagLogger, NeuroStartTagLogger);
+NCB_REGISTER_FUNCTION(neuroStopTagLogger,  NeuroStopTagLogger);
+NCB_REGISTER_FUNCTION(neuroFlushTagLog,    NeuroFlushTagLog);
 
 // ============================================================================
 // DllMain
