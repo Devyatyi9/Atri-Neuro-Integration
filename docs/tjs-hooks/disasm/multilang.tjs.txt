@@ -1,0 +1,4527 @@
+
+(top level script) global 0x0000000002578DA0
+
+#(1) Bytecode.
+00000000 const %1, *61	// *61 = (object)(object 0x00000000025748D0:0x0000000000000000)
+00000003 chgthis %1, %-1
+00000006 spds %-1.*62, %1	// *62 = (string)"LanguageTags"
+00000010 const %1, *63	// *63 = (object)(object 0x000000000257A090:0x0000000000000000)
+00000013 chgthis %1, %-1
+00000016 spds %-1.*64, %1	// *64 = (string)"CurrentLanguageTag"
+00000020 const %1, *65	// *65 = (object)(object 0x000000000257B170:0x0000000000000000)
+00000023 chgthis %1, %-1
+00000026 spds %-1.*66, %1	// *66 = (string)"CurrentLanguageUITag"
+00000030 const %1, *76	// *76 = (object)(object 0x000000000257D420:0x0000000000000000)
+00000033 chgthis %1, %-1
+00000036 spds %-1.*77, %1	// *77 = (string)"GetSaveDataDrawTextTextLangOverride"
+00000040 const %1, *91	// *91 = (object)(object 0x0000000002586B00:0x0000000000000000)
+00000043 chgthis %1, %-1
+00000046 spds %-1.*92, %1	// *92 = (string)"LanguageWordBreaks"
+00000050 const %1, *93	// *93 = (object)(object 0x0000000002587690:0x0000000000000000)
+00000053 chgthis %1, %-1
+00000056 spds %-1.*94, %1	// *94 = (string)"LanguageWidthTimeScales"
+00000060 const %1, *95	// *95 = (object)(object 0x00000000025870F0:0x0000000000000000)
+00000063 chgthis %1, %-1
+00000066 spds %-1.*96, %1	// *96 = (string)"GetLanguageParamsList"
+00000070 const %1, *104	// *104 = (object)(object 0x0000000002587960:0x0000000000000000)
+00000073 chgthis %1, %-1
+00000076 spds %-1.*105, %1	// *105 = (string)"FilterDateFormat"
+00000080 const %1, *115	// *115 = (object)(object 0x0000000002587F00:0x0000000000000000)
+00000083 chgthis %1, %-1
+00000086 spds %-1.*116, %1	// *116 = (string)"GetSystemLangMessage"
+00000090 const %1, *117	// *117 = (object)(object 0x0000000002588A40:0x0000000000000000)
+00000093 chgthis %1, %-1
+00000096 spds %-1.*118, %1	// *118 = (string)"GetSystemLangFile"
+00000100 const %1, *130	// *130 = (object)(object 0x000000000258EBF0:0x0000000000000000)
+00000103 chgthis %1, %-1
+00000106 spds %-1.*131, %1	// *131 = (string)"updateLangMenuCheck"
+00000110 const %1, *140	// *140 = (object)(object 0x0000000002591080:0x0000000000000000)
+00000113 chgthis %1, %-1
+00000116 spds %-1.*135, %1	// *135 = (string)"subLanguageType"
+00000120 const %1, *146	// *146 = (object)(object 0x000000000258EEC0:0x0000000000000000)
+00000123 chgthis %1, %-1
+00000126 spds %-1.*147, %1	// *147 = (string)"LangType_sub"
+00000130 const %1, *148	// *148 = (object)(object 0x000000000258F190:0x0000000000000000)
+00000133 chgthis %1, %-1
+00000136 spds %-1.*149, %1	// *149 = (string)"CallLangChanged"
+00000140 const %1, *150	// *150 = (object)(object 0x0000000002591E90:0x0000000000000000)
+00000143 chgthis %1, %-1
+00000146 spds %-1.*151, %1	// *151 = (string)"SetLanguageType"
+00000150 const %1, *152	// *152 = (object)(object 0x000000000258F460:0x0000000000000000)
+00000153 chgthis %1, %-1
+00000156 spds %-1.*153, %1	// *153 = (string)"SetSubLanguageType"
+00000160 const %1, *154	// *154 = (object)(object 0x0000000002590810:0x0000000000000000)
+00000163 chgthis %1, %-1
+00000166 spds %-1.*155, %1	// *155 = (string)"UpdateMultiLangTitleCaption"
+00000170 const %1, *156	// *156 = (object)(object 0x000000000258FFA0:0x0000000000000000)
+00000173 chgthis %1, %-1
+00000176 spds %-1.*157, %1	// *157 = (string)"SetUILanguageType"
+00000180 const %1, *158	// *158 = (object)(object 0x000000000258F730:0x0000000000000000)
+00000183 chgthis %1, %-1
+00000186 spds %-1.*159, %1	// *159 = (string)"ToggleMultiLang"
+00000190 const %1, *160	// *160 = (object)(object 0x0000000002590540:0x0000000000000000)
+00000193 chgthis %1, %-1
+00000196 spds %-1.*161, %1	// *161 = (string)"SwapMainSubLang"
+00000200 const %1, *170	// *170 = (object)(object 0x0000000002590AE0:0x0000000000000000)
+00000203 chgthis %1, %-1
+00000206 spds %-1.*171, %1	// *171 = (string)"LangSwitchEval"
+00000210 const %1, *248	// *248 = (object)(object 0x00000000025A4640:0x0000000000000000)
+00000213 chgthis %1, %-1
+00000216 spds %-1.*244, %1	// *244 = (string)"MakeGamePadBindDialogList"
+00000220 const %1, *296	// *296 = (object)(object 0x00000000025A1670:0x0000000000000000)
+00000223 chgthis %1, %-1
+00000226 spds %-1.*297, %1	// *297 = (string)"GetTextSpeechTargetLangName"
+00000230 const %1, *298	// *298 = (object)(object 0x00000000025A1940:0x0000000000000000)
+00000233 chgthis %1, %-1
+00000236 spds %-1.*299, %1	// *299 = (string)"UpdateTextSpeechMenuCheck"
+00000240 const %1, *300	// *300 = (object)(object 0x00000000025A2750:0x0000000000000000)
+00000243 chgthis %1, %-1
+00000246 spds %-1.*295, %1	// *295 = (string)"MultilangTextSpeechEnabled"
+00000250 const %1, *301	// *301 = (object)(object 0x00000000025B0A50:0x0000000000000000)
+00000253 spds %-1.*291, %1	// *291 = (string)"MultilangSpeechPlugin"
+00000257 const %1, *302	// *302 = (object)(object 0x00000000025BE3C0:0x0000000000000000)
+00000260 spds %-1.*303, %1	// *303 = (string)"MultilangSpeechVoiceSettingDialog"
+00000264 const %1, *306	// *306 = (object)(object 0x00000000025C0580:0x0000000000000000)
+00000267 spds %-1.*307, %1	// *307 = (string)"MultiLangMsgwinRender"
+00000271 cl %1
+00000273 global %1
+00000275 gpd %2, %1.*0	// *0 = (string)"Dictionary"
+00000279 new %1, %2()
+00000283 const %2, *1	// *1 = (string)"multiLangFirstTag"
+00000286 spis %1.%2, %0
+00000290 const %2, *2	// *2 = (string)"multiLangLanguageTags"
+00000293 global %3
+00000295 gpd %4, %3.*3	// *3 = (string)"Array"
+00000299 new %3, %4()
+00000303 const %4, *4	// *4 = (int)0
+00000306 const %5, *5	// *5 = (string)"jp"
+00000309 spis %3.%4, %5
+00000313 inc %4
+00000315 const %5, *6	// *6 = (string)"en"
+00000318 spis %3.%4, %5
+00000322 inc %4
+00000324 const %5, *7	// *7 = (string)"cn"
+00000327 spis %3.%4, %5
+00000331 inc %4
+00000333 spis %1.%2, %3
+00000337 const %2, *8	// *8 = (string)"multiLangUpdateResetTags"
+00000340 spis %1.%2, %0
+00000344 const %2, *9	// *9 = (string)"multiLangFailSafeFontFace"
+00000347 spis %1.%2, %0
+00000351 const %2, *10	// *10 = (string)"multiLangParamsMap"
+00000354 global %3
+00000356 gpd %4, %3.*0	// *0 = (string)"Dictionary"
+00000360 new %3, %4()
+00000364 const %4, *6	// *6 = (string)"en"
+00000367 global %5
+00000369 gpd %6, %5.*0	// *0 = (string)"Dictionary"
+00000373 new %5, %6()
+00000377 const %6, *11	// *11 = (string)"word_break"
+00000380 const %7, *4	// *4 = (int)0
+00000383 spis %5.%6, %7
+00000387 const %6, *12	// *12 = (string)"width_time_scale"
+00000390 const %7, *13	// *13 = (int)1
+00000393 spis %5.%6, %7
+00000397 spis %3.%4, %5
+00000401 spis %1.%2, %3
+00000405 const %2, *14	// *14 = (string)"multiLangTagAliasMap"
+00000408 global %3
+00000410 gpd %4, %3.*3	// *3 = (string)"Array"
+00000414 new %3, %4()
+00000418 const %4, *4	// *4 = (int)0
+00000421 const %5, *15	// *15 = (string)"chinese"
+00000424 spis %3.%4, %5
+00000428 inc %4
+00000430 const %5, *7	// *7 = (string)"cn"
+00000433 spis %3.%4, %5
+00000437 inc %4
+00000439 const %5, *16	// *16 = (string)"japanese"
+00000442 spis %3.%4, %5
+00000446 inc %4
+00000448 const %5, *5	// *5 = (string)"jp"
+00000451 spis %3.%4, %5
+00000455 inc %4
+00000457 const %5, *17	// *17 = (string)"english"
+00000460 spis %3.%4, %5
+00000464 inc %4
+00000466 const %5, *6	// *6 = (string)"en"
+00000469 spis %3.%4, %5
+00000473 inc %4
+00000475 spis %3.%4, %0
+00000479 inc %4
+00000481 spis %1.%2, %3
+00000485 const %2, *18	// *18 = (string)"multiLangMenuMap"
+00000488 global %3
+00000490 gpd %4, %3.*0	// *0 = (string)"Dictionary"
+00000494 new %3, %4()
+00000498 const %4, *5	// *5 = (string)"jp"
+00000501 const %5, *19	// *19 = (string)"&Japanese"
+00000504 spis %3.%4, %5
+00000508 const %4, *6	// *6 = (string)"en"
+00000511 const %5, *20	// *20 = (string)"&English"
+00000514 spis %3.%4, %5
+00000518 const %4, *7	// *7 = (string)"cn"
+00000521 const %5, *21	// *21 = (string)"Traditional &Chinese"
+00000524 spis %3.%4, %5
+00000528 spis %1.%2, %3
+00000532 const %2, *22	// *22 = (string)"multiLangMenuCapsFmt"
+00000535 const %3, *23	// *23 = (string)"[${mainsub}] ${text}"
+00000538 spis %1.%2, %3
+00000542 const %2, *24	// *24 = (string)"multiLangMenuMainSub"
+00000545 global %3
+00000547 gpd %4, %3.*25	// *25 = (string)"Array"
+00000551 new %3, %4()
+00000555 const %4, *26	// *26 = (int)0
+00000558 const %5, *27	// *27 = (string)"Main"
+00000561 spis %3.%4, %5
+00000565 inc %4
+00000567 const %5, *28	// *28 = (string)"Sub"
+00000570 spis %3.%4, %5
+00000574 inc %4
+00000576 spis %1.%2, %3
+00000580 const %2, *29	// *29 = (string)"multiLangSubLangOffShortCut"
+00000583 const %3, *30	// *30 = (string)"Shift+N"
+00000586 spis %1.%2, %3
+00000590 const %2, *31	// *31 = (string)"multiLangToggleMultiShortCut"
+00000593 const %3, *32	// *32 = (string)"Shift+M"
+00000596 spis %1.%2, %3
+00000600 const %2, *33	// *33 = (string)"multiLangSwapMainSubShortCut"
+00000603 const %3, *34	// *34 = (string)"X"
+00000606 spis %1.%2, %3
+00000610 const %2, *35	// *35 = (string)"multiLangUnknownTag"
+00000613 const %3, *36	// *36 = (string)"en"
+00000616 spis %1.%2, %3
+00000620 const %2, *37	// *37 = (string)"multiLangUserFontFaceFmt"
+00000623 const %3, *38	// *38 = (string)"langUserFontFace%d"
+00000626 spis %1.%2, %3
+00000630 const %2, *39	// *39 = (string)"multiLangTitleCaption"
+00000633 const %3, *40	// *40 = (int)1
+00000636 spis %1.%2, %3
+00000640 const %2, *41	// *41 = (string)"multiLangForceMultiLang"
+00000643 const %3, *26	// *26 = (int)0
+00000646 spis %1.%2, %3
+00000650 const %2, *42	// *42 = (string)"multiLangDefaultTwoLang"
+00000653 const %3, *26	// *26 = (int)0
+00000656 spis %1.%2, %3
+00000660 const %2, *43	// *43 = (string)"multiLangAutoSelectRedraw"
+00000663 const %3, *40	// *40 = (int)1
+00000666 spis %1.%2, %3
+00000670 const %2, *44	// *44 = (string)"multiLangSelectFontScale"
+00000673 spis %1.%2, %0
+00000677 const %2, *45	// *45 = (string)"multiLangTextFontScale"
+00000680 spis %1.%2, %0
+00000684 const %2, *46	// *46 = (string)"multiLangSingleFontScaleMap"
+00000687 spis %1.%2, %0
+00000691 const %2, *47	// *47 = (string)"multiLangSingleSelectScaleMap"
+00000694 spis %1.%2, %0
+00000698 const %2, *48	// *48 = (string)"multiLangLineSpaceScale"
+00000701 spis %1.%2, %0
+00000705 const %2, *49	// *49 = (string)"multiLangSingleLineSpaceScaleMap"
+00000708 spis %1.%2, %0
+00000712 const %2, *50	// *50 = (string)"multiLangFilterMenuList"
+00000715 spis %1.%2, %0
+00000719 const %2, *51	// *51 = (string)"multiLangShowCharacterMenu"
+00000722 const %3, *52	// *52 = (int)0
+00000725 spis %1.%2, %3
+00000729 const %2, *53	// *53 = (string)"multiLangAutoKinsokuWordWrap"
+00000732 const %3, *40	// *40 = (int)1
+00000735 spis %1.%2, %3
+00000739 const %2, *54	// *54 = (string)"multiLangRenderMsgwinClass"
+00000742 const %3, *55	// *55 = (string)"MultiLangMsgwinRender"
+00000745 spis %1.%2, %3
+00000749 const %2, *56	// *56 = (string)"multiLangRenderMsgwinCutLF"
+00000752 const %3, *40	// *40 = (int)1
+00000755 spis %1.%2, %3
+00000759 const %2, *57	// *57 = (string)"multiLangRenderMsgwinAutoScale"
+00000762 const %3, *52	// *52 = (int)0
+00000765 spis %1.%2, %3
+00000769 const %2, *58	// *58 = (string)"multiLangRenderMsgwinExpandRect"
+00000772 const %3, *59	// *59 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000775 spis %1.%2, %3
+00000779 calld %0, %-2.*60(%1)	// *60 = (string)"SetSystemConfigDefaults"
+00000785 const %1, *67	// *67 = (string)"uiLanguageType"
+00000788 const %2, *68	// *68 = (string)"0"
+00000791 const %3, *69	// *69 = (string)"(int)+"
+00000794 gpd %4, %-2.*70	// *70 = (string)"SystemConfig"
+00000798 calld %0, %-2.*71(%1, %2, %0, %3, %4)	// *71 = (string)"createPropertyProxy"
+00000808 const %1, *72	// *72 = (string)"onPreSaveStoreBookmarkInfo"
+00000811 const %2, *73	// *73 = (object)(object 0x000000000257C890:0x0000000000000000)
+00000814 const %3, *74	// *74 = (int)0
+00000817 calld %0, %-2.*75(%1, %2, %3)	// *75 = (string)"addKagHookCallback"
+00000825 const %1, *78	// *78 = (string)"onSystemLangChanged"
+00000828 const %2, *79	// *79 = (object)(object 0x000000000257FFE0:0x0000000000000000)
+00000831 const %3, *80	// *80 = (int)1
+00000834 calld %0, %-2.*75(%1, %2, %3)	// *75 = (string)"addKagHookCallback"
+00000842 const %1, *81	// *81 = (object)(object 0x0000000002580380:0x0000000000000000)
+00000845 const %2, *82	// *82 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000848 chgthis %1, %2
+00000851 gpd %3, %-2.*83	// *83 = (string)"KAGWindow"
+00000855 spds %3.*84, %1	// *84 = (string)"getLanguageFont"
+00000859 const %1, *85	// *85 = (object)(object 0x0000000002580D10:0x0000000000000000)
+00000862 const %2, *82	// *82 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000865 chgthis %1, %2
+00000868 gpd %3, %-2.*83	// *83 = (string)"KAGWindow"
+00000872 spds %3.*86, %1	// *86 = (string)"initLanguageFont"
+00000876 const %1, *87	// *87 = (object)(object 0x0000000002582410:0x0000000000000000)
+00000879 const %2, *82	// *82 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000882 chgthis %1, %2
+00000885 gpd %3, %-2.*83	// *83 = (string)"KAGWindow"
+00000889 spds %3.*88, %1	// *88 = (string)"resetLanguageFont"
+00000893 const %1, *89	// *89 = (object)(object 0x0000000002582820:0x0000000000000000)
+00000896 const %2, *82	// *82 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000899 chgthis %1, %2
+00000902 gpd %3, %-2.*83	// *83 = (string)"KAGWindow"
+00000906 spds %3.*90, %1	// *90 = (string)"setLanguageFont"
+00000910 global %1
+00000912 typeofd %2, %1.*97	// *97 = (string)"MsgwinRender"
+00000916 const %3, *98	// *98 = (string)"Object"
+00000919 ceq %2, %3
+00000922 jnf 000000943
+00000924 const %1, *99	// *99 = (object)(object 0x00000000025884A0:0x0000000000000000)
+00000927 const %2, *82	// *82 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000930 chgthis %1, %2
+00000933 gpd %3, %-2.*97	// *97 = (string)"MsgwinRender"
+00000937 spds %3.*100, %1	// *100 = (string)"getMultiLangLineSpaceScale"
+00000941 jmp 000000956
+00000943 const %1, *101	// *101 = (string)"multilang: rendermsgwin not found."
+00000946 gpd %2, %-2.*102	// *102 = (string)"Debug"
+00000950 calld %0, %2.*103(%1)	// *103 = (string)"notice"
+00000956 gpd %1, %-2.*106	// *106 = (string)"SystemConfig"
+00000960 gpd %2, %1.*107	// *107 = (string)"multiLangAutoKinsokuWordWrap"
+00000964 tt %2
+00000966 jnf 000001013
+00000968 global %1
+00000970 gpd %2, %1.*108	// *108 = (string)"Dictionary"
+00000974 new %1, %2()
+00000978 const %2, *109	// *109 = (string)"target"
+00000981 global %3
+00000983 spis %1.%2, %3
+00000987 const %2, *110	// *110 = (string)"method"
+00000990 const %3, *111	// *111 = (string)"drawTextKinsokuRect"
+00000993 spis %1.%2, %3
+00000997 const %2, *112	// *112 = (string)"func"
+00001000 const %3, *113	// *113 = (object)(object 0x0000000002587C30:0x0000000000000000)
+00001003 spis %1.%2, %3
+00001007 calld %0, %-2.*114(%1)	// *114 = (string)"objectHookInjection"
+00001013 const %1, *119	// *119 = (string)"onKAGSetupMenu"
+00001016 const %2, *120	// *120 = (object)(object 0x0000000002592160:0x0000000000000000)
+00001019 const %3, *121	// *121 = (int)1
+00001022 calld %0, %-2.*122(%1, %2, %3)	// *122 = (string)"addKagHookCallback"
+00001030 global %1
+00001032 gpd %2, %1.*108	// *108 = (string)"Dictionary"
+00001036 new %1, %2()
+00001040 const %2, *123	// *123 = (string)"type"
+00001043 const %3, *124	// *124 = (string)"String"
+00001046 spis %1.%2, %3
+00001050 const %2, *125	// *125 = (string)"restart"
+00001053 const %3, *121	// *121 = (int)1
+00001056 spis %1.%2, %3
+00001060 gpd %2, %-2.*126	// *126 = (string)"SystemArgumentInfo"
+00001064 spde %2.*127, %1	// *127 = (string)"forceuilang"
+00001068 const %1, *128	// *128 = (string)"onKAGSetupMenuEx"
+00001071 const %2, *129	// *129 = (object)(object 0x0000000002590270:0x0000000000000000)
+00001074 const %3, *121	// *121 = (int)1
+00001077 calld %0, %-2.*122(%1, %2, %3)	// *122 = (string)"addKagHookCallback"
+00001085 const %1, *132	// *132 = (string)"onResetAllMenuLangText"
+00001088 const %2, *133	// *133 = (object)(object 0x0000000002591BC0:0x0000000000000000)
+00001091 const %3, *121	// *121 = (int)1
+00001094 calld %0, %-2.*122(%1, %2, %3)	// *122 = (string)"addKagHookCallback"
+00001102 const %1, *132	// *132 = (string)"onResetAllMenuLangText"
+00001105 const %2, *134	// *134 = (object)(object 0x0000000002592700:0x0000000000000000)
+00001108 const %3, *121	// *121 = (int)1
+00001111 calld %0, %-2.*122(%1, %2, %3)	// *122 = (string)"addKagHookCallback"
+00001119 const %1, *135	// *135 = (string)"subLanguageType"
+00001122 const %2, *136	// *136 = (string)"-1"
+00001125 const %3, *137	// *137 = (string)"(int)+"
+00001128 gpd %4, %-2.*138	// *138 = (string)"SystemConfig"
+00001132 calld %0, %-2.*139(%1, %2, %0, %3, %4)	// *139 = (string)"createPropertyProxy"
+00001142 const %1, *141	// *141 = (string)"useMultiLang"
+00001145 gpd %2, %-2.*138	// *138 = (string)"SystemConfig"
+00001149 gpd %3, %2.*142	// *142 = (string)"multiLangDefaultTwoLang"
+00001153 tt %3
+00001155 jnf 000001162
+00001157 const %4, *143	// *143 = (string)"true"
+00001160 jmp 000001165
+00001162 const %4, *144	// *144 = (string)"false"
+00001165 const %5, *145	// *145 = (string)"!!"
+00001168 gpd %6, %-2.*138	// *138 = (string)"SystemConfig"
+00001172 calld %0, %-2.*139(%1, %4, %0, %5, %6)	// *139 = (string)"createPropertyProxy"
+00001182 global %1
+00001184 gpd %2, %1.*162	// *162 = (string)"Dictionary"
+00001188 new %1, %2()
+00001192 const %2, *163	// *163 = (string)"target"
+00001195 gpd %3, %-2.*164	// *164 = (string)"KAGWindow"
+00001199 spis %1.%2, %3
+00001203 const %2, *165	// *165 = (string)"method"
+00001206 const %3, *166	// *166 = (string)"createPadKeyMap"
+00001209 spis %1.%2, %3
+00001213 const %2, *167	// *167 = (string)"func"
+00001216 const %3, *168	// *168 = (object)(object 0x000000000258FA00:0x0000000000000000)
+00001219 spis %1.%2, %3
+00001223 calld %0, %-2.*169(%1)	// *169 = (string)"objectHookInjection"
+00001229 const %1, *172	// *172 = (string)"syslangtext.tjs"
+00001232 calld %0, %-2.*173(%1)	// *173 = (string)"KAGLoadScript"
+00001238 calld %0, %-2.*174()	// *174 = (string)"LoadSysLangText"
+00001243 global %1
+00001245 gpd %2, %1.*175	// *175 = (string)"Array"
+00001249 new %1, %2()
+00001253 const %2, *176	// *176 = (int)0
+00001256 const %3, *177	// *177 = (string)"DialogOK"
+00001259 spis %1.%2, %3
+00001263 inc %2
+00001265 const %3, *178	// *178 = (string)"DialogCancel"
+00001268 spis %1.%2, %3
+00001272 inc %2
+00001274 const %3, *179	// *179 = (string)"DialogInit"
+00001277 spis %1.%2, %3
+00001281 inc %2
+00001283 const %3, *180	// *180 = (string)"BootStrapKickConfirm"
+00001286 spis %1.%2, %3
+00001290 inc %2
+00001292 const %3, *181	// *181 = (string)"BootStrapKickFailed"
+00001295 spis %1.%2, %3
+00001299 inc %2
+00001301 const %3, *182	// *182 = (string)"InfoApplyOnRestart"
+00001304 spis %1.%2, %3
+00001308 inc %2
+00001310 const %3, *183	// *183 = (string)"InfoApplyOnAfter"
+00001313 spis %1.%2, %3
+00001317 inc %2
+00001319 const %3, *184	// *184 = (string)"EmergencyRebootConfirm"
+00001322 spis %1.%2, %3
+00001326 inc %2
+00001328 const %3, *185	// *185 = (string)"EmergencyRebootExit"
+00001331 spis %1.%2, %3
+00001335 inc %2
+00001337 const %3, *186	// *186 = (string)"ErrorSaveSystemVars"
+00001340 spis %1.%2, %3
+00001344 inc %2
+00001346 const %3, *187	// *187 = (string)"ExChViewCaptureCaption"
+00001349 spis %1.%2, %3
+00001353 inc %2
+00001355 const %3, *188	// *188 = (string)"ExChViewPopupText"
+00001358 spis %1.%2, %3
+00001362 inc %2
+00001364 spis %1.%2, %0
+00001368 inc %2
+00001370 calld %0, %-2.*189(%1)	// *189 = (string)"MakeSysLangProxyInSystemConfig"
+00001376 gpd %1, %-2.*190	// *190 = (string)"SystemConfig"
+00001380 const %2, *191	// *191 = (string)"MS Shell Dlg 2"
+00001383 gpd %3, %-2.*190	// *190 = (string)"SystemConfig"
+00001387 spde %3.*192, %2	// *192 = (string)"DialogDefaultFont"
+00001391 cp %-3, %2
+00001394 gpds %2, %1.*177	// *177 = (string)"DialogOK"
+00001398 cp %-4, %2
+00001401 gpds %2, %1.*178	// *178 = (string)"DialogCancel"
+00001405 cp %-5, %2
+00001408 const %2, *193	// *193 = (string)"DialogClose"
+00001411 calld %3, %-2.*194(%2)	// *194 = (string)"MakeSysLangProxy"
+00001417 spde %1.*195, %3	// *195 = (string)"DialogCloseText"
+00001421 spde %1.*196, %-4	// *196 = (string)"FontDialogOK"
+00001425 spde %1.*197, %-5	// *197 = (string)"FontDialogCancel"
+00001429 const %2, *198	// *198 = (string)"DialogDetail"
+00001432 calld %3, %-2.*194(%2)	// *194 = (string)"MakeSysLangProxy"
+00001438 spde %1.*199, %3	// *199 = (string)"FontDialogInfo"
+00001442 spde %1.*200, %-3	// *200 = (string)"FontDialogFace"
+00001446 const %2, *201	// *201 = (object)(object 0x0000000002590DB0:0x0000000000000000)
+00001449 global %3
+00001451 chgthis %2, %3
+00001454 spde %1.*202, %2	// *202 = (string)"FontDialogNoticeOverride"
+00001458 global %2
+00001460 gpd %3, %2.*203	// *203 = (string)"Dictionary"
+00001464 new %2, %3()
+00001468 const %3, *204	// *204 = (string)"target"
+00001471 gpd %4, %-2.*205	// *205 = (string)"KAGWindow"
+00001475 spis %2.%3, %4
+00001479 const %3, *206	// *206 = (string)"method"
+00001482 const %4, *207	// *207 = (string)"selectFontDoUserSelect"
+00001485 spis %2.%3, %4
+00001489 const %3, *208	// *208 = (string)"func"
+00001492 const %4, *209	// *209 = (object)(object 0x00000000025A1C10:0x0000000000000000)
+00001495 spis %2.%3, %4
+00001499 calld %0, %-2.*210(%2)	// *210 = (string)"objectHookInjection"
+00001505 const %2, *211	// *211 = (string)"FontDialogEmbeddedMark"
+00001508 calld %3, %-2.*194(%2)	// *194 = (string)"MakeSysLangProxy"
+00001514 spde %1.*212, %3	// *212 = (string)"PreRenderFontTag"
+00001518 const %2, *213	// *213 = (string)"&GetSysLangText(\'FontDialogLicenseInfo\')"
+00001521 spde %1.*214, %2	// *214 = (string)"EmbeddedFontComment"
+00001525 const %2, *215	// *215 = (object)(object 0x00000000025A3830:0x0000000000000000)
+00001528 global %3
+00001530 chgthis %2, %3
+00001533 spde %1.*216, %2	// *216 = (string)"FontDialogFilterExFontInfo"
+00001537 const %2, *217	// *217 = (object)(object 0x00000000025A3B00:0x0000000000000000)
+00001540 global %3
+00001542 chgthis %2, %3
+00001545 spde %1.*218, %2	// *218 = (string)"FontDialogFilterFaceList"
+00001549 const %2, *219	// *219 = (object)(object 0x00000000025A4EB0:0x0000000000000000)
+00001552 global %3
+00001554 chgthis %2, %3
+00001557 spde %1.*220, %2	// *220 = (string)"FontDialogFilterFaceName"
+00001561 const %2, *221	// *221 = (object)(object 0x00000000025A2CF0:0x0000000000000000)
+00001564 global %3
+00001566 chgthis %2, %3
+00001569 spde %1.*222, %2	// *222 = (string)"ConfirmDialogTextFilter"
+00001573 const %2, *223	// *223 = (int)28
+00001576 spde %1.*224, %2	// *224 = (string)"EditCommentDialogTextHeight"
+00001580 spde %1.*225, %-4	// *225 = (string)"EditCommentDialogOK"
+00001584 spde %1.*226, %-5	// *226 = (string)"EditCommentDialogCancel"
+00001588 global %2
+00001590 gpd %3, %2.*227	// *227 = (string)"Dictionary"
+00001594 new %2, %3()
+00001598 const %3, *228	// *228 = (string)"padding"
+00001601 const %4, *229	// *229 = (int)3
+00001604 spis %2.%3, %4
+00001608 const %3, *230	// *230 = (string)"width"
+00001611 const %4, *231	// *231 = (int)150
+00001614 spis %2.%3, %4
+00001618 const %3, *232	// *232 = (string)"fontSize"
+00001621 const %4, *233	// *233 = (int)12
+00001624 spis %2.%3, %4
+00001628 const %3, *234	// *234 = (string)"fontFace"
+00001631 spis %2.%3, %-3
+00001635 spde %1.*235, %2	// *235 = (string)"EditCommentDialogInitParam"
+00001639 const %2, *236	// *236 = (string)"GamePadBindCaption"
+00001642 calld %3, %-2.*237(%2)	// *237 = (string)"MakeSysLangProxy"
+00001648 spde %1.*238, %3	// *238 = (string)"GamePadBindDialogCaption"
+00001652 const %2, *239	// *239 = (string)"GamePadBindHeader"
+00001655 calld %3, %-2.*237(%2)	// *237 = (string)"MakeSysLangProxy"
+00001661 spde %1.*240, %3	// *240 = (string)"GamePadBindDialogHeader"
+00001665 const %2, *241	// *241 = (object)(object 0x00000000025A2FC0:0x0000000000000000)
+00001668 global %3
+00001670 chgthis %2, %3
+00001673 spde %1.*242, %2	// *242 = (string)"GamePadBindDialogFormat"
+00001677 spde %1.*243, %-3	// *243 = (string)"GamePadBindDialogFontFace"
+00001681 gpds %2, %-2.*244	// *244 = (string)"MakeGamePadBindDialogList"
+00001685 spde %1.*245, %2	// *245 = (string)"GamePadBindDialogList"
+00001689 const %2, *246	// *246 = (string)"disableWindowResizeMenuItem"
+00001692 calld %3, %-2.*237(%2)	// *237 = (string)"MakeSysLangProxy"
+00001698 spde %1.*247, %3	// *247 = (string)"DisableWindowResizeTextFormat"
+00001702 gpd %1, %-2.*249	// *249 = (string)"aboutDialogConfig"
+00001706 const %2, *250	// *250 = (string)"VersionInfo"
+00001709 calld %3, %-2.*237(%2)	// *237 = (string)"MakeSysLangProxy"
+00001715 spde %1.*251, %3	// *251 = (string)"title"
+00001719 gpd %2, %-2.*252	// *252 = (string)"SystemDefaultFontFace"
+00001723 spde %1.*253, %2	// *253 = (string)"face"
+00001727 global %1
+00001729 gpd %2, %1.*254	// *254 = (string)"Dictionary"
+00001733 new %1, %2()
+00001737 const %2, *255	// *255 = (string)"target"
+00001740 gpd %3, %-2.*256	// *256 = (string)"Storages"
+00001744 spis %1.%2, %3
+00001748 const %2, *257	// *257 = (string)"method"
+00001751 const %3, *258	// *258 = (string)"selectFile"
+00001754 spis %1.%2, %3
+00001758 const %2, *259	// *259 = (string)"func"
+00001761 const %3, *260	// *260 = (object)(object 0x00000000025A3560:0x0000000000000000)
+00001764 spis %1.%2, %3
+00001768 calld %0, %-2.*261(%1)	// *261 = (string)"objectHookInjection"
+00001774 global %1
+00001776 gpd %2, %1.*254	// *254 = (string)"Dictionary"
+00001780 new %1, %2()
+00001784 const %2, *255	// *255 = (string)"target"
+00001787 gpd %3, %-2.*262	// *262 = (string)"SelectButtonLayer"
+00001791 spis %1.%2, %3
+00001795 const %2, *257	// *257 = (string)"method"
+00001798 const %3, *263	// *263 = (string)"drawMessage"
+00001801 spis %1.%2, %3
+00001805 const %2, *259	// *259 = (string)"func"
+00001808 const %3, *264	// *264 = (object)(object 0x00000000025A3DD0:0x0000000000000000)
+00001811 spis %1.%2, %3
+00001815 calld %0, %-2.*261(%1)	// *261 = (string)"objectHookInjection"
+00001821 const %1, *265	// *265 = (string)"onSystemLangChanged"
+00001824 const %2, *266	// *266 = (object)(object 0x00000000025A21B0:0x0000000000000000)
+00001827 const %3, *267	// *267 = (int)1
+00001830 calld %0, %-2.*268(%1, %2, %3)	// *268 = (string)"addKagHookCallback"
+00001838 const %1, *269	// *269 = (string)"onShowSelectHook"
+00001841 const %2, *270	// *270 = (object)(object 0x00000000025A4370:0x0000000000000000)
+00001844 const %3, *267	// *267 = (int)1
+00001847 calld %0, %-2.*268(%1, %2, %3)	// *268 = (string)"addKagHookCallback"
+00001855 global %1
+00001857 typeofd %2, %1.*271	// *271 = (string)"SpeechPlugin"
+00001861 const %3, *272	// *272 = (string)"Object"
+00001864 ceq %2, %3
+00001867 jnf 000002014
+00001869 const %1, *273	// *273 = (object)(object 0x00000000025A40A0:0x0000000000000000)
+00001872 global %2
+00001874 chgthis %1, %2
+00001877 global %3
+00001879 spde %3.*274, %1	// *274 = (string)"CanUseSpeechLanguage"
+00001883 global %1
+00001885 gpd %2, %1.*275	// *275 = (string)"CanUseSpeechVoice"
+00001889 global %3
+00001891 spde %3.*276, %2	// *276 = (string)"origCanUseSpeechVoice"
+00001895 const %1, *277	// *277 = (object)(object 0x00000000025A1EE0:0x0000000000000000)
+00001898 global %2
+00001900 chgthis %1, %2
+00001903 global %3
+00001905 spde %3.*275, %1	// *275 = (string)"CanUseSpeechVoice"
+00001909 global %1
+00001911 gpd %2, %1.*278	// *278 = (string)"UpdateTextSpeech"
+00001915 global %3
+00001917 spde %3.*279, %2	// *279 = (string)"origUpdateTextSpeech"
+00001921 const %1, *280	// *280 = (object)(object 0x00000000025A3290:0x0000000000000000)
+00001924 global %2
+00001926 chgthis %1, %2
+00001929 global %3
+00001931 spde %3.*278, %1	// *278 = (string)"UpdateTextSpeech"
+00001935 const %1, *281	// *281 = (object)(object 0x00000000025A2480:0x0000000000000000)
+00001938 const %2, *282	// *282 = (object)(object 0x0000000000000000:0x0000000000000000)
+00001941 chgthis %1, %2
+00001944 gpd %3, %-2.*283	// *283 = (string)"SpeechVoiceBase"
+00001948 spds %3.*284, %1	// *284 = (string)"getUnspecifiedToken"
+00001952 const %1, *265	// *265 = (string)"onSystemLangChanged"
+00001955 const %2, *285	// *285 = (object)(object 0x00000000025A4BE0:0x0000000000000000)
+00001958 const %3, *286	// *286 = (int)0
+00001961 calld %0, %-2.*268(%1, %2, %3)	// *268 = (string)"addKagHookCallback"
+00001969 const %1, *287	// *287 = (string)"onKAGSetupMenu"
+00001972 const %2, *288	// *288 = (object)(object 0x00000000025A5180:0x0000000000000000)
+00001975 const %3, *289	// *289 = (int)1
+00001978 calld %0, %-2.*290(%1, %2, %3)	// *290 = (string)"addKagHookCallback"
+00001986 gpd %1, %-2.*291	// *291 = (string)"MultilangSpeechPlugin"
+00001990 spd %-2.*292, %1	// *292 = (string)"SpeechVoicePluginClass"
+00001994 gpd %1, %-2.*293	// *293 = (string)"SystemConfig"
+00001998 deld %0, %1.*294	// *294 = (string)"TextSpeechEnabled"
+00002002 gpds %1, %-2.*295	// *295 = (string)"MultilangTextSpeechEnabled"
+00002006 gpd %2, %-2.*293	// *293 = (string)"SystemConfig"
+00002010 spde %2.*294, %1	// *294 = (string)"TextSpeechEnabled"
+00002014 const %1, *304	// *304 = (object)(object 0x00000000025C02B0:0x0000000000000000)
+00002017 const %2, *286	// *286 = (int)0
+00002020 calld %0, %-2.*305(%1, %2)	// *305 = (string)"addAfterInitCallback"
+00002027 srv %0
+00002029 ret
+
+(property) LanguageTags 0x00000000025748D0
+
+
+(property getter) (getter) 0x0000000002579900
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"Array"
+00000006 new %1, %2()
+00000010 const %2, *1	// *1 = (int)0
+00000013 cp %-3, %1
+00000016 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000020 gpd %2, %1.*3	// *3 = (string)"multiLangLanguageTags"
+00000024 cp %-4, %2
+00000027 tt %-4
+00000029 jnf 000000037
+00000031 calld %0, %-3.*4(%-4)	// *4 = (string)"assign"
+00000037 global %1
+00000039 spds %1.*5, %-3	// *5 = (string)"LanguageTags"
+00000043 srv %-3
+00000045 ret
+00000046 srv %0
+00000048 ret
+
+(property) CurrentLanguageTag 0x000000000257A090
+
+
+(property getter) (getter) 0x000000000257A820
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000004 global %2
+00000006 typeofd %3, %2.*1	// *1 = (string)"kag"
+00000010 const %4, *2	// *2 = (string)"Object"
+00000013 ceq %3, %4
+00000016 jnf 000000048
+00000018 gpd %5, %-2.*1	// *1 = (string)"kag"
+00000022 tt %5
+00000024 jnf 000000048
+00000026 gpd %6, %-2.*1	// *1 = (string)"kag"
+00000030 chkinv %6
+00000032 tt %6
+00000034 jnf 000000048
+00000036 gpd %7, %-2.*1	// *1 = (string)"kag"
+00000040 gpd %8, %7.*3	// *3 = (string)"languageType"
+00000044 num %8
+00000046 jmp 000000054
+00000048 const %7, *4	// *4 = (int)0
+00000051 cp %8, %7
+00000054 gpi %9, %1.%8
+00000058 srv %9
+00000060 ret
+00000061 srv %0
+00000063 ret
+
+(property) CurrentLanguageUITag 0x000000000257B170
+
+
+(property getter) (getter) 0x000000000257C0C0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000004 gpd %2, %-2.*1	// *1 = (string)"SystemConfig"
+00000008 gpd %3, %2.*2	// *2 = (string)"uiLanguageType"
+00000012 gpi %4, %1.%3
+00000016 srv %4
+00000018 ret
+00000019 srv %0
+00000021 ret
+
+(function expression) (anonymous) 0x000000000257C890
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"textlang"
+00000003 gpd %2, %-2.*1	// *1 = (string)"CurrentLanguageTag"
+00000007 call %0, %-3(%1, %2)
+00000013 gpd %1, %-2.*2	// *2 = (string)"kag"
+00000017 gpd %2, %1.*3	// *3 = (string)"historyLayer"
+00000021 cp %-4, %2
+00000024 typeofd %1, %-4.*4	// *4 = (string)"getCurrentLang"
+00000028 const %2, *5	// *5 = (string)"Object"
+00000031 ceq %1, %2
+00000034 jnf 000000085
+00000036 gpd %1, %-2.*2	// *2 = (string)"kag"
+00000040 gpd %2, %1.*6	// *6 = (string)"languageType"
+00000044 num %2
+00000046 calld %3, %-4.*4(%2)	// *4 = (string)"getCurrentLang"
+00000052 cp %-5, %3
+00000055 tt %-5
+00000057 jnf 000000085
+00000059 gpd %1, %-5.*7	// *7 = (string)"searchtext"
+00000063 const %2, *8	// *8 = (string)""
+00000066 ceq %1, %2
+00000069 nf
+00000070 jnf 000000085
+00000072 const %1, *9	// *9 = (string)"lastText"
+00000075 gpd %2, %-5.*7	// *7 = (string)"searchtext"
+00000079 call %0, %-3(%1, %2)
+00000085 srv %0
+00000087 ret
+
+(function) GetSaveDataDrawTextTextLangOverride 0x000000000257D420
+
+#(1) Bytecode.
+00000000 cp %1, %-7
+00000003 add %1, %-3
+00000006 calld %2, %-2.*0(%1)	// *0 = (string)"FilterDrawTextParam"
+00000012 cp %-8, %2
+00000015 cp %1, %-6
+00000018 gpd %2, %-4.*1	// *1 = (string)"lastText"
+00000022 ceq %1, %2
+00000025 setf %1
+00000027 cp %-9, %1
+00000030 tf %-9
+00000032 jnf 000000045
+00000034 gpd %1, %-8.*2	// *2 = (string)"autoface"
+00000038 lnot %1
+00000040 lnot %1
+00000042 cp %-9, %1
+00000045 tt %-9
+00000047 jnf 000000158
+00000049 const %1, *3	// *3 = (object)(object 0x000000000257FB00:0x0000000000000000)
+00000052 cp %-10, %1
+00000055 gpd %2, %-8.*4	// *4 = (string)"facemap"
+00000059 call %1, %-10(%2)
+00000064 cp %-11, %1
+00000067 cdeq %-11, %0
+00000070 jnf 000000083
+00000072 const %2, *5	// *5 = (string)"SystemDefaultFontFaceMap"
+00000075 call %1, %-10(%2)
+00000080 cp %-11, %1
+00000083 cdeq %-11, %0
+00000086 jnf 000000099
+00000088 const %2, *6	// *6 = (string)"MessageDefaultFontFaceMap"
+00000091 call %1, %-10(%2)
+00000096 cp %-11, %1
+00000099 tt %-11
+00000101 jnf 000000158
+00000103 gpd %1, %-4.*7	// *7 = (string)"textlang"
+00000107 cp %-12, %1
+00000110 const %1, *8	// *8 = (string)""
+00000113 ceq %-12, %1
+00000116 jf 000000124
+00000118 gpi %2, %-11.%-12
+00000122 jmp 000000127
+00000124 cp %2, %0
+00000127 cp %-13, %2
+00000130 const %1, *8	// *8 = (string)""
+00000133 ceq %-13, %1
+00000136 jf 000000158
+00000138 global %1
+00000140 gpd %2, %1.*9	// *9 = (string)"Dictionary"
+00000144 new %1, %2()
+00000148 const %2, *10	// *10 = (string)"fontface"
+00000151 spis %1.%2, %-13
+00000155 srv %1
+00000157 ret
+00000158 srv %0
+00000160 ret
+
+(function) getmap 0x000000000257FB00
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)""
+00000003 ceq %-3, %1
+00000006 jf 000000031
+00000008 global %2
+00000010 typeofi %3, %2.%-3
+00000014 const %4, *1	// *1 = (string)"Object"
+00000017 ceq %3, %4
+00000020 nf
+00000021 jf 000000031
+00000023 global %5
+00000025 gpi %6, %5.%-3
+00000029 jmp 000000034
+00000031 cp %6, %0
+00000034 srv %6
+00000036 ret
+00000037 srv %0
+00000039 ret
+
+(function expression) (anonymous) 0x000000000257FFE0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"multiLangUserFontFaceFmt"
+00000008 cp %-5, %2
+00000011 const %1, *2	// *2 = (string)""
+00000014 ceq %-5, %1
+00000017 jf 000000073
+00000019 gpd %1, %-2.*3	// *3 = (string)"chDefaultFace"
+00000023 gpd %2, %-2.*4	// *4 = (string)"scflags"
+00000027 cp %3, %-4
+00000030 num %3
+00000032 calld %4, %-5.*5(%3)	// *5 = (string)"sprintf"
+00000038 spie %2.%4, %1
+00000042 const %1, *6	// *6 = (int)1
+00000045 calld %2, %-2.*7(%-3, %-5, %1)	// *7 = (string)"getLanguageFont"
+00000053 cp %-6, %2
+00000056 const %1, *2	// *2 = (string)""
+00000059 ceq %-6, %1
+00000062 jf 000000068
+00000064 spd %-2.*3, %-6	// *3 = (string)"chDefaultFace"
+00000068 calld %0, %-2.*8()	// *8 = (string)"setMessageLayerUserFont"
+00000073 srv %0
+00000075 ret
+
+(function expression) (anonymous) 0x0000000002580380
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000016
+00000005 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000009 gpd %2, %1.*1	// *1 = (string)"multiLangUserFontFaceFmt"
+00000013 cp %-4, %2
+00000016 tt %-5
+00000018 jnf 000000025
+00000020 cp %1, %0
+00000023 jmp 000000029
+00000025 gpd %1, %-2.*2	// *2 = (string)"chDefaultFace"
+00000029 cp %-6, %1
+00000032 const %1, *3	// *3 = (string)""
+00000035 ceq %-4, %1
+00000038 jf 000000121
+00000040 gpd %1, %-2.*4	// *4 = (string)"scflags"
+00000044 cp %2, %-3
+00000047 num %2
+00000049 calld %3, %-4.*5(%2)	// *5 = (string)"sprintf"
+00000055 gpi %4, %1.%3
+00000059 cp %-6, %4
+00000062 cdeq %-6, %0
+00000065 jnf 000000105
+00000067 global %1
+00000069 typeofd %2, %1.*6	// *6 = (string)"MessageDefaultFontFaceMap"
+00000073 const %3, *7	// *7 = (string)"Object"
+00000076 ceq %2, %3
+00000079 jnf 000000105
+00000081 gpd %1, %-2.*6	// *6 = (string)"MessageDefaultFontFaceMap"
+00000085 gpd %2, %-2.*8	// *8 = (string)"LanguageTags"
+00000089 cp %3, %-3
+00000092 num %3
+00000094 gpi %4, %2.%3
+00000098 gpi %5, %1.%4
+00000102 cp %-6, %5
+00000105 cdeq %-6, %0
+00000108 jnf 000000121
+00000110 tf %-5
+00000112 jnf 000000121
+00000114 gpd %1, %-2.*2	// *2 = (string)"chDefaultFace"
+00000118 cp %-6, %1
+00000121 srv %-6
+00000123 ret
+00000124 srv %0
+00000126 ret
+
+(function expression) (anonymous) 0x0000000002580D10
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000016
+00000005 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000009 gpd %2, %1.*1	// *1 = (string)"multiLangUserFontFaceFmt"
+00000013 cp %-3, %2
+00000016 cdeq %-4, %0
+00000019 jnf 000000032
+00000021 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000025 gpd %2, %1.*2	// *2 = (string)"multiLangFailSafeFontFace"
+00000029 cp %-4, %2
+00000032 const %1, *3	// *3 = (string)""
+00000035 ceq %-4, %1
+00000038 jnf 000000047
+00000040 gpd %1, %-2.*4	// *4 = (string)"MessageDefaultFontFace"
+00000044 cp %-4, %1
+00000047 global %1
+00000049 gpd %2, %1.*5	// *5 = (string)"Dictionary"
+00000053 new %1, %2()
+00000057 cp %-5, %1
+00000060 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000064 gpd %2, %1.*6	// *6 = (string)"multiLangUpdateResetTags"
+00000068 cp %-6, %2
+00000071 cp %1, %-6
+00000074 typeof %1
+00000076 const %2, *7	// *7 = (string)"Object"
+00000079 ceq %1, %2
+00000082 jnf 000000147
+00000084 tt %-6
+00000086 jnf 000000147
+00000088 cp %1, %-6
+00000091 const %2, *8	// *8 = (string)"Array"
+00000094 chkins %1, %2
+00000097 tt %1
+00000099 jnf 000000144
+00000101 const %1, *9	// *9 = (int)0
+00000104 cp %-7, %1
+00000107 gpd %1, %-6.*10	// *10 = (string)"count"
+00000111 clt %-7, %1
+00000114 jnf 000000147
+00000116 gpi %1, %-6.%-7
+00000120 cp %-8, %1
+00000123 const %1, *3	// *3 = (string)""
+00000126 ceq %-8, %1
+00000129 jf 000000138
+00000131 const %1, *11	// *11 = (int)1
+00000134 spie %-5.%-8, %1
+00000138 inc %-7
+00000140 jmp 000000107
+00000142 jmp 000000147
+00000144 cp %-5, %-6
+00000147 global %1
+00000149 typeofd %2, %1.*12	// *12 = (string)"MessageDefaultFontFaceMap"
+00000153 const %3, *7	// *7 = (string)"Object"
+00000156 ceq %2, %3
+00000159 jnf 000000167
+00000161 gpd %4, %-2.*12	// *12 = (string)"MessageDefaultFontFaceMap"
+00000165 jmp 000000170
+00000167 cp %4, %0
+00000170 cp %-7, %4
+00000173 gpd %1, %-2.*13	// *13 = (string)"LanguageTags"
+00000177 cp %-8, %1
+00000180 const %1, *9	// *9 = (int)0
+00000183 cp %-9, %1
+00000186 gpd %1, %-8.*10	// *10 = (string)"count"
+00000190 clt %-9, %1
+00000193 jnf 000000324
+00000195 gpi %1, %-8.%-9
+00000199 cp %-10, %1
+00000202 const %1, *3	// *3 = (string)""
+00000205 ceq %-10, %1
+00000208 jnf 000000212
+00000210 jmp 000000320
+00000212 calld %1, %-3.*14(%-9)	// *14 = (string)"sprintf"
+00000218 cp %-11, %1
+00000221 gpd %1, %-2.*15	// *15 = (string)"scflags"
+00000225 gpi %2, %1.%-11
+00000229 cp %-12, %2
+00000232 gpi %1, %-5.%-10
+00000236 tt %1
+00000238 jnf 000000278
+00000240 gpd %2, %-2.*15	// *15 = (string)"scflags"
+00000244 const %3, *16	// *16 = (string)"langinit_"
+00000247 add %3, %-10
+00000250 gpi %4, %2.%3
+00000254 tf %4
+00000256 jnf 000000278
+00000258 cp %-12, %0
+00000261 const %1, *11	// *11 = (int)1
+00000264 gpd %2, %-2.*15	// *15 = (string)"scflags"
+00000268 const %3, *16	// *16 = (string)"langinit_"
+00000271 add %3, %-10
+00000274 spie %2.%3, %1
+00000278 cdeq %-12, %0
+00000281 jnf 000000320
+00000283 gpi %1, %-7.%-10
+00000287 cp %-13, %1
+00000290 const %1, *3	// *3 = (string)""
+00000293 ceq %-13, %1
+00000296 jnf 000000301
+00000298 cp %-13, %-4
+00000301 gpd %1, %-2.*15	// *15 = (string)"scflags"
+00000305 spie %1.%-11, %-13
+00000309 const %1, *17	// *17 = (string)"initLanguageFont"
+00000312 calld %0, %-2.*18(%1, %-10, %-13)	// *18 = (string)"dm"
+00000320 inc %-9
+00000322 jmp 000000186
+00000324 srv %0
+00000326 ret
+
+(function expression) (anonymous) 0x0000000002582410
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000016
+00000005 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000009 gpd %2, %1.*1	// *1 = (string)"multiLangUserFontFaceFmt"
+00000013 cp %-3, %2
+00000016 cdeq %-4, %0
+00000019 jnf 000000032
+00000021 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000025 gpd %2, %1.*2	// *2 = (string)"multiLangFailSafeFontFace"
+00000029 cp %-4, %2
+00000032 const %1, *3	// *3 = (string)""
+00000035 ceq %-4, %1
+00000038 jnf 000000047
+00000040 gpd %1, %-2.*4	// *4 = (string)"MessageDefaultFontFace"
+00000044 cp %-4, %1
+00000047 global %1
+00000049 typeofd %2, %1.*5	// *5 = (string)"MessageDefaultFontFaceMap"
+00000053 const %3, *6	// *6 = (string)"Object"
+00000056 ceq %2, %3
+00000059 jnf 000000067
+00000061 gpd %4, %-2.*5	// *5 = (string)"MessageDefaultFontFaceMap"
+00000065 jmp 000000070
+00000067 cp %4, %0
+00000070 cp %-5, %4
+00000073 gpd %1, %-2.*7	// *7 = (string)"LanguageTags"
+00000077 cp %-6, %1
+00000080 const %1, *8	// *8 = (int)0
+00000083 cp %-7, %1
+00000086 gpd %1, %-6.*9	// *9 = (string)"count"
+00000090 clt %-7, %1
+00000093 jnf 000000156
+00000095 gpi %1, %-6.%-7
+00000099 cp %-8, %1
+00000102 const %1, *3	// *3 = (string)""
+00000105 ceq %-8, %1
+00000108 jnf 000000112
+00000110 jmp 000000152
+00000112 calld %1, %-3.*10(%-7)	// *10 = (string)"sprintf"
+00000118 cp %-9, %1
+00000121 gpi %1, %-5.%-8
+00000125 cp %-10, %1
+00000128 const %1, *3	// *3 = (string)""
+00000131 ceq %-10, %1
+00000134 jf 000000141
+00000136 cp %2, %-10
+00000139 jmp 000000144
+00000141 cp %2, %-4
+00000144 gpd %3, %-2.*11	// *11 = (string)"scflags"
+00000148 spie %3.%-9, %2
+00000152 inc %-7
+00000154 jmp 000000086
+00000156 gpd %1, %-2.*12	// *12 = (string)"languageType"
+00000160 calld %2, %-2.*13(%1)	// *13 = (string)"getLanguageFont"
+00000166 spd %-2.*14, %2	// *14 = (string)"chDefaultFace"
+00000170 calld %0, %-2.*15()	// *15 = (string)"setMessageLayerUserFont"
+00000175 srv %0
+00000177 ret
+
+(function expression) (anonymous) 0x0000000002582820
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-1.*0	// *0 = (string)"languageType"
+00000009 cp %-4, %1
+00000012 cdeq %-5, %0
+00000015 jnf 000000028
+00000017 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000021 gpd %2, %1.*2	// *2 = (string)"multiLangUserFontFaceFmt"
+00000025 cp %-5, %2
+00000028 const %1, *3	// *3 = (string)""
+00000031 ceq %-3, %1
+00000034 jf 000000074
+00000036 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000040 gpd %2, %1.*2	// *2 = (string)"multiLangUserFontFaceFmt"
+00000044 cp %-6, %2
+00000047 const %1, *3	// *3 = (string)""
+00000050 ceq %-6, %1
+00000053 jf 000000074
+00000055 gpd %1, %-2.*4	// *4 = (string)"scflags"
+00000059 cp %2, %-4
+00000062 num %2
+00000064 calld %3, %-6.*5(%2)	// *5 = (string)"sprintf"
+00000070 spie %1.%3, %-3
+00000074 srv %0
+00000076 ret
+
+(property) LanguageWordBreaks 0x0000000002586B00
+
+
+(property getter) (getter) 0x0000000002588770
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"word_break"
+00000003 const %2, *1	// *1 = (int)1
+00000006 calld %3, %-2.*2(%1, %2)	// *2 = (string)"GetLanguageParamsList"
+00000013 global %4
+00000015 spds %4.*3, %3	// *3 = (string)"LanguageWordBreaks"
+00000019 srv %3
+00000021 ret
+00000022 srv %0
+00000024 ret
+
+(property) LanguageWidthTimeScales 0x0000000002587690
+
+
+(property getter) (getter) 0x00000000025873C0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"width_time_scale"
+00000003 const %2, *1	// *1 = (int)0
+00000006 calld %3, %-2.*2(%1, %2)	// *2 = (string)"GetLanguageParamsList"
+00000013 global %4
+00000015 spds %4.*3, %3	// *3 = (string)"LanguageWidthTimeScales"
+00000019 srv %3
+00000021 ret
+00000022 srv %0
+00000024 ret
+
+(function) GetLanguageParamsList 0x00000000025870F0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"Array"
+00000006 new %1, %2()
+00000010 const %2, *1	// *1 = (int)0
+00000013 cp %-5, %1
+00000016 gpd %1, %-2.*2	// *2 = (string)"LanguageTags"
+00000020 cp %-6, %1
+00000023 gpd %1, %-2.*3	// *3 = (string)"SystemConfig"
+00000027 gpd %2, %1.*4	// *4 = (string)"multiLangParamsMap"
+00000031 cp %-7, %2
+00000034 cdeq %-7, %0
+00000037 jnf 000000052
+00000039 global %1
+00000041 gpd %2, %1.*5	// *5 = (string)"Dictionary"
+00000045 new %1, %2()
+00000049 cp %-7, %1
+00000052 const %1, *1	// *1 = (int)0
+00000055 cp %-8, %1
+00000058 gpd %1, %-6.*6	// *6 = (string)"count"
+00000062 cp %-9, %1
+00000065 clt %-8, %-9
+00000068 jnf 000000130
+00000070 gpi %1, %-6.%-8
+00000074 cp %-10, %1
+00000077 cl %-11
+00000079 const %1, *7	// *7 = (string)""
+00000082 ceq %-10, %1
+00000085 jf 000000117
+00000087 gpi %2, %-7.%-10
+00000091 cp %-11, %2
+00000094 cdeq %2, %0
+00000097 jf 000000117
+00000099 typeofi %3, %-11.%-3
+00000103 const %4, *8	// *8 = (string)"undefined"
+00000106 ceq %3, %4
+00000109 jf 000000117
+00000111 gpi %5, %-11.%-3
+00000115 jmp 000000120
+00000117 cp %5, %-4
+00000120 calld %0, %-5.*9(%5)	// *9 = (string)"add"
+00000126 inc %-8
+00000128 jmp 000000065
+00000130 srv %-5
+00000132 ret
+00000133 srv %0
+00000135 ret
+
+(function expression) (anonymous) 0x00000000025884A0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"multiLangLineSpaceScale"
+00000008 srv %2
+00000010 ret
+00000011 srv %0
+00000013 ret
+
+(function) FilterDateFormat 0x0000000002587960
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"GenericDateFormat"
+00000003 const %2, *1	// *1 = (string)""
+00000006 calld %3, %-2.*2(%1, %2)	// *2 = (string)"GetSystemLangMessage"
+00000013 cp %-5, %3
+00000016 const %1, *1	// *1 = (string)""
+00000019 ceq %-5, %1
+00000022 jf 000000264
+00000024 gpd %2, %-2.*3	// *3 = (string)"Date"
+00000028 new %1, %2(%-3)
+00000033 cp %-6, %1
+00000036 cl %-7
+00000038 cdeq %-4, %0
+00000041 jf 000000049
+00000043 calld %0, %-6.*4(%-4)	// *4 = (string)"setTime"
+00000049 cp %1, %-6
+00000052 global %2
+00000054 gpd %3, %2.*5	// *5 = (string)"Dictionary"
+00000058 new %2, %3()
+00000062 const %3, *6	// *6 = (string)"year"
+00000065 gpd %5, %1.*7	// *7 = (string)"getYear"
+00000069 call %4, %5()
+00000073 spis %2.%3, %4
+00000077 const %3, *8	// *8 = (string)"month"
+00000080 gpd %5, %1.*9	// *9 = (string)"getMonth"
+00000084 call %4, %5()
+00000088 const %5, *10	// *10 = (int)1
+00000091 add %4, %5
+00000094 spis %2.%3, %4
+00000098 const %3, *11	// *11 = (string)"date"
+00000101 gpd %5, %1.*12	// *12 = (string)"getDate"
+00000105 call %4, %5()
+00000109 spis %2.%3, %4
+00000113 const %3, *13	// *13 = (string)"hour"
+00000116 gpd %5, %1.*14	// *14 = (string)"getHours"
+00000120 call %4, %5()
+00000124 spis %2.%3, %4
+00000128 const %3, *15	// *15 = (string)"min"
+00000131 gpd %5, %1.*16	// *16 = (string)"getMinutes"
+00000135 call %4, %5()
+00000139 spis %2.%3, %4
+00000143 const %3, *17	// *17 = (string)"sec"
+00000146 gpd %5, %1.*18	// *18 = (string)"getSeconds"
+00000150 call %4, %5()
+00000154 spis %2.%3, %4
+00000158 cp %-7, %2
+00000161 cp %1, %-6
+00000164 inv %1
+00000166 cp %1, %-7
+00000169 gpd %2, %1.*8	// *8 = (string)"month"
+00000173 const %3, *19	// *19 = (string)"%02d"
+00000176 calld %4, %3.*20(%2)	// *20 = (string)"sprintf"
+00000182 spde %1.*21, %4	// *21 = (string)"zmonth"
+00000186 gpd %2, %1.*11	// *11 = (string)"date"
+00000190 const %3, *19	// *19 = (string)"%02d"
+00000193 calld %4, %3.*20(%2)	// *20 = (string)"sprintf"
+00000199 spde %1.*22, %4	// *22 = (string)"zdate"
+00000203 gpd %2, %1.*13	// *13 = (string)"hour"
+00000207 const %3, *19	// *19 = (string)"%02d"
+00000210 calld %4, %3.*20(%2)	// *20 = (string)"sprintf"
+00000216 spde %1.*23, %4	// *23 = (string)"zhour"
+00000220 gpd %2, %1.*15	// *15 = (string)"min"
+00000224 const %3, *19	// *19 = (string)"%02d"
+00000227 calld %4, %3.*20(%2)	// *20 = (string)"sprintf"
+00000233 spde %1.*24, %4	// *24 = (string)"zmin"
+00000237 gpd %2, %1.*17	// *17 = (string)"sec"
+00000241 const %3, *19	// *19 = (string)"%02d"
+00000244 calld %4, %3.*20(%2)	// *20 = (string)"sprintf"
+00000250 spde %1.*25, %4	// *25 = (string)"zsec"
+00000254 calld %1, %-2.*26(%-5, %-7)	// *26 = (string)"applyInlineStringVariableExtract"
+00000261 cp %-3, %1
+00000264 srv %-3
+00000266 ret
+00000267 srv %0
+00000269 ret
+
+(function expression) (anonymous) 0x0000000002587C30
+
+#(1) Bytecode.
+00000000 global %1
+00000002 typeofd %2, %1.*0	// *0 = (string)"LanguageWordBreaks"
+00000006 const %3, *1	// *1 = (string)"Object"
+00000009 ceq %2, %3
+00000012 jnf 000000097
+00000014 gpd %1, %-6.*2	// *2 = (string)"language"
+00000018 cp %-7, %1
+00000021 cdeq %-7, %0
+00000024 jnf 000000039
+00000026 gpd %1, %-2.*3	// *3 = (string)"SystemConfig"
+00000030 gpd %2, %1.*4	// *4 = (string)"uiLanguageType"
+00000034 cp %-7, %2
+00000037 jmp 000000065
+00000039 cp %1, %-7
+00000042 typeof %1
+00000044 const %2, *5	// *5 = (string)"String"
+00000047 ceq %1, %2
+00000050 jnf 000000065
+00000052 gpd %1, %-2.*6	// *6 = (string)"LanguageTags"
+00000056 calld %2, %1.*7(%-7)	// *7 = (string)"find"
+00000062 cp %-7, %2
+00000065 const %1, *8	// *8 = (int)0
+00000068 clt %-7, %1
+00000071 jf 000000097
+00000073 gpd %2, %-6.*9	// *9 = (string)"wordwrap"
+00000077 cdeq %2, %0
+00000080 nf
+00000081 jf 000000097
+00000083 gpd %1, %-2.*0	// *0 = (string)"LanguageWordBreaks"
+00000087 gpi %2, %1.%-7
+00000091 lnot %2
+00000093 spde %-6.*9, %2	// *9 = (string)"wordwrap"
+00000097 call %1, %-3(%-4, %-5, %-6, *)
+00000110 srv %1
+00000112 ret
+00000113 srv %0
+00000115 ret
+
+(function) GetSystemLangMessage 0x0000000002587F00
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"GetSystemLangMessage"
+00000006 calld %3, %2.*1()	// *1 = (string)"getCurrentTag"
+00000011 cp %-5, %3
+00000014 const %1, *2	// *2 = (string)""
+00000017 ceq %-3, %1
+00000020 jnf 000000041
+00000022 const %1, *2	// *2 = (string)""
+00000025 ceq %-5, %1
+00000028 jf 000000035
+00000030 cp %2, %-5
+00000033 jmp 000000038
+00000035 cp %2, %-4
+00000038 srv %2
+00000040 ret
+00000041 const %1, *2	// *2 = (string)""
+00000044 ceq %-5, %1
+00000047 jf 000000107
+00000049 gpd %2, %-2.*3	// *3 = (string)"LanguageTags"
+00000053 calld %3, %2.*4(%-5)	// *4 = (string)"find"
+00000059 const %4, *5	// *5 = (int)0
+00000062 clt %3, %4
+00000065 jf 000000107
+00000067 global %5
+00000069 typeofd %6, %5.*6	// *6 = (string)"GetSysLangText"
+00000073 const %7, *7	// *7 = (string)"Object"
+00000076 ceq %6, %7
+00000079 nf
+00000080 jf 000000107
+00000082 const %1, *8	// *8 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000085 calld %2, %-2.*6(%-3, %-5, %1)	// *6 = (string)"GetSysLangText"
+00000093 cp %-6, %2
+00000096 const %1, *2	// *2 = (string)""
+00000099 ceq %-6, %1
+00000102 jf 000000107
+00000104 srv %-6
+00000106 ret
+00000107 srv %-4
+00000109 ret
+00000110 const %1, *9	// *9 = (object)(object 0x0000000002586E20:0x0000000000000000)
+00000113 cp %-6, %1
+00000116 const %1, *10	// *10 = (object)(object 0x00000000025881D0:0x0000000000000000)
+00000119 cp %-7, %1
+00000122 srv %0
+00000124 ret
+
+(function) getCurrentTag 0x0000000002586E20
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000036
+00000005 global %1
+00000007 typeofd %2, %1.*0	// *0 = (string)"kag"
+00000011 const %3, *1	// *1 = (string)"Object"
+00000014 ceq %2, %3
+00000017 jnf 000000027
+00000019 global %4
+00000021 gpd %5, %4.*0	// *0 = (string)"kag"
+00000025 jmp 000000033
+00000027 const %4, *2	// *2 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000030 cp %5, %4
+00000033 cp %-3, %5
+00000036 cl %-4
+00000038 tt %-3
+00000040 jnf 000000068
+00000042 gpd %1, %-3.*3	// *3 = (string)"scflags"
+00000046 typeofd %2, %1.*4	// *4 = (string)"uiLanguageType"
+00000050 const %3, *5	// *5 = (string)"undefined"
+00000053 ceq %2, %3
+00000056 nf
+00000057 jnf 000000068
+00000059 gpd %1, %-2.*6	// *6 = (string)"CurrentLanguageUITag"
+00000063 cp %-4, %1
+00000066 jmp 000000082
+00000068 global %1
+00000070 gpd %2, %1.*7	// *7 = (string)"GetSystemLangMessage"
+00000074 calld %3, %2.*8()	// *8 = (string)"getSystemLanguageTag"
+00000079 cp %-4, %3
+00000082 srv %-4
+00000084 ret
+00000085 srv %0
+00000087 ret
+
+(function) getSystemLanguageTag 0x00000000025881D0
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000018
+00000005 global %1
+00000007 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000011 gpd %3, %2.*1	// *1 = (string)"multiLangUnknownTag"
+00000015 cp %-3, %3
+00000018 cl %-4
+00000020 entry 000000113, %1
+00000023 global %1
+00000025 typeofd %2, %1.*2	// *2 = (string)"Steam"
+00000029 const %3, *3	// *3 = (string)"Object"
+00000032 ceq %2, %3
+00000035 jnf 000000051
+00000037 gpd %1, %-2.*2	// *2 = (string)"Steam"
+00000041 calld %2, %1.*4()	// *4 = (string)"getLanguage"
+00000046 cp %-4, %2
+00000049 jmp 000000110
+00000051 const %1, *5	// *5 = (string)"getLangName.dll"
+00000054 cp %-5, %1
+00000057 gpd %1, %-2.*6	// *6 = (string)"Plugins"
+00000061 calld %0, %1.*7(%-5)	// *7 = (string)"link"
+00000067 entry 000000085, %1
+00000070 gpd %1, %-2.*8	// *8 = (string)"System"
+00000074 calld %2, %1.*9()	// *9 = (string)"getCurrentUILangName"
+00000079 cp %-4, %2
+00000082 extry
+00000083 jmp 000000100
+00000085 cp %-6, %1
+00000088 gpd %1, %-2.*6	// *6 = (string)"Plugins"
+00000092 calld %0, %1.*10(%-5)	// *10 = (string)"unlink"
+00000098 throw %-6
+00000100 gpd %1, %-2.*6	// *6 = (string)"Plugins"
+00000104 calld %0, %1.*10(%-5)	// *10 = (string)"unlink"
+00000110 extry
+00000111 jmp 000000134
+00000113 cp %-5, %1
+00000116 const %1, *11	// *11 = (string)"***  getSystemLanguageTag failed"
+00000119 gpd %2, %-5.*12	// *12 = (string)"message"
+00000123 gpd %3, %-2.*13	// *13 = (string)"Debug"
+00000127 calld %0, %3.*14(%1, %2)	// *14 = (string)"notice"
+00000134 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000138 gpd %2, %1.*15	// *15 = (string)"multiLangTagAliasMap"
+00000142 cp %-5, %2
+00000145 tt %-5
+00000147 jnf 000000267
+00000149 const %1, *16	// *16 = (string)""
+00000152 ceq %-4, %1
+00000155 nf
+00000156 jnf 000000267
+00000158 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000162 gpd %2, %1.*17	// *17 = (string)"multiLangLanguageTags"
+00000166 cp %-6, %2
+00000169 cp %1, %-4
+00000172 str %1
+00000174 calld %2, %1.*18()	// *18 = (string)"toLowerCase"
+00000179 cp %-7, %2
+00000182 const %1, *19	// *19 = (int)0
+00000185 cp %-8, %1
+00000188 gpd %1, %-5.*20	// *20 = (string)"count"
+00000192 cp %-9, %1
+00000195 clt %-8, %-9
+00000198 jnf 000000267
+00000200 gpi %1, %-5.%-8
+00000204 calld %2, %-7.*21(%1)	// *21 = (string)"indexOf"
+00000210 const %3, *19	// *19 = (int)0
+00000213 clt %2, %3
+00000216 jf 000000259
+00000218 cp %1, %-8
+00000221 const %2, *22	// *22 = (int)1
+00000224 add %1, %2
+00000227 gpi %3, %-5.%1
+00000231 cp %-10, %3
+00000234 const %1, *16	// *16 = (string)""
+00000237 ceq %-10, %1
+00000240 jf 000000259
+00000242 calld %2, %-6.*23(%-10)	// *23 = (string)"find"
+00000248 const %3, *19	// *19 = (int)0
+00000251 clt %2, %3
+00000254 jf 000000259
+00000256 srv %-10
+00000258 ret
+00000259 const %1, *24	// *24 = (int)2
+00000262 add %-8, %1
+00000265 jmp 000000195
+00000267 srv %-3
+00000269 ret
+00000270 srv %0
+00000272 ret
+
+(function) GetSystemLangFile 0x0000000002588A40
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"multiLangUnknownTag"
+00000008 cp %-5, %2
+00000011 calld %1, %-2.*2(%0, %-5)	// *2 = (string)"GetSystemLangMessage"
+00000018 cp %-6, %1
+00000021 gpd %1, %-2.*3	// *3 = (string)"Storages"
+00000025 gpd %3, %1.*4	// *4 = (string)"chopStorageExt"
+00000029 call %2, %3(%-3)
+00000034 cp %-7, %2
+00000037 gpd %3, %1.*5	// *5 = (string)"extractStorageExt"
+00000041 call %2, %3(%-3)
+00000046 cp %-8, %2
+00000049 const %2, *6	// *6 = (string)""
+00000052 ceq %-8, %2
+00000055 jnf 000000060
+00000057 cp %-8, %-4
+00000060 cp %2, %-7
+00000063 str %2
+00000065 const %3, *7	// *7 = (string)"_"
+00000068 add %2, %3
+00000071 cp %4, %-6
+00000074 str %4
+00000076 add %2, %4
+00000079 cp %5, %-8
+00000082 str %5
+00000084 add %2, %5
+00000087 cp %-9, %2
+00000090 gpd %3, %1.*8	// *8 = (string)"isExistentStorage"
+00000094 call %2, %3(%-9)
+00000099 tt %2
+00000101 jnf 000000106
+00000103 srv %-9
+00000105 ret
+00000106 ceq %-6, %-5
+00000109 jf 000000165
+00000111 const %2, *9	// *9 = (string)"jp"
+00000114 ceq %-6, %2
+00000117 jf 000000165
+00000119 cp %2, %-7
+00000122 str %2
+00000124 const %3, *7	// *7 = (string)"_"
+00000127 add %2, %3
+00000130 cp %4, %-5
+00000133 str %4
+00000135 add %2, %4
+00000138 cp %5, %-8
+00000141 str %5
+00000143 add %2, %5
+00000146 cp %-9, %2
+00000149 gpd %3, %1.*8	// *8 = (string)"isExistentStorage"
+00000153 call %2, %3(%-9)
+00000158 tt %2
+00000160 jnf 000000165
+00000162 srv %-9
+00000164 ret
+00000165 srv %-3
+00000167 ret
+00000168 srv %0
+00000170 ret
+
+(function expression) (anonymous) 0x0000000002592160
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000004 cp %-4, %1
+00000007 tf %-4
+00000009 jf 000000019
+00000011 gpd %1, %-4.*1	// *1 = (string)"count"
+00000015 tf %1
+00000017 jnf 000000022
+00000019 srv %0
+00000021 ret
+00000022 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000026 gpd %2, %1.*3	// *3 = (string)"multiLangForceMultiLang"
+00000030 tf %2
+00000032 jnf 000000044
+00000034 gpd %3, %-4.*1	// *1 = (string)"count"
+00000038 const %4, *4	// *4 = (int)2
+00000041 ceq %3, %4
+00000044 setf %5
+00000046 cp %-5, %5
+00000049 tf %-5
+00000051 jnf 000000059
+00000053 gpds %1, %-2.*5	// *5 = (string)"subLanguageType"
+00000057 jmp 000000063
+00000059 gpds %1, %-2.*6	// *6 = (string)"LangType_sub"
+00000063 spde %-3.*5, %1	// *5 = (string)"subLanguageType"
+00000067 cl %-6
+00000069 cl %-7
+00000071 cl %-8
+00000073 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000077 gpd %2, %1.*7	// *7 = (string)"multiLangMenuMap"
+00000081 cp %-6, %2
+00000084 gpd %2, %1.*8	// *8 = (string)"multiLangMenuCapsFmt"
+00000088 cp %-9, %2
+00000091 gpd %2, %1.*9	// *9 = (string)"multiLangMenuMainSub"
+00000095 cp %-10, %2
+00000098 const %2, *10	// *10 = (string)"%s"
+00000101 cp %-11, %2
+00000104 tt %-5
+00000106 jnf 000000113
+00000108 cp %2, %-11
+00000111 jmp 000000154
+00000113 global %2
+00000115 gpd %3, %2.*11	// *11 = (string)"Dictionary"
+00000119 new %2, %3()
+00000123 const %3, *12	// *12 = (string)"mainsub"
+00000126 const %4, *13	// *13 = (int)0
+00000129 gpi %5, %-10.%4
+00000133 spis %2.%3, %5
+00000137 const %3, *14	// *14 = (string)"text"
+00000140 spis %2.%3, %-11
+00000144 calld %3, %-2.*15(%-9, %2)	// *15 = (string)"applyInlineStringVariableExtract"
+00000151 cp %2, %3
+00000154 cp %-7, %2
+00000157 tt %-5
+00000159 jnf 000000166
+00000161 cp %2, %-11
+00000164 jmp 000000207
+00000166 global %2
+00000168 gpd %3, %2.*11	// *11 = (string)"Dictionary"
+00000172 new %2, %3()
+00000176 const %3, *12	// *12 = (string)"mainsub"
+00000179 const %4, *16	// *16 = (int)1
+00000182 gpi %5, %-10.%4
+00000186 spis %2.%3, %5
+00000190 const %3, *14	// *14 = (string)"text"
+00000193 spis %2.%3, %-11
+00000197 calld %3, %-2.*15(%-9, %2)	// *15 = (string)"applyInlineStringVariableExtract"
+00000204 cp %2, %3
+00000207 cp %-8, %2
+00000210 const %1, *17	// *17 = (string)"shortcut_main"
+00000213 calld %2, %-2.*18(%1, %0)	// *18 = (string)"GetLanguageParamsList"
+00000220 cp %-9, %2
+00000223 const %1, *19	// *19 = (string)"shortcut_sub"
+00000226 calld %2, %-2.*18(%1, %0)	// *18 = (string)"GetLanguageParamsList"
+00000233 cp %-10, %2
+00000236 const %1, *20	// *20 = (string)"menu_caption"
+00000239 calld %2, %-2.*18(%1, %0)	// *18 = (string)"GetLanguageParamsList"
+00000246 cp %-11, %2
+00000249 global %1
+00000251 gpd %2, %1.*21	// *21 = (string)"Array"
+00000255 new %1, %2()
+00000259 const %2, *13	// *13 = (int)0
+00000262 cp %-12, %1
+00000265 global %1
+00000267 gpd %2, %1.*21	// *21 = (string)"Array"
+00000271 new %1, %2()
+00000275 const %2, *13	// *13 = (int)0
+00000278 cp %-13, %1
+00000281 cl %-14
+00000283 const %1, *13	// *13 = (int)0
+00000286 cp %-15, %1
+00000289 gpd %1, %-4.*22	// *22 = (string)"count"
+00000293 cp %-16, %1
+00000296 clt %-15, %-16
+00000299 jnf 000000745
+00000301 gpi %1, %-4.%-15
+00000305 cp %-17, %1
+00000308 const %1, *23	// *23 = (string)""
+00000311 ceq %-17, %1
+00000314 jnf 000000318
+00000316 jmp 000000741
+00000318 gpi %1, %-11.%-15
+00000322 cp %-18, %1
+00000325 const %1, *23	// *23 = (string)""
+00000328 ceq %-18, %1
+00000331 jnf 000000351
+00000333 gpi %2, %-6.%-17
+00000337 cp %-18, %2
+00000340 const %3, *23	// *23 = (string)""
+00000343 ceq %2, %3
+00000346 jnf 000000351
+00000348 cp %-18, %-17
+00000351 const %1, *24	// *24 = (string)"&"
+00000354 calld %2, %-18.*25(%1)	// *25 = (string)"indexOf"
+00000360 cp %-19, %2
+00000363 gpi %1, %-9.%-15
+00000367 cp %-20, %1
+00000370 cdeq %-20, %0
+00000373 jnf 000000407
+00000375 const %1, *13	// *13 = (int)0
+00000378 clt %-19, %1
+00000381 nf
+00000382 jnf 000000407
+00000384 cp %1, %-19
+00000387 const %2, *16	// *16 = (int)1
+00000390 add %1, %2
+00000393 calld %3, %-18.*26(%1)	// *26 = (string)"charAt"
+00000399 calld %4, %3.*27()	// *27 = (string)"toUpperCase"
+00000404 cp %-20, %4
+00000407 const %1, *13	// *13 = (int)0
+00000410 clt %-19, %1
+00000413 jf 000000446
+00000415 global %2
+00000417 gpd %3, %2.*28	// *28 = (string)"RegExp"
+00000421 const %4, *29	// *29 = (string)"//g/&"
+00000424 new %2, %3()
+00000428 calld %0, %2.*30(%4)	// *30 = (string)"_compile"
+00000434 const %3, *23	// *23 = (string)""
+00000437 calld %4, %-18.*31(%2, %3)	// *31 = (string)"replace"
+00000444 jmp 000000449
+00000446 cp %4, %-18
+00000449 cp %-21, %4
+00000452 gpi %1, %-10.%-15
+00000456 cp %-22, %1
+00000459 cdeq %-22, %0
+00000462 jnf 000000482
+00000464 const %1, *23	// *23 = (string)""
+00000467 ceq %-20, %1
+00000470 nf
+00000471 jnf 000000482
+00000473 const %1, *32	// *32 = (string)"Shift+"
+00000476 add %1, %-20
+00000479 cp %-22, %1
+00000482 global %1
+00000484 gpd %2, %1.*33	// *33 = (string)"Dictionary"
+00000488 new %1, %2()
+00000492 const %2, *34	// *34 = (string)"name"
+00000495 const %3, *35	// *35 = (string)"textLanguageMenuItem_"
+00000498 cp %4, %-17
+00000501 str %4
+00000503 add %3, %4
+00000506 spis %1.%2, %3
+00000510 const %2, *36	// *36 = (string)"caption"
+00000513 calld %3, %-7.*37(%-18)	// *37 = (string)"sprintf"
+00000519 spis %1.%2, %3
+00000523 const %2, *38	// *38 = (string)"group"
+00000526 const %3, *39	// *39 = (int)1
+00000529 spis %1.%2, %3
+00000533 const %2, *40	// *40 = (string)"exp"
+00000536 const %3, *41	// *41 = (string)"SetLanguageType("
+00000539 cp %4, %-15
+00000542 str %4
+00000544 add %3, %4
+00000547 const %5, *42	// *42 = (string)")"
+00000550 add %3, %5
+00000553 spis %1.%2, %3
+00000557 const %2, *43	// *43 = (string)"prop"
+00000560 global %3
+00000562 gpd %4, %3.*33	// *33 = (string)"Dictionary"
+00000566 new %3, %4()
+00000570 const %4, *44	// *44 = (string)"shortcut"
+00000573 spis %3.%4, %-20
+00000577 spis %1.%2, %3
+00000581 calld %0, %-12.*45(%1)	// *45 = (string)"add"
+00000587 global %1
+00000589 gpd %2, %1.*33	// *33 = (string)"Dictionary"
+00000593 new %1, %2()
+00000597 const %2, *34	// *34 = (string)"name"
+00000600 const %3, *46	// *46 = (string)"subLanguageMenuItem_"
+00000603 cp %4, %-17
+00000606 str %4
+00000608 add %3, %4
+00000611 spis %1.%2, %3
+00000615 const %2, *36	// *36 = (string)"caption"
+00000618 calld %3, %-8.*37(%-21)	// *37 = (string)"sprintf"
+00000624 spis %1.%2, %3
+00000628 const %2, *38	// *38 = (string)"group"
+00000631 const %3, *47	// *47 = (int)2
+00000634 spis %1.%2, %3
+00000638 const %2, *40	// *40 = (string)"exp"
+00000641 const %3, *48	// *48 = (string)"SetSubLanguageType("
+00000644 cp %4, %-15
+00000647 str %4
+00000649 add %3, %4
+00000652 const %5, *42	// *42 = (string)")"
+00000655 add %3, %5
+00000658 spis %1.%2, %3
+00000662 const %2, *43	// *43 = (string)"prop"
+00000665 global %3
+00000667 gpd %4, %3.*33	// *33 = (string)"Dictionary"
+00000671 new %3, %4()
+00000675 const %4, *44	// *44 = (string)"shortcut"
+00000678 spis %3.%4, %-22
+00000682 const %4, *49	// *49 = (string)"visible"
+00000685 cp %5, %-5
+00000688 lnot %5
+00000690 spis %3.%4, %5
+00000694 spis %1.%2, %3
+00000698 calld %0, %-13.*45(%1)	// *45 = (string)"add"
+00000704 tt %-14
+00000706 jnf 000000741
+00000708 cp %1, %-17
+00000711 str %1
+00000713 const %2, *50	// *50 = (string)":"
+00000716 add %1, %2
+00000719 calld %3, %-17.*51()	// *51 = (string)"toUpperCase"
+00000724 str %3
+00000726 add %1, %3
+00000729 const %4, *52	// *52 = (string)""
+00000732 add %1, %4
+00000735 calld %0, %-14.*45(%1)	// *45 = (string)"add"
+00000741 inc %-15
+00000743 jmp 000000296
+00000745 gpd %1, %-2.*53	// *53 = (string)"SystemConfig"
+00000749 global %2
+00000751 gpd %3, %2.*54	// *54 = (string)"Dictionary"
+00000755 new %2, %3()
+00000759 const %3, *55	// *55 = (string)"name"
+00000762 const %4, *56	// *56 = (string)"subLanguageMenuItem_none"
+00000765 spis %2.%3, %4
+00000769 const %3, *57	// *57 = (string)"caption"
+00000772 const %4, *58	// *58 = (string)"Off"
+00000775 calld %5, %-8.*59(%4)	// *59 = (string)"sprintf"
+00000781 spis %2.%3, %5
+00000785 const %3, *60	// *60 = (string)"group"
+00000788 const %4, *47	// *47 = (int)2
+00000791 spis %2.%3, %4
+00000795 const %3, *61	// *61 = (string)"exp"
+00000798 const %4, *62	// *62 = (string)"SetSubLanguageType(-1)"
+00000801 spis %2.%3, %4
+00000805 const %3, *43	// *43 = (string)"prop"
+00000808 global %4
+00000810 gpd %5, %4.*54	// *54 = (string)"Dictionary"
+00000814 new %4, %5()
+00000818 const %5, *44	// *44 = (string)"shortcut"
+00000821 gpd %6, %1.*63	// *63 = (string)"multiLangSubLangOffShortCut"
+00000825 spis %4.%5, %6
+00000829 const %5, *49	// *49 = (string)"visible"
+00000832 cp %6, %-5
+00000835 lnot %6
+00000837 spis %4.%5, %6
+00000841 spis %2.%3, %4
+00000845 global %3
+00000847 gpd %4, %3.*54	// *54 = (string)"Dictionary"
+00000851 new %3, %4()
+00000855 const %4, *55	// *55 = (string)"name"
+00000858 const %5, *64	// *64 = (string)"useMultiLangMenuItem"
+00000861 spis %3.%4, %5
+00000865 const %4, *57	// *57 = (string)"caption"
+00000868 const %5, *65	// *65 = (string)"Use MultiLangView"
+00000871 spis %3.%4, %5
+00000875 const %4, *61	// *61 = (string)"exp"
+00000878 const %5, *66	// *66 = (string)"ToggleMultiLang()"
+00000881 spis %3.%4, %5
+00000885 const %4, *67	// *67 = (string)"prop"
+00000888 global %5
+00000890 gpd %6, %5.*54	// *54 = (string)"Dictionary"
+00000894 new %5, %6()
+00000898 const %6, *68	// *68 = (string)"shortcut"
+00000901 gpd %7, %1.*69	// *69 = (string)"multiLangToggleMultiShortCut"
+00000905 spis %5.%6, %7
+00000909 const %6, *70	// *70 = (string)"visible"
+00000912 spis %5.%6, %-5
+00000916 spis %3.%4, %5
+00000920 calld %0, %-13.*71(%2, %3)	// *71 = (string)"push"
+00000927 tf %-5
+00000929 jnf 000000940
+00000931 const %2, *72	// *72 = (string)"-"
+00000934 calld %0, %-13.*73(%2)	// *73 = (string)"add"
+00000940 global %2
+00000942 gpd %3, %2.*54	// *54 = (string)"Dictionary"
+00000946 new %2, %3()
+00000950 const %3, *55	// *55 = (string)"name"
+00000953 const %4, *74	// *74 = (string)"swapMainSubLangMenuItem"
+00000956 spis %2.%3, %4
+00000960 const %3, *57	// *57 = (string)"caption"
+00000963 const %4, *75	// *75 = (string)"Swap Main/Sub Language"
+00000966 spis %2.%3, %4
+00000970 const %3, *61	// *61 = (string)"exp"
+00000973 const %4, *76	// *76 = (string)"SwapMainSubLang()"
+00000976 spis %2.%3, %4
+00000980 const %3, *67	// *67 = (string)"prop"
+00000983 global %4
+00000985 gpd %5, %4.*77	// *77 = (string)"Dictionary"
+00000989 new %4, %5()
+00000993 const %5, *68	// *68 = (string)"shortcut"
+00000996 gpd %6, %1.*78	// *78 = (string)"multiLangSwapMainSubShortCut"
+00001000 spis %4.%5, %6
+00001004 const %5, *70	// *70 = (string)"visible"
+00001007 cp %6, %-5
+00001010 lnot %6
+00001012 spis %4.%5, %6
+00001016 spis %2.%3, %4
+00001020 calld %0, %-13.*71(%2)	// *71 = (string)"push"
+00001026 global %1
+00001028 gpd %2, %1.*79	// *79 = (string)"Array"
+00001032 new %1, %2()
+00001036 const %2, *80	// *80 = (int)0
+00001039 cp %-15, %1
+00001042 calld %0, %-15.*71(%-12*)	// *71 = (string)"push"
+00001050 const %1, *72	// *72 = (string)"-"
+00001053 calld %0, %-15.*71(%1)	// *71 = (string)"push"
+00001059 calld %0, %-15.*71(%-13*)	// *71 = (string)"push"
+00001067 gpd %1, %-2.*81	// *81 = (string)"SystemConfig"
+00001071 gpd %2, %1.*82	// *82 = (string)"multiLangFilterMenuList"
+00001075 tt %2
+00001077 jnf 000001089
+00001079 gpd %1, %-2.*81	// *81 = (string)"SystemConfig"
+00001083 calld %0, %1.*82(%-15)	// *82 = (string)"multiLangFilterMenuList"
+00001089 gpd %1, %-3.*83	// *83 = (string)"menu"
+00001093 global %2
+00001095 gpd %3, %2.*79	// *79 = (string)"Array"
+00001099 new %2, %3()
+00001103 const %3, *80	// *80 = (int)0
+00001106 global %4
+00001108 gpd %5, %4.*77	// *77 = (string)"Dictionary"
+00001112 new %4, %5()
+00001116 const %5, *84	// *84 = (string)"name"
+00001119 const %6, *85	// *85 = (string)"textLanguageMenu"
+00001122 spis %4.%5, %6
+00001126 const %5, *86	// *86 = (string)"caption"
+00001129 const %6, *87	// *87 = (string)"Text &Language"
+00001132 spis %4.%5, %6
+00001136 const %5, *88	// *88 = (string)"prop"
+00001139 global %6
+00001141 gpd %7, %6.*77	// *77 = (string)"Dictionary"
+00001145 new %6, %7()
+00001149 const %7, *89	// *89 = (string)"index"
+00001152 gpd %8, %-2.*90	// *90 = (string)"displayMenu"
+00001156 gpd %9, %8.*89	// *89 = (string)"index"
+00001160 const %10, *91	// *91 = (int)1
+00001163 add %9, %10
+00001166 spis %6.%7, %9
+00001170 spis %4.%5, %6
+00001174 const %5, *92	// *92 = (string)"children"
+00001177 spis %4.%5, %-15
+00001181 spis %2.%3, %4
+00001185 inc %3
+00001187 calld %0, %-2.*93(%-3, %1, %2)	// *93 = (string)"createMenuFromList"
+00001195 srv %0
+00001197 ret
+
+(function expression) (anonymous) 0x0000000002590270
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"multiLangShowCharacterMenu"
+00000008 tf %2
+00000010 jnf 000000026
+00000012 gpd %3, %-2.*2	// *2 = (string)"characterMenu"
+00000016 gpd %4, %-2.*3	// *3 = (string)"menu"
+00000020 calld %0, %4.*4(%3)	// *4 = (string)"remove"
+00000026 const %1, *5	// *5 = (int)0
+00000029 gpd %2, %-2.*6	// *6 = (string)"fullScrResMiddleMenuItem"
+00000033 spde %2.*7, %1	// *7 = (string)"visible"
+00000037 gpd %1, %-2.*8	// *8 = (string)"middleZoomPercentMenuItem"
+00000041 const %2, *9	// *9 = (int)1
+00000044 gpd %3, %1.*10	// *10 = (string)"parent"
+00000048 calld %0, %3.*11(%2)	// *11 = (string)"removeSeparator"
+00000054 const %2, *5	// *5 = (int)0
+00000057 spde %1.*7, %2	// *7 = (string)"visible"
+00000061 tt %-6
+00000063 jnf 000000131
+00000065 gpd %1, %-2.*12	// *12 = (string)"fullScrResMenu"
+00000069 gpd %2, %1.*13	// *13 = (string)"children"
+00000073 const %3, *5	// *5 = (int)0
+00000076 gpi %4, %2.%3
+00000080 cp %-7, %4
+00000083 tt %-7
+00000085 jnf 000000131
+00000087 typeofd %1, %-7.*14	// *14 = (string)"value"
+00000091 const %2, *15	// *15 = (string)"String"
+00000094 ceq %1, %2
+00000097 jnf 000000131
+00000099 gpd %3, %-7.*14	// *14 = (string)"value"
+00000103 const %4, *16	// *16 = (string)"nochange"
+00000106 ceq %3, %4
+00000109 jnf 000000131
+00000111 const %1, *5	// *5 = (int)0
+00000114 spde %-7.*7, %1	// *7 = (string)"visible"
+00000118 const %1, *5	// *5 = (int)0
+00000121 gpd %2, %-2.*12	// *12 = (string)"fullScrResMenu"
+00000125 calld %0, %2.*11(%1)	// *11 = (string)"removeSeparator"
+00000131 srv %0
+00000133 ret
+
+(function) updateLangMenuCheck 0x000000000258EBF0
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageTag"
+00000009 cp %-3, %1
+00000012 cdeq %-4, %0
+00000015 jnf 000000026
+00000017 global %1
+00000019 gpd %2, %1.*1	// *1 = (string)"kag"
+00000023 cp %-4, %2
+00000026 const %1, *2	// *2 = (string)"textLanguageMenuItem_"
+00000029 add %1, %-3
+00000032 cp %-5, %1
+00000035 typeofi %1, %-4.%-5
+00000039 const %2, *3	// *3 = (string)"Object"
+00000042 ceq %1, %2
+00000045 jnf 000000058
+00000047 const %1, *4	// *4 = (int)1
+00000050 gpi %2, %-4.%-5
+00000054 spde %2.*5, %1	// *5 = (string)"checked"
+00000058 gpd %1, %-4.*6	// *6 = (string)"scflags"
+00000062 gpd %2, %1.*7	// *7 = (string)"subLanguageType"
+00000066 cp %-6, %2
+00000069 cdeq %-6, %0
+00000072 jnf 000000080
+00000074 const %1, *8	// *8 = (int)-1
+00000077 cp %-6, %1
+00000080 const %1, *9	// *9 = (int)0
+00000083 clt %-6, %1
+00000086 jf 000000103
+00000088 gpd %2, %-2.*10	// *10 = (string)"LanguageTags"
+00000092 cp %3, %-6
+00000095 num %3
+00000097 gpi %4, %2.%3
+00000101 jmp 000000109
+00000103 const %2, *11	// *11 = (string)"none"
+00000106 cp %4, %2
+00000109 cp %-7, %4
+00000112 const %1, *12	// *12 = (string)"subLanguageMenuItem_"
+00000115 add %1, %-7
+00000118 cp %-5, %1
+00000121 typeofi %1, %-4.%-5
+00000125 const %2, *3	// *3 = (string)"Object"
+00000128 ceq %1, %2
+00000131 jnf 000000144
+00000133 const %1, *4	// *4 = (int)1
+00000136 gpi %2, %-4.%-5
+00000140 spde %2.*5, %1	// *5 = (string)"checked"
+00000144 gpd %1, %-4.*6	// *6 = (string)"scflags"
+00000148 typeofd %2, %1.*13	// *13 = (string)"useMultiLang"
+00000152 const %3, *14	// *14 = (string)"undefined"
+00000155 ceq %2, %3
+00000158 jnf 000000170
+00000160 gpd %4, %-2.*15	// *15 = (string)"SystemConfig"
+00000164 gpd %5, %4.*16	// *16 = (string)"multiLangDefaultTwoLang"
+00000168 jmp 000000178
+00000170 gpd %4, %-4.*6	// *6 = (string)"scflags"
+00000174 gpd %5, %4.*13	// *13 = (string)"useMultiLang"
+00000178 cp %-8, %5
+00000181 gpd %1, %-4.*17	// *17 = (string)"useMultiLangMenuItem"
+00000185 spde %1.*5, %-8	// *5 = (string)"checked"
+00000189 const %1, *9	// *9 = (int)0
+00000192 clt %-6, %1
+00000195 jf 000000200
+00000197 ceq %-7, %-3
+00000200 setnf %2
+00000202 gpd %3, %-4.*18	// *18 = (string)"swapMainSubLangMenuItem"
+00000206 spde %3.*19, %2	// *19 = (string)"enabled"
+00000210 srv %0
+00000212 ret
+
+(function expression) (anonymous) 0x0000000002591BC0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000004 cp %-3, %1
+00000007 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000011 gpd %2, %1.*2	// *2 = (string)"multiLangForceMultiLang"
+00000015 tf %2
+00000017 jnf 000000035
+00000019 gpd %3, %-3.*3	// *3 = (string)"count"
+00000023 const %4, *4	// *4 = (int)2
+00000026 cgt %3, %4
+00000029 nf
+00000030 jnf 000000035
+00000032 srv %0
+00000034 ret
+00000035 cl %-4
+00000037 cl %-5
+00000039 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000043 gpd %2, %-2.*5	// *5 = (string)"scflags"
+00000047 gpd %3, %2.*6	// *6 = (string)"uiLanguageType"
+00000051 num %3
+00000053 gpi %4, %1.%3
+00000057 cp %-6, %4
+00000060 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000064 gpd %2, %1.*7	// *7 = (string)"multiLangMenuCapsFmt"
+00000068 cp %-7, %2
+00000071 gpd %2, %1.*8	// *8 = (string)"multiLangMenuMainSub"
+00000075 cp %-8, %2
+00000078 global %2
+00000080 gpd %3, %2.*9	// *9 = (string)"Array"
+00000084 new %2, %3()
+00000088 const %3, *10	// *10 = (int)0
+00000091 const %4, *11	// *11 = (string)"textLanguageMenuItem"
+00000094 const %5, *10	// *10 = (int)0
+00000097 gpi %6, %-8.%5
+00000101 calld %7, %-2.*12(%4, %-6, %6)	// *12 = (string)"GetSysLangText"
+00000109 spis %2.%3, %7
+00000113 inc %3
+00000115 const %4, *13	// *13 = (string)"subLanguageMenuItem"
+00000118 const %5, *14	// *14 = (int)1
+00000121 gpi %6, %-8.%5
+00000125 calld %7, %-2.*12(%4, %-6, %6)	// *12 = (string)"GetSysLangText"
+00000133 spis %2.%3, %7
+00000137 inc %3
+00000139 cp %-9, %2
+00000142 const %2, *15	// *15 = (string)"%s"
+00000145 cp %-10, %2
+00000148 global %2
+00000150 gpd %3, %2.*16	// *16 = (string)"Dictionary"
+00000154 new %2, %3()
+00000158 const %3, *17	// *17 = (string)"mainsub"
+00000161 const %4, *10	// *10 = (int)0
+00000164 gpi %5, %-9.%4
+00000168 spis %2.%3, %5
+00000172 const %3, *18	// *18 = (string)"text"
+00000175 spis %2.%3, %-10
+00000179 calld %3, %-2.*19(%-7, %2)	// *19 = (string)"applyInlineStringVariableExtract"
+00000186 cp %-4, %3
+00000189 global %2
+00000191 gpd %3, %2.*16	// *16 = (string)"Dictionary"
+00000195 new %2, %3()
+00000199 const %3, *17	// *17 = (string)"mainsub"
+00000202 const %4, *14	// *14 = (int)1
+00000205 gpi %5, %-9.%4
+00000209 spis %2.%3, %5
+00000213 const %3, *18	// *18 = (string)"text"
+00000216 spis %2.%3, %-10
+00000220 calld %3, %-2.*19(%-7, %2)	// *19 = (string)"applyInlineStringVariableExtract"
+00000227 cp %-5, %3
+00000230 const %1, *20	// *20 = (object)(object 0x0000000002592430:0x0000000000000000)
+00000233 chgthis %1, %-1
+00000236 cp %-7, %1
+00000239 const %1, *10	// *10 = (int)0
+00000242 cp %-8, %1
+00000245 gpd %1, %-3.*3	// *3 = (string)"count"
+00000249 clt %-8, %1
+00000252 jnf 000000299
+00000254 gpi %1, %-3.%-8
+00000258 cp %-9, %1
+00000261 const %1, *21	// *21 = (string)""
+00000264 ceq %-9, %1
+00000267 jnf 000000271
+00000269 jmp 000000295
+00000271 const %1, *22	// *22 = (string)"textLanguageMenuItem_"
+00000274 add %1, %-9
+00000277 call %0, %-7(%1, %-4)
+00000283 const %1, *23	// *23 = (string)"subLanguageMenuItem_"
+00000286 add %1, %-9
+00000289 call %0, %-7(%1, %-5)
+00000295 inc %-8
+00000297 jmp 000000245
+00000299 const %1, *24	// *24 = (string)"subLanguageMenuItem_none"
+00000302 call %0, %-7(%1, %-5)
+00000308 srv %0
+00000310 ret
+
+(function expression) (anonymous) 0x0000000002592430
+
+#(1) Bytecode.
+00000000 typeofi %1, %-1.%-3
+00000004 const %2, *0	// *0 = (string)"Object"
+00000007 ceq %1, %2
+00000010 jnf 000000030
+00000012 gpi %1, %-1.%-3
+00000016 gpd %2, %1.*1	// *1 = (string)"caption"
+00000020 calld %3, %-4.*2(%2)	// *2 = (string)"sprintf"
+00000026 spde %1.*1, %3	// *1 = (string)"caption"
+00000030 srv %0
+00000032 ret
+
+(function expression) (anonymous) 0x0000000002592700
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000004 gpd %2, %-2.*1	// *1 = (string)"scflags"
+00000008 gpd %3, %2.*2	// *2 = (string)"uiLanguageType"
+00000012 num %3
+00000014 gpi %4, %1.%3
+00000018 cp %-3, %4
+00000021 global %1
+00000023 gpd %2, %1.*3	// *3 = (string)"Array"
+00000027 new %1, %2()
+00000031 const %2, *4	// *4 = (int)0
+00000034 gpd %3, %-2.*5	// *5 = (string)"menuBarHidePopupMenu"
+00000038 spis %1.%2, %3
+00000042 inc %2
+00000044 gpd %3, %-2.*6	// *6 = (string)"menuBarHideSysMenu"
+00000048 spis %1.%2, %3
+00000052 inc %2
+00000054 cp %-4, %1
+00000057 const %1, *4	// *4 = (int)0
+00000060 cp %-5, %1
+00000063 gpd %1, %-4.*7	// *7 = (string)"count"
+00000067 clt %-5, %1
+00000070 jnf 000000293
+00000072 gpi %1, %-4.%-5
+00000076 cp %-6, %1
+00000079 const %1, *8	// *8 = (string)"menubarhack"
+00000082 calld %0, %-2.*9(%1, %-6)	// *9 = (string)"dm"
+00000089 tf %-6
+00000091 jnf 000000095
+00000093 jmp 000000289
+00000095 const %1, *4	// *4 = (int)0
+00000098 cp %-7, %1
+00000101 gpd %1, %-6.*7	// *7 = (string)"count"
+00000105 cp %-8, %1
+00000108 clt %-7, %-8
+00000111 jnf 000000289
+00000113 gpi %1, %-6.%-7
+00000117 cp %-9, %1
+00000120 tt %-9
+00000122 jnf 000000285
+00000124 cp %1, %-9
+00000127 typeofd %2, %1.*10	// *10 = (string)"_origCaption"
+00000131 const %3, *11	// *11 = (string)"undefined"
+00000134 ceq %2, %3
+00000137 jnf 000000147
+00000139 gpd %2, %1.*12	// *12 = (string)"caption"
+00000143 spde %1.*10, %2	// *10 = (string)"_origCaption"
+00000147 const %2, *8	// *8 = (string)"menubarhack"
+00000150 calld %3, %-2.*13(%-9)	// *13 = (string)"getPrint"
+00000156 calld %0, %-2.*9(%2, %3)	// *9 = (string)"dm"
+00000163 gpd %2, %1.*14	// *14 = (string)"group"
+00000167 tt %2
+00000169 jnf 000000257
+00000171 cl %-10
+00000173 gpd %2, %1.*15	// *15 = (string)"state"
+00000177 const %3, *4	// *4 = (int)0
+00000180 ceq %2, %3
+00000183 jnf 000000195
+00000185 const %3, *16	// *16 = (string)"menuBarHideAlwaysMenuItem"
+00000188 cp %-10, %3
+00000191 jmp 000000231
+00000193 jmp 000000203
+00000195 const %3, *17	// *17 = (int)1
+00000198 ceq %2, %3
+00000201 jnf 000000213
+00000203 const %3, *18	// *18 = (string)"menuBarShowAlwaysMenuItem"
+00000206 cp %-10, %3
+00000209 jmp 000000231
+00000211 jmp 000000221
+00000213 const %3, *19	// *19 = (int)-1
+00000216 ceq %2, %3
+00000219 jnf 000000231
+00000221 const %3, *20	// *20 = (string)"menuBarAutoShowHideMenuItem"
+00000224 cp %-10, %3
+00000227 jmp 000000231
+00000229 jmp 000000231
+00000231 const %2, *21	// *21 = (string)""
+00000234 ceq %-10, %2
+00000237 jf 000000285
+00000239 gpd %3, %1.*10	// *10 = (string)"_origCaption"
+00000243 calld %4, %-2.*22(%-10, %-3, %3)	// *22 = (string)"GetSysLangText"
+00000251 spde %1.*12, %4	// *12 = (string)"caption"
+00000255 jmp 000000285
+00000257 gpd %2, %1.*23	// *23 = (string)"children"
+00000261 cdeq %2, %0
+00000264 jf 000000285
+00000266 const %2, *24	// *24 = (string)"menuBarHideMenu"
+00000269 gpd %3, %1.*10	// *10 = (string)"_origCaption"
+00000273 calld %4, %-2.*22(%2, %-3, %3)	// *22 = (string)"GetSysLangText"
+00000281 spde %1.*12, %4	// *12 = (string)"caption"
+00000285 inc %-7
+00000287 jmp 000000108
+00000289 inc %-5
+00000291 jmp 000000063
+00000293 srv %0
+00000295 ret
+
+(property) subLanguageType 0x0000000002591080
+
+
+(property getter) (getter) 0x00000000025918F0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"subLanguageType"
+00000008 cp %-3, %2
+00000011 const %1, *2	// *2 = (int)0
+00000014 clt %-3, %1
+00000017 jf 000000022
+00000019 srv %-3
+00000021 ret
+00000022 srv %0
+00000024 ret
+
+(property) LangType_sub 0x000000000258EEC0
+
+
+(property setter) (setter) 0x0000000002591350
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(property getter) (getter) 0x0000000002591620
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"languageType"
+00000008 cp %-3, %2
+00000011 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000015 gpd %2, %1.*3	// *3 = (string)"useMultiLang"
+00000019 tt %2
+00000021 jnf 000000030
+00000023 cp %3, %-3
+00000026 lnot %3
+00000028 jmp 000000033
+00000030 cp %3, %-3
+00000033 srv %3
+00000035 ret
+00000036 srv %0
+00000038 ret
+
+(function) CallLangChanged 0x000000000258F190
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"onSystemLangChanged"
+00000003 gpd %2, %-2.*1	// *1 = (string)"kag"
+00000007 calld %0, %2.*2(%1, %-3, %-4)	// *2 = (string)"callHook"
+00000015 const %1, *3	// *3 = (string)"onLangChanged"
+00000018 gpd %2, %-2.*4	// *4 = (string)"Current"
+00000022 calld %0, %2.*5(%1)	// *5 = (string)"action"
+00000028 calld %0, %-2.*6()	// *6 = (string)"updateLangMenuCheck"
+00000033 srv %0
+00000035 ret
+
+(function) SetLanguageType 0x0000000002591E90
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"languageType"
+00000008 cp %-5, %2
+00000011 cp %1, %-3
+00000014 num %1
+00000016 int %1
+00000018 gpd %2, %-2.*0	// *0 = (string)"kag"
+00000022 spde %2.*1, %1	// *1 = (string)"languageType"
+00000026 cp %-6, %1
+00000029 cdeq %-4, %0
+00000032 jf 000000049
+00000034 cp %1, %-4
+00000037 num %1
+00000039 int %1
+00000041 gpd %2, %-2.*2	// *2 = (string)"SystemConfig"
+00000045 spde %2.*3, %1	// *3 = (string)"subLanguageType"
+00000049 calld %0, %-2.*4(%-6, %-5)	// *4 = (string)"CallLangChanged"
+00000056 srv %0
+00000058 ret
+
+(function) SetSubLanguageType 0x000000000258F460
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"languageType"
+00000008 cp %-4, %2
+00000011 cp %1, %-3
+00000014 num %1
+00000016 int %1
+00000018 gpd %2, %-2.*2	// *2 = (string)"SystemConfig"
+00000022 spde %2.*3, %1	// *3 = (string)"subLanguageType"
+00000026 calld %0, %-2.*4(%-4, %-4)	// *4 = (string)"CallLangChanged"
+00000033 srv %0
+00000035 ret
+
+(function) UpdateMultiLangTitleCaption 0x0000000002590810
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000014
+00000005 global %1
+00000007 gpd %2, %1.*0	// *0 = (string)"kag"
+00000011 cp %-3, %2
+00000014 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000018 gpd %2, %1.*2	// *2 = (string)"multiLangTitleCaption"
+00000022 cp %-4, %2
+00000025 tt %-4
+00000027 jnf 000000085
+00000029 cp %1, %-4
+00000032 typeof %1
+00000034 const %2, *3	// *3 = (string)"Object"
+00000037 ceq %1, %2
+00000040 jnf 000000051
+00000042 call %1, %-4()
+00000046 cp %-4, %1
+00000049 jmp 000000063
+00000051 const %1, *4	// *4 = (string)"TitleCaption"
+00000054 calld %2, %-2.*5(%1)	// *5 = (string)"GetSysLangText"
+00000060 cp %-4, %2
+00000063 gpd %1, %-2.*6	// *6 = (string)"System"
+00000067 spde %1.*7, %-4	// *7 = (string)"title"
+00000071 tt %-3
+00000073 jnf 000000079
+00000075 spde %-3.*8, %-4	// *8 = (string)"caption"
+00000079 const %1, *9	// *9 = (int)1
+00000082 srv %1
+00000084 ret
+00000085 srv %0
+00000087 ret
+
+(function) SetUILanguageType 0x000000000258FFA0
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 num %1
+00000005 int %1
+00000007 gpd %2, %-2.*0	// *0 = (string)"SystemConfig"
+00000011 spde %2.*1, %1	// *1 = (string)"uiLanguageType"
+00000015 global %1
+00000017 typeofd %2, %1.*2	// *2 = (string)"ResetAllMenuLangText"
+00000021 const %3, *3	// *3 = (string)"Object"
+00000024 ceq %2, %3
+00000027 jnf 000000034
+00000029 calld %0, %-2.*2()	// *2 = (string)"ResetAllMenuLangText"
+00000034 calld %0, %-2.*4()	// *4 = (string)"UpdateMultiLangTitleCaption"
+00000039 srv %0
+00000041 ret
+
+(function) ToggleMultiLang 0x000000000258F730
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"languageType"
+00000008 cp %-3, %2
+00000011 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000015 gpd %2, %1.*3	// *3 = (string)"useMultiLang"
+00000019 lnot %2
+00000021 gpd %3, %-2.*2	// *2 = (string)"SystemConfig"
+00000025 spde %3.*3, %2	// *3 = (string)"useMultiLang"
+00000029 calld %0, %-2.*4(%-3, %-3)	// *4 = (string)"CallLangChanged"
+00000036 srv %0
+00000038 ret
+
+(function) SwapMainSubLang 0x0000000002590540
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"languageType"
+00000008 cp %-3, %2
+00000011 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000015 gpd %2, %1.*3	// *3 = (string)"subLanguageType"
+00000019 cp %-4, %2
+00000022 const %1, *4	// *4 = (int)0
+00000025 clt %-4, %1
+00000028 jf 000000058
+00000030 ceq %-3, %-4
+00000033 jf 000000058
+00000035 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000039 spde %1.*1, %-4	// *1 = (string)"languageType"
+00000043 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000047 spde %1.*3, %-3	// *3 = (string)"subLanguageType"
+00000051 calld %0, %-2.*5(%-4, %-3)	// *5 = (string)"CallLangChanged"
+00000058 srv %0
+00000060 ret
+
+(function expression) (anonymous) 0x000000000258FA00
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"isMain"
+00000004 tt %1
+00000006 jnf 000000406
+00000008 tt %-4
+00000010 jnf 000000406
+00000012 gpd %1, %-2.*1	// *1 = (string)"scflags"
+00000016 gpd %2, %1.*2	// *2 = (string)"uiLanguageType"
+00000020 cp %-5, %2
+00000023 cl %-6
+00000025 const %1, *3	// *3 = (string)"-forceuilang"
+00000028 gpd %2, %-2.*4	// *4 = (string)"System"
+00000032 calld %3, %2.*5(%1)	// *5 = (string)"getArgument"
+00000038 cp %-7, %3
+00000041 cl %-8
+00000043 const %1, *6	// *6 = (string)""
+00000046 ceq %-7, %1
+00000049 jf 000000083
+00000051 gpd %2, %-2.*7	// *7 = (string)"LanguageTags"
+00000055 calld %3, %2.*8(%-7)	// *8 = (string)"find"
+00000061 cp %-8, %3
+00000064 const %4, *9	// *9 = (int)0
+00000067 clt %3, %4
+00000070 jf 000000083
+00000072 gpd %1, %-2.*1	// *1 = (string)"scflags"
+00000076 spde %1.*2, %-8	// *2 = (string)"uiLanguageType"
+00000080 cp %-5, %-8
+00000083 calld %0, %-2.*10()	// *10 = (string)"initLanguageFont"
+00000088 cdeq %-5, %0
+00000091 jnf 000000218
+00000093 gpd %1, %-2.*11	// *11 = (string)"SystemConfig"
+00000097 gpd %2, %1.*12	// *12 = (string)"multiLangFirstTag"
+00000101 cp %-6, %2
+00000104 const %3, *6	// *6 = (string)""
+00000107 ceq %2, %3
+00000110 nf
+00000111 jnf 000000218
+00000113 const %1, *13	// *13 = (string)"auto"
+00000116 ceq %-6, %1
+00000119 jnf 000000135
+00000121 global %1
+00000123 gpd %2, %1.*14	// *14 = (string)"GetSystemLangMessage"
+00000127 calld %3, %2.*15()	// *15 = (string)"getSystemLanguageTag"
+00000132 cp %-6, %3
+00000135 gpd %1, %-2.*7	// *7 = (string)"LanguageTags"
+00000139 calld %2, %1.*8(%-6)	// *8 = (string)"find"
+00000145 cp %-5, %2
+00000148 const %1, *9	// *9 = (int)0
+00000151 clt %-5, %1
+00000154 jnf 000000191
+00000156 gpd %1, %-2.*11	// *11 = (string)"SystemConfig"
+00000160 gpd %2, %1.*16	// *16 = (string)"multiLangUnknownTag"
+00000164 gpd %3, %-2.*7	// *7 = (string)"LanguageTags"
+00000168 calld %4, %3.*8(%2)	// *8 = (string)"find"
+00000174 cp %-5, %4
+00000177 const %1, *9	// *9 = (int)0
+00000180 clt %-5, %1
+00000183 jnf 000000191
+00000185 const %1, *9	// *9 = (int)0
+00000188 cp %-5, %1
+00000191 gpd %1, %-2.*1	// *1 = (string)"scflags"
+00000195 spde %1.*2, %-5	// *2 = (string)"uiLanguageType"
+00000199 spd %-2.*17, %-5	// *17 = (string)"languageType"
+00000203 calld %1, %-2.*18(%-5)	// *18 = (string)"getLanguageFont"
+00000209 spd %-2.*19, %1	// *19 = (string)"chDefaultFace"
+00000213 calld %0, %-2.*20()	// *20 = (string)"setMessageLayerUserFont"
+00000218 gpd %1, %-2.*7	// *7 = (string)"LanguageTags"
+00000222 cp %2, %-5
+00000225 num %2
+00000227 gpi %3, %1.%2
+00000231 cp %-9, %3
+00000234 global %1
+00000236 typeofd %2, %1.*21	// *21 = (string)"ResetAllMenuLangText"
+00000240 const %3, *22	// *22 = (string)"Object"
+00000243 ceq %2, %3
+00000246 jnf 000000255
+00000248 calld %0, %-2.*21(%-1, %-9)	// *21 = (string)"ResetAllMenuLangText"
+00000255 global %1
+00000257 typeofd %2, %1.*23	// *23 = (string)"kag"
+00000261 const %3, *24	// *24 = (string)"undefined"
+00000264 ceq %2, %3
+00000267 jnf 000000275
+00000269 global %1
+00000271 spde %1.*23, %-1	// *23 = (string)"kag"
+00000275 calld %1, %-2.*25(%-1)	// *25 = (string)"UpdateMultiLangTitleCaption"
+00000281 tt %1
+00000283 jnf 000000325
+00000285 typeofd %1, %-1.*26	// *26 = (string)"storeCaptionEnabled"
+00000289 const %2, *24	// *24 = (string)"undefined"
+00000292 ceq %1, %2
+00000295 jf 000000305
+00000297 gpd %3, %-1.*26	// *26 = (string)"storeCaptionEnabled"
+00000301 tf %3
+00000303 jnf 000000325
+00000305 const %1, *27	// *27 = (string)"*** internal warn: SET storeCaptionEnabled=false in Config.tjs if multiLangTitleCaption."
+00000308 gpd %2, %-2.*28	// *28 = (string)"Debug"
+00000312 calld %0, %2.*29(%1)	// *29 = (string)"notice"
+00000318 const %1, *30	// *30 = (int)0
+00000321 spde %-1.*26, %1	// *26 = (string)"storeCaptionEnabled"
+00000325 gpd %1, %-2.*11	// *11 = (string)"SystemConfig"
+00000329 gpd %2, %1.*31	// *31 = (string)"multiLangTextFontScale"
+00000333 cp %-10, %2
+00000336 cdeq %-10, %0
+00000339 jf 000000345
+00000341 spde %-1.*32, %-10	// *32 = (string)"subLangFontScale"
+00000345 const %1, *33	// *33 = (object)(object 0x000000000258FCD0:0x0000000000000000)
+00000348 cp %-11, %1
+00000351 gpd %1, %-2.*34	// *34 = (string)"SystemConfig"
+00000355 gpd %2, %1.*35	// *35 = (string)"multiLangSingleFontScaleMap"
+00000359 const %3, *36	// *36 = (string)"mainLangFontScale"
+00000362 call %0, %-11(%2, %3)
+00000368 gpd %1, %-2.*34	// *34 = (string)"SystemConfig"
+00000372 gpd %2, %1.*37	// *37 = (string)"multiLangSingleLineSpaceScaleMap"
+00000376 const %3, *38	// *38 = (string)"mainLangLineSpaceScale"
+00000379 call %0, %-11(%2, %3)
+00000385 gpd %1, %-2.*39	// *39 = (string)"LanguageTags"
+00000389 gpd %2, %-2.*40	// *40 = (string)"languageType"
+00000393 num %2
+00000395 gpi %3, %1.%2
+00000399 calld %0, %-2.*41(%3, %-1)	// *41 = (string)"updateLangMenuCheck"
+00000406 call %1, %-3(%-4, *)
+00000415 srv %1
+00000417 ret
+00000418 srv %0
+00000420 ret
+
+(function expression) (anonymous) 0x000000000258FCD0
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jf 000000089
+00000005 gpd %1, %-2.*0	// *0 = (string)"LanguageTags"
+00000009 cp %-5, %1
+00000012 global %1
+00000014 gpd %2, %1.*1	// *1 = (string)"Array"
+00000018 new %1, %2()
+00000022 const %2, *2	// *2 = (int)0
+00000025 spie %-1.%-4, %1
+00000029 cp %-6, %1
+00000032 const %1, *2	// *2 = (int)0
+00000035 cp %-7, %1
+00000038 gpd %1, %-5.*3	// *3 = (string)"count"
+00000042 clt %-7, %1
+00000045 jnf 000000089
+00000047 gpi %1, %-5.%-7
+00000051 cp %-8, %1
+00000054 const %1, *4	// *4 = (string)""
+00000057 ceq %-8, %1
+00000060 jf 000000085
+00000062 gpi %2, %-3.%-8
+00000066 const %3, *2	// *2 = (int)0
+00000069 cgt %2, %3
+00000072 nf
+00000073 jf 000000085
+00000075 gpi %1, %-3.%-8
+00000079 num %1
+00000081 spie %-6.%-7, %1
+00000085 inc %-7
+00000087 jmp 000000038
+00000089 srv %0
+00000091 ret
+
+(function) LangSwitchEval 0x0000000002590AE0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageTag"
+00000009 cp %-4, %1
+00000012 const %1, *1	// *1 = (string)"|"
+00000015 cp %2, %-3
+00000018 str %2
+00000020 calld %3, %2.*2(%1)	// *2 = (string)"split"
+00000026 cp %-5, %3
+00000029 cl %-6
+00000031 const %1, *3	// *3 = (int)0
+00000034 cp %-7, %1
+00000037 gpd %1, %-5.*4	// *4 = (string)"count"
+00000041 cp %-8, %1
+00000044 clt %-7, %-8
+00000047 jnf 000000135
+00000049 gpi %1, %-5.%-7
+00000053 str %1
+00000055 cp %-9, %1
+00000058 const %1, *5	// *5 = (string)":"
+00000061 calld %2, %-9.*6(%1)	// *6 = (string)"indexOf"
+00000067 cp %-10, %2
+00000070 const %1, *3	// *3 = (int)0
+00000073 cgt %-10, %1
+00000076 jnf 000000126
+00000078 const %1, *3	// *3 = (int)0
+00000081 calld %2, %-9.*7(%1, %-10)	// *7 = (string)"substr"
+00000088 cp %-11, %2
+00000091 ceq %-11, %-4
+00000094 jf 000000104
+00000096 const %1, *8	// *8 = (string)"*"
+00000099 ceq %-11, %1
+00000102 jnf 000000131
+00000104 cp %1, %-10
+00000107 const %2, *9	// *9 = (int)1
+00000110 add %1, %2
+00000113 calld %3, %-9.*7(%1)	// *7 = (string)"substr"
+00000119 cp %-6, %3
+00000122 jmp 000000135
+00000124 jmp 000000131
+00000126 cp %-6, %-9
+00000129 jmp 000000135
+00000131 inc %-7
+00000133 jmp 000000044
+00000135 global %1
+00000137 gpd %2, %1.*10	// *10 = (string)"Dictionary"
+00000141 new %1, %2()
+00000145 const %2, *11	// *11 = (string)"tag"
+00000148 spis %1.%2, %-4
+00000152 calld %2, %-2.*12(%-6, %1)	// *12 = (string)"applyInlineStringVariableExtract"
+00000159 srv %2
+00000161 ret
+00000162 srv %0
+00000164 ret
+
+(function expression) (anonymous) 0x0000000002590DB0
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 gpd %2, %-2.*0	// *0 = (string)"SystemConfig"
+00000007 gpd %3, %2.*1	// *1 = (string)"FontDialogFilterFaceName"
+00000011 cp %-5, %3
+00000014 tt %-4
+00000016 jnf 000000024
+00000018 gpd %2, %-4.*2	// *2 = (string)"name"
+00000022 jmp 000000028
+00000024 gpd %2, %1.*3	// *3 = (string)"title"
+00000028 cp %-6, %2
+00000031 tt %-5
+00000033 jnf 000000043
+00000035 call %2, %-5(%-6)
+00000040 cp %-6, %2
+00000043 const %2, *4	// *4 = (string)"FontDialogLicenseHead"
+00000046 calld %3, %-2.*5(%2)	// *5 = (string)"GetSysLangText"
+00000052 global %4
+00000054 gpd %5, %4.*6	// *6 = (string)"Dictionary"
+00000058 new %4, %5()
+00000062 const %5, *2	// *2 = (string)"name"
+00000065 spis %4.%5, %-6
+00000069 calld %5, %-2.*7(%3, %4)	// *7 = (string)"applyInlineStringVariableExtract"
+00000076 spde %1.*3, %5	// *3 = (string)"title"
+00000080 const %2, *8	// *8 = (string)"FontDialogInfoFormat"
+00000083 calld %3, %-2.*5(%2)	// *5 = (string)"GetSysLangText"
+00000089 global %4
+00000091 gpd %5, %4.*6	// *6 = (string)"Dictionary"
+00000095 new %4, %5()
+00000099 const %5, *2	// *2 = (string)"name"
+00000102 spis %4.%5, %-6
+00000106 calld %5, %-2.*7(%3, %4)	// *7 = (string)"applyInlineStringVariableExtract"
+00000113 spde %1.*9, %5	// *9 = (string)"status"
+00000117 gpd %2, %-2.*0	// *0 = (string)"SystemConfig"
+00000121 gpd %3, %2.*10	// *10 = (string)"DialogDefaultFont"
+00000125 spde %1.*11, %3	// *11 = (string)"face"
+00000129 srv %0
+00000131 ret
+
+(function expression) (anonymous) 0x00000000025A1C10
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)""
+00000003 global %2
+00000005 gpd %3, %2.*1	// *1 = (string)"GetSystemLangMessage"
+00000009 calld %4, %3.*2(%1)	// *2 = (string)"getSystemLanguageTag"
+00000015 cp %-8, %4
+00000018 const %1, *0	// *0 = (string)""
+00000021 ceq %-8, %1
+00000024 jf 000000046
+00000026 gpd %2, %-2.*3	// *3 = (string)"LanguageTags"
+00000030 gpd %3, %-2.*4	// *4 = (string)"languageType"
+00000034 num %3
+00000036 gpi %4, %2.%3
+00000040 ceq %4, %-8
+00000043 nf
+00000044 jnf 000000077
+00000046 const %1, *5	// *5 = (string)"remove sameCharSet"
+00000049 calld %0, %-2.*6(%1, %-8)	// *6 = (string)"dm"
+00000056 gpd %1, %-2.*4	// *4 = (string)"languageType"
+00000060 const %2, *7	// *7 = (int)0
+00000063 ceq %1, %2
+00000066 jf 000000077
+00000068 gpd %3, %-2.*8	// *8 = (string)"fsfSameCharSet"
+00000072 bnot %3
+00000074 band %-4, %3
+00000077 global %1
+00000079 typeofd %2, %1.*9	// *9 = (string)"LanguageWordBreaks"
+00000083 const %3, *10	// *10 = (string)"Object"
+00000086 ceq %2, %3
+00000089 jnf 000000127
+00000091 global %4
+00000093 gpd %5, %4.*9	// *9 = (string)"LanguageWordBreaks"
+00000097 gpd %6, %-2.*4	// *4 = (string)"languageType"
+00000101 gpi %7, %5.%6
+00000105 tf %7
+00000107 jnf 000000127
+00000109 const %1, *11	// *11 = (string)"remove fixedPitch"
+00000112 calld %0, %-2.*6(%1)	// *6 = (string)"dm"
+00000118 gpd %1, %-2.*12	// *12 = (string)"fsfFixedPitch"
+00000122 bnot %1
+00000124 band %-4, %1
+00000127 const %1, *13	// *13 = (string)"FontDialogCaption"
+00000130 calld %2, %-2.*14(%1)	// *14 = (string)"GetSysLangText"
+00000136 cp %-5, %2
+00000139 const %1, *15	// *15 = (string)"FontDialogDoSelect"
+00000142 calld %2, %-2.*14(%1)	// *14 = (string)"GetSysLangText"
+00000148 cp %-6, %2
+00000151 call %1, %-3(%-4, %-5, %-6, %-7, *)
+00000166 cp %-9, %1
+00000169 const %1, *0	// *0 = (string)""
+00000172 ceq %-9, %1
+00000175 jf 000000237
+00000177 gpd %2, %-2.*16	// *16 = (string)"SystemConfig"
+00000181 gpd %3, %2.*17	// *17 = (string)"WarnUserFontChanged"
+00000185 tf %3
+00000187 nf
+00000188 jf 000000237
+00000190 gpd %1, %-2.*18	// *18 = (string)"PreRenderFontEx"
+00000194 gpd %2, %1.*19	// *19 = (string)"PreRenderFontInfo"
+00000198 gpi %3, %2.%-9
+00000202 cdeq %3, %0
+00000205 jnf 000000237
+00000207 const %1, *20	// *20 = (int)1
+00000210 gpd %2, %-2.*16	// *16 = (string)"SystemConfig"
+00000214 spde %2.*17, %1	// *17 = (string)"WarnUserFontChanged"
+00000218 const %1, *21	// *21 = (string)"WarnChangeUserFont"
+00000221 calld %2, %-2.*14(%1)	// *14 = (string)"GetSysLangText"
+00000227 gpd %3, %-2.*22	// *22 = (string)"System"
+00000231 calld %0, %3.*23(%2)	// *23 = (string)"inform"
+00000237 calld %0, %-2.*24(%-9)	// *24 = (string)"setLanguageFont"
+00000243 srv %-9
+00000245 ret
+00000246 srv %0
+00000248 ret
+
+(function expression) (anonymous) 0x00000000025A3830
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageUITag"
+00000009 cp %-4, %1
+00000012 gpd %1, %-3.*1	// *1 = (string)"copyright"
+00000016 cp %-5, %1
+00000019 const %1, *2	// *2 = (string)""
+00000022 ceq %-5, %1
+00000025 jnf 000000030
+00000027 srv %-3
+00000029 ret
+00000030 gpd %1, %-3.*3	// *3 = (string)"_copyrightlangs"
+00000034 cp %-6, %1
+00000037 cdeq %-6, %0
+00000040 jnf 000000243
+00000042 global %1
+00000044 gpd %2, %1.*4	// *4 = (string)"Dictionary"
+00000048 new %1, %2()
+00000052 spde %-3.*3, %1	// *3 = (string)"_copyrightlangs"
+00000056 cp %-6, %1
+00000059 gpd %1, %-2.*5	// *5 = (string)"LanguageTags"
+00000063 cp %-7, %1
+00000066 gpd %1, %-2.*6	// *6 = (string)"Storages"
+00000070 calld %2, %1.*7(%-5)	// *7 = (string)"extractStorageExt"
+00000076 cp %-8, %2
+00000079 gpd %1, %-2.*6	// *6 = (string)"Storages"
+00000083 calld %2, %1.*8(%-5)	// *8 = (string)"chopStorageExt"
+00000089 cp %-9, %2
+00000092 const %1, *9	// *9 = (int)0
+00000095 cp %-10, %1
+00000098 gpd %1, %-7.*10	// *10 = (string)"count"
+00000102 clt %-10, %1
+00000105 jnf 000000243
+00000107 gpi %1, %-7.%-10
+00000111 const %2, *2	// *2 = (string)""
+00000114 ceq %1, %2
+00000117 jnf 000000121
+00000119 jmp 000000239
+00000121 cp %1, %-9
+00000124 const %2, *11	// *11 = (string)"_"
+00000127 add %1, %2
+00000130 gpi %3, %-7.%-10
+00000134 add %1, %3
+00000137 add %1, %-8
+00000140 cp %-11, %1
+00000143 const %1, *12	// *12 = (string)"FontDialogFilterExFontInfo"
+00000146 calld %0, %-2.*13(%1, %-5, %-11)	// *13 = (string)"dm"
+00000154 gpd %1, %-2.*6	// *6 = (string)"Storages"
+00000158 calld %2, %1.*14(%-11)	// *14 = (string)"isExistentStorage"
+00000164 tt %2
+00000166 jnf 000000239
+00000168 global %1
+00000170 gpd %2, %1.*15	// *15 = (string)"Array"
+00000174 new %1, %2()
+00000178 const %2, *9	// *9 = (int)0
+00000181 cp %-12, %1
+00000184 entry 000000196, %1
+00000187 calld %0, %-12.*16(%-11)	// *16 = (string)"load"
+00000193 extry
+00000194 jmp 000000196
+00000196 global %1
+00000198 gpd %2, %1.*4	// *4 = (string)"Dictionary"
+00000202 new %1, %2()
+00000206 gpi %2, %-7.%-10
+00000210 spie %-6.%2, %1
+00000214 cp %-13, %1
+00000217 calld %1, %-12.*17()	// *17 = (string)"shift"
+00000222 spde %-13.*18, %1	// *18 = (string)"caption"
+00000226 calld %1, %-12.*17()	// *17 = (string)"shift"
+00000231 spde %-13.*19, %1	// *19 = (string)"comment"
+00000235 spde %-13.*20, %-12	// *20 = (string)"detail"
+00000239 inc %-10
+00000241 jmp 000000098
+00000243 global %1
+00000245 gpd %2, %1.*4	// *4 = (string)"Dictionary"
+00000249 new %1, %2()
+00000253 cp %-7, %1
+00000256 gpd %1, %-2.*4	// *4 = (string)"Dictionary"
+00000260 gpd %2, %1.*21	// *21 = (string)"assign"
+00000264 chgthis %2, %-7
+00000267 call %0, %2(%-3)
+00000272 deld %0, %-7.*3	// *3 = (string)"_copyrightlangs"
+00000276 deld %0, %-7.*22	// *22 = (string)"copyright"
+00000280 gpi %1, %-6.%-4
+00000284 cp %-8, %1
+00000287 tt %-8
+00000289 jnf 000000311
+00000291 const %1, *9	// *9 = (int)0
+00000294 gpd %2, %-2.*4	// *4 = (string)"Dictionary"
+00000298 gpd %3, %2.*21	// *21 = (string)"assign"
+00000302 chgthis %3, %-7
+00000305 call %0, %3(%-8, %1)
+00000311 srv %-7
+00000313 ret
+00000314 srv %0
+00000316 ret
+
+(function expression) (anonymous) 0x00000000025A3B00
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageTag"
+00000004 cp %-4, %1
+00000007 const %1, *1	// *1 = (int)0
+00000010 cp %-5, %1
+00000013 const %1, *1	// *1 = (int)0
+00000016 cp %-6, %1
+00000019 gpd %1, %-3.*2	// *2 = (string)"count"
+00000023 cp %-7, %1
+00000026 clt %-6, %-7
+00000029 jnf 000000109
+00000031 gpi %1, %-3.%-6
+00000035 cp %-8, %1
+00000038 const %1, *3	// *3 = (string)"FontUnuse_"
+00000041 global %2
+00000043 gpd %3, %2.*4	// *4 = (string)"RegExp"
+00000047 const %4, *5	// *5 = (string)"//g/ "
+00000050 new %2, %3()
+00000054 calld %0, %2.*6(%4)	// *6 = (string)"_compile"
+00000060 const %3, *7	// *7 = (string)"_"
+00000063 calld %4, %-8.*8(%2, %3)	// *8 = (string)"replace"
+00000070 add %1, %4
+00000073 const %5, *9	// *9 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000076 calld %6, %-2.*10(%1, %-4, %5)	// *10 = (string)"GetSysLangText"
+00000084 cp %-9, %6
+00000087 const %1, *11	// *11 = (string)"-"
+00000090 ceq %-9, %1
+00000093 jnf 000000105
+00000095 spie %-3.%-6, %0
+00000099 const %1, *12	// *12 = (int)1
+00000102 cp %-5, %1
+00000105 inc %-6
+00000107 jmp 000000026
+00000109 tt %-5
+00000111 jnf 000000123
+00000113 const %1, *12	// *12 = (int)1
+00000116 calld %0, %-3.*13(%0, %1)	// *13 = (string)"remove"
+00000123 srv %0
+00000125 ret
+
+(function expression) (anonymous) 0x00000000025A4EB0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"FontFace_"
+00000003 add %1, %-3
+00000006 calld %2, %-2.*1(%1, %-3)	// *1 = (string)"GetSystemLangMessage"
+00000013 cp %-4, %2
+00000016 const %1, *2	// *2 = (string)""
+00000019 ceq %-4, %1
+00000022 jf 000000027
+00000024 srv %-4
+00000026 ret
+00000027 srv %-3
+00000029 ret
+00000030 srv %0
+00000032 ret
+
+(function expression) (anonymous) 0x00000000025A2CF0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"DialogText_"
+00000003 add %1, %-4
+00000006 calld %2, %-2.*1(%1)	// *1 = (string)"GetSysLangText"
+00000012 cp %-5, %2
+00000015 const %1, *2	// *2 = (string)""
+00000018 ceq %-5, %1
+00000021 jf 000000026
+00000023 srv %-5
+00000025 ret
+00000026 const %1, *0	// *0 = (string)"DialogText_"
+00000029 add %1, %-3
+00000032 calld %2, %-2.*1(%1)	// *1 = (string)"GetSysLangText"
+00000038 cp %-5, %2
+00000041 const %1, *2	// *2 = (string)""
+00000044 ceq %-5, %1
+00000047 jf 000000052
+00000049 srv %-5
+00000051 ret
+00000052 srv %-3
+00000054 ret
+00000055 srv %0
+00000057 ret
+
+(function expression) (anonymous) 0x00000000025A2FC0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"GamePadBindButton"
+00000003 calld %2, %-2.*1(%1)	// *1 = (string)"GetSysLangText"
+00000009 global %3
+00000011 gpd %4, %3.*2	// *2 = (string)"Dictionary"
+00000015 new %3, %4()
+00000019 const %4, *3	// *3 = (string)"num"
+00000022 spis %3.%4, %-3
+00000026 calld %4, %-2.*4(%2, %3)	// *4 = (string)"applyInlineStringVariableExtract"
+00000033 srv %4
+00000035 ret
+00000036 srv %0
+00000038 ret
+
+(property) MakeGamePadBindDialogList 0x00000000025A4640
+
+
+(property getter) (getter) 0x00000000025A4910
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"Array"
+00000006 new %1, %2()
+00000010 const %2, *1	// *1 = (int)0
+00000013 const %3, *2	// *2 = (string)"none"
+00000016 spis %1.%2, %3
+00000020 inc %2
+00000022 const %3, *3	// *3 = (string)"return"
+00000025 spis %1.%2, %3
+00000029 inc %2
+00000031 const %3, *4	// *4 = (string)"escape"
+00000034 spis %1.%2, %3
+00000038 inc %2
+00000040 const %3, *5	// *5 = (string)"space"
+00000043 spis %1.%2, %3
+00000047 inc %2
+00000049 const %3, *6	// *6 = (string)"control"
+00000052 spis %1.%2, %3
+00000056 inc %2
+00000058 const %3, *7	// *7 = (string)"prior"
+00000061 spis %1.%2, %3
+00000065 inc %2
+00000067 const %3, *8	// *8 = (string)"next"
+00000070 spis %1.%2, %3
+00000074 inc %2
+00000076 cp %-3, %1
+00000079 global %1
+00000081 gpd %2, %1.*0	// *0 = (string)"Array"
+00000085 new %1, %2()
+00000089 const %2, *1	// *1 = (int)0
+00000092 spis %1.%2, %0
+00000096 inc %2
+00000098 const %3, *9	// *9 = (string)"Enter"
+00000101 spis %1.%2, %3
+00000105 inc %2
+00000107 const %3, *10	// *10 = (string)"ESC"
+00000110 spis %1.%2, %3
+00000114 inc %2
+00000116 const %3, *11	// *11 = (string)"Space"
+00000119 spis %1.%2, %3
+00000123 inc %2
+00000125 const %3, *12	// *12 = (string)"Ctrl"
+00000128 spis %1.%2, %3
+00000132 inc %2
+00000134 const %3, *13	// *13 = (string)"PageUp"
+00000137 spis %1.%2, %3
+00000141 inc %2
+00000143 const %3, *14	// *14 = (string)"PageDown"
+00000146 spis %1.%2, %3
+00000150 inc %2
+00000152 cp %-4, %1
+00000155 const %1, *15	// *15 = (int)1
+00000158 cp %-5, %1
+00000161 const %1, *16	// *16 = (int)12
+00000164 cgt %-5, %1
+00000167 jf 000000197
+00000169 const %1, *17	// *17 = (string)"f"
+00000172 add %1, %-5
+00000175 calld %0, %-3.*18(%1)	// *18 = (string)"add"
+00000181 const %2, *19	// *19 = (string)"F"
+00000184 add %2, %-5
+00000187 calld %0, %-4.*18(%2)	// *18 = (string)"add"
+00000193 inc %-5
+00000195 jmp 000000161
+00000197 global %1
+00000199 gpd %2, %1.*0	// *0 = (string)"Array"
+00000203 new %1, %2()
+00000207 const %2, *1	// *1 = (int)0
+00000210 cp %-5, %1
+00000213 const %1, *20	// *20 = (string)"GamePadBindKeyName"
+00000216 calld %2, %-2.*21(%1)	// *21 = (string)"GetSysLangText"
+00000222 cp %-6, %2
+00000225 const %1, *22	// *22 = (string)"GamePadBindNothing"
+00000228 calld %2, %-2.*21(%1)	// *21 = (string)"GetSysLangText"
+00000234 cp %-7, %2
+00000237 const %1, *23	// *23 = (int)0
+00000240 cp %-8, %1
+00000243 gpd %1, %-3.*24	// *24 = (string)"count"
+00000247 cp %-9, %1
+00000250 clt %-8, %-9
+00000253 jnf 000000325
+00000255 gpi %1, %-4.%-8
+00000259 cp %-10, %1
+00000262 const %1, *25	// *25 = (string)""
+00000265 ceq %-10, %1
+00000268 jnf 000000275
+00000270 cp %-10, %-7
+00000273 jmp 000000302
+00000275 global %1
+00000277 gpd %2, %1.*26	// *26 = (string)"Dictionary"
+00000281 new %1, %2()
+00000285 const %2, *27	// *27 = (string)"key"
+00000288 spis %1.%2, %-10
+00000292 calld %2, %-2.*28(%-6, %1)	// *28 = (string)"applyInlineStringVariableExtract"
+00000299 cp %-10, %2
+00000302 gpi %1, %-3.%-8
+00000306 const %2, *29	// *29 = (string)":"
+00000309 add %1, %2
+00000312 add %1, %-10
+00000315 calld %0, %-5.*18(%1)	// *18 = (string)"add"
+00000321 inc %-8
+00000323 jmp 000000250
+00000325 srv %-5
+00000327 ret
+00000328 srv %0
+00000330 ret
+
+(function expression) (anonymous) 0x00000000025A3560
+
+#(1) Bytecode.
+00000000 gpd %1, %-4.*0	// *0 = (string)"titletag"
+00000004 cp %-5, %1
+00000007 const %1, *1	// *1 = (string)""
+00000010 ceq %-5, %1
+00000013 jnf 000000028
+00000015 const %1, *2	// *2 = (string)"FileSelectCaption_"
+00000018 gpd %2, %-4.*3	// *3 = (string)"title"
+00000022 add %1, %2
+00000025 cp %-5, %1
+00000028 const %1, *1	// *1 = (string)""
+00000031 calld %2, %-2.*4(%-5, %1)	// *4 = (string)"GetSystemLangMessage"
+00000038 cp %-6, %2
+00000041 const %1, *1	// *1 = (string)""
+00000044 ceq %-6, %1
+00000047 jf 000000053
+00000049 spde %-4.*3, %-6	// *3 = (string)"title"
+00000053 gpd %1, %-4.*5	// *5 = (string)"filter"
+00000057 cp %-7, %1
+00000060 tt %-7
+00000062 jnf 000000441
+00000064 const %1, *6	// *6 = (int)0
+00000067 cp %-8, %1
+00000070 gpd %1, %-7.*7	// *7 = (string)"count"
+00000074 cp %-9, %1
+00000077 clt %-8, %-9
+00000080 jnf 000000441
+00000082 gpi %1, %-7.%-8
+00000086 cp %-10, %1
+00000089 cl %-11
+00000091 const %1, *1	// *1 = (string)""
+00000094 ceq %-10, %1
+00000097 jf 000000437
+00000099 const %2, *8	// *8 = (string)"|"
+00000102 calld %3, %-10.*9(%2)	// *9 = (string)"indexOf"
+00000108 cp %-11, %3
+00000111 const %4, *6	// *6 = (int)0
+00000114 cgt %3, %4
+00000117 nf
+00000118 jf 000000437
+00000120 cp %1, %-11
+00000123 const %2, *10	// *10 = (int)1
+00000126 add %1, %2
+00000129 calld %3, %-10.*11(%1)	// *11 = (string)"substr"
+00000135 cp %-12, %3
+00000138 const %1, *6	// *6 = (int)0
+00000141 calld %2, %-10.*11(%1, %-11)	// *11 = (string)"substr"
+00000148 cp %-13, %2
+00000151 const %1, *1	// *1 = (string)""
+00000154 cp %-14, %1
+00000157 global %1
+00000159 gpd %2, %1.*12	// *12 = (string)"RegExp"
+00000163 const %3, *13	// *13 = (string)"///[ ]*\\(.*$"
+00000166 new %1, %2()
+00000170 calld %0, %1.*14(%3)	// *14 = (string)"_compile"
+00000176 const %2, *1	// *1 = (string)""
+00000179 calld %3, %-13.*15(%1, %2)	// *15 = (string)"replace"
+00000186 cp %-15, %3
+00000189 ceq %-15, %-13
+00000192 jf 000000207
+00000194 gpd %1, %-15.*16	// *16 = (string)"length"
+00000198 calld %2, %-13.*11(%1)	// *11 = (string)"substr"
+00000204 cp %-14, %2
+00000207 const %1, *17	// *17 = (string)";"
+00000210 const %2, *10	// *10 = (int)1
+00000213 calld %3, %-12.*18(%1, %0, %2)	// *18 = (string)"split"
+00000221 cp %-16, %3
+00000224 const %1, *6	// *6 = (int)0
+00000227 cp %-17, %1
+00000230 gpd %1, %-16.*7	// *7 = (string)"count"
+00000234 clt %-17, %1
+00000237 jnf 000000305
+00000239 gpi %1, %-16.%-17
+00000243 gpd %2, %-2.*19	// *19 = (string)"Storages"
+00000247 calld %3, %2.*20(%1)	// *20 = (string)"extractStorageExt"
+00000253 str %3
+00000255 cp %-18, %3
+00000258 const %1, *6	// *6 = (int)0
+00000261 calld %2, %-18.*21(%1)	// *21 = (string)"charAt"
+00000267 const %3, *22	// *22 = (string)"."
+00000270 ceq %2, %3
+00000273 jnf 000000291
+00000275 const %4, *10	// *10 = (int)1
+00000278 calld %5, %-18.*11(%4)	// *11 = (string)"substr"
+00000284 calld %6, %5.*23()	// *23 = (string)"toUpperCase"
+00000289 jmp 000000297
+00000291 const %4, *24	// *24 = (string)""
+00000294 cp %6, %4
+00000297 spie %-16.%-17, %6
+00000301 inc %-17
+00000303 jmp 000000230
+00000305 const %1, *25	// *25 = (string)"FileSelectExts"
+00000308 const %2, *26	// *26 = (string)"+"
+00000311 calld %3, %-16.*27(%2)	// *27 = (string)"join"
+00000317 add %1, %3
+00000320 cp %-17, %1
+00000323 const %1, *24	// *24 = (string)""
+00000326 calld %2, %-2.*28(%-17, %1)	// *28 = (string)"GetSystemLangMessage"
+00000333 cp %-18, %2
+00000336 calld %0, %-2.*29(%-17, %-18)	// *29 = (string)"dm"
+00000343 const %1, *24	// *24 = (string)""
+00000346 ceq %-18, %1
+00000349 jnf 000000410
+00000351 const %1, *30	// *30 = (string)"_"
+00000354 add %1, %-15
+00000357 cp %-17, %1
+00000360 cp %1, %-15
+00000363 const %2, *31	// *31 = (string)""
+00000366 ceq %1, %2
+00000369 jnf 000000381
+00000371 const %2, *32	// *32 = (string)"IMAGE"
+00000374 cp %-17, %2
+00000377 jmp 000000381
+00000379 jmp 000000381
+00000381 const %1, *25	// *25 = (string)"FileSelectExts"
+00000384 add %1, %-17
+00000387 cp %-17, %1
+00000390 const %1, *24	// *24 = (string)""
+00000393 calld %2, %-2.*28(%-17, %1)	// *28 = (string)"GetSystemLangMessage"
+00000400 cp %-18, %2
+00000403 calld %0, %-2.*29(%-17, %-18)	// *29 = (string)"dm"
+00000410 const %1, *24	// *24 = (string)""
+00000413 ceq %-18, %1
+00000416 jf 000000437
+00000418 cp %1, %-18
+00000421 add %1, %-14
+00000424 const %2, *33	// *33 = (string)"|"
+00000427 add %1, %2
+00000430 add %1, %-12
+00000433 spie %-7.%-8, %1
+00000437 inc %-8
+00000439 jmp 000000077
+00000441 call %1, %-3(%-4, *)
+00000450 srv %1
+00000452 ret
+00000453 srv %0
+00000455 ret
+
+(function expression) (anonymous) 0x00000000025A3DD0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"drawopt"
+00000004 gpd %2, %1.*1	// *1 = (string)"render"
+00000008 cp %-5, %2
+00000011 const %1, *2	// *2 = (int)1
+00000014 cp %-6, %1
+00000017 gpd %1, %-2.*3	// *3 = (string)"window"
+00000021 gpd %2, %1.*4	// *4 = (string)"getLangInfo"
+00000025 cp %-7, %2
+00000028 gpd %1, %-2.*5	// *5 = (string)"kag"
+00000032 gpd %2, %1.*6	// *6 = (string)"languageType"
+00000036 cp %-8, %2
+00000039 gpd %1, %-2.*5	// *5 = (string)"kag"
+00000043 gpd %2, %1.*7	// *7 = (string)"subLanguageType"
+00000047 cp %-9, %2
+00000050 cdeq %-9, %0
+00000053 jf 000000251
+00000055 const %1, *8	// *8 = (int)0
+00000058 clt %-9, %1
+00000061 jf 000000251
+00000063 ceq %-8, %-9
+00000066 jf 000000251
+00000068 const %1, *2	// *2 = (int)1
+00000071 gpd %2, %-2.*0	// *0 = (string)"drawopt"
+00000075 spde %2.*1, %1	// *1 = (string)"render"
+00000079 gpd %1, %-2.*3	// *3 = (string)"window"
+00000083 gpd %2, %1.*9	// *9 = (string)"getLanguageFont"
+00000087 cp %-10, %2
+00000090 gpd %2, %-2.*0	// *0 = (string)"drawopt"
+00000094 const %3, *10	// *10 = (string)"text"
+00000097 call %1, %-7(%2, %3, %-8)
+00000104 cp %-11, %1
+00000107 gpd %2, %-2.*0	// *0 = (string)"drawopt"
+00000111 const %3, *10	// *10 = (string)"text"
+00000114 call %1, %-7(%2, %3, %-9)
+00000121 cp %-12, %1
+00000124 call %1, %-10(%-8)
+00000129 cp %-13, %1
+00000132 call %1, %-10(%-9)
+00000137 cp %-14, %1
+00000140 gpd %1, %-2.*11	// *11 = (string)"SystemConfig"
+00000144 gpd %2, %1.*12	// *12 = (string)"multiLangSelectFontScale"
+00000148 cp %-6, %2
+00000151 cdeq %-6, %0
+00000154 jnf 000000193
+00000156 gpd %1, %-2.*5	// *5 = (string)"kag"
+00000160 typeofd %2, %1.*13	// *13 = (string)"subLangFontScale"
+00000164 const %3, *14	// *14 = (string)"undefined"
+00000167 ceq %2, %3
+00000170 jf 000000184
+00000172 gpd %4, %-2.*5	// *5 = (string)"kag"
+00000176 gpd %5, %4.*13	// *13 = (string)"subLangFontScale"
+00000180 num %5
+00000182 jmp 000000190
+00000184 const %4, *15	// *15 = (real)0.8
+00000187 cp %5, %4
+00000190 cp %-6, %5
+00000193 const %1, *16	// *16 = (string)"%f"
+00000196 cp %2, %-13
+00000199 str %2
+00000201 add %1, %2
+00000204 const %3, *17	// *17 = (string)";"
+00000207 add %1, %3
+00000210 cp %4, %-11
+00000213 str %4
+00000215 add %1, %4
+00000218 const %5, *18	// *18 = (string)"\n%f"
+00000221 add %1, %5
+00000224 cp %6, %-14
+00000227 str %6
+00000229 add %1, %6
+00000232 const %7, *17	// *17 = (string)";"
+00000235 add %1, %7
+00000238 cp %8, %-12
+00000241 str %8
+00000243 add %1, %8
+00000246 cp %-4, %1
+00000249 jmp 000000325
+00000251 gpd %2, %-2.*0	// *0 = (string)"drawopt"
+00000255 const %3, *10	// *10 = (string)"text"
+00000258 call %1, %-7(%2, %3, %-8)
+00000265 cp %-4, %1
+00000268 cl %-10
+00000270 gpd %1, %-2.*11	// *11 = (string)"SystemConfig"
+00000274 gpd %2, %1.*19	// *19 = (string)"multiLangSingleSelectScaleMap"
+00000278 tt %2
+00000280 jnf 000000288
+00000282 gpd %3, %1.*19	// *19 = (string)"multiLangSingleSelectScaleMap"
+00000286 jmp 000000292
+00000288 gpd %3, %1.*20	// *20 = (string)"multiLangSingleFontScaleMap"
+00000292 cp %-10, %3
+00000295 tt %-10
+00000297 jnf 000000325
+00000299 gpd %1, %-2.*21	// *21 = (string)"LanguageTags"
+00000303 gpi %2, %1.%-8
+00000307 gpi %3, %-10.%2
+00000311 cp %-11, %3
+00000314 const %1, *8	// *8 = (int)0
+00000317 cgt %-11, %1
+00000320 jnf 000000325
+00000322 cp %-6, %-11
+00000325 gpd %1, %-2.*22	// *22 = (string)"owner"
+00000329 gpd %2, %1.*23	// *23 = (string)"fontSize"
+00000333 mul %2, %-6
+00000336 gpd %3, %-2.*24	// *24 = (string)"font"
+00000340 spde %3.*25, %2	// *25 = (string)"height"
+00000344 call %1, %-3(%-4, *)
+00000353 cp %-10, %1
+00000356 gpd %1, %-2.*26	// *26 = (string)"drawopt"
+00000360 spde %1.*27, %-5	// *27 = (string)"render"
+00000364 srv %-10
+00000366 ret
+00000367 srv %0
+00000369 ret
+
+(function expression) (anonymous) 0x00000000025A21B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"selectShowing"
+00000004 tt %1
+00000006 jnf 000000054
+00000008 gpd %2, %-2.*1	// *1 = (string)"SystemConfig"
+00000012 gpd %3, %2.*2	// *2 = (string)"multiLangAutoSelectRedraw"
+00000016 tt %3
+00000018 jnf 000000054
+00000020 gpd %1, %-2.*3	// *3 = (string)"fore"
+00000024 gpd %2, %1.*4	// *4 = (string)"base"
+00000028 gpd %3, %2.*5	// *5 = (string)"selectLayer"
+00000032 calld %0, %3.*6()	// *6 = (string)"redrawButtons"
+00000037 gpd %1, %-2.*7	// *7 = (string)"back"
+00000041 gpd %2, %1.*4	// *4 = (string)"base"
+00000045 gpd %3, %2.*5	// *5 = (string)"selectLayer"
+00000049 calld %0, %3.*6()	// *6 = (string)"redrawButtons"
+00000054 srv %0
+00000056 ret
+
+(function expression) (anonymous) 0x00000000025A4370
+
+#(1) Bytecode.
+00000000 tt %-3
+00000002 jnf 000000135
+00000004 entry 000000135, %1
+00000007 const %1, *0	// *0 = (string)""
+00000010 cp %-4, %1
+00000013 const %1, *1	// *1 = (int)0
+00000016 cp %-5, %1
+00000019 gpd %1, %-3.*2	// *2 = (string)"count"
+00000023 cp %-6, %1
+00000026 clt %-5, %-6
+00000029 jnf 000000069
+00000031 gpi %1, %-3.%-5
+00000035 cp %-7, %1
+00000038 const %1, *0	// *0 = (string)""
+00000041 ceq %-4, %1
+00000044 jf 000000052
+00000046 const %2, *3	// *3 = (string)"/"
+00000049 add %-4, %2
+00000052 const %1, *4	// *4 = (string)"text"
+00000055 calld %2, %-2.*5(%-7, %1)	// *5 = (string)"getLangInfo"
+00000062 add %-4, %2
+00000065 inc %-5
+00000067 jmp 000000026
+00000069 const %1, *6	// *6 = (string)"BacklogChoiceTextFormat"
+00000072 gpd %2, %-2.*7	// *7 = (string)"LanguageTags"
+00000076 gpd %3, %-2.*8	// *8 = (string)"kag"
+00000080 gpd %4, %3.*9	// *9 = (string)"languageType"
+00000084 num %4
+00000086 gpi %5, %2.%4
+00000090 calld %6, %-2.*10(%1, %5)	// *10 = (string)"GetSysLangText"
+00000097 cp %-5, %6
+00000100 global %1
+00000102 gpd %2, %1.*11	// *11 = (string)"Dictionary"
+00000106 new %1, %2()
+00000110 const %2, *4	// *4 = (string)"text"
+00000113 spis %1.%2, %-4
+00000117 calld %2, %-2.*12(%-5, %1)	// *12 = (string)"applyInlineStringVariableExtract"
+00000124 gpd %3, %-2.*13	// *13 = (string)"historyLayer"
+00000128 spde %3.*14, %2	// *14 = (string)"currentText"
+00000132 extry
+00000133 jmp 000000135
+00000135 srv %0
+00000137 ret
+
+(function expression) (anonymous) 0x00000000025A40A0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageTag"
+00000009 cp %-4, %1
+00000012 cp %1, %-3
+00000015 str %1
+00000017 cp %-3, %1
+00000020 gpd %1, %-3.*1	// *1 = (string)"length"
+00000024 const %2, *2	// *2 = (int)2
+00000027 clt %1, %2
+00000030 jnf 000000038
+00000032 const %1, *3	// *3 = (int)1
+00000035 srv %1
+00000037 ret
+00000038 gpd %1, %-3.*1	// *1 = (string)"length"
+00000042 const %2, *2	// *2 = (int)2
+00000045 sub %1, %2
+00000048 calld %3, %-3.*4(%1)	// *4 = (string)"substr"
+00000054 cp %-5, %3
+00000057 gpd %1, %-2.*5	// *5 = (string)"SystemConfig"
+00000061 gpd %2, %1.*6	// *6 = (string)"SpeechPrimLangID"
+00000065 cp %-6, %2
+00000068 cdeq %-6, %0
+00000071 jnf 000000114
+00000073 const %1, *7	// *7 = (string)"ttsdata_PrimLangID"
+00000076 const %2, *8	// *8 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000079 calld %3, %-2.*9(%1, %-4, %2)	// *9 = (string)"GetSysLangText"
+00000087 gpd %4, %-2.*5	// *5 = (string)"SystemConfig"
+00000091 spde %4.*6, %3	// *6 = (string)"SpeechPrimLangID"
+00000095 cp %-6, %3
+00000098 cdeq %-6, %0
+00000101 jnf 000000114
+00000103 const %1, *10	// *10 = (string)""
+00000106 gpd %2, %-2.*5	// *5 = (string)"SystemConfig"
+00000110 spde %2.*6, %1	// *6 = (string)"SpeechPrimLangID"
+00000114 const %1, *10	// *10 = (string)""
+00000117 ceq %-6, %1
+00000120 jf 000000125
+00000122 ceq %-6, %-5
+00000125 setf %2
+00000127 srv %2
+00000129 ret
+00000130 srv %0
+00000132 ret
+
+(function expression) (anonymous) 0x00000000025A1EE0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000012
+00000005 gpd %1, %-2.*0	// *0 = (string)"CurrentLanguageTag"
+00000009 cp %-4, %1
+00000012 calld %1, %-2.*1(%-3, %-4)	// *1 = (string)"origCanUseSpeechVoice"
+00000019 cp %-5, %1
+00000022 srv %-5
+00000024 ret
+00000025 srv %0
+00000027 ret
+
+(function expression) (anonymous) 0x00000000025A3290
+
+#(1) Bytecode.
+00000000 calld %0, %-2.*0(...)	// *0 = (string)"origUpdateTextSpeech"
+00000005 entry 000000016, %1
+00000008 calld %0, %-2.*1()	// *1 = (string)"UpdateTextSpeechMenuCheck"
+00000013 extry
+00000014 jmp 000000016
+00000016 srv %0
+00000018 ret
+
+(function expression) (anonymous) 0x00000000025A2480
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"LangTag"
+00000003 calld %2, %-2.*1(%1)	// *1 = (string)"getConfig"
+00000009 cp %-4, %2
+00000012 const %1, *2	// *2 = (string)""
+00000015 ceq %-4, %1
+00000018 jf 000000171
+00000020 const %1, *3	// *3 = (string)"SpeechUnspecifiedToken_"
+00000023 gpd %2, %-2.*4	// *4 = (string)"typeID"
+00000027 str %2
+00000029 add %1, %2
+00000032 const %3, *5	// *5 = (string)"_"
+00000035 add %1, %3
+00000038 cp %4, %-4
+00000041 str %4
+00000043 add %1, %4
+00000046 cp %-5, %1
+00000049 gpd %1, %-2.*6	// *6 = (string)"SystemConfig"
+00000053 gpi %2, %1.%-5
+00000057 cp %-6, %2
+00000060 cl %-7
+00000062 cdeq %-6, %0
+00000065 jf 000000070
+00000067 srv %-6
+00000069 ret
+00000070 const %1, *2	// *2 = (string)""
+00000073 cp %-6, %1
+00000076 tt %-3
+00000078 jnf 000000149
+00000080 call %1, %-3()
+00000084 cp %-7, %1
+00000087 cdeq %1, %0
+00000090 nf
+00000091 jnf 000000149
+00000093 const %1, *7	// *7 = (int)0
+00000096 cp %-8, %1
+00000099 gpd %1, %-7.*8	// *8 = (string)"count"
+00000103 clt %-8, %1
+00000106 jnf 000000149
+00000108 gpi %1, %-7.%-8
+00000112 cp %-9, %1
+00000115 tf %-9
+00000117 jf 000000145
+00000119 gpd %1, %-9.*9	// *9 = (string)"lang"
+00000123 calld %2, %-2.*10(%1, %-4)	// *10 = (string)"CanUseSpeechLanguage"
+00000130 tf %2
+00000132 jnf 000000136
+00000134 jmp 000000145
+00000136 gpd %1, %-9.*11	// *11 = (string)"id"
+00000140 cp %-6, %1
+00000143 jmp 000000149
+00000145 inc %-8
+00000147 jmp 000000099
+00000149 const %1, *12	// *12 = (string)"UnspecifiedToken"
+00000152 calld %0, %-2.*13(%1, %-5, %-6)	// *13 = (string)"dm"
+00000160 gpd %1, %-2.*6	// *6 = (string)"SystemConfig"
+00000164 spie %1.%-5, %-6
+00000168 srv %-6
+00000170 ret
+00000171 srv %0
+00000173 ret
+
+(function expression) (anonymous) 0x00000000025A4BE0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 spde %1.*1, %0	// *1 = (string)"SpeechPrimLangID"
+00000008 calld %0, %-2.*2()	// *2 = (string)"UpdateTextSpeech"
+00000013 srv %0
+00000015 ret
+
+(function expression) (anonymous) 0x00000000025A5180
+
+#(1) Bytecode.
+00000000 typeofd %1, %-3.*0	// *0 = (string)"textSpeechMenuItem"
+00000004 const %2, *1	// *1 = (string)"Object"
+00000007 ceq %1, %2
+00000010 jnf 000000283
+00000012 global %1
+00000014 gpd %2, %1.*2	// *2 = (string)"Array"
+00000018 new %1, %2()
+00000022 const %2, *3	// *3 = (int)0
+00000025 cp %-4, %1
+00000028 const %1, *3	// *3 = (int)0
+00000031 cp %-5, %1
+00000034 gpd %1, %-2.*4	// *4 = (string)"LanguageTags"
+00000038 gpd %2, %1.*5	// *5 = (string)"count"
+00000042 cp %-6, %2
+00000045 clt %-5, %-6
+00000048 jnf 000000271
+00000050 gpd %1, %-2.*4	// *4 = (string)"LanguageTags"
+00000054 gpi %2, %1.%-5
+00000058 cp %-7, %2
+00000061 const %1, *6	// *6 = (string)""
+00000064 ceq %-7, %1
+00000067 jnf 000000071
+00000069 jmp 000000267
+00000071 const %1, *7	// *7 = (string)"textSpeechMenuItem_"
+00000074 add %1, %-7
+00000077 cp %-8, %1
+00000080 global %1
+00000082 gpd %2, %1.*8	// *8 = (string)"Dictionary"
+00000086 new %1, %2()
+00000090 gpd %2, %-2.*9	// *9 = (string)"SystemLanguageText"
+00000094 spie %2.%-8, %1
+00000098 cp %-9, %1
+00000101 gpd %1, %-2.*9	// *9 = (string)"SystemLanguageText"
+00000105 const %2, *10	// *10 = (string)"!menu"
+00000108 gpi %3, %1.%2
+00000112 tt %3
+00000114 jnf 000000134
+00000116 const %1, *11	// *11 = (int)1
+00000119 gpd %2, %-2.*9	// *9 = (string)"SystemLanguageText"
+00000123 const %3, *10	// *10 = (string)"!menu"
+00000126 gpi %4, %2.%3
+00000130 spie %4.%-8, %1
+00000134 const %1, *3	// *3 = (int)0
+00000137 cp %-10, %1
+00000140 clt %-10, %-6
+00000143 jnf 000000179
+00000145 gpd %1, %-2.*4	// *4 = (string)"LanguageTags"
+00000149 gpi %2, %1.%-10
+00000153 cp %-11, %2
+00000156 const %1, *6	// *6 = (string)""
+00000159 ceq %-11, %1
+00000162 jf 000000175
+00000164 calld %1, %-2.*12(%-7, %-11)	// *12 = (string)"GetTextSpeechTargetLangName"
+00000171 spie %-9.%-11, %1
+00000175 inc %-10
+00000177 jmp 000000140
+00000179 gpi %1, %-9.%-7
+00000183 cp %-10, %1
+00000186 global %1
+00000188 gpd %2, %1.*8	// *8 = (string)"Dictionary"
+00000192 new %1, %2()
+00000196 const %2, *13	// *13 = (string)"name"
+00000199 spis %1.%2, %-8
+00000203 const %2, *14	// *14 = (string)"caption"
+00000206 spis %1.%2, %-10
+00000210 const %2, *15	// *15 = (string)"exp"
+00000213 const %3, *16	// *16 = (string)"SetupTextSpeech(false,\'"
+00000216 cp %4, %-7
+00000219 str %4
+00000221 add %3, %4
+00000224 const %5, *17	// *17 = (string)"\')"
+00000227 add %3, %5
+00000230 spis %1.%2, %3
+00000234 const %2, *18	// *18 = (string)"prop"
+00000237 global %3
+00000239 gpd %4, %3.*8	// *8 = (string)"Dictionary"
+00000243 new %3, %4()
+00000247 const %4, *19	// *19 = (string)"checkitem"
+00000250 const %5, *11	// *11 = (int)1
+00000253 spis %3.%4, %5
+00000257 spis %1.%2, %3
+00000261 calld %0, %-4.*20(%1)	// *20 = (string)"add"
+00000267 inc %-5
+00000269 jmp 000000045
+00000271 gpd %1, %-3.*21	// *21 = (string)"textSpeechMenuItem"
+00000275 calld %0, %-2.*22(%-3, %1, %-4)	// *22 = (string)"createMenuFromList"
+00000283 srv %0
+00000285 ret
+
+(function) GetTextSpeechTargetLangName 0x00000000025A1670
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"ttsdata_LangName"
+00000003 const %2, *1	// *1 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000006 calld %3, %-2.*2(%1, %-3, %2)	// *2 = (string)"GetSysLangText"
+00000014 cp %-5, %3
+00000017 const %1, *3	// *3 = (string)""
+00000020 ceq %-5, %1
+00000023 jnf 000000050
+00000025 const %1, *4	// *4 = (string)"["
+00000028 cp %2, %-3
+00000031 str %2
+00000033 add %1, %2
+00000036 const %3, *5	// *5 = (string)"]"
+00000039 add %1, %3
+00000042 calld %4, %1.*6()	// *6 = (string)"toUpperCase"
+00000047 cp %-5, %4
+00000050 const %1, *3	// *3 = (string)""
+00000053 ceq %-4, %1
+00000056 jnf 000000073
+00000058 const %2, *7	// *7 = (string)"ttsconf_TargetLang"
+00000061 const %3, *8	// *8 = (string)"Main Language:${name}"
+00000064 calld %4, %-2.*9(%2, %3)	// *9 = (string)"GetSystemLangMessage"
+00000071 jmp 000000086
+00000073 const %2, *7	// *7 = (string)"ttsconf_TargetLang"
+00000076 calld %3, %-2.*2(%2, %-4)	// *2 = (string)"GetSysLangText"
+00000083 cp %4, %3
+00000086 cp %-6, %4
+00000089 global %1
+00000091 gpd %2, %1.*10	// *10 = (string)"Dictionary"
+00000095 new %1, %2()
+00000099 const %2, *11	// *11 = (string)"name"
+00000102 spis %1.%2, %-5
+00000106 calld %2, %-2.*12(%-6, %1)	// *12 = (string)"applyInlineStringVariableExtract"
+00000113 srv %2
+00000115 ret
+00000116 srv %0
+00000118 ret
+
+(function) UpdateTextSpeechMenuCheck 0x00000000025A1940
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000018
+00000005 global %1
+00000007 gpd %2, %1.*0	// *0 = (string)"kag"
+00000011 gpd %3, %2.*1	// *1 = (string)"speechPlugin"
+00000015 cp %-3, %3
+00000018 tf %-3
+00000020 jnf 000000039
+00000022 entry 000000039, %1
+00000025 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000029 gpd %2, %1.*1	// *1 = (string)"speechPlugin"
+00000033 cp %-3, %2
+00000036 extry
+00000037 jmp 000000039
+00000039 tf %-3
+00000041 jf 000000052
+00000043 cp %1, %-3
+00000046 chkinv %1
+00000048 tf %1
+00000050 jnf 000000055
+00000052 srv %0
+00000054 ret
+00000055 const %1, *2	// *2 = (int)0
+00000058 cp %-4, %1
+00000061 gpd %1, %-2.*3	// *3 = (string)"LanguageTags"
+00000065 gpd %2, %1.*4	// *4 = (string)"count"
+00000069 cp %-5, %2
+00000072 clt %-4, %-5
+00000075 jnf 000000151
+00000077 gpd %1, %-2.*3	// *3 = (string)"LanguageTags"
+00000081 gpi %2, %1.%-4
+00000085 cp %-6, %2
+00000088 const %1, *5	// *5 = (string)""
+00000091 ceq %-6, %1
+00000094 jnf 000000098
+00000096 jmp 000000147
+00000098 const %1, *6	// *6 = (string)"textSpeechMenuItem_"
+00000101 add %1, %-6
+00000104 cp %-7, %1
+00000107 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000111 typeofi %2, %1.%-7
+00000115 const %3, *7	// *7 = (string)"Object"
+00000118 ceq %2, %3
+00000121 jnf 000000147
+00000123 entry 000000147, %1
+00000126 calld %1, %-3.*8(%-6)	// *8 = (string)"getLangEnabled"
+00000132 gpd %2, %-2.*0	// *0 = (string)"kag"
+00000136 gpi %3, %2.%-7
+00000140 spde %3.*9, %1	// *9 = (string)"checked"
+00000144 extry
+00000145 jmp 000000147
+00000147 inc %-4
+00000149 jmp 000000072
+00000151 srv %0
+00000153 ret
+
+(property) MultilangTextSpeechEnabled 0x00000000025A2750
+
+
+(property getter) (getter) 0x00000000025A2A20
+
+#(1) Bytecode.
+00000000 entry 000000022, %1
+00000003 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000007 gpd %2, %1.*1	// *1 = (string)"speechPlugin"
+00000011 gpd %3, %2.*2	// *2 = (string)"enabled"
+00000015 srv %3
+00000017 extry
+00000018 ret
+00000019 extry
+00000020 jmp 000000022
+00000022 srv %0
+00000024 ret
+
+(property setter) (setter) 0x00000000025AF970
+
+#(1) Bytecode.
+00000000 entry 000000018, %1
+00000003 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000007 gpd %2, %1.*1	// *1 = (string)"speechPlugin"
+00000011 spde %2.*2, %-3	// *2 = (string)"enabled"
+00000015 extry
+00000016 jmp 000000018
+00000018 srv %0
+00000020 ret
+
+(class) MultilangSpeechPlugin 0x00000000025B0A50
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MultilangSpeechPlugin"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"SpeechPlugin"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 global %1
+00000022 gpd %2, %1.*2	// *2 = (string)"MultilangSpeechVoiceSettingDialog"
+00000026 spds %-1.*3, %2	// *3 = (string)"SpeechVoiceSettingDialog"
+00000030 const %1, *4	// *4 = (string)"TextSpeech"
+00000033 spds %-1.*5, %1	// *5 = (string)"_storeKey"
+00000037 spds %-1.*6, %0	// *6 = (string)"_forceLangTag"
+00000041 srv %0
+00000043 ret
+
+(super class getter proxy) MultilangSpeechPlugin 0x00000000025B01E0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SpeechPlugin"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) MultilangSpeechPlugin 0x00000000025B1E00
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SpeechPlugin"
+00000006 calld %0, %2.*0(...)	// *0 = (string)"SpeechPlugin"
+00000011 calld %0, %-2.*1(%-1)	// *1 = (string)"UpdateTextSpeechMenuCheck"
+00000017 srv %0
+00000019 ret
+
+(function) finalize 0x00000000025B31B0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SpeechPlugin"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"finalize"
+00000011 srv %0
+00000013 ret
+
+(property) enabled 0x00000000025B1860
+
+
+(property getter) (getter) 0x00000000025B1590
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"Enabled"
+00000003 calld %2, %-2.*1(%1)	// *1 = (string)"getStoreValue"
+00000009 lnot %2
+00000011 lnot %2
+00000013 srv %2
+00000015 ret
+00000016 srv %0
+00000018 ret
+
+(property setter) (setter) 0x00000000025B2EE0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"Enabled"
+00000003 cp %2, %-3
+00000006 lnot %2
+00000008 lnot %2
+00000010 calld %0, %-2.*1(%1, %2)	// *1 = (string)"setStoreValue"
+00000017 srv %0
+00000019 ret
+
+(property) _configRef 0x00000000025AFC40
+
+
+(property getter) (getter) 0x00000000025B2940
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"Settings"
+00000003 calld %2, %-2.*1(%1)	// *1 = (string)"getStoreValue"
+00000009 srv %2
+00000011 ret
+00000012 srv %0
+00000014 ret
+
+(property setter) (setter) 0x00000000025B23A0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"Settings"
+00000003 calld %0, %-2.*1(%1, %-3)	// *1 = (string)"setStoreValue"
+00000010 srv %0
+00000012 ret
+
+(property) _replaceRef 0x00000000025B0D20
+
+
+(property getter) (getter) 0x00000000025B1B30
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"ReplaceDict"
+00000003 calld %2, %-2.*1(%1)	// *1 = (string)"getStoreValue"
+00000009 srv %2
+00000011 ret
+00000012 srv %0
+00000014 ret
+
+(property setter) (setter) 0x00000000025B20D0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"ReplaceDict"
+00000003 calld %0, %-2.*1(%1, %-3)	// *1 = (string)"setStoreValue"
+00000010 srv %0
+00000012 ret
+
+(property) curLangTag 0x00000000025B2C10
+
+
+(property getter) (getter) 0x00000000025B12C0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_forceLangTag"
+00000004 const %2, *1	// *1 = (string)""
+00000007 ceq %1, %2
+00000010 jf 000000018
+00000012 gpd %3, %-2.*0	// *0 = (string)"_forceLangTag"
+00000016 jmp 000000022
+00000018 gpd %3, %-2.*2	// *2 = (string)"CurrentLanguageTag"
+00000022 srv %3
+00000024 ret
+00000025 srv %0
+00000027 ret
+
+(property setter) (setter) 0x00000000025B2670
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"_forceLangTag"
+00000004 gpd %1, %-2.*1	// *1 = (string)"SystemConfig"
+00000008 spde %1.*2, %0	// *2 = (string)"SpeechPrimLangID"
+00000012 srv %0
+00000014 ret
+
+(function) getStoreKey 0x00000000025B0FF0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_storeKey"
+00000004 add %1, %-3
+00000007 const %2, *1	// *1 = (string)"_"
+00000010 add %1, %2
+00000013 gpd %3, %-2.*2	// *2 = (string)"curLangTag"
+00000017 add %1, %3
+00000020 srv %1
+00000022 ret
+00000023 srv %0
+00000025 ret
+
+(function) getStoreValue 0x00000000025B3480
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(%-3)	// *0 = (string)"getStoreKey"
+00000006 cp %-3, %1
+00000009 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000013 gpd %2, %1.*2	// *2 = (string)"scflags"
+00000017 cp %-5, %2
+00000020 typeofi %1, %-5.%-3
+00000024 const %2, *3	// *3 = (string)"undefined"
+00000027 ceq %1, %2
+00000030 jf 000000038
+00000032 gpi %3, %-5.%-3
+00000036 jmp 000000041
+00000038 cp %3, %-4
+00000041 srv %3
+00000043 ret
+00000044 srv %0
+00000046 ret
+
+(function) setStoreValue 0x00000000025AFF10
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"scflags"
+00000008 calld %3, %-2.*2(%-3)	// *2 = (string)"getStoreKey"
+00000014 spie %2.%3, %-4
+00000018 srv %0
+00000020 ret
+
+(function) setConfigAll 0x00000000025B04B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-3.*0	// *0 = (string)"LangTag"
+00000004 spd %-2.*1, %1	// *1 = (string)"curLangTag"
+00000008 global %1
+00000010 gpd %2, %1.*2	// *2 = (string)"SpeechPlugin"
+00000014 calld %0, %2.*3(...)	// *3 = (string)"setConfigAll"
+00000019 spd %-2.*1, %0	// *1 = (string)"curLangTag"
+00000023 srv %0
+00000025 ret
+
+(function) getConfigAll 0x00000000025B0780
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"curLangTag"
+00000004 global %1
+00000006 gpd %2, %1.*1	// *1 = (string)"SpeechPlugin"
+00000010 calld %3, %2.*2()	// *2 = (string)"getConfigAll"
+00000015 cp %-4, %3
+00000018 gpd %1, %-2.*0	// *0 = (string)"curLangTag"
+00000022 spde %-4.*3, %1	// *3 = (string)"LangTag"
+00000026 typeofd %1, %-4.*4	// *4 = (string)"TestText"
+00000030 const %2, *5	// *5 = (string)"undefined"
+00000033 ceq %1, %2
+00000036 jnf 000000071
+00000038 const %1, *6	// *6 = (string)"ttsdata_Sample"
+00000041 gpd %2, %-2.*0	// *0 = (string)"curLangTag"
+00000045 const %3, *7	// *7 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000048 calld %4, %-2.*8(%1, %2, %3)	// *8 = (string)"GetSysLangText"
+00000056 cp %-5, %4
+00000059 const %1, *9	// *9 = (string)""
+00000062 ceq %-5, %1
+00000065 jf 000000071
+00000067 spde %-4.*4, %-5	// *4 = (string)"TestText"
+00000071 spd %-2.*0, %0	// *0 = (string)"curLangTag"
+00000075 srv %-4
+00000077 ret
+00000078 srv %0
+00000080 ret
+
+(function) getLangEnabled 0x00000000025C10C0
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"curLangTag"
+00000004 gpd %1, %-2.*1	// *1 = (string)"enabled"
+00000008 cp %-4, %1
+00000011 spd %-2.*0, %0	// *0 = (string)"curLangTag"
+00000015 srv %-4
+00000017 ret
+00000018 srv %0
+00000020 ret
+
+(class) MultilangSpeechVoiceSettingDialog 0x00000000025BE3C0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MultilangSpeechVoiceSettingDialog"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"SpeechVoiceSettingDialog"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"_dictUnsupported"
+00000024 srv %0
+00000026 ret
+
+(super class getter proxy) MultilangSpeechVoiceSettingDialog 0x00000000025C0DF0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SpeechVoiceSettingDialog"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) MultilangSpeechVoiceSettingDialog 0x00000000025BE960
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SpeechVoiceSettingDialog"
+00000006 calld %0, %2.*0(...)	// *0 = (string)"SpeechVoiceSettingDialog"
+00000011 srv %0
+00000013 ret
+
+(function) finalize 0x00000000025C1ED0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SpeechVoiceSettingDialog"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"finalize"
+00000011 srv %0
+00000013 ret
+
+(property) envStoreKey 0x00000000025BEC30
+
+
+(property getter) (getter) 0x00000000025BEF00
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ini"
+00000004 gpd %2, %1.*1	// *1 = (string)"LangTag"
+00000008 cp %-3, %2
+00000011 const %1, *2	// *2 = (string)""
+00000014 ceq %-3, %1
+00000017 jf 000000038
+00000019 const %1, *3	// *3 = (string)"_"
+00000022 cp %2, %-3
+00000025 str %2
+00000027 calld %3, %2.*4()	// *4 = (string)"toUpperCase"
+00000032 add %1, %3
+00000035 cp %-3, %1
+00000038 const %1, *5	// *5 = (string)"KRKRSPEECHCONF"
+00000041 add %1, %-3
+00000044 srv %1
+00000046 ret
+00000047 srv %0
+00000049 ret
+
+(function) CanUseSpeechVoice 0x00000000025C1660
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ini"
+00000004 gpd %2, %1.*1	// *1 = (string)"LangTag"
+00000008 global %3
+00000010 calld %4, %3.*2(%-3, %2)	// *2 = (string)"CanUseSpeechVoice"
+00000017 srv %4
+00000019 ret
+00000020 srv %0
+00000022 ret
+
+(function) CanUseSpeechLanguage 0x00000000025BFD10
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ini"
+00000004 gpd %2, %1.*1	// *1 = (string)"LangTag"
+00000008 global %3
+00000010 calld %4, %3.*2(%-3, %2)	// *2 = (string)"CanUseSpeechLanguage"
+00000017 srv %4
+00000019 ret
+00000020 srv %0
+00000022 ret
+
+(function) getDefaultDictFile 0x00000000025BE690
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SpeechVoiceSettingDialog"
+00000006 calld %3, %2.*1()	// *1 = (string)"getDefaultDictFile"
+00000011 cp %-3, %3
+00000014 cp %1, %-3
+00000017 const %2, *2	// *2 = (string)"_"
+00000020 add %1, %2
+00000023 gpd %3, %-2.*3	// *3 = (string)"ini"
+00000027 gpd %4, %3.*4	// *4 = (string)"LangTag"
+00000031 add %1, %4
+00000034 cp %-4, %1
+00000037 cp %1, %-4
+00000040 const %2, *5	// *5 = (string)".txt"
+00000043 add %1, %2
+00000046 gpd %3, %-2.*6	// *6 = (string)"Storages"
+00000050 calld %4, %3.*7(%1)	// *7 = (string)"isExistentStorage"
+00000056 tt %4
+00000058 jnf 000000063
+00000060 srv %-4
+00000062 ret
+00000063 srv %-3
+00000065 ret
+00000066 srv %0
+00000068 ret
+
+(function) getDictUnsupported 0x00000000025BFFE0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_dictUnsupported"
+00000004 cdeq %1, %0
+00000007 jnf 000000060
+00000009 const %1, *1	// *1 = (string)"ttsdata_DictEnabled"
+00000012 gpd %2, %-2.*2	// *2 = (string)"ini"
+00000016 gpd %3, %2.*3	// *3 = (string)"LangTag"
+00000020 const %4, *4	// *4 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000023 calld %5, %-2.*5(%1, %3, %4)	// *5 = (string)"GetSysLangText"
+00000031 tf %5
+00000033 jnf 000000050
+00000035 const %6, *6	// *6 = (string)"DictUnsupport"
+00000038 const %7, *7	// *7 = (string)""
+00000041 calld %8, %-2.*8(%6, %7)	// *8 = (string)"filterDialogText"
+00000048 jmp 000000056
+00000050 const %6, *7	// *7 = (string)""
+00000053 cp %8, %6
+00000056 spd %-2.*0, %8	// *0 = (string)"_dictUnsupported"
+00000060 gpd %1, %-2.*0	// *0 = (string)"_dictUnsupported"
+00000064 srv %1
+00000066 ret
+00000067 srv %0
+00000069 ret
+
+(function) updateDictGroupEnabled 0x00000000025BF770
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)1
+00000008 cp %-3, %1
+00000011 calld %1, %-2.*1()	// *1 = (string)"getDictUnsupported"
+00000016 cp %-4, %1
+00000019 const %1, *2	// *2 = (string)""
+00000022 ceq %-4, %1
+00000025 jf 000000033
+00000027 const %1, *3	// *3 = (int)0
+00000030 cp %-3, %1
+00000033 global %1
+00000035 gpd %2, %1.*4	// *4 = (string)"SpeechVoiceSettingDialog"
+00000039 calld %3, %2.*5(%-3)	// *5 = (string)"updateDictGroupEnabled"
+00000045 srv %3
+00000047 ret
+00000048 srv %0
+00000050 ret
+
+(function) getDictListViewString 0x00000000025BFA40
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0()	// *0 = (string)"getDictUnsupported"
+00000005 cp %-4, %1
+00000008 const %1, *1	// *1 = (string)""
+00000011 ceq %-4, %1
+00000014 jf 000000021
+00000016 cp %2, %-4
+00000019 jmp 000000035
+00000021 global %2
+00000023 gpd %3, %2.*2	// *2 = (string)"SpeechVoiceSettingDialog"
+00000027 calld %4, %3.*3(...)	// *3 = (string)"getDictListViewString"
+00000032 cp %2, %4
+00000035 srv %2
+00000037 ret
+00000038 srv %0
+00000040 ret
+
+(function) addToggle 0x00000000025C1390
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"Enabled"
+00000003 ceq %-3, %1
+00000006 jnf 000000129
+00000008 gpd %1, %-2.*1	// *1 = (string)"ini"
+00000012 gpd %2, %1.*2	// *2 = (string)"LangTag"
+00000016 calld %3, %-2.*3(%2)	// *3 = (string)"GetTextSpeechTargetLangName"
+00000022 cp %-4, %3
+00000025 const %1, *4	// *4 = (string)""
+00000028 ceq %-4, %1
+00000031 jf 000000129
+00000033 gpd %1, %-2.*5	// *5 = (string)"itemTexts"
+00000037 spde %1.*6, %-4	// *6 = (string)"TargetLanguage"
+00000041 const %1, *7	// *7 = (int)0
+00000044 const %2, *8	// *8 = (int)3
+00000047 const %3, *9	// *9 = (int)4
+00000050 calld %4, %-2.*10(%1, %2, %3)	// *10 = (string)"makeSpan"
+00000058 global %5
+00000060 gpd %6, %5.*11	// *11 = (string)"SpeechVoiceSettingDialog"
+00000064 calld %0, %6.*12(%-3, %4)	// *12 = (string)"addToggle"
+00000071 const %1, *6	// *6 = (string)"TargetLanguage"
+00000074 const %2, *8	// *8 = (int)3
+00000077 const %3, *9	// *9 = (int)4
+00000080 calld %4, %-2.*13(%2, %3)	// *13 = (string)"makeDiv"
+00000087 gpd %5, %-2.*14	// *14 = (string)"_ptSz"
+00000091 const %6, *9	// *9 = (int)4
+00000094 add %5, %6
+00000097 calld %0, %-2.*15(%1, %4, %5)	// *15 = (string)"addCText"
+00000105 const %1, *16	// *16 = (string)"append"
+00000108 gpd %2, %-2.*17	// *17 = (string)"SS_SUNKEN"
+00000112 gpd %3, %-2.*18	// *18 = (string)"SS_CENTERIMAGE"
+00000116 bor %2, %3
+00000119 calld %0, %-2.*19(%1, %2)	// *19 = (string)"setLastItemStyle"
+00000126 srv %0
+00000128 ret
+00000129 global %1
+00000131 gpd %2, %1.*11	// *11 = (string)"SpeechVoiceSettingDialog"
+00000135 calld %3, %2.*12(...)	// *12 = (string)"addToggle"
+00000140 srv %3
+00000142 ret
+00000143 srv %0
+00000145 ret
+
+(function expression) (anonymous) 0x00000000025C02B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"SystemConfig"
+00000004 gpd %2, %1.*1	// *1 = (string)"multiLangRenderMsgwinClass"
+00000008 cp %-3, %2
+00000011 cp %1, %-3
+00000014 typeof %1
+00000016 const %2, *2	// *2 = (string)"String"
+00000019 ceq %1, %2
+00000022 jnf 000000064
+00000024 entry 000000039, %1
+00000027 global %1
+00000029 gpi %2, %1.%-3
+00000033 cp %-3, %2
+00000036 extry
+00000037 jmp 000000064
+00000039 const %2, *3	// *3 = (string)"multiLangRenderMsgwinClass:"
+00000042 gpd %3, %-2.*0	// *0 = (string)"SystemConfig"
+00000046 gpd %4, %3.*1	// *1 = (string)"multiLangRenderMsgwinClass"
+00000050 add %2, %4
+00000053 gpd %5, %-2.*4	// *4 = (string)"Exception"
+00000057 new %1, %5(%2)
+00000062 throw %1
+00000064 tt %-3
+00000066 jnf 000000104
+00000068 gpd %1, %-2.*5	// *5 = (string)"RenderMsgwinPlugin"
+00000072 spds %1.*6, %-3	// *6 = (string)"MsgwinRender"
+00000076 gpd %1, %-2.*7	// *7 = (string)"kag"
+00000080 typeofd %2, %1.*8	// *8 = (string)"renderMsgwinPlugin"
+00000084 const %3, *9	// *9 = (string)"Object"
+00000087 ceq %2, %3
+00000090 jnf 000000104
+00000092 gpd %1, %-2.*7	// *7 = (string)"kag"
+00000096 gpd %2, %1.*8	// *8 = (string)"renderMsgwinPlugin"
+00000100 spds %2.*6, %-3	// *6 = (string)"MsgwinRender"
+00000104 srv %0
+00000106 ret
+
+(class) MultiLangMsgwinRender 0x00000000025C0580
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MultiLangMsgwinRender"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"MsgwinRender"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000024 gpd %2, %1.*3	// *3 = (string)"multiLangRenderMsgwinCutLF"
+00000028 spds %-1.*4, %2	// *4 = (string)"_dualCutLF"
+00000032 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000036 gpd %2, %1.*5	// *5 = (string)"multiLangRenderMsgwinAutoScale"
+00000040 spds %-1.*6, %2	// *6 = (string)"_dualAutoScale"
+00000044 gpd %1, %-2.*2	// *2 = (string)"SystemConfig"
+00000048 gpd %2, %1.*7	// *7 = (string)"multiLangRenderMsgwinExpandRect"
+00000052 spds %-1.*8, %2	// *8 = (string)"_dualOverRect"
+00000056 spds %-1.*9, %0	// *9 = (string)"_renderWidth"
+00000060 spds %-1.*10, %0	// *10 = (string)"_renderHeight"
+00000064 spds %-1.*11, %0	// *11 = (string)"_orig_ox"
+00000068 spds %-1.*12, %0	// *12 = (string)"_orig_oy"
+00000072 global %1
+00000074 gpd %2, %1.*13	// *13 = (string)"RegExp"
+00000078 const %3, *14	// *14 = (string)"//g/(\\\\n|\\n)"
+00000081 new %1, %2()
+00000085 calld %0, %1.*15(%3)	// *15 = (string)"_compile"
+00000091 spds %-1.*16, %1	// *16 = (string)"_cutLF"
+00000095 const %1, *17	// *17 = (int)1
+00000098 spds %-1.*18, %1	// *18 = (string)"_reFontScale"
+00000102 srv %0
+00000104 ret
+
+(super class getter proxy) MultiLangMsgwinRender 0x00000000025C0850
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"MsgwinRender"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) MultiLangMsgwinRender 0x00000000025C0B20
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %0, %2.*0(...)	// *0 = (string)"MsgwinRender"
+00000011 srv %0
+00000013 ret
+
+(function) finalize 0x00000000025C1930
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"finalize"
+00000011 srv %0
+00000013 ret
+
+(function) setRenderSize 0x00000000025C1C00
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"_renderWidth"
+00000004 spd %-2.*1, %-4	// *1 = (string)"_renderHeight"
+00000008 global %1
+00000010 gpd %2, %1.*2	// *2 = (string)"MsgwinRender"
+00000014 calld %3, %2.*3(...)	// *3 = (string)"setRenderSize"
+00000019 srv %3
+00000021 ret
+00000022 srv %0
+00000024 ret
+
+(function) init 0x00000000025BF1D0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %3, %2.*1(...)	// *1 = (string)"init"
+00000011 cp %-3, %3
+00000014 gpd %1, %-2.*2	// *2 = (string)"ox"
+00000018 spd %-2.*3, %1	// *3 = (string)"_orig_ox"
+00000022 gpd %1, %-2.*4	// *4 = (string)"oy"
+00000026 spd %-2.*5, %1	// *5 = (string)"_orig_oy"
+00000030 srv %-3
+00000032 ret
+00000033 srv %0
+00000035 ret
+
+(function) _internalRenderLang 0x00000000025BF4A0
+
+#(1) Bytecode.
+00000000 tt %-9
+00000002 jnf 000000029
+00000004 gpd %1, %-2.*0	// *0 = (string)"_dualCutLF"
+00000008 tt %1
+00000010 jnf 000000029
+00000012 gpd %1, %-2.*1	// *1 = (string)"_cutLF"
+00000016 const %2, *2	// *2 = (string)""
+00000019 calld %3, %-3.*3(%1, %2)	// *3 = (string)"replace"
+00000026 cp %-3, %3
+00000029 global %1
+00000031 gpd %2, %1.*4	// *4 = (string)"MsgwinRender"
+00000035 calld %3, %2.*5(%-3, %-4, %-5, %-6, %-7, %-8, %-9)	// *5 = (string)"_internalRenderLang"
+00000047 srv %3
+00000049 ret
+00000050 srv %0
+00000052 ret
+
+(function) _resetRenderArea 0x00000000025CA8E0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_orig_ox"
+00000004 spd %-2.*1, %1	// *1 = (string)"ox"
+00000008 gpd %1, %-2.*2	// *2 = (string)"_orig_oy"
+00000012 spd %-2.*3, %1	// *3 = (string)"oy"
+00000016 gpd %1, %-2.*4	// *4 = (string)"_TextRenderBase"
+00000020 calld %0, %1.*5()	// *5 = (string)"clear"
+00000025 srv %0
+00000027 ret
+
+(function) render 0x00000000025CD310
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)0
+00000008 cp %-4, %1
+00000011 cdeq %-5, %0
+00000014 jnf 000000022
+00000016 const %1, *0	// *0 = (int)0
+00000019 cp %-5, %1
+00000022 gpd %1, %-2.*1	// *1 = (string)"_dualAutoScale"
+00000026 tf %1
+00000028 jnf 000000044
+00000030 global %1
+00000032 gpd %2, %1.*2	// *2 = (string)"MsgwinRender"
+00000036 calld %3, %2.*3(...)	// *3 = (string)"render"
+00000041 srv %3
+00000043 ret
+00000044 const %1, *4	// *4 = (int)1
+00000047 spd %-2.*5, %1	// *5 = (string)"_reFontScale"
+00000051 calld %0, %-2.*6()	// *6 = (string)"_resetRenderArea"
+00000056 calld %1, %-2.*7(...)	// *7 = (string)"_internalRender"
+00000061 tt %1
+00000063 jnf 000000290
+00000065 const %1, *8	// *8 = (object)(object 0x00000000025CCD70:0x0000000000000000)
+00000068 cp %-6, %1
+00000071 cl %-7
+00000073 typeofd %1, %-6.*9	// *9 = (string)"overRect"
+00000077 const %2, *10	// *10 = (string)"undefined"
+00000080 ceq %1, %2
+00000083 jnf 000000138
+00000085 gpd %1, %-2.*11	// *11 = (string)"_dualOverRect"
+00000089 tt %1
+00000091 jnf 000000106
+00000093 gpd %3, %-2.*11	// *11 = (string)"_dualOverRect"
+00000097 call %2, %-6(%3*)
+00000104 jmp 000000109
+00000106 const %2, *12	// *12 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000109 spde %-6.*9, %2	// *9 = (string)"overRect"
+00000113 cp %-7, %2
+00000116 tt %-7
+00000118 jnf 000000145
+00000120 const %1, *13	// *13 = (string)"renderLang:overRect"
+00000123 calld %2, %-2.*14(%-7)	// *14 = (string)"getPrint"
+00000129 calld %0, %-2.*15(%1, %2)	// *15 = (string)"dm"
+00000136 jmp 000000145
+00000138 gpd %1, %-6.*9	// *9 = (string)"overRect"
+00000142 cp %-7, %1
+00000145 tt %-7
+00000147 jnf 000000178
+00000149 gpd %1, %-7.*16	// *16 = (string)"oy"
+00000153 spd %-2.*16, %1	// *16 = (string)"oy"
+00000157 gpd %1, %-2.*17	// *17 = (string)"_renderWidth"
+00000161 gpd %2, %-7.*18	// *18 = (string)"h"
+00000165 global %3
+00000167 gpd %4, %3.*2	// *2 = (string)"MsgwinRender"
+00000171 calld %0, %4.*19(%1, %2)	// *19 = (string)"setRenderSize"
+00000178 gpd %1, %-2.*20	// *20 = (string)"fontScale"
+00000182 gpd %2, %-2.*21	// *21 = (string)"_TextRenderBase"
+00000186 gpd %3, %2.*22	// *22 = (string)"defaultFontSize"
+00000190 mul %1, %3
+00000193 int %1
+00000195 cp %-8, %1
+00000198 const %1, *12	// *12 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000201 const %2, *23	// *23 = (int)-1
+00000204 calld %3, %-2.*24(%1, %2, %-8)	// *24 = (string)"_getAutoShrinkSize"
+00000212 cp %-9, %3
+00000215 gpd %1, %-2.*21	// *21 = (string)"_TextRenderBase"
+00000219 calld %0, %1.*25()	// *25 = (string)"clear"
+00000224 const %1, *26	// *26 = (int)0
+00000227 cp %-10, %1
+00000230 calld %1, %-2.*7(...)	// *7 = (string)"_internalRender"
+00000235 tt %1
+00000237 jnf 000000290
+00000239 calld %1, %-2.*24(%-9, %-10, %-8)	// *24 = (string)"_getAutoShrinkSize"
+00000247 cp %-11, %1
+00000250 cdeq %-11, %0
+00000253 jnf 000000257
+00000255 jmp 000000290
+00000257 const %1, *27	// *27 = (string)"renderRetry"
+00000260 calld %0, %-2.*15(%1, %-11)	// *15 = (string)"dm"
+00000267 cp %1, %-11
+00000270 div %1, %-8
+00000273 spd %-2.*28, %1	// *28 = (string)"_reFontScale"
+00000277 gpd %1, %-2.*21	// *21 = (string)"_TextRenderBase"
+00000281 calld %0, %1.*25()	// *25 = (string)"clear"
+00000286 inc %-10
+00000288 jmp 000000230
+00000290 srv %0
+00000292 ret
+
+(function) _ 0x00000000025CCD70
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"uiload"
+00000006 cp %-5, %2
+00000009 global %1
+00000011 gpd %2, %1.*1	// *1 = (string)"Dictionary"
+00000015 new %1, %2()
+00000019 const %2, *2	// *2 = (string)"storage"
+00000022 spis %1.%2, %-3
+00000026 calld %2, %-2.*3(%1)	// *3 = (string)"uiloadParse"
+00000032 cp %-6, %2
+00000035 gpd %1, %-6.*4	// *4 = (string)"result"
+00000039 calld %2, %-2.*5(%-4, %1)	// *5 = (string)"uiloadGetRect"
+00000046 srv %2
+00000048 ret
+00000049 srv %0
+00000051 ret
+
+(function) _internalRender 0x00000000025C9DA0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"render"
+00000011 global %1
+00000013 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000017 calld %0, %2.*2()	// *2 = (string)"done"
+00000022 gpd %1, %-2.*3	// *3 = (string)"renderOver"
+00000026 srv %1
+00000028 ret
+00000029 srv %0
+00000031 ret
+
+(function) getMainLangFontScale 0x00000000025CBC90
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %3, %2.*1(...)	// *1 = (string)"getMainLangFontScale"
+00000011 gpd %4, %-2.*2	// *2 = (string)"_reFontScale"
+00000015 mul %3, %4
+00000018 srv %3
+00000020 ret
+00000021 srv %0
+00000023 ret
+
+(function) getSubLangFontScale 0x00000000025CD040
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MsgwinRender"
+00000006 calld %3, %2.*1(...)	// *1 = (string)"getSubLangFontScale"
+00000011 gpd %4, %-2.*2	// *2 = (string)"_reFontScale"
+00000015 mul %3, %4
+00000018 srv %3
+00000020 ret
+00000021 srv %0
+00000023 ret
+
+(function) _getAutoShrinkSize 0x00000000025CD5E0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (int)0
+00000003 clt %-4, %1
+00000006 jnf 000000010
+00000008 jmp 000000047
+00000010 cp %1, %-4
+00000013 const %2, *1	// *1 = (int)1
+00000016 add %1, %2
+00000019 const %3, *2	// *2 = (int)2
+00000022 mul %1, %3
+00000025 sub %-5, %1
+00000028 const %1, *3	// *3 = (int)10
+00000031 clt %-5, %1
+00000034 jnf 000000041
+00000036 cp %2, %0
+00000039 jmp 000000044
+00000041 cp %2, %-5
+00000044 srv %2
+00000046 ret
+00000047 srv %0
+00000049 ret

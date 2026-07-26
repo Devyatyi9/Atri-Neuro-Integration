@@ -1,0 +1,851 @@
+
+(top level script) global 0x0000000000FFEC80
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (object)(object 0x0000000000871F70:0x0000000000000000)
+00000003 spds %-1.*1, %1	// *1 = (string)"MyNameInputBase"
+00000007 const %1, *2	// *2 = (object)(object 0x0000000000882050:0x0000000000000000)
+00000010 spds %-1.*3, %1	// *3 = (string)"MyNameInputDialog"
+00000014 const %1, *38	// *38 = (object)(object 0x0000000000888120:0x0000000000000000)
+00000017 chgthis %1, %-1
+00000020 spds %-1.*39, %1	// *39 = (string)"storeRecName"
+00000024 const %1, *40	// *40 = (object)(object 0x00000000008886C0:0x0000000000000000)
+00000027 chgthis %1, %-1
+00000030 spds %-1.*41, %1	// *41 = (string)"initFamilyName"
+00000034 const %1, *42	// *42 = (object)(object 0x0000000000888990:0x0000000000000000)
+00000037 chgthis %1, %-1
+00000040 spds %-1.*43, %1	// *43 = (string)"dispNameFilter"
+00000044 cl %1
+00000046 gpd %1, %-2.*1	// *1 = (string)"MyNameInputBase"
+00000050 spde %1.*4, %0	// *4 = (string)"Instance"
+00000054 const %2, *5	// *5 = (string)"ngword.csv"
+00000057 spde %1.*6, %2	// *6 = (string)"NGWordFile"
+00000061 spde %1.*7, %0	// *7 = (string)"NGWords"
+00000065 global %2
+00000067 gpd %3, %2.*8	// *8 = (string)"Dictionary"
+00000071 new %2, %3()
+00000075 const %3, *9	// *9 = (string)"fontheight"
+00000078 const %4, *10	// *10 = (int)20
+00000081 spis %2.%3, %4
+00000085 const %3, *11	// *11 = (string)"fontface"
+00000088 const %4, *12	// *12 = (string)" "
+00000091 spis %2.%3, %4
+00000095 const %3, *13	// *13 = (string)"color"
+00000098 const %4, *14	// *14 = (int)0
+00000101 spis %2.%3, %4
+00000105 const %3, *15	// *15 = (string)"bgcolor"
+00000108 const %4, *16	// *16 = (int)16777215
+00000111 spis %2.%3, %4
+00000115 const %3, *17	// *17 = (string)"opacity"
+00000118 const %4, *14	// *14 = (int)0
+00000121 spis %2.%3, %4
+00000125 const %3, *18	// *18 = (string)"maxchars"
+00000128 const %4, *19	// *19 = (int)3
+00000131 spis %2.%3, %4
+00000135 const %3, *20	// *20 = (string)"noborder"
+00000138 const %4, *21	// *21 = (int)1
+00000141 spis %2.%3, %4
+00000145 spde %1.*22, %2	// *22 = (string)"CommonEditStyle"
+00000149 global %2
+00000151 gpd %3, %2.*8	// *8 = (string)"Dictionary"
+00000155 new %2, %3()
+00000159 const %3, *23	// *23 = (string)"name"
+00000162 global %4
+00000164 gpd %5, %4.*8	// *8 = (string)"Dictionary"
+00000168 new %4, %5()
+00000172 const %5, *24	// *24 = (string)"uiname"
+00000175 const %6, *25	// *25 = (string)"base.name"
+00000178 spis %4.%5, %6
+00000182 const %5, *26	// *26 = (string)"value"
+00000185 const %6, *27	// *27 = (string)"sf.name"
+00000188 spis %4.%5, %6
+00000192 const %5, *28	// *28 = (string)"initial"
+00000195 const %6, *29	// *29 = (string)""
+00000198 spis %4.%5, %6
+00000202 const %5, *30	// *30 = (string)"edit"
+00000205 global %6
+00000207 gpd %7, %6.*31	// *31 = (string)"Dictionary"
+00000211 new %6, %7()
+00000215 spis %4.%5, %6
+00000219 spis %2.%3, %4
+00000223 const %3, *32	// *32 = (string)"family"
+00000226 global %4
+00000228 gpd %5, %4.*31	// *31 = (string)"Dictionary"
+00000232 new %4, %5()
+00000236 const %5, *24	// *24 = (string)"uiname"
+00000239 const %6, *33	// *33 = (string)"base.family"
+00000242 spis %4.%5, %6
+00000246 const %5, *26	// *26 = (string)"value"
+00000249 const %6, *34	// *34 = (string)"sf.family"
+00000252 spis %4.%5, %6
+00000256 const %5, *28	// *28 = (string)"initial"
+00000259 const %6, *35	// *35 = (string)""
+00000262 spis %4.%5, %6
+00000266 const %5, *30	// *30 = (string)"edit"
+00000269 global %6
+00000271 gpd %7, %6.*31	// *31 = (string)"Dictionary"
+00000275 new %6, %7()
+00000279 spis %4.%5, %6
+00000283 spis %2.%3, %4
+00000287 spde %1.*36, %2	// *36 = (string)"InputAreas"
+00000291 spde %1.*37, %0	// *37 = (string)"InputList"
+00000295 srv %0
+00000297 ret
+
+(class) MyNameInputBase 0x0000000000871F70
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyNameInputBase"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 regmember
+00000009 global %1
+00000011 gpd %2, %1.*0	// *0 = (string)"MyNameInputBase"
+00000015 spds %-1.*1, %2	// *1 = (string)"ThisClass"
+00000019 spds %-1.*2, %0	// *2 = (string)"_owner"
+00000023 global %1
+00000025 gpd %2, %1.*3	// *3 = (string)"Array"
+00000029 new %1, %2()
+00000033 const %2, *4	// *4 = (int)0
+00000036 spds %-1.*5, %1	// *5 = (string)"Names"
+00000040 global %1
+00000042 gpd %2, %1.*6	// *6 = (string)"Dictionary"
+00000046 new %1, %2()
+00000050 spds %-1.*7, %1	// *7 = (string)"Values"
+00000054 srv %0
+00000056 ret
+
+(function) MyNameInputBase 0x0000000000872F00
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jf 000000010
+00000005 cp %1, %-3
+00000008 jmp 000000013
+00000010 cp %1, %-1
+00000013 spd %-2.*0, %1	// *0 = (string)"_owner"
+00000017 gpd %1, %-2.*1	// *1 = (string)"ThisClass"
+00000021 gpd %2, %1.*2	// *2 = (string)"NGWords"
+00000025 cdeq %2, %0
+00000028 jnf 000000131
+00000030 global %2
+00000032 gpd %3, %2.*3	// *3 = (string)"Array"
+00000036 new %2, %3()
+00000040 const %3, *4	// *4 = (int)0
+00000043 cp %-4, %2
+00000046 gpd %2, %1.*5	// *5 = (string)"NGWordFile"
+00000050 calld %0, %-4.*6(%2)	// *6 = (string)"load"
+00000056 const %2, *4	// *4 = (int)0
+00000059 cp %-5, %2
+00000062 gpd %2, %-4.*7	// *7 = (string)"count"
+00000066 clt %-5, %2
+00000069 jnf 000000114
+00000071 gpi %2, %-4.%-5
+00000075 calld %3, %2.*8()	// *8 = (string)"trim"
+00000080 cp %-6, %3
+00000083 const %2, *4	// *4 = (int)0
+00000086 calld %3, %-6.*9(%2)	// *9 = (string)"charAt"
+00000092 const %4, *10	// *10 = (string)"#"
+00000095 ceq %3, %4
+00000098 jnf 000000106
+00000100 const %2, *11	// *11 = (string)""
+00000103 cp %-6, %2
+00000106 spie %-4.%-5, %-6
+00000110 inc %-5
+00000112 jmp 000000062
+00000114 const %2, *11	// *11 = (string)""
+00000117 const %3, *12	// *12 = (int)1
+00000120 calld %0, %-4.*13(%2, %3)	// *13 = (string)"remove"
+00000127 spde %1.*2, %-4	// *2 = (string)"NGWords"
+00000131 spde %1.*14, %-1	// *14 = (string)"Instance"
+00000135 global %2
+00000137 gpd %3, %2.*3	// *3 = (string)"Array"
+00000141 new %2, %3()
+00000145 const %3, *4	// *4 = (int)0
+00000148 cp %-4, %2
+00000151 gpd %2, %-2.*1	// *1 = (string)"ThisClass"
+00000155 gpd %3, %2.*15	// *15 = (string)"InputList"
+00000159 cdeq %3, %0
+00000162 setf %3
+00000164 cp %-5, %3
+00000167 gpd %2, %1.*16	// *16 = (string)"InputAreas"
+00000171 calld %0, %-4.*17(%2)	// *17 = (string)"assign"
+00000177 const %2, *4	// *4 = (int)0
+00000180 cp %-6, %2
+00000183 gpd %2, %-4.*7	// *7 = (string)"count"
+00000187 clt %-6, %2
+00000190 jnf 000000252
+00000192 gpi %2, %-4.%-6
+00000196 cp %-7, %2
+00000199 cp %2, %-6
+00000202 const %3, *12	// *12 = (int)1
+00000205 add %2, %3
+00000208 gpi %4, %-4.%2
+00000212 cp %-8, %4
+00000215 const %2, *11	// *11 = (string)""
+00000218 ceq %-7, %2
+00000221 jf 000000244
+00000223 cdeq %-8, %0
+00000226 jnf 000000230
+00000228 jmp 000000244
+00000230 tt %-5
+00000232 jnf 000000244
+00000234 gpd %2, %-2.*18	// *18 = (string)"Names"
+00000238 calld %0, %2.*19(%-7)	// *19 = (string)"add"
+00000244 const %2, *20	// *20 = (int)2
+00000247 add %-6, %2
+00000250 jmp 000000183
+00000252 tf %-5
+00000254 jnf 000000274
+00000256 gpd %2, %-2.*1	// *1 = (string)"ThisClass"
+00000260 gpd %3, %2.*15	// *15 = (string)"InputList"
+00000264 gpd %4, %-2.*18	// *18 = (string)"Names"
+00000268 calld %0, %4.*17(%3)	// *17 = (string)"assign"
+00000274 calld %0, %-2.*21()	// *21 = (string)"loadNameVariables"
+00000279 srv %0
+00000281 ret
+
+(function) finalize 0x0000000000873800
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ThisClass"
+00000004 spde %1.*1, %0	// *1 = (string)"Instance"
+00000008 srv %0
+00000010 ret
+
+(function) foreachNames 0x0000000000873FD0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ThisClass"
+00000004 gpd %2, %1.*1	// *1 = (string)"InputAreas"
+00000008 cp %-4, %2
+00000011 const %1, *2	// *2 = (int)0
+00000014 cp %-5, %1
+00000017 gpd %1, %-2.*3	// *3 = (string)"Names"
+00000021 gpd %2, %1.*4	// *4 = (string)"count"
+00000025 clt %-5, %2
+00000028 jnf 000000070
+00000030 gpd %1, %-2.*3	// *3 = (string)"Names"
+00000034 gpi %2, %1.%-5
+00000038 cp %-6, %2
+00000041 gpd %1, %-2.*5	// *5 = (string)"Values"
+00000045 gpi %2, %1.%-6
+00000049 gpi %3, %-4.%-6
+00000053 call %0, %-3(%-6, %2, %3, *)
+00000066 inc %-5
+00000068 jmp 000000017
+00000070 srv %0
+00000072 ret
+
+(function) loadNameVariables 0x0000000000874920
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_loadCallback"
+00000004 calld %0, %-2.*1(%1)	// *1 = (string)"foreachNames"
+00000010 srv %0
+00000012 ret
+
+(function) saveNameVariables 0x0000000000875A30
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_saveCallback"
+00000004 calld %0, %-2.*1(%1)	// *1 = (string)"foreachNames"
+00000010 srv %0
+00000012 ret
+
+(function) _loadCallback 0x0000000000876120
+
+#(1) Bytecode.
+00000000 gpd %1, %-5.*0	// *0 = (string)"value"
+00000004 gpd %2, %-2.*1	// *1 = (string)"Scripts"
+00000008 calld %3, %2.*2(%1)	// *2 = (string)"eval"
+00000014 gpd %4, %-2.*3	// *3 = (string)"Values"
+00000018 spie %4.%-3, %3
+00000022 srv %0
+00000024 ret
+
+(function) _saveCallback 0x0000000000876A20
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"("
+00000003 gpd %2, %-5.*1	// *1 = (string)"value"
+00000007 str %2
+00000009 add %1, %2
+00000012 const %3, *2	// *2 = (string)") = \""
+00000015 add %1, %3
+00000018 cp %4, %-4
+00000021 str %4
+00000023 add %1, %4
+00000026 const %5, *3	// *3 = (string)"\""
+00000029 add %1, %5
+00000032 gpd %6, %-2.*4	// *4 = (string)"Scripts"
+00000036 calld %0, %6.*5(%1)	// *5 = (string)"eval"
+00000042 srv %0
+00000044 ret
+
+(function) check 0x0000000000878D00
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"Array"
+00000006 new %1, %2()
+00000010 const %2, *1	// *1 = (int)0
+00000013 const %3, *2	// *2 = (int)1
+00000016 spis %1.%2, %3
+00000020 inc %2
+00000022 cp %-3, %1
+00000025 const %1, *3	// *3 = (object)(object 0x0000000000879280:0x0000000000000000)
+00000028 chgthis %1, %-1
+00000031 calld %0, %-2.*4(%1, %-3)	// *4 = (string)"foreachNames"
+00000038 const %1, *1	// *1 = (int)0
+00000041 gpi %2, %-3.%1
+00000045 srv %2
+00000047 ret
+00000048 srv %0
+00000050 ret
+
+(function expression) (anonymous) 0x0000000000879280
+
+#(1) Bytecode.
+00000000 cp %1, %-4
+00000003 typeof %1
+00000005 const %2, *0	// *0 = (string)"String"
+00000008 cdeq %1, %2
+00000011 jnf 000000028
+00000013 calld %3, %-4.*1()	// *1 = (string)"trim"
+00000018 global %4
+00000020 calld %5, %4.*2(%3)	// *2 = (string)"han2zen"
+00000026 jmp 000000034
+00000028 const %3, *3	// *3 = (string)""
+00000031 cp %5, %3
+00000034 cp %-4, %5
+00000037 const %1, *3	// *3 = (string)""
+00000040 ceq %-4, %1
+00000043 jf 000000055
+00000045 calld %2, %-2.*4(%-4)	// *4 = (string)"isNGWord"
+00000051 tt %2
+00000053 jnf 000000085
+00000055 const %1, *5	// *5 = (int)0
+00000058 const %2, *5	// *5 = (int)0
+00000061 spie %-6.%2, %1
+00000065 const %1, *3	// *3 = (string)""
+00000068 ceq %-4, %1
+00000071 jnf 000000079
+00000073 gpd %2, %-5.*6	// *6 = (string)"initial"
+00000077 jmp 000000082
+00000079 const %2, *3	// *3 = (string)""
+00000082 cp %-4, %2
+00000085 gpd %1, %-2.*7	// *7 = (string)"Values"
+00000089 spie %1.%-3, %-4
+00000093 srv %0
+00000095 ret
+
+(function) isNGWord 0x0000000000879F00
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"ThisClass"
+00000004 gpd %2, %1.*1	// *1 = (string)"NGWords"
+00000008 cp %-4, %2
+00000011 const %1, *2	// *2 = (int)0
+00000014 cp %-5, %1
+00000017 gpd %1, %-4.*3	// *3 = (string)"count"
+00000021 clt %-5, %1
+00000024 jnf 000000054
+00000026 gpi %1, %-4.%-5
+00000030 calld %2, %-3.*4(%1)	// *4 = (string)"indexOf"
+00000036 const %3, *2	// *2 = (int)0
+00000039 clt %2, %3
+00000042 jf 000000050
+00000044 const %1, *5	// *5 = (int)1
+00000047 srv %1
+00000049 ret
+00000050 inc %-5
+00000052 jmp 000000017
+00000054 const %1, *2	// *2 = (int)0
+00000057 srv %1
+00000059 ret
+00000060 srv %0
+00000062 ret
+
+(function) getValueExpression 0x000000000087A250
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyNameInputBase.Instance.Values."
+00000003 add %1, %-3
+00000006 srv %1
+00000008 ret
+00000009 srv %0
+00000011 ret
+
+(function) click 0x000000000087A790
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 const %2, *0	// *0 = (string)"default"
+00000006 ceq %1, %2
+00000009 jnf 000000024
+00000011 const %2, *1	// *1 = (string)"onDefaultClick"
+00000014 calld %0, %-2.*2(%2)	// *2 = (string)"action"
+00000020 jmp 000000095
+00000022 jmp 000000032
+00000024 const %2, *3	// *3 = (string)"cancel"
+00000027 ceq %1, %2
+00000030 jnf 000000045
+00000032 const %2, *4	// *4 = (string)"onCancelClick"
+00000035 calld %0, %-2.*2(%2)	// *2 = (string)"action"
+00000041 jmp 000000095
+00000043 jmp 000000053
+00000045 const %2, *5	// *5 = (string)"ok"
+00000048 ceq %1, %2
+00000051 jnf 000000095
+00000053 const %2, *6	// *6 = (string)"onOkClick"
+00000056 calld %0, %-2.*2(%2)	// *2 = (string)"action"
+00000062 calld %2, %-2.*7()	// *7 = (string)"check"
+00000067 tf %2
+00000069 jnf 000000082
+00000071 const %2, *8	// *8 = (string)"onIncomplete"
+00000074 calld %0, %-2.*2(%2)	// *2 = (string)"action"
+00000080 jmp 000000095
+00000082 const %2, *9	// *9 = (string)"onComplete"
+00000085 calld %0, %-2.*2(%2)	// *2 = (string)"action"
+00000091 jmp 000000095
+00000093 jmp 000000095
+00000095 srv %0
+00000097 ret
+
+(function) addEditLayers 0x000000000087BA70
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (object)(object 0x000000000087C0B0:0x0000000000000000)
+00000003 chgthis %1, %-1
+00000006 calld %0, %-2.*1(%1, %-3, %-4)	// *1 = (string)"foreachNames"
+00000014 srv %0
+00000016 ret
+
+(function expression) (anonymous) 0x000000000087C0B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-5.*0	// *0 = (string)"uiname"
+00000004 const %2, *1	// *1 = (string)""
+00000007 ceq %1, %2
+00000010 jnf 000000015
+00000012 srv %0
+00000014 ret
+00000015 gpd %1, %-5.*0	// *0 = (string)"uiname"
+00000019 calld %2, %-2.*2(%1, %-6)	// *2 = (string)"uiloadGetRect"
+00000026 cp %-8, %2
+00000029 cp %1, %-8
+00000032 const %2, *3	// *3 = (string)"."
+00000035 gpd %3, %-5.*0	// *0 = (string)"uiname"
+00000039 calld %4, %3.*4(%2)	// *4 = (string)"indexOf"
+00000045 const %5, *5	// *5 = (int)0
+00000048 clt %4, %5
+00000051 jf 000000069
+00000053 gpd %2, %1.*6	// *6 = (string)"ox"
+00000057 spde %1.*7, %2	// *7 = (string)"x"
+00000061 gpd %3, %1.*8	// *8 = (string)"oy"
+00000065 spde %1.*9, %3	// *9 = (string)"y"
+00000069 spde %1.*10, %-3	// *10 = (string)"name"
+00000073 gpd %2, %1.*11	// *11 = (string)"w"
+00000077 num %2
+00000079 spde %1.*12, %2	// *12 = (string)"length"
+00000083 calld %2, %-2.*13(%-3)	// *13 = (string)"getValueExpression"
+00000089 spde %1.*14, %2	// *14 = (string)"exp"
+00000093 deld %0, %1.*6	// *6 = (string)"ox"
+00000097 deld %0, %1.*8	// *8 = (string)"oy"
+00000101 deld %0, %1.*11	// *11 = (string)"w"
+00000105 deld %0, %1.*15	// *15 = (string)"h"
+00000109 gpd %1, %-2.*16	// *16 = (string)"ThisClass"
+00000113 gpd %2, %1.*17	// *17 = (string)"CommonEditStyle"
+00000117 const %3, *5	// *5 = (int)0
+00000120 gpd %4, %-2.*18	// *18 = (string)"Dictionary"
+00000124 gpd %5, %4.*19	// *19 = (string)"assign"
+00000128 chgthis %5, %-8
+00000131 call %0, %5(%2, %3)
+00000137 gpd %1, %-5.*20	// *20 = (string)"edit"
+00000141 cdeq %1, %0
+00000144 jf 000000170
+00000146 gpd %2, %-5.*20	// *20 = (string)"edit"
+00000150 const %3, *5	// *5 = (int)0
+00000153 gpd %4, %-2.*18	// *18 = (string)"Dictionary"
+00000157 gpd %5, %4.*19	// *19 = (string)"assign"
+00000161 chgthis %5, %-8
+00000164 call %0, %5(%2, %3)
+00000170 call %1, %-7(%-8)
+00000175 cp %-9, %1
+00000178 cdeq %-9, %0
+00000181 jf 000000212
+00000183 cp %1, %-9
+00000186 gpd %2, %-2.*21	// *21 = (string)"_owner"
+00000190 spde %1.*21, %2	// *21 = (string)"_owner"
+00000194 gpd %2, %1.*22	// *22 = (string)"insertCharacter"
+00000198 spde %1.*23, %2	// *23 = (string)"origInsertCharacter"
+00000202 const %2, *24	// *24 = (object)(object 0x00000000008804B0:0x0000000000000000)
+00000205 chgthis %2, %-9
+00000208 spde %1.*22, %2	// *22 = (string)"insertCharacter"
+00000212 srv %0
+00000214 ret
+
+(function expression) (anonymous) 0x00000000008804B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"name"
+00000004 gpd %2, %-2.*1	// *1 = (string)"_owner"
+00000008 calld %3, %2.*2(%1, %-3)	// *2 = (string)"onInsertText"
+00000015 cp %-4, %3
+00000018 const %1, *3	// *3 = (string)""
+00000021 ceq %-4, %1
+00000024 jnf 000000029
+00000026 srv %0
+00000028 ret
+00000029 calld %0, %-2.*4(%-4)	// *4 = (string)"origInsertCharacter"
+00000035 srv %0
+00000037 ret
+
+(function) onDefaultClick 0x00000000008817E0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onCancelClick 0x0000000000883400
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onOkClick 0x00000000008828C0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onComplete 0x0000000000883130
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onIncomplete 0x0000000000881AB0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onInsertText 0x0000000000881D80
+
+#(1) Bytecode.
+00000000 srv %-4
+00000002 ret
+00000003 srv %0
+00000005 ret
+
+(function) action 0x0000000000882B90
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_owner"
+00000004 typeofi %2, %1.%-3
+00000008 const %3, *1	// *1 = (string)"undefined"
+00000011 ceq %2, %3
+00000014 jf 000000027
+00000016 gpd %1, %-2.*0	// *0 = (string)"_owner"
+00000020 calli %0, %1.%-3()
+00000025 jmp 000000041
+00000027 gpd %1, %-2.*0	// *0 = (string)"_owner"
+00000031 cdeq %1, %-1
+00000034 jf 000000041
+00000036 calli %0, %-1.%-3()
+00000041 srv %0
+00000043 ret
+
+(class) MyNameInputDialog 0x0000000000882050
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyNameInputDialog"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"PanelLayer"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"_base"
+00000024 srv %0
+00000026 ret
+
+(super class getter proxy) MyNameInputDialog 0x0000000000882E60
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"PanelLayer"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(property) Values 0x0000000000882320
+
+
+(property getter) (getter) 0x00000000008825F0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_base"
+00000004 gpd %2, %1.*1	// *1 = (string)"Values"
+00000008 srv %2
+00000010 ret
+00000011 srv %0
+00000013 ret
+
+(function) MyNameInputDialog 0x00000000008875E0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyNameInputLayer : "
+00000003 add %1, %-4
+00000006 global %2
+00000008 gpd %3, %2.*1	// *1 = (string)"PanelLayer"
+00000012 calld %0, %3.*1(%-3, %1, %-5)	// *1 = (string)"PanelLayer"
+00000020 gpd %2, %-2.*2	// *2 = (string)"MyNameInputBase"
+00000024 new %1, %2(%-1)
+00000029 spd %-2.*3, %1	// *3 = (string)"_base"
+00000033 calld %0, %-2.*4(%-5)	// *4 = (string)"init"
+00000039 srv %0
+00000041 ret
+
+(function) init 0x00000000008883F0
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(%-3)	// *0 = (string)"uiload"
+00000006 gpd %2, %-2.*1	// *1 = (string)"addEdit"
+00000010 gpd %3, %-2.*2	// *2 = (string)"_base"
+00000014 calld %0, %3.*3(%1, %2)	// *3 = (string)"addEditLayers"
+00000021 srv %0
+00000023 ret
+
+(function) finalize 0x0000000000886AA0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_base"
+00000004 cdeq %1, %0
+00000007 jf 000000025
+00000009 gpd %2, %-2.*0	// *0 = (string)"_base"
+00000013 chkinv %2
+00000015 tf %2
+00000017 jf 000000025
+00000019 gpd %3, %-2.*0	// *0 = (string)"_base"
+00000023 inv %3
+00000025 global %1
+00000027 gpd %2, %1.*1	// *1 = (string)"PanelLayer"
+00000031 calld %0, %2.*2(...)	// *2 = (string)"finalize"
+00000036 srv %0
+00000038 ret
+
+(function) addEdit 0x0000000000886D70
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"PanelLayer"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"addEdit"
+00000011 gpd %1, %-2.*2	// *2 = (string)"links"
+00000015 gpd %2, %-2.*3	// *3 = (string)"numLinks"
+00000019 const %3, *4	// *4 = (int)1
+00000022 sub %2, %3
+00000025 gpi %4, %1.%2
+00000029 gpd %5, %4.*5	// *5 = (string)"object"
+00000033 srv %5
+00000035 ret
+00000036 srv %0
+00000038 ret
+
+(function) save 0x00000000008867D0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_base"
+00000004 calld %0, %1.*1()	// *1 = (string)"saveNameVariables"
+00000009 srv %0
+00000011 ret
+
+(function) close 0x0000000000887E50
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)1
+00000008 cp %-3, %1
+00000011 tt %-3
+00000013 jnf 000000024
+00000015 const %1, *1	// *1 = (string)"nameinput.close"
+00000018 calld %0, %-2.*2(%1)	// *2 = (string)"playSysSE"
+00000024 global %1
+00000026 gpd %2, %1.*3	// *3 = (string)"PanelLayer"
+00000030 calld %0, %2.*4()	// *4 = (string)"close"
+00000035 srv %0
+00000037 ret
+
+(function) processLink 0x0000000000887040
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"PanelLayer"
+00000006 calld %0, %2.*1(%-3)	// *1 = (string)"processLink"
+00000012 gpd %1, %-2.*2	// *2 = (string)"links"
+00000016 gpi %2, %1.%-3
+00000020 cp %-4, %2
+00000023 cdeq %-4, %0
+00000026 jnf 000000031
+00000028 srv %0
+00000030 ret
+00000031 gpd %1, %-4.*3	// *3 = (string)"object"
+00000035 gpd %2, %1.*4	// *4 = (string)"name"
+00000039 calld %0, %-2.*5(%2)	// *5 = (string)"callClick"
+00000045 srv %0
+00000047 ret
+
+(function) callClick 0x0000000000888C60
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_base"
+00000004 calld %0, %1.*1(%-3)	// *1 = (string)"click"
+00000010 srv %0
+00000012 ret
+
+(function) onDefaultClick 0x0000000000888F30
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onCancelClick 0x0000000000886230
+
+#(1) Bytecode.
+00000000 calld %0, %-2.*0()	// *0 = (string)"close"
+00000005 srv %0
+00000007 ret
+
+(function) onOkClick 0x0000000000887310
+
+#(1) Bytecode.
+00000000 calld %0, %-2.*0()	// *0 = (string)"commit"
+00000005 srv %0
+00000007 ret
+
+(function) onComplete 0x00000000008878B0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"nameinput.ok"
+00000003 calld %0, %-2.*1(%1)	// *1 = (string)"playSysSE"
+00000009 calld %0, %-2.*2()	// *2 = (string)"save"
+00000014 const %1, *3	// *3 = (int)0
+00000017 calld %0, %-2.*4(%1)	// *4 = (string)"close"
+00000023 srv %0
+00000025 ret
+
+(function) onIncomplete 0x0000000000885C90
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"nameinput.error"
+00000003 calld %0, %-2.*1(%1)	// *1 = (string)"playSysSE"
+00000009 calld %0, %-2.*2()	// *2 = (string)"update"
+00000014 srv %0
+00000016 ret
+
+(function) onInsertText 0x0000000000887B80
+
+#(1) Bytecode.
+00000000 srv %-4
+00000002 ret
+00000003 srv %0
+00000005 ret
+
+(function) storeRecName 0x0000000000888120
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 gpd %2, %1.*1	// *1 = (string)"isRecollection"
+00000008 tt %2
+00000010 jnf 000000015
+00000012 srv %0
+00000014 ret
+00000015 gpd %1, %-2.*2	// *2 = (string)"f"
+00000019 gpd %2, %1.*3	// *3 = (string)"name"
+00000023 gpd %3, %-2.*4	// *4 = (string)"sf"
+00000027 const %4, *5	// *5 = (string)"name_"
+00000030 gpd %5, %-2.*0	// *0 = (string)"kag"
+00000034 gpd %6, %5.*6	// *6 = (string)"currentRecordName"
+00000038 add %4, %6
+00000041 spie %3.%4, %2
+00000045 gpd %1, %-2.*2	// *2 = (string)"f"
+00000049 gpd %2, %1.*7	// *7 = (string)"family"
+00000053 gpd %3, %-2.*4	// *4 = (string)"sf"
+00000057 const %4, *8	// *8 = (string)"family_"
+00000060 gpd %5, %-2.*0	// *0 = (string)"kag"
+00000064 gpd %6, %5.*6	// *6 = (string)"currentRecordName"
+00000068 add %4, %6
+00000071 spie %3.%4, %2
+00000075 srv %0
+00000077 ret
+
+(function) initFamilyName 0x00000000008886C0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"f"
+00000004 spde %1.*1, %-3	// *1 = (string)"family"
+00000008 gpd %1, %-2.*0	// *0 = (string)"f"
+00000012 spde %1.*2, %-4	// *2 = (string)"name"
+00000016 cp %1, %-3
+00000019 const %2, *3	// *3 = (string)""
+00000022 add %1, %2
+00000025 gpd %3, %-2.*0	// *0 = (string)"f"
+00000029 spde %3.*4, %1	// *4 = (string)"mother"
+00000033 cp %1, %-3
+00000036 const %2, *3	// *3 = (string)""
+00000039 add %1, %2
+00000042 gpd %3, %-2.*0	// *0 = (string)"f"
+00000046 spde %3.*5, %1	// *5 = (string)"father"
+00000050 cp %1, %-3
+00000053 add %1, %-4
+00000056 gpd %2, %-2.*0	// *0 = (string)"f"
+00000060 spde %2.*6, %1	// *6 = (string)"fullname"
+00000064 srv %0
+00000066 ret
+
+(function) dispNameFilter 0x0000000000888990
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 typeof %1
+00000005 const %2, *0	// *0 = (string)"String"
+00000008 cdeq %1, %2
+00000011 jnf 000000106
+00000013 calld %1, %-3.*1()	// *1 = (string)"trim"
+00000018 cp %-3, %1
+00000021 gpd %1, %-3.*2	// *2 = (string)"length"
+00000025 const %2, *3	// *3 = (int)1
+00000028 ceq %1, %2
+00000031 jnf 000000052
+00000033 const %2, *4	// *4 = (string)""
+00000036 add %2, %-3
+00000039 const %3, *4	// *4 = (string)""
+00000042 add %2, %3
+00000045 cp %-3, %2
+00000048 jmp 000000079
+00000050 jmp 000000060
+00000052 const %2, *5	// *5 = (int)2
+00000055 ceq %1, %2
+00000058 jnf 000000079
+00000060 const %2, *6	// *6 = (string)" "
+00000063 add %2, %-3
+00000066 const %3, *6	// *6 = (string)" "
+00000069 add %2, %3
+00000072 cp %-3, %2
+00000075 jmp 000000079
+00000077 jmp 000000079
+00000079 gpd %1, %-3.*2	// *2 = (string)"length"
+00000083 const %2, *7	// *7 = (int)0
+00000086 cgt %1, %2
+00000089 jnf 000000106
+00000091 const %3, *8	// *8 = (string)""
+00000094 add %3, %-3
+00000097 const %4, *9	// *9 = (string)""
+00000100 add %3, %4
+00000103 cp %-3, %3
+00000106 srv %-3
+00000108 ret
+00000109 srv %0
+00000111 ret

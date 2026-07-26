@@ -1,0 +1,1219 @@
+
+(top level script) global 0x00000000008715B0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (object)(object 0x0000000000872050:0x0000000000000000)
+00000003 spds %-1.*1, %1	// *1 = (string)"LangFileParser"
+00000007 cl %1
+00000009 srv %0
+00000011 ret
+
+(class) LangFileParser 0x0000000000872050
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"LangFileParser"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"KAGParser"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"kag"
+00000024 spds %-1.*3, %0	// *3 = (string)"lineModeObj"
+00000028 spds %-1.*4, %0	// *4 = (string)"textconv"
+00000032 spds %-1.*5, %0	// *5 = (string)"convertMode"
+00000036 global %1
+00000038 gpd %2, %1.*6	// *6 = (string)"Array"
+00000042 new %1, %2()
+00000046 const %2, *7	// *7 = (int)0
+00000049 spds %-1.*8, %1	// *8 = (string)"pendings"
+00000053 global %1
+00000055 gpd %2, %1.*6	// *6 = (string)"Array"
+00000059 new %1, %2()
+00000063 const %2, *7	// *7 = (int)0
+00000066 spds %-1.*9, %1	// *9 = (string)"nexttags"
+00000070 spds %-1.*10, %0	// *10 = (string)"currentLanguage"
+00000074 spds %-1.*11, %0	// *11 = (string)"currentStorage"
+00000078 spds %-1.*12, %0	// *12 = (string)"currentLabel"
+00000082 spds %-1.*13, %0	// *13 = (string)"languageList"
+00000086 spds %-1.*14, %0	// *14 = (string)"languageInfo"
+00000090 spds %-1.*15, %0	// *15 = (string)"languageDispMatch"
+00000094 srv %0
+00000096 ret
+
+(super class getter proxy) LangFileParser 0x0000000000872B80
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"KAGParser"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) LangFileParser 0x00000000008732C0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"KAGParser"
+00000006 calld %0, %2.*0()	// *0 = (string)"KAGParser"
+00000011 spde %-1.*1, %-3	// *1 = (string)"kag"
+00000015 const %2, *2	// *2 = (int)0
+00000018 gpd %3, %-2.*3	// *3 = (string)"LineModeEx"
+00000022 new %1, %3(%-1, %-1, %2)
+00000029 spd %-2.*4, %1	// *4 = (string)"lineModeObj"
+00000033 const %2, *5	// *5 = (int)1
+00000036 const %3, *5	// *5 = (int)1
+00000039 gpd %4, %-2.*6	// *6 = (string)"TagTextConverterEx"
+00000043 new %1, %4(%2, %3)
+00000049 spd %-2.*7, %1	// *7 = (string)"textconv"
+00000053 srv %0
+00000055 ret
+
+(function) finalize 0x0000000000873C60
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"textconv"
+00000004 inv %1
+00000006 global %1
+00000008 gpd %2, %1.*1	// *1 = (string)"KAGParser"
+00000012 calld %0, %2.*2()	// *2 = (string)"finalize"
+00000017 srv %0
+00000019 ret
+
+(function) dm 0x00000000008745D0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 calld %0, %1.*0(...)	// *0 = (string)"dm"
+00000007 srv %0
+00000009 ret
+
+(function) onTagExtract 0x00000000008754D0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onCheckVoice 0x0000000000875DD0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) onLineModeTagExtract 0x00000000008764C0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) error 0x00000000008797B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"error"
+00000009 srv %0
+00000011 ret
+
+(function) warning 0x0000000000879A80
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"warning"
+00000009 srv %0
+00000011 ret
+
+(function) errorCmd 0x000000000087A560
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"errorCmd"
+00000009 srv %0
+00000011 ret
+
+(function) forEachFunctionHook 0x000000000087A830
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) eval 0x000000000087AB00
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 calld %2, %1.*1(...)	// *1 = (string)"eval"
+00000009 srv %2
+00000011 ret
+00000012 srv %0
+00000014 ret
+
+(function) getNextTag 0x000000000087B750
+
+#(1) Bytecode.
+00000000 cl %-3
+00000002 entry 000000022, %1
+00000005 global %1
+00000007 gpd %2, %1.*0	// *0 = (string)"KAGParser"
+00000011 calld %3, %2.*1()	// *1 = (string)"getNextTag"
+00000016 cp %-3, %3
+00000019 extry
+00000020 jmp 000000074
+00000022 cp %-4, %1
+00000025 gpd %1, %-4.*2	// *2 = (string)"message"
+00000029 global %2
+00000031 gpd %3, %2.*3	// *3 = (string)"Dictionary"
+00000035 new %2, %3()
+00000039 const %3, *4	// *4 = (string)"file"
+00000042 gpd %4, %-2.*5	// *5 = (string)"curStorage"
+00000046 spis %2.%3, %4
+00000050 const %3, *6	// *6 = (string)"line"
+00000053 gpd %4, %-2.*7	// *7 = (string)"curLine"
+00000057 spis %2.%3, %4
+00000061 calld %0, %-2.*8(%1, %2)	// *8 = (string)"errorCmd"
+00000068 const %1, *9	// *9 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000071 cp %-3, %1
+00000074 const %1, *9	// *9 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000077 cdeq %-3, %1
+00000080 jf 000000002
+00000082 srv %-3
+00000084 ret
+00000085 srv %0
+00000087 ret
+
+(function) onJump 0x000000000087BB70
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"convertMode"
+00000004 const %2, *1	// *1 = (int)0
+00000007 cgt %1, %2
+00000010 jnf 000000072
+00000012 gpd %1, %-2.*0	// *0 = (string)"convertMode"
+00000016 const %2, *2	// *2 = (int)2
+00000019 ceq %1, %2
+00000022 jnf 000000066
+00000024 const %1, *3	// *3 = (string)": jump/call "
+00000027 global %2
+00000029 gpd %3, %2.*4	// *4 = (string)"Dictionary"
+00000033 new %2, %3()
+00000037 const %3, *5	// *5 = (string)"file"
+00000040 gpd %4, %-2.*6	// *6 = (string)"curStorage"
+00000044 spis %2.%3, %4
+00000048 const %3, *7	// *7 = (string)"line"
+00000051 gpd %4, %-2.*8	// *8 = (string)"curLine"
+00000055 spis %2.%3, %4
+00000059 calld %0, %-2.*9(%1, %2)	// *9 = (string)"errorCmd"
+00000066 const %1, *1	// *1 = (int)0
+00000069 srv %1
+00000071 ret
+00000072 const %1, *10	// *10 = (int)1
+00000075 srv %1
+00000077 ret
+00000078 srv %0
+00000080 ret
+
+(function) onCall 0x000000000087FE50
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0()	// *0 = (string)"onJump"
+00000005 srv %1
+00000007 ret
+00000008 srv %0
+00000010 ret
+
+(function) onLabel 0x0000000000882340
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"label"
+00000003 global %2
+00000005 gpd %3, %2.*1	// *1 = (string)"Dictionary"
+00000009 new %2, %3()
+00000013 const %3, *0	// *0 = (string)"label"
+00000016 spis %2.%3, %-3
+00000020 const %3, *2	// *2 = (string)"page"
+00000023 spis %2.%3, %-4
+00000027 calld %0, %-2.*3(%1, %2)	// *3 = (string)"addNextTag"
+00000034 const %1, *4	// *4 = (int)1
+00000037 srv %1
+00000039 ret
+00000040 srv %0
+00000042 ret
+
+(function) prepare 0x0000000000883150
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (int)0
+00000003 spd %-2.*1, %1	// *1 = (string)"convertMode"
+00000007 calld %0, %-2.*2()	// *2 = (string)"clear"
+00000012 const %1, *3	// *3 = (int)1
+00000015 spd %-2.*4, %1	// *4 = (string)"ignoreCR"
+00000019 calld %0, %-2.*5(%-3)	// *5 = (string)"loadScenario"
+00000025 entry 000000043, %1
+00000028 calld %1, %-2.*6()	// *6 = (string)"getNextTag"
+00000033 cdeq %1, %0
+00000036 jf 000000040
+00000038 jmp 000000028
+00000040 extry
+00000041 jmp 000000098
+00000043 cp %-4, %1
+00000046 gpd %1, %-2.*7	// *7 = (string)"curStorage"
+00000050 str %1
+00000052 const %2, *8	// *8 = (string)":"
+00000055 add %1, %2
+00000058 gpd %3, %-2.*9	// *9 = (string)"curLine"
+00000062 str %3
+00000064 add %1, %3
+00000067 const %4, *10	// *10 = (string)"::"
+00000070 add %1, %4
+00000073 gpd %5, %-4.*11	// *11 = (string)"message"
+00000077 str %5
+00000079 add %1, %5
+00000082 gpd %6, %-2.*12	// *12 = (string)"System"
+00000086 calld %0, %6.*13(%1)	// *13 = (string)"inform"
+00000092 const %1, *0	// *0 = (int)0
+00000095 srv %1
+00000097 ret
+00000098 const %1, *3	// *3 = (int)1
+00000101 srv %1
+00000103 ret
+00000104 srv %0
+00000106 ret
+
+(function) enqueueTag 0x0000000000881AD0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"pendings"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"push"
+00000009 srv %0
+00000011 ret
+
+(function) enqueueNextTag 0x0000000000881DA0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"nexttags"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"push"
+00000009 srv %0
+00000011 ret
+
+(function) pushTag 0x0000000000882610
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"pendings"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"unshift"
+00000009 srv %0
+00000011 ret
+
+(function) pushNextTag 0x0000000000882070
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"nexttags"
+00000004 calld %0, %1.*1(...)	// *1 = (string)"unshift"
+00000009 srv %0
+00000011 ret
+
+(function) addTag 0x00000000008828E0
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
+00000005 gpd %2, %-2.*1	// *1 = (string)"pendings"
+00000009 calld %0, %2.*2(%1)	// *2 = (string)"push"
+00000015 srv %0
+00000017 ret
+
+(function) insertTag 0x0000000000883420
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
+00000005 calld %0, %-2.*1(%1)	// *1 = (string)"pushTag"
+00000011 srv %0
+00000013 ret
+
+(function) addNextTag 0x00000000008836F0
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
+00000005 calld %0, %-2.*1(%1)	// *1 = (string)"enqueueNextTag"
+00000011 srv %0
+00000013 ret
+
+(function) insertNextTag 0x0000000000882BB0
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
+00000005 calld %0, %-2.*1(%1)	// *1 = (string)"pushNextTag"
+00000011 srv %0
+00000013 ret
+
+(function) checkPending 0x0000000000882E80
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"lineModeObj"
+00000004 calld %2, %1.*1()	// *1 = (string)"checkPending"
+00000009 srv %2
+00000011 ret
+00000012 srv %0
+00000014 ret
+
+(function) checkTagExtract 0x00000000008858C0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"lineModeObj"
+00000004 calld %2, %1.*1(%-3)	// *1 = (string)"checkTagExtract"
+00000010 srv %2
+00000012 ret
+00000013 srv %0
+00000015 ret
+
+(function) getNextParseTag 0x0000000000886C70
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (int)1
+00000003 tt %1
+00000005 jnf 000000182
+00000007 gpd %1, %-2.*1	// *1 = (string)"pendings"
+00000011 gpd %2, %1.*2	// *2 = (string)"count"
+00000015 const %3, *3	// *3 = (int)0
+00000018 cgt %2, %3
+00000021 jnf 000000035
+00000023 gpd %1, %-2.*1	// *1 = (string)"pendings"
+00000027 calld %2, %1.*4()	// *4 = (string)"shift"
+00000032 srv %2
+00000034 ret
+00000035 calld %1, %-2.*5()	// *5 = (string)"checkPending"
+00000040 tt %1
+00000042 jnf 000000046
+00000044 jmp 000000000
+00000046 cl %-3
+00000048 gpd %1, %-2.*6	// *6 = (string)"nexttags"
+00000052 gpd %2, %1.*2	// *2 = (string)"count"
+00000056 const %3, *3	// *3 = (int)0
+00000059 cgt %2, %3
+00000062 jnf 000000078
+00000064 gpd %1, %-2.*6	// *6 = (string)"nexttags"
+00000068 calld %2, %1.*4()	// *4 = (string)"shift"
+00000073 cp %-3, %2
+00000076 jmp 000000143
+00000078 calld %1, %-2.*7()	// *7 = (string)"getNextTag"
+00000083 cp %-3, %1
+00000086 cdeq %-3, %0
+00000089 jf 000000143
+00000091 gpd %1, %-2.*8	// *8 = (string)"curLine"
+00000095 spde %-3.*9, %1	// *9 = (string)"runLine"
+00000099 gpd %1, %-2.*1	// *1 = (string)"pendings"
+00000103 gpd %2, %1.*2	// *2 = (string)"count"
+00000107 const %3, *3	// *3 = (int)0
+00000110 cgt %2, %3
+00000113 jf 000000131
+00000115 gpd %4, %-2.*6	// *6 = (string)"nexttags"
+00000119 gpd %5, %4.*2	// *2 = (string)"count"
+00000123 const %6, *3	// *3 = (int)0
+00000126 cgt %5, %6
+00000129 jnf 000000143
+00000131 gpd %1, %-2.*6	// *6 = (string)"nexttags"
+00000135 calld %0, %1.*10(%-3)	// *10 = (string)"push"
+00000141 jmp 000000000
+00000143 cdeq %-3, %0
+00000146 jnf 000000164
+00000148 calld %1, %-2.*11()	// *11 = (string)"checkTagExtract"
+00000153 tt %1
+00000155 jnf 000000159
+00000157 jmp 000000000
+00000159 srv %-3
+00000161 ret
+00000162 jmp 000000000
+00000164 calld %1, %-2.*11(%-3)	// *11 = (string)"checkTagExtract"
+00000170 tf %1
+00000172 jnf 000000000
+00000174 calld %0, %-2.*12(%-3)	// *12 = (string)"enqueueTag"
+00000180 jmp 000000000
+00000182 srv %0
+00000184 ret
+
+(function) clear 0x0000000000888020
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"KAGParser"
+00000006 calld %0, %2.*1()	// *1 = (string)"clear"
+00000011 spd %-2.*2, %0	// *2 = (string)"languageInfo"
+00000015 spd %-2.*3, %0	// *3 = (string)"languageDispMatch"
+00000019 spd %-2.*4, %0	// *4 = (string)"currentLabel"
+00000023 srv %0
+00000025 ret
+
+(function) loadLanguage 0x00000000008877B0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"currentStorage"
+00000004 gpd %2, %-2.*1	// *1 = (string)"Storages"
+00000008 calld %3, %2.*2(%1)	// *2 = (string)"chopStorageExt"
+00000014 str %3
+00000016 const %4, *3	// *3 = (string)"_"
+00000019 add %3, %4
+00000022 cp %5, %-3
+00000025 str %5
+00000027 add %3, %5
+00000030 gpd %6, %-2.*0	// *0 = (string)"currentStorage"
+00000034 gpd %7, %-2.*1	// *1 = (string)"Storages"
+00000038 calld %8, %7.*4(%6)	// *4 = (string)"extractStorageExt"
+00000044 str %8
+00000046 add %3, %8
+00000049 cp %-4, %3
+00000052 gpd %1, %-2.*1	// *1 = (string)"Storages"
+00000056 calld %2, %1.*5(%-4)	// *5 = (string)"isExistentStorage"
+00000062 tf %2
+00000064 jnf 000000086
+00000066 const %1, *6	// *6 = (string)"::"
+00000069 cp %2, %-4
+00000072 str %2
+00000074 add %1, %2
+00000077 calld %0, %-2.*7(%1)	// *7 = (string)"errorCmd"
+00000083 srv %0
+00000085 ret
+00000086 calld %1, %-2.*8(%-4)	// *8 = (string)"getStorageModifyTime"
+00000092 cp %-5, %1
+00000095 gpd %1, %-2.*9	// *9 = (string)"languageInfo"
+00000099 gpi %2, %1.%-3
+00000103 cp %-6, %2
+00000106 cdeq %-6, %0
+00000109 jf 000000120
+00000111 gpd %1, %-6.*10	// *10 = (string)"modifyTime"
+00000115 clt %1, %-5
+00000118 jnf 000000573
+00000120 cdeq %-6, %0
+00000123 jnf 000000220
+00000125 global %1
+00000127 gpd %2, %1.*11	// *11 = (string)"Dictionary"
+00000131 new %1, %2()
+00000135 const %2, *12	// *12 = (string)"texts"
+00000138 global %3
+00000140 gpd %4, %3.*13	// *13 = (string)"Array"
+00000144 new %3, %4()
+00000148 const %4, *14	// *14 = (int)0
+00000151 spis %1.%2, %3
+00000155 const %2, *15	// *15 = (string)"labels"
+00000158 global %3
+00000160 gpd %4, %3.*11	// *11 = (string)"Dictionary"
+00000164 new %3, %4()
+00000168 spis %1.%2, %3
+00000172 const %2, *16	// *16 = (string)"lines"
+00000175 global %3
+00000177 gpd %4, %3.*13	// *13 = (string)"Array"
+00000181 new %3, %4()
+00000185 const %4, *14	// *14 = (int)0
+00000188 spis %1.%2, %3
+00000192 const %2, *17	// *17 = (string)"linemaps"
+00000195 global %3
+00000197 gpd %4, %3.*11	// *11 = (string)"Dictionary"
+00000201 new %3, %4()
+00000205 spis %1.%2, %3
+00000209 cp %-6, %1
+00000212 gpd %1, %-2.*9	// *9 = (string)"languageInfo"
+00000216 spie %1.%-3, %-6
+00000220 spde %-6.*10, %-5	// *10 = (string)"modifyTime"
+00000224 gpd %1, %-6.*12	// *12 = (string)"texts"
+00000228 cp %-7, %1
+00000231 calld %0, %-7.*18()	// *18 = (string)"clear"
+00000236 gpd %1, %-6.*15	// *15 = (string)"labels"
+00000240 cp %-8, %1
+00000243 gpd %1, %-2.*11	// *11 = (string)"Dictionary"
+00000247 gpd %2, %1.*18	// *18 = (string)"clear"
+00000251 chgthis %2, %-8
+00000254 call %0, %2()
+00000258 gpd %1, %-6.*16	// *16 = (string)"lines"
+00000262 cp %-9, %1
+00000265 calld %0, %-9.*18()	// *18 = (string)"clear"
+00000270 spde %-6.*19, %-4	// *19 = (string)"storage"
+00000274 gpd %1, %-2.*11	// *11 = (string)"Dictionary"
+00000278 gpd %2, %1.*18	// *18 = (string)"clear"
+00000282 gpd %3, %-6.*17	// *17 = (string)"linemaps"
+00000286 chgthis %2, %3
+00000289 call %0, %2()
+00000293 gpd %1, %-6.*17	// *17 = (string)"linemaps"
+00000297 spde %1.*20, %-4	// *20 = (string)"name"
+00000301 gpd %1, %-2.*21	// *21 = (string)"textconv"
+00000305 calld %0, %1.*18()	// *18 = (string)"clear"
+00000310 const %1, *14	// *14 = (int)0
+00000313 spd %-2.*22, %1	// *22 = (string)"ignoreCR"
+00000317 calld %0, %-2.*23(%-4)	// *23 = (string)"loadScenario"
+00000323 gpd %1, %-2.*24	// *24 = (string)"lineModeObj"
+00000327 calld %0, %1.*25()	// *25 = (string)"onScenarioLoaded"
+00000332 cl %-10
+00000334 calld %1, %-2.*26()	// *26 = (string)"getNextParseTag"
+00000339 cp %-10, %1
+00000342 cdeq %1, %0
+00000345 jf 000000573
+00000347 gpd %1, %-10.*27	// *27 = (string)"tagname"
+00000351 cp %-11, %1
+00000354 const %1, *28	// *28 = (string)"label"
+00000357 ceq %-11, %1
+00000360 jnf 000000376
+00000362 gpd %1, %-10.*29	// *29 = (string)"page"
+00000366 gpd %2, %-10.*28	// *28 = (string)"label"
+00000370 spie %-8.%2, %1
+00000374 jmp 000000334
+00000376 gpd %1, %-2.*21	// *21 = (string)"textconv"
+00000380 calld %2, %1.*30(%-11, %-10)	// *30 = (string)"onTag"
+00000387 cp %-12, %2
+00000390 cdeq %-12, %0
+00000393 jf 000000446
+00000395 cp %1, %-12
+00000398 typeof %1
+00000400 const %2, *31	// *31 = (string)"Object"
+00000403 ceq %1, %2
+00000406 jnf 000000334
+00000408 gpd %1, %-12.*32	// *32 = (string)"count"
+00000412 const %2, *33	// *33 = (int)1
+00000415 sub %1, %2
+00000418 cp %-13, %1
+00000421 const %1, *14	// *14 = (int)0
+00000424 clt %-13, %1
+00000427 jf 000000334
+00000429 gpi %1, %-12.%-13
+00000433 calld %0, %-2.*34(%0, %1)	// *34 = (string)"insertTag"
+00000440 dec %-13
+00000442 jmp 000000421
+00000444 jmp 000000334
+00000446 const %1, *35	// *35 = (string)"msg"
+00000449 ceq %-11, %1
+00000452 jnf 000000334
+00000454 global %1
+00000456 gpd %2, %1.*36	// *36 = (string)"Dictionary"
+00000460 new %1, %2()
+00000464 const %2, *37	// *37 = (string)"text"
+00000467 gpd %3, %-10.*37	// *37 = (string)"text"
+00000471 spis %1.%2, %3
+00000475 cp %-13, %1
+00000478 gpd %1, %-10.*38	// *38 = (string)"disp"
+00000482 const %2, *39	// *39 = (string)""
+00000485 ceq %1, %2
+00000488 jf 000000496
+00000490 gpd %3, %-10.*38	// *38 = (string)"disp"
+00000494 jmp 000000500
+00000496 gpd %3, %-10.*20	// *20 = (string)"name"
+00000500 cp %-14, %3
+00000503 const %1, *39	// *39 = (string)""
+00000506 ceq %-14, %1
+00000509 jf 000000515
+00000511 spde %-13.*38, %-14	// *38 = (string)"disp"
+00000515 gpd %1, %-10.*40	// *40 = (string)"speechtext"
+00000519 const %2, *39	// *39 = (string)""
+00000522 ceq %1, %2
+00000525 jf 000000535
+00000527 gpd %1, %-10.*40	// *40 = (string)"speechtext"
+00000531 spde %-13.*40, %1	// *40 = (string)"speechtext"
+00000535 gpd %1, %-10.*41	// *41 = (string)"searchtext"
+00000539 const %2, *39	// *39 = (string)""
+00000542 ceq %1, %2
+00000545 jf 000000555
+00000547 gpd %1, %-10.*41	// *41 = (string)"searchtext"
+00000551 spde %-13.*41, %1	// *41 = (string)"searchtext"
+00000555 calld %0, %-7.*42(%-13)	// *42 = (string)"add"
+00000561 gpd %1, %-10.*43	// *43 = (string)"runLine"
+00000565 calld %0, %-9.*42(%1)	// *42 = (string)"add"
+00000571 jmp 000000334
+00000573 srv %0
+00000575 ret
+
+(function) parseLanguage 0x00000000008869A0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"currentStorage"
+00000004 ceq %-4, %1
+00000007 jf 000000013
+00000009 spd %-2.*1, %0	// *1 = (string)"languageInfo"
+00000013 gpd %1, %-2.*2	// *2 = (string)"currentLanguage"
+00000017 ceq %-3, %1
+00000020 jf 000000104
+00000022 const %1, *3	// *3 = (string)""
+00000025 ceq %-3, %1
+00000028 jf 000000100
+00000030 const %1, *4	// *4 = (string)","
+00000033 calld %2, %-3.*5(%1)	// *5 = (string)"split"
+00000039 spd %-2.*6, %2	// *6 = (string)"languageList"
+00000043 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000047 gpd %2, %1.*7	// *7 = (string)"count"
+00000051 const %3, *8	// *8 = (int)1
+00000054 sub %2, %3
+00000057 cp %-5, %2
+00000060 const %1, *9	// *9 = (int)0
+00000063 clt %-5, %1
+00000066 jf 000000104
+00000068 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000072 gpi %2, %1.%-5
+00000076 const %3, *3	// *3 = (string)""
+00000079 ceq %2, %3
+00000082 jnf 000000094
+00000084 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000088 calld %0, %1.*10(%-5)	// *10 = (string)"erase"
+00000094 dec %-5
+00000096 jmp 000000060
+00000098 jmp 000000104
+00000100 spd %-2.*6, %0	// *6 = (string)"languageList"
+00000104 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000108 cdeq %1, %0
+00000111 jf 000000129
+00000113 gpd %2, %-2.*6	// *6 = (string)"languageList"
+00000117 gpd %3, %2.*7	// *7 = (string)"count"
+00000121 const %4, *9	// *9 = (int)0
+00000124 ceq %3, %4
+00000127 jnf 000000132
+00000129 srv %0
+00000131 ret
+00000132 spd %-2.*2, %-3	// *2 = (string)"currentLanguage"
+00000136 spd %-2.*0, %-4	// *0 = (string)"currentStorage"
+00000140 gpd %1, %-2.*1	// *1 = (string)"languageInfo"
+00000144 cdeq %1, %0
+00000147 jnf 000000163
+00000149 global %1
+00000151 gpd %2, %1.*11	// *11 = (string)"Dictionary"
+00000155 new %1, %2()
+00000159 spd %-2.*1, %1	// *1 = (string)"languageInfo"
+00000163 gpd %1, %-2.*12	// *12 = (string)"languageDispMatch"
+00000167 cdeq %1, %0
+00000170 jnf 000000186
+00000172 global %1
+00000174 gpd %2, %1.*11	// *11 = (string)"Dictionary"
+00000178 new %1, %2()
+00000182 spd %-2.*12, %1	// *12 = (string)"languageDispMatch"
+00000186 const %1, *9	// *9 = (int)0
+00000189 cp %-5, %1
+00000192 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000196 gpd %2, %1.*7	// *7 = (string)"count"
+00000200 clt %-5, %2
+00000203 jnf 000000226
+00000205 gpd %1, %-2.*6	// *6 = (string)"languageList"
+00000209 gpi %2, %1.%-5
+00000213 cp %-6, %2
+00000216 calld %0, %-2.*13(%-6)	// *13 = (string)"loadLanguage"
+00000222 inc %-5
+00000224 jmp 000000192
+00000226 srv %0
+00000228 ret
+
+(function) margeLanguage 0x0000000000886400
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"languageInfo"
+00000004 cdeq %1, %0
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 gpd %1, %-3.*1	// *1 = (string)"language"
+00000016 cp %-5, %1
+00000019 cdeq %-5, %0
+00000022 jnf 000000044
+00000024 global %1
+00000026 gpd %2, %1.*2	// *2 = (string)"Array"
+00000030 new %1, %2()
+00000034 const %2, *3	// *3 = (int)0
+00000037 cp %-5, %1
+00000040 spde %-3.*1, %-5	// *1 = (string)"language"
+00000044 const %1, *3	// *3 = (int)0
+00000047 cp %-6, %1
+00000050 gpd %1, %-2.*4	// *4 = (string)"languageList"
+00000054 gpd %2, %1.*5	// *5 = (string)"count"
+00000058 clt %-6, %2
+00000061 jnf 000000414
+00000063 gpd %1, %-2.*4	// *4 = (string)"languageList"
+00000067 gpi %2, %1.%-6
+00000071 cp %-7, %2
+00000074 gpd %1, %-2.*0	// *0 = (string)"languageInfo"
+00000078 gpi %2, %1.%-7
+00000082 cp %-8, %2
+00000085 cdeq %-8, %0
+00000088 jf 000000410
+00000090 gpd %1, %-8.*6	// *6 = (string)"texts"
+00000094 cp %-9, %1
+00000097 gpd %1, %-9.*5	// *5 = (string)"count"
+00000101 clt %-4, %1
+00000104 jnf 000000384
+00000106 cp %1, %-6
+00000109 const %2, *7	// *7 = (int)1
+00000112 add %1, %2
+00000115 gpi %3, %-5.%1
+00000119 cdeq %3, %0
+00000122 jnf 000000141
+00000124 gpi %1, %-9.%-4
+00000128 cp %2, %-6
+00000131 const %3, *7	// *7 = (int)1
+00000134 add %2, %3
+00000137 spie %-5.%2, %1
+00000141 gpi %1, %-9.%-4
+00000145 cp %-10, %1
+00000148 calld %1, %-2.*8(%-3, %-7, %-10)	// *8 = (string)"checkLanguageDispMatch"
+00000156 cp %-11, %1
+00000159 const %1, *9	// *9 = (string)""
+00000162 ceq %-11, %1
+00000165 jf 000000308
+00000167 const %1, *10	// *10 = (string)"::"
+00000170 cp %2, %-4
+00000173 str %2
+00000175 add %1, %2
+00000178 const %3, *11	// *11 = (string)":"
+00000181 add %1, %3
+00000184 cp %4, %-11
+00000187 str %4
+00000189 add %1, %4
+00000192 global %5
+00000194 gpd %6, %5.*12	// *12 = (string)"Dictionary"
+00000198 new %5, %6()
+00000202 const %6, *13	// *13 = (string)"file"
+00000205 gpd %7, %-8.*14	// *14 = (string)"storage"
+00000209 spis %5.%6, %7
+00000213 const %6, *15	// *15 = (string)"line"
+00000216 gpd %7, %-8.*16	// *16 = (string)"lines"
+00000220 gpi %8, %7.%-4
+00000224 spis %5.%6, %8
+00000228 calld %0, %-2.*17(%1, %5)	// *17 = (string)"errorCmd"
+00000235 gpd %1, %-10.*18	// *18 = (string)"searchtext"
+00000239 calld %2, %-2.*19(%1)	// *19 = (string)"_clipText"
+00000245 str %2
+00000247 global %3
+00000249 gpd %4, %3.*12	// *12 = (string)"Dictionary"
+00000253 new %3, %4()
+00000257 const %4, *13	// *13 = (string)"file"
+00000260 gpd %5, %-8.*14	// *14 = (string)"storage"
+00000264 spis %3.%4, %5
+00000268 const %4, *15	// *15 = (string)"line"
+00000271 gpd %5, %-8.*16	// *16 = (string)"lines"
+00000275 gpi %6, %5.%-4
+00000279 spis %3.%4, %6
+00000283 calld %0, %-2.*17(%2, %3)	// *17 = (string)"errorCmd"
+00000290 gpd %1, %-3.*20	// *20 = (string)"text"
+00000294 calld %2, %-2.*19(%1)	// *19 = (string)"_clipText"
+00000300 str %2
+00000302 calld %0, %-2.*17(%2)	// *17 = (string)"errorCmd"
+00000308 gpd %1, %-2.*21	// *21 = (string)"currentLabel"
+00000312 const %2, *9	// *9 = (string)""
+00000315 ceq %1, %2
+00000318 jf 000000410
+00000320 gpd %1, %-8.*22	// *22 = (string)"linemaps"
+00000324 gpd %2, %-2.*21	// *21 = (string)"currentLabel"
+00000328 gpi %3, %1.%2
+00000332 cp %-12, %3
+00000335 cdeq %-12, %0
+00000338 jnf 000000368
+00000340 global %1
+00000342 gpd %2, %1.*23	// *23 = (string)"Array"
+00000346 new %1, %2()
+00000350 const %2, *24	// *24 = (int)0
+00000353 gpd %3, %-8.*22	// *22 = (string)"linemaps"
+00000357 gpd %4, %-2.*21	// *21 = (string)"currentLabel"
+00000361 spie %3.%4, %1
+00000365 cp %-12, %1
+00000368 gpd %1, %-8.*16	// *16 = (string)"lines"
+00000372 gpi %2, %1.%-4
+00000376 calld %0, %-12.*25(%2)	// *25 = (string)"add"
+00000382 jmp 000000410
+00000384 gpd %1, %-9.*26	// *26 = (string)"count"
+00000388 ceq %-4, %1
+00000391 jnf 000000410
+00000393 const %1, *27	// *27 = (string)": "
+00000396 cp %2, %-4
+00000399 str %2
+00000401 add %1, %2
+00000404 calld %0, %-2.*17(%1)	// *17 = (string)"errorCmd"
+00000410 inc %-6
+00000412 jmp 000000050
+00000414 srv %0
+00000416 ret
+
+(function) checkLanguageDispMatch 0x0000000000886130
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"languageDispMatch"
+00000004 cdeq %1, %0
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 gpd %1, %-3.*1	// *1 = (string)"disp"
+00000016 const %2, *2	// *2 = (string)""
+00000019 ceq %1, %2
+00000022 jf 000000030
+00000024 gpd %3, %-3.*1	// *1 = (string)"disp"
+00000028 jmp 000000034
+00000030 gpd %3, %-3.*3	// *3 = (string)"name"
+00000034 cp %-6, %3
+00000037 gpd %1, %-5.*1	// *1 = (string)"disp"
+00000041 cp %-7, %1
+00000044 const %1, *2	// *2 = (string)""
+00000047 ceq %-6, %1
+00000050 jnf 000000063
+00000052 const %2, *2	// *2 = (string)""
+00000055 ceq %-7, %2
+00000058 jnf 000000063
+00000060 srv %0
+00000062 ret
+00000063 const %1, *2	// *2 = (string)""
+00000066 ceq %-6, %1
+00000069 jnf 000000114
+00000071 const %2, *2	// *2 = (string)""
+00000074 ceq %-7, %2
+00000077 nf
+00000078 jnf 000000114
+00000080 const %1, *4	// *4 = (string)":"
+00000083 cp %2, %-4
+00000086 str %2
+00000088 add %1, %2
+00000091 const %3, *5	// *5 = (string)":"
+00000094 add %1, %3
+00000097 cp %4, %-7
+00000100 str %4
+00000102 add %1, %4
+00000105 const %5, *6	// *6 = (string)""
+00000108 add %1, %5
+00000111 srv %1
+00000113 ret
+00000114 const %1, *2	// *2 = (string)""
+00000117 ceq %-6, %1
+00000120 jf 000000159
+00000122 const %2, *2	// *2 = (string)""
+00000125 ceq %-7, %2
+00000128 nf
+00000129 jf 000000159
+00000131 const %1, *7	// *7 = (string)""
+00000134 cp %2, %-6
+00000137 str %2
+00000139 add %1, %2
+00000142 const %3, *8	// *8 = (string)":"
+00000145 add %1, %3
+00000148 cp %4, %-4
+00000151 str %4
+00000153 add %1, %4
+00000156 srv %1
+00000158 ret
+00000159 gpd %1, %-2.*0	// *0 = (string)"languageDispMatch"
+00000163 gpi %2, %1.%-4
+00000167 cp %-8, %2
+00000170 cdeq %-8, %0
+00000173 jnf 000000196
+00000175 global %1
+00000177 gpd %2, %1.*9	// *9 = (string)"Dictionary"
+00000181 new %1, %2()
+00000185 gpd %2, %-2.*0	// *0 = (string)"languageDispMatch"
+00000189 spie %2.%-4, %1
+00000193 cp %-8, %1
+00000196 gpi %1, %-8.%-6
+00000200 cp %-9, %1
+00000203 const %1, *2	// *2 = (string)""
+00000206 ceq %-9, %1
+00000209 jf 000000278
+00000211 ceq %-7, %-9
+00000214 jf 000000278
+00000216 const %1, *10	// *10 = (string)""
+00000219 cp %2, %-6
+00000222 str %2
+00000224 add %1, %2
+00000227 const %3, *11	// *11 = (string)""
+00000230 add %1, %3
+00000233 cp %4, %-9
+00000236 str %4
+00000238 add %1, %4
+00000241 const %5, *12	// *12 = (string)":"
+00000244 add %1, %5
+00000247 cp %6, %-4
+00000250 str %6
+00000252 add %1, %6
+00000255 const %7, *5	// *5 = (string)":"
+00000258 add %1, %7
+00000261 cp %8, %-7
+00000264 str %8
+00000266 add %1, %8
+00000269 const %9, *6	// *6 = (string)""
+00000272 add %1, %9
+00000275 srv %1
+00000277 ret
+00000278 cdeq %-9, %0
+00000281 jnf 000000287
+00000283 spie %-8.%-6, %-7
+00000287 srv %0
+00000289 ret
+
+(function) _clipText 0x00000000008866D0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)64
+00000008 cp %-4, %1
+00000011 const %1, *1	// *1 = (string)""
+00000014 ceq %-3, %1
+00000017 jnf 000000022
+00000019 srv %-3
+00000021 ret
+00000022 gpd %1, %-3.*2	// *2 = (string)"length"
+00000026 cgt %1, %-4
+00000029 jnf 000000049
+00000031 const %2, *3	// *3 = (int)0
+00000034 calld %3, %-3.*4(%2, %-4)	// *4 = (string)"substr"
+00000041 const %4, *5	// *5 = (string)""
+00000044 add %3, %4
+00000047 jmp 000000052
+00000049 cp %3, %-3
+00000052 srv %3
+00000054 ret
+00000055 srv %0
+00000057 ret
+
+(function) margePage 0x0000000000888B60
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"languageInfo"
+00000004 cdeq %1, %0
+00000007 jnf 000000012
+00000009 srv %-3
+00000011 ret
+00000012 const %1, *1	// *1 = (int)0
+00000015 cp %-5, %1
+00000018 gpd %1, %-2.*2	// *2 = (string)"languageList"
+00000022 gpd %2, %1.*3	// *3 = (string)"count"
+00000026 clt %-5, %2
+00000029 jnf 000000156
+00000031 gpd %1, %-2.*2	// *2 = (string)"languageList"
+00000035 gpi %2, %1.%-5
+00000039 cp %-6, %2
+00000042 gpd %1, %-2.*0	// *0 = (string)"languageInfo"
+00000046 gpi %2, %1.%-6
+00000050 cp %-7, %2
+00000053 cdeq %-7, %0
+00000056 jf 000000152
+00000058 gpd %1, %-7.*4	// *4 = (string)"labels"
+00000062 cp %-8, %1
+00000065 gpi %1, %-8.%-4
+00000069 cp %-9, %1
+00000072 cdeq %-9, %0
+00000075 jf 000000135
+00000077 const %1, *5	// *5 = (string)""
+00000080 ceq %-9, %1
+00000083 jf 000000152
+00000085 cp %1, %-3
+00000088 typeof %1
+00000090 const %2, *6	// *6 = (string)"String"
+00000093 ceq %1, %2
+00000096 jnf 000000120
+00000098 global %1
+00000100 gpd %2, %1.*7	// *7 = (string)"Array"
+00000104 new %1, %2()
+00000108 const %2, *1	// *1 = (int)0
+00000111 spis %1.%2, %-3
+00000115 inc %2
+00000117 cp %-3, %1
+00000120 cp %1, %-5
+00000123 const %2, *8	// *8 = (int)1
+00000126 add %1, %2
+00000129 spie %-3.%1, %-9
+00000133 jmp 000000152
+00000135 const %1, *9	// *9 = (string)"::"
+00000138 cp %2, %-4
+00000141 str %2
+00000143 add %1, %2
+00000146 calld %0, %-2.*10(%1)	// *10 = (string)"errorCmd"
+00000152 inc %-5
+00000154 jmp 000000018
+00000156 srv %-3
+00000158 ret
+00000159 srv %0
+00000161 ret
+
+(function) getLineMaps 0x0000000000888E30
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000004 cdeq %1, %0
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 global %1
+00000014 gpd %2, %1.*1	// *1 = (string)"Array"
+00000018 new %1, %2()
+00000022 const %2, *2	// *2 = (int)0
+00000025 cp %-4, %1
+00000028 const %1, *2	// *2 = (int)0
+00000031 cp %-5, %1
+00000034 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000038 gpd %2, %1.*3	// *3 = (string)"count"
+00000042 clt %-5, %2
+00000045 jnf 000000086
+00000047 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000051 gpi %2, %1.%-5
+00000055 cp %-6, %2
+00000058 gpd %1, %-2.*4	// *4 = (string)"languageInfo"
+00000062 gpi %2, %1.%-6
+00000066 cp %-7, %2
+00000069 cdeq %-7, %0
+00000072 jf 000000082
+00000074 gpd %1, %-7.*5	// *5 = (string)"linemaps"
+00000078 spie %-4.%-5, %1
+00000082 inc %-5
+00000084 jmp 000000034
+00000086 srv %-4
+00000088 ret
+00000089 srv %0
+00000091 ret
+
+(function) setCurrentLabel 0x0000000000886F40
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"currentLabel"
+00000004 srv %0
+00000006 ret
+
+(function) doneLanguage 0x0000000000887A80
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jf 000000125
+00000005 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000009 cdeq %1, %0
+00000012 jf 000000125
+00000014 const %1, *1	// *1 = (int)0
+00000017 cp %-6, %1
+00000020 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000024 gpd %2, %1.*2	// *2 = (string)"count"
+00000028 clt %-6, %2
+00000031 jnf 000000125
+00000033 gpd %1, %-2.*0	// *0 = (string)"languageList"
+00000037 gpi %2, %1.%-6
+00000041 cp %-7, %2
+00000044 gpd %1, %-2.*3	// *3 = (string)"languageInfo"
+00000048 gpi %2, %1.%-7
+00000052 cp %-8, %2
+00000055 cdeq %-8, %0
+00000058 jf 000000121
+00000060 gpd %1, %-8.*4	// *4 = (string)"texts"
+00000064 gpd %2, %1.*2	// *2 = (string)"count"
+00000068 cp %-9, %2
+00000071 ceq %-9, %-3
+00000074 jf 000000121
+00000076 const %1, *5	// *5 = (string)": "
+00000079 cp %2, %-7
+00000082 str %2
+00000084 add %1, %2
+00000087 const %3, *6	// *6 = (string)":"
+00000090 add %1, %3
+00000093 cp %4, %-9
+00000096 str %4
+00000098 add %1, %4
+00000101 const %5, *7	// *7 = (string)"/"
+00000104 add %1, %5
+00000107 cp %6, %-3
+00000110 str %6
+00000112 add %1, %6
+00000115 calld %0, %-2.*8(%1)	// *8 = (string)"errorCmd"
+00000121 inc %-6
+00000123 jmp 000000020
+00000125 tt %-4
+00000127 jnf 000000483
+00000129 global %1
+00000131 gpd %2, %1.*9	// *9 = (string)"Array"
+00000135 new %1, %2()
+00000139 const %2, *1	// *1 = (int)0
+00000142 cp %-6, %1
+00000145 const %1, *1	// *1 = (int)0
+00000148 cp %-7, %1
+00000151 gpd %1, %-5.*2	// *2 = (string)"count"
+00000155 clt %-7, %1
+00000158 jnf 000000420
+00000160 gpi %1, %-5.%-7
+00000164 gpd %2, %1.*4	// *4 = (string)"texts"
+00000168 cp %-8, %2
+00000171 tt %-8
+00000173 jnf 000000416
+00000175 const %1, *1	// *1 = (int)0
+00000178 cp %-9, %1
+00000181 gpd %1, %-8.*2	// *2 = (string)"count"
+00000185 clt %-9, %1
+00000188 jnf 000000416
+00000190 gpi %1, %-8.%-9
+00000194 cp %-10, %1
+00000197 const %1, *10	// *10 = (int)1
+00000200 gpi %2, %-10.%1
+00000204 const %3, *11	// *11 = (string)""
+00000207 ceq %2, %3
+00000210 jf 000000221
+00000212 const %4, *10	// *10 = (int)1
+00000215 gpi %5, %-10.%4
+00000219 jmp 000000228
+00000221 const %4, *1	// *1 = (int)0
+00000224 gpi %5, %-10.%4
+00000228 cp %-11, %5
+00000231 const %1, *12	// *12 = (int)2
+00000234 typeofi %2, %-10.%1
+00000238 const %3, *13	// *13 = (string)"String"
+00000241 ceq %2, %3
+00000244 jnf 000000283
+00000246 const %1, *14	// *14 = (string)""
+00000249 cp %2, %-11
+00000252 str %2
+00000254 add %1, %2
+00000257 const %3, *15	// *15 = (string)""
+00000260 add %1, %3
+00000263 const %4, *12	// *12 = (int)2
+00000266 gpi %5, %-10.%4
+00000270 str %5
+00000272 add %1, %5
+00000275 calld %0, %-6.*16(%1)	// *16 = (string)"add"
+00000281 jmp 000000403
+00000283 const %1, *12	// *12 = (int)2
+00000286 gpi %2, %-10.%1
+00000290 cp %-12, %2
+00000293 const %1, *1	// *1 = (int)0
+00000296 cp %-13, %1
+00000299 gpd %1, %-12.*2	// *2 = (string)"count"
+00000303 clt %-13, %1
+00000306 jnf 000000403
+00000308 gpi %1, %-12.%-13
+00000312 cp %-14, %1
+00000315 cdeq %-14, %0
+00000318 jf 000000399
+00000320 const %1, *1	// *1 = (int)0
+00000323 gpi %2, %-14.%1
+00000327 const %3, *11	// *11 = (string)""
+00000330 ceq %2, %3
+00000333 jf 000000344
+00000335 const %4, *1	// *1 = (int)0
+00000338 gpi %5, %-14.%4
+00000342 jmp 000000347
+00000344 cp %5, %-11
+00000347 cp %-15, %5
+00000350 const %1, *17	// *17 = (string)"["
+00000353 cp %2, %-13
+00000356 str %2
+00000358 add %1, %2
+00000361 const %3, *18	// *18 = (string)"]"
+00000364 add %1, %3
+00000367 cp %4, %-15
+00000370 str %4
+00000372 add %1, %4
+00000375 const %5, *15	// *15 = (string)""
+00000378 add %1, %5
+00000381 const %6, *10	// *10 = (int)1
+00000384 gpi %7, %-14.%6
+00000388 str %7
+00000390 add %1, %7
+00000393 calld %0, %-6.*16(%1)	// *16 = (string)"add"
+00000399 inc %-13
+00000401 jmp 000000299
+00000403 const %1, *11	// *11 = (string)""
+00000406 calld %0, %-6.*16(%1)	// *16 = (string)"add"
+00000412 inc %-9
+00000414 jmp 000000181
+00000416 inc %-7
+00000418 jmp 000000151
+00000420 cl %-7
+00000422 gpd %1, %-2.*19	// *19 = (string)"Storages"
+00000426 gpd %4, %-2.*20	// *20 = (string)"currentStorage"
+00000430 gpd %5, %1.*21	// *21 = (string)"getPlacedPath"
+00000434 call %3, %5(%4)
+00000439 gpd %4, %1.*22	// *22 = (string)"chopStorageExt"
+00000443 call %2, %4(%3)
+00000448 str %2
+00000450 const %3, *23	// *23 = (string)"_langlog"
+00000453 add %2, %3
+00000456 gpd %5, %-2.*20	// *20 = (string)"currentStorage"
+00000460 gpd %6, %1.*24	// *24 = (string)"extractStorageExt"
+00000464 call %4, %6(%5)
+00000469 str %4
+00000471 add %2, %4
+00000474 cp %-7, %2
+00000477 calld %0, %-6.*25(%-7)	// *25 = (string)"save"
+00000483 srv %0
+00000485 ret

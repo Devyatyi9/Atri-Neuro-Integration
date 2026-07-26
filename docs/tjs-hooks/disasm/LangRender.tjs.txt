@@ -1,0 +1,341 @@
+
+(top level script) global 0x00000000001BC630
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (object)(object 0x00000000001BCFD0:0x0000000000000000)
+00000003 spds %-1.*1, %1	// *1 = (string)"LangRender"
+00000007 cl %1
+00000009 srv %0
+00000011 ret
+
+(class) LangRender 0x00000000001BCFD0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"LangRender"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"TextRender"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"kag"
+00000024 global %1
+00000026 gpd %2, %1.*3	// *3 = (string)"TextRenderBase"
+00000030 chgthis %2, %-1
+00000033 spds %-1.*4, %2	// *4 = (string)"_TextRenderBase"
+00000037 spds %-1.*5, %0	// *5 = (string)"_mainLangFontScale"
+00000041 spds %-1.*6, %0	// *6 = (string)"_subLangFontScale"
+00000045 spds %-1.*7, %0	// *7 = (string)"_mainLangLineSpaceScale"
+00000049 srv %0
+00000051 ret
+
+(super class getter proxy) LangRender 0x00000000001BDAB0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"TextRender"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) LangRender 0x00000000001BE3B0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"TextRender"
+00000006 calld %0, %2.*0()	// *0 = (string)"TextRender"
+00000011 spde %-1.*1, %-3	// *1 = (string)"kag"
+00000015 calld %0, %-2.*2(%-3)	// *2 = (string)"setBase"
+00000021 srv %0
+00000023 ret
+
+(function) renderLang 0x00000000027D0FD0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"text"
+00000003 gpd %2, %-2.*1	// *1 = (string)"kag"
+00000007 calld %3, %2.*2(%-3, %1, %-8)	// *2 = (string)"getLangInfo"
+00000015 str %3
+00000017 cp %-10, %3
+00000020 global %1
+00000022 typeofd %2, %1.*3	// *3 = (string)"LanguageWordBreaks"
+00000026 const %3, *4	// *4 = (string)"Object"
+00000029 ceq %2, %3
+00000032 jnf 000000067
+00000034 global %1
+00000036 gpd %2, %1.*5	// *5 = (string)"Dictionary"
+00000040 new %1, %2()
+00000044 const %2, *6	// *6 = (string)"word_break"
+00000047 global %3
+00000049 gpd %4, %3.*3	// *3 = (string)"LanguageWordBreaks"
+00000053 gpi %5, %4.%-8
+00000057 spis %1.%2, %5
+00000061 calld %0, %-2.*7(%1)	// *7 = (string)"setOption"
+00000067 global %1
+00000069 typeofd %2, %1.*8	// *8 = (string)"LanguageWidthTimeScales"
+00000073 const %3, *4	// *4 = (string)"Object"
+00000076 ceq %2, %3
+00000079 jnf 000000114
+00000081 global %1
+00000083 gpd %2, %1.*5	// *5 = (string)"Dictionary"
+00000087 new %1, %2()
+00000091 const %2, *9	// *9 = (string)"width_time_scale"
+00000094 global %3
+00000096 gpd %4, %3.*8	// *8 = (string)"LanguageWidthTimeScales"
+00000100 gpi %5, %4.%-8
+00000104 spis %1.%2, %5
+00000108 calld %0, %-2.*7(%1)	// *7 = (string)"setOption"
+00000114 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000118 typeofd %2, %1.*10	// *10 = (string)"getLanguageFont"
+00000122 const %3, *4	// *4 = (string)"Object"
+00000125 ceq %2, %3
+00000128 jnf 000000149
+00000130 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000134 calld %2, %1.*10(%-8)	// *10 = (string)"getLanguageFont"
+00000140 spd %-2.*11, %2	// *11 = (string)"defaultFace"
+00000144 calld %0, %-2.*12()	// *12 = (string)"resetFont"
+00000149 calld %0, %-2.*13(%-10, %-4, %-5, %-6, %-7, %-8, %-9)	// *13 = (string)"_internalRenderLang"
+00000161 srv %0
+00000163 ret
+
+(function) _internalRenderLang 0x00000000027D18D0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_TextRenderBase"
+00000004 calld %2, %1.*1(%-3, %-4, %-5, %-6, %-7)	// *1 = (string)"render"
+00000014 srv %2
+00000016 ret
+00000017 srv %0
+00000019 ret
+
+(function) onFontChange 0x00000000027D27D0
+
+#(1) Bytecode.
+00000000 gpd %1, %-3.*0	// *0 = (string)"face"
+00000004 const %2, *1	// *1 = (string)"user"
+00000007 ceq %1, %2
+00000010 jnf 000000061
+00000012 gpd %3, %-2.*2	// *2 = (string)"defaultFace"
+00000016 const %4, *1	// *1 = (string)"user"
+00000019 ceq %3, %4
+00000022 nf
+00000023 jnf 000000061
+00000025 global %1
+00000027 gpd %2, %1.*3	// *3 = (string)"Dictionary"
+00000031 new %1, %2()
+00000035 const %2, *0	// *0 = (string)"face"
+00000038 gpd %3, %-2.*2	// *2 = (string)"defaultFace"
+00000042 spis %1.%2, %3
+00000046 global %2
+00000048 gpd %3, %2.*4	// *4 = (string)"TextRenderBase"
+00000052 calld %4, %3.*5(%1)	// *5 = (string)"setFont"
+00000058 srv %4
+00000060 ret
+00000061 global %1
+00000063 gpd %2, %1.*6	// *6 = (string)"TextRender"
+00000067 calld %3, %2.*7(...)	// *7 = (string)"onFontChange"
+00000072 srv %3
+00000074 ret
+00000075 srv %0
+00000077 ret
+
+(function) render 0x00000000027D3DE0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)0
+00000008 cp %-4, %1
+00000011 cdeq %-5, %0
+00000014 jnf 000000022
+00000016 const %1, *0	// *0 = (int)0
+00000019 cp %-5, %1
+00000022 gpd %1, %-3.*1	// *1 = (string)"indent"
+00000026 cdeq %1, %0
+00000029 jf 000000039
+00000031 gpd %2, %-3.*1	// *1 = (string)"indent"
+00000035 num %2
+00000037 jmp 000000050
+00000039 gpd %2, %-2.*2	// *2 = (string)"kag"
+00000043 gpd %3, %2.*3	// *3 = (string)"autoIndent"
+00000047 cp %2, %3
+00000050 cp %-6, %2
+00000053 gpd %1, %-3.*4	// *4 = (string)"same"
+00000057 cp %-7, %1
+00000060 gpd %1, %-2.*2	// *2 = (string)"kag"
+00000064 gpd %2, %1.*5	// *5 = (string)"languageType"
+00000068 cp %-8, %2
+00000071 gpd %1, %-2.*2	// *2 = (string)"kag"
+00000075 typeofd %2, %1.*6	// *6 = (string)"subLanguageType"
+00000079 const %3, *7	// *7 = (string)"undefined"
+00000082 ceq %2, %3
+00000085 jf 000000110
+00000087 gpd %4, %-2.*2	// *2 = (string)"kag"
+00000091 gpd %5, %4.*6	// *6 = (string)"subLanguageType"
+00000095 cdeq %5, %0
+00000098 jf 000000110
+00000100 gpd %6, %-2.*2	// *2 = (string)"kag"
+00000104 gpd %7, %6.*6	// *6 = (string)"subLanguageType"
+00000108 jmp 000000113
+00000110 cp %7, %-8
+00000113 cp %-9, %7
+00000116 cp %1, %-8
+00000119 ceq %1, %-9
+00000122 setnf %1
+00000124 cp %-10, %1
+00000127 cl %-11
+00000129 tt %-10
+00000131 jnf 000000142
+00000133 calld %1, %-2.*8(%-8, %-9)	// *8 = (string)"getSubLangFontScale"
+00000140 jmp 000000148
+00000142 calld %1, %-2.*9(%-8)	// *9 = (string)"getMainLangFontScale"
+00000148 spd %-2.*10, %1	// *10 = (string)"fontScale"
+00000152 tt %-10
+00000154 jnf 000000165
+00000156 calld %1, %-2.*11(%-8, %-9)	// *11 = (string)"getMultiLangLineSpaceScale"
+00000163 jmp 000000171
+00000165 calld %1, %-2.*12(%-8)	// *12 = (string)"getMainLangLineSpaceScale"
+00000171 cp %-12, %1
+00000174 cdeq %-12, %0
+00000177 jf 000000209
+00000179 const %1, *13	// *13 = (real)1
+00000182 ceq %-12, %1
+00000185 jf 000000209
+00000187 gpd %1, %-1.*14	// *14 = (string)"defaultLineSpacing"
+00000191 cp %-11, %1
+00000194 cp %1, %-11
+00000197 mul %1, %-12
+00000200 spd %-2.*14, %1	// *14 = (string)"defaultLineSpacing"
+00000204 calld %0, %-2.*15()	// *15 = (string)"resetStyle"
+00000209 calld %0, %-2.*16(%-3, %-6, %-4, %-5, %-7, %-8, %-10)	// *16 = (string)"renderLang"
+00000221 tt %-10
+00000223 jnf 000000257
+00000225 calld %0, %-2.*17()	// *17 = (string)"newline"
+00000230 const %1, *18	// *18 = (int)1
+00000233 const %2, *19	// *19 = (int)2
+00000236 calld %0, %-2.*16(%-3, %-6, %-4, %-5, %1, %-9, %2)	// *16 = (string)"renderLang"
+00000248 cdeq %-11, %0
+00000251 jf 000000257
+00000253 spd %-2.*14, %-11	// *14 = (string)"defaultLineSpacing"
+00000257 srv %0
+00000259 ret
+
+(function) getMainLangFontScale 0x00000000027D4780
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_mainLangFontScale"
+00000004 cdeq %1, %0
+00000007 jnf 000000053
+00000009 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000013 typeofd %2, %1.*2	// *2 = (string)"mainLangFontScale"
+00000017 const %3, *3	// *3 = (string)"undefined"
+00000020 ceq %2, %3
+00000023 jf 000000037
+00000025 gpd %4, %-2.*1	// *1 = (string)"kag"
+00000029 gpd %5, %4.*2	// *2 = (string)"mainLangFontScale"
+00000033 spd %-2.*0, %5	// *0 = (string)"_mainLangFontScale"
+00000037 gpd %1, %-2.*0	// *0 = (string)"_mainLangFontScale"
+00000041 cdeq %1, %0
+00000044 jnf 000000053
+00000046 const %2, *4	// *4 = (real)1
+00000049 spd %-2.*0, %2	// *0 = (string)"_mainLangFontScale"
+00000053 gpd %1, %-2.*0	// *0 = (string)"_mainLangFontScale"
+00000057 typeof %1
+00000059 const %2, *5	// *5 = (string)"Object"
+00000062 ceq %1, %2
+00000065 jnf 000000102
+00000067 gpd %1, %-2.*0	// *0 = (string)"_mainLangFontScale"
+00000071 cp %2, %-3
+00000074 num %2
+00000076 gpi %3, %1.%2
+00000080 cp %-4, %3
+00000083 const %1, *6	// *6 = (int)0
+00000086 cgt %-4, %1
+00000089 jnf 000000096
+00000091 cp %2, %-4
+00000094 jmp 000000099
+00000096 const %2, *4	// *4 = (real)1
+00000099 srv %2
+00000101 ret
+00000102 gpd %1, %-2.*0	// *0 = (string)"_mainLangFontScale"
+00000106 srv %1
+00000108 ret
+00000109 srv %0
+00000111 ret
+
+(function) getMainLangLineSpaceScale 0x00000000027D6D50
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_mainLangLineSpaceScale"
+00000004 cdeq %1, %0
+00000007 jnf 000000053
+00000009 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000013 typeofd %2, %1.*2	// *2 = (string)"mainLangLineSpaceScale"
+00000017 const %3, *3	// *3 = (string)"undefined"
+00000020 ceq %2, %3
+00000023 jf 000000037
+00000025 gpd %4, %-2.*1	// *1 = (string)"kag"
+00000029 gpd %5, %4.*2	// *2 = (string)"mainLangLineSpaceScale"
+00000033 spd %-2.*0, %5	// *0 = (string)"_mainLangLineSpaceScale"
+00000037 gpd %1, %-2.*0	// *0 = (string)"_mainLangLineSpaceScale"
+00000041 cdeq %1, %0
+00000044 jnf 000000053
+00000046 const %2, *4	// *4 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000049 spd %-2.*0, %2	// *0 = (string)"_mainLangLineSpaceScale"
+00000053 gpd %1, %-2.*0	// *0 = (string)"_mainLangLineSpaceScale"
+00000057 tf %1
+00000059 jnf 000000064
+00000061 srv %0
+00000063 ret
+00000064 gpd %1, %-2.*0	// *0 = (string)"_mainLangLineSpaceScale"
+00000068 typeof %1
+00000070 const %2, *5	// *5 = (string)"Object"
+00000073 ceq %1, %2
+00000076 jnf 000000093
+00000078 gpd %3, %-2.*0	// *0 = (string)"_mainLangLineSpaceScale"
+00000082 cp %4, %-3
+00000085 num %4
+00000087 gpi %5, %3.%4
+00000091 jmp 000000096
+00000093 cp %5, %0
+00000096 cp %-4, %5
+00000099 const %1, *6	// *6 = (int)0
+00000102 cgt %-4, %1
+00000105 jnf 000000112
+00000107 cp %2, %-4
+00000110 jmp 000000115
+00000112 cp %2, %0
+00000115 srv %2
+00000117 ret
+00000118 srv %0
+00000120 ret
+
+(function) getSubLangFontScale 0x00000000027D73C0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"_subLangFontScale"
+00000004 cdeq %1, %0
+00000007 jnf 000000053
+00000009 gpd %1, %-2.*1	// *1 = (string)"kag"
+00000013 typeofd %2, %1.*2	// *2 = (string)"subLangFontScale"
+00000017 const %3, *3	// *3 = (string)"undefined"
+00000020 ceq %2, %3
+00000023 jf 000000037
+00000025 gpd %4, %-2.*1	// *1 = (string)"kag"
+00000029 gpd %5, %4.*2	// *2 = (string)"subLangFontScale"
+00000033 spd %-2.*0, %5	// *0 = (string)"_subLangFontScale"
+00000037 gpd %1, %-2.*0	// *0 = (string)"_subLangFontScale"
+00000041 cdeq %1, %0
+00000044 jnf 000000053
+00000046 const %2, *4	// *4 = (real)0.8
+00000049 spd %-2.*0, %2	// *0 = (string)"_subLangFontScale"
+00000053 gpd %1, %-2.*0	// *0 = (string)"_subLangFontScale"
+00000057 srv %1
+00000059 ret
+00000060 srv %0
+00000062 ret
+
+(function) getMultiLangLineSpaceScale 0x00000000027D7690
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret

@@ -1,0 +1,1735 @@
+
+(top level script) global 0x000000000089DD40
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (object)(object 0x000000000089E6E0:0x0000000000000000)
+00000003 spds %-1.*1, %1	// *1 = (string)"MyYesNoDialogWindow"
+00000007 const %1, *2	// *2 = (object)(object 0x0000000002875F80:0x0000000000000000)
+00000010 spds %-1.*3, %1	// *3 = (string)"CursorMoveAction"
+00000014 const %1, *7	// *7 = (object)(object 0x000000000287BEA0:0x0000000000000000)
+00000017 spds %-1.*8, %1	// *8 = (string)"MyYesNoDialogLayer"
+00000021 const %1, *9	// *9 = (object)(object 0x0000000002888F00:0x0000000000000000)
+00000024 spds %-1.*10, %1	// *10 = (string)"MyYesNoDialog"
+00000028 cl %1
+00000030 gpd %1, %-2.*3	// *3 = (string)"CursorMoveAction"
+00000034 spde %1.*4, %0	// *4 = (string)"Instance"
+00000038 const %2, *5	// *5 = (object)(object 0x000000000287BBD0:0x0000000000000000)
+00000041 global %3
+00000043 chgthis %2, %3
+00000046 spde %1.*6, %2	// *6 = (string)"Start"
+00000050 const %1, *11	// *11 = (string)"YesNoDialog.tjs"
+00000053 calld %0, %-2.*12(%1)	// *12 = (string)"KAGLoadScript"
+00000059 gpd %1, %-2.*10	// *10 = (string)"MyYesNoDialog"
+00000063 spde %1.*13, %0	// *13 = (string)"currentTextPart"
+00000067 gpd %2, %-2.*1	// *1 = (string)"MyYesNoDialogWindow"
+00000071 spde %1.*14, %2	// *14 = (string)"dialogWindow"
+00000075 gpd %2, %-2.*8	// *8 = (string)"MyYesNoDialogLayer"
+00000079 spde %1.*15, %2	// *15 = (string)"dialogLayer"
+00000083 const %2, *16	// *16 = (int)64
+00000086 spde %1.*17, %2	// *17 = (string)"maskThreshold"
+00000090 const %2, *18	// *18 = (int)300
+00000093 spde %1.*19, %2	// *19 = (string)"defaultCursorMove"
+00000097 spde %1.*20, %2	// *20 = (string)"cursorMoveTimeByFocus"
+00000101 const %2, *21	// *21 = (object)(object 0x0000000002893A80:0x0000000000000000)
+00000104 gpd %3, %-2.*10	// *10 = (string)"MyYesNoDialog"
+00000108 chgthis %2, %3
+00000111 spde %1.*22, %2	// *22 = (string)"setCursorMoveTime"
+00000115 gpd %2, %-2.*23	// *23 = (string)"SystemArgumentInfo"
+00000119 gpd %3, %2.*24	// *24 = (string)"curmove"
+00000123 calld %0, %3.*25()	// *25 = (string)"changed"
+00000128 const %2, *26	// *26 = (string)"dialog"
+00000131 spde %1.*27, %2	// *27 = (string)"storage"
+00000135 const %2, *28	// *28 = (int)0
+00000138 spde %1.*29, %2	// *29 = (string)"bgColor"
+00000142 const %2, *30	// *30 = (int)128
+00000145 spde %1.*31, %2	// *31 = (string)"bgOpacity"
+00000149 const %2, *28	// *28 = (int)0
+00000152 spde %1.*32, %2	// *32 = (string)"fadeTime"
+00000156 global %3
+00000158 gpd %4, %3.*33	// *33 = (string)"askYesNo"
+00000162 gpd %5, %-2.*34	// *34 = (string)"MyYesNoDialog"
+00000166 new %2, %5(%4)
+00000171 spde %1.*35, %2	// *35 = (string)"instance"
+00000175 gpd %2, %1.*35	// *35 = (string)"instance"
+00000179 gpd %3, %2.*33	// *33 = (string)"askYesNo"
+00000183 global %4
+00000185 spde %4.*33, %3	// *33 = (string)"askYesNo"
+00000189 srv %0
+00000191 ret
+
+(class) MyYesNoDialogWindow 0x000000000089E6E0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyYesNoDialogWindow"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"PoolWindow"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"baseLayer"
+00000024 const %1, *3	// *3 = (int)0
+00000027 spds %-1.*4, %1	// *4 = (string)"result"
+00000031 const %1, *3	// *3 = (int)0
+00000034 spds %-1.*5, %1	// *5 = (string)"isMain"
+00000038 spds %-1.*6, %0	// *6 = (string)"maskThreshold"
+00000042 spds %-1.*7, %0	// *7 = (string)"callback"
+00000046 spds %-1.*8, %0	// *8 = (string)"tempLayer"
+00000050 srv %0
+00000052 ret
+
+(super class getter proxy) MyYesNoDialogWindow 0x00000000028671A0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"PoolWindow"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(property) temporaryLayer 0x0000000002867890
+
+
+(property getter) (getter) 0x00000000028689A0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"tempLayer"
+00000004 cdeq %1, %0
+00000007 jnf 000000038
+00000009 gpd %2, %-2.*1	// *1 = (string)"poolLayer"
+00000013 gpd %3, %-2.*2	// *2 = (string)"KAGLayer"
+00000017 new %1, %3(%-1, %2)
+00000023 spd %-2.*0, %1	// *0 = (string)"tempLayer"
+00000027 const %1, *3	// *3 = (string)""
+00000030 gpd %2, %-2.*0	// *0 = (string)"tempLayer"
+00000034 spde %2.*4, %1	// *4 = (string)"name"
+00000038 gpd %1, %-2.*0	// *0 = (string)"tempLayer"
+00000042 srv %1
+00000044 ret
+00000045 srv %0
+00000047 ret
+
+(property) uibase 0x0000000002869090
+
+
+(property getter) (getter) 0x0000000002869990
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"primaryLayer"
+00000004 srv %1
+00000006 ret
+00000007 srv %0
+00000009 ret
+
+(function) processKeys 0x000000000286A080
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) getKeyState 0x000000000286A770
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"System"
+00000004 gpd %2, %1.*1	// *1 = (string)"getKeyState"
+00000008 cp %-4, %2
+00000011 call %1, %-4(%-3)
+00000016 cp %-5, %1
+00000019 tt %-5
+00000021 jnf 000000029
+00000023 const %1, *2	// *2 = (int)1
+00000026 srv %1
+00000028 ret
+00000029 gpd %1, %-2.*3	// *3 = (string)"kag"
+00000033 gpd %2, %1.*4	// *4 = (string)"padKeyMapReverse"
+00000037 gpi %3, %2.%-3
+00000041 cp %-6, %3
+00000044 cdeq %-6, %0
+00000047 jf 000000057
+00000049 call %1, %-4(%-6)
+00000054 srv %1
+00000056 ret
+00000057 const %1, *5	// *5 = (int)0
+00000060 srv %1
+00000062 ret
+00000063 srv %0
+00000065 ret
+
+(function) isValidObject 0x000000000286CA50
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 typeof %1
+00000005 const %2, *0	// *0 = (string)"Object"
+00000008 ceq %1, %2
+00000011 jnf 000000029
+00000013 const %3, *1	// *1 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000016 cdeq %-3, %3
+00000019 nf
+00000020 jnf 000000029
+00000022 cp %4, %-3
+00000025 chkinv %4
+00000027 tt %4
+00000029 setf %5
+00000031 srv %5
+00000033 ret
+00000034 srv %0
+00000036 ret
+
+(function) setCursorDefault 0x000000000286CE10
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0(%-3)	// *0 = (string)"isValidObject"
+00000006 tf %1
+00000008 jnf 000000013
+00000010 srv %0
+00000012 ret
+00000013 typeofd %1, %-3.*1	// *1 = (string)"cursorDefault"
+00000017 const %2, *2	// *2 = (string)"undefined"
+00000020 ceq %1, %2
+00000023 jf 000000033
+00000025 gpd %1, %-3.*1	// *1 = (string)"cursorDefault"
+00000029 spde %-1.*1, %1	// *1 = (string)"cursorDefault"
+00000033 typeofd %1, %-3.*3	// *3 = (string)"cursorPointed"
+00000037 const %2, *2	// *2 = (string)"undefined"
+00000040 ceq %1, %2
+00000043 jf 000000053
+00000045 gpd %1, %-3.*3	// *3 = (string)"cursorPointed"
+00000049 spde %-1.*3, %1	// *3 = (string)"cursorPointed"
+00000053 srv %0
+00000055 ret
+
+(function) setCenterPosition 0x000000000286D310
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"width"
+00000004 gpd %2, %-2.*1	// *1 = (string)"height"
+00000008 calld %3, %-2.*2(%-3, %1, %2)	// *2 = (string)"getParentWindowCenterPos"
+00000016 cp %-4, %3
+00000019 cdeq %-4, %0
+00000022 jf 000000042
+00000024 cp %1, %-4
+00000027 gpd %2, %1.*3	// *3 = (string)"x"
+00000031 gpd %3, %1.*4	// *4 = (string)"y"
+00000035 calld %0, %-2.*5(%2, %3)	// *5 = (string)"setPos"
+00000042 srv %0
+00000044 ret
+
+(function) createBaseLayer 0x000000000286E0A0
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-5	// *0 = (string)"callback"
+00000004 cdeq %-4, %0
+00000007 jf 000000036
+00000009 cp %1, %-4
+00000012 typeof %1
+00000014 const %2, *1	// *1 = (string)"Object"
+00000017 ceq %1, %2
+00000020 jnf 000000033
+00000022 cp %3, %-4
+00000025 const %4, *2	// *2 = (string)"Class"
+00000028 chkins %3, %4
+00000031 tt %3
+00000033 nf
+00000034 jnf 000000045
+00000036 global %5
+00000038 gpd %6, %5.*3	// *3 = (string)"MyYesNoDialogLayer"
+00000042 cp %-4, %6
+00000045 gpd %2, %-1.*4	// *4 = (string)"doneFunc"
+00000049 new %1, %-4(%-1, %-3, %2)
+00000056 cp %-6, %1
+00000059 const %1, *5	// *5 = (object)(object 0x000000000286EB80:0x0000000000000000)
+00000062 spde %-6.*6, %1	// *6 = (string)"close"
+00000066 const %1, *7	// *7 = (int)0
+00000069 const %2, *7	// *7 = (int)0
+00000072 calld %0, %-6.*8(%1, %2)	// *8 = (string)"setPos"
+00000079 srv %-6
+00000081 ret
+00000082 srv %0
+00000084 ret
+
+(function expression) (anonymous) 0x000000000286EB80
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) initWindowStyle 0x000000000286F7E0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"Window"
+00000006 gpd %3, %2.*1	// *1 = (string)"mainWindow"
+00000010 cp %-5, %3
+00000013 calld %1, %-2.*2(%-5)	// *2 = (string)"isValidObject"
+00000019 tt %1
+00000021 jnf 000000107
+00000023 gpd %1, %-5.*3	// *3 = (string)"fullScreen"
+00000027 tt %1
+00000029 jnf 000000092
+00000031 gpd %1, %-5.*4	// *4 = (string)"innerWidth"
+00000035 gpd %2, %-5.*5	// *5 = (string)"pxWidth"
+00000039 div %1, %2
+00000042 gpd %3, %-5.*6	// *6 = (string)"innerHeight"
+00000046 gpd %4, %-5.*7	// *7 = (string)"pxHeight"
+00000050 div %3, %4
+00000053 clt %1, %3
+00000056 jnf 000000075
+00000058 gpd %1, %-5.*4	// *4 = (string)"innerWidth"
+00000062 gpd %2, %-5.*5	// *5 = (string)"pxWidth"
+00000066 calld %0, %-2.*8(%1, %2)	// *8 = (string)"setZoom"
+00000073 jmp 000000107
+00000075 gpd %1, %-5.*6	// *6 = (string)"innerHeight"
+00000079 gpd %2, %-5.*7	// *7 = (string)"pxHeight"
+00000083 calld %0, %-2.*8(%1, %2)	// *8 = (string)"setZoom"
+00000090 jmp 000000107
+00000092 gpd %1, %-5.*9	// *9 = (string)"zoomNumer"
+00000096 gpd %2, %-5.*10	// *10 = (string)"zoomDenom"
+00000100 calld %0, %-2.*8(%1, %2)	// *8 = (string)"setZoom"
+00000107 cp %1, %-3
+00000110 gpd %2, %-2.*9	// *9 = (string)"zoomNumer"
+00000114 mul %1, %2
+00000117 gpd %3, %-2.*10	// *10 = (string)"zoomDenom"
+00000121 div %1, %3
+00000124 cp %-6, %1
+00000127 cp %1, %-4
+00000130 gpd %2, %-2.*9	// *9 = (string)"zoomNumer"
+00000134 mul %1, %2
+00000137 gpd %3, %-2.*10	// *10 = (string)"zoomDenom"
+00000141 div %1, %3
+00000144 cp %-7, %1
+00000147 calld %0, %-2.*11(%-6, %-7)	// *11 = (string)"setInnerSize"
+00000154 gpd %1, %-2.*12	// *12 = (string)"primaryLayer"
+00000158 gpd %2, %-2.*13	// *13 = (string)"ltAlpha"
+00000162 spde %1.*14, %2	// *14 = (string)"type"
+00000166 gpd %2, %1.*15	// *15 = (string)"setSize"
+00000170 call %0, %2(%-3, %-4)
+00000176 const %2, *16	// *16 = (int)0
+00000179 const %3, *16	// *16 = (int)0
+00000182 const %4, *16	// *16 = (int)0
+00000185 gpd %5, %1.*17	// *17 = (string)"fillRect"
+00000189 call %0, %5(%2, %3, %-3, %-4, %4)
+00000198 gpd %3, %-2.*18	// *18 = (string)"poolLayer"
+00000202 gpd %4, %-2.*19	// *19 = (string)"Layer"
+00000206 new %2, %4(%-1, %3)
+00000212 cp %-8, %2
+00000215 calld %0, %-8.*20(%-3, %-4)	// *20 = (string)"setImageSize"
+00000222 const %2, *16	// *16 = (int)0
+00000225 const %3, *16	// *16 = (int)0
+00000228 gpd %4, %-2.*12	// *12 = (string)"primaryLayer"
+00000232 const %5, *16	// *16 = (int)0
+00000235 const %6, *16	// *16 = (int)0
+00000238 calld %0, %-8.*21(%2, %3, %4, %5, %6, %-3, %-4)	// *21 = (string)"piledCopy"
+00000250 gpd %2, %1.*20	// *20 = (string)"setImageSize"
+00000254 call %0, %2(%-6, %-7)
+00000260 gpd %2, %1.*22	// *22 = (string)"setSizeToImageSize"
+00000264 call %0, %2()
+00000268 const %2, *16	// *16 = (int)0
+00000271 const %3, *16	// *16 = (int)0
+00000274 gpd %4, %-2.*23	// *23 = (string)"width"
+00000278 gpd %5, %-2.*24	// *24 = (string)"height"
+00000282 const %6, *16	// *16 = (int)0
+00000285 const %7, *16	// *16 = (int)0
+00000288 gpd %8, %1.*25	// *25 = (string)"stretchCopy"
+00000292 call %0, %8(%2, %3, %4, %5, %-8, %6, %7, %-3, %-4)
+00000305 gpd %2, %-2.*26	// *26 = (string)"maskThreshold"
+00000309 calld %0, %-2.*27(%2)	// *27 = (string)"setMaskRegion"
+00000315 gpd %2, %1.*15	// *15 = (string)"setSize"
+00000319 call %0, %2(%-3, %-4)
+00000325 const %2, *16	// *16 = (int)0
+00000328 const %3, *16	// *16 = (int)0
+00000331 const %4, *16	// *16 = (int)0
+00000334 gpd %5, %1.*17	// *17 = (string)"fillRect"
+00000338 call %0, %5(%2, %3, %-3, %-4, %4)
+00000347 cp %2, %-8
+00000350 inv %2
+00000352 typeofd %1, %-1.*28	// *28 = (string)"cursorDefault"
+00000356 const %2, *29	// *29 = (string)"undefined"
+00000359 cdeq %1, %2
+00000362 jf 000000376
+00000364 gpd %3, %-1.*28	// *28 = (string)"cursorDefault"
+00000368 gpd %4, %-2.*12	// *12 = (string)"primaryLayer"
+00000372 spde %4.*30, %3	// *30 = (string)"cursor"
+00000376 global %1
+00000378 gpd %2, %1.*31	// *31 = (string)"Window"
+00000382 gpd %3, %2.*32	// *32 = (string)"mainWindow"
+00000386 calld %0, %-2.*33(%3)	// *33 = (string)"setCenterPosition"
+00000392 srv %0
+00000394 ret
+
+(function) MyYesNoDialogWindow 0x0000000002870100
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"PoolWindow"
+00000006 calld %0, %2.*0()	// *0 = (string)"PoolWindow"
+00000011 const %1, *1	// *1 = (int)2
+00000014 gpd %2, %-2.*2	// *2 = (string)"drawDevice"
+00000018 spde %2.*3, %1	// *3 = (string)"preferredDrawer"
+00000022 global %1
+00000024 gpd %2, %1.*4	// *4 = (string)"MyYesNoDialog"
+00000028 gpd %3, %2.*5	// *5 = (string)"maskThreshold"
+00000032 spd %-2.*5, %3	// *5 = (string)"maskThreshold"
+00000036 gpd %1, %-2.*6	// *6 = (string)"bsNone"
+00000040 spd %-2.*7, %1	// *7 = (string)"borderStyle"
+00000044 const %1, *8	// *8 = (int)0
+00000047 spd %-2.*9, %1	// *9 = (string)"innerSunken"
+00000051 const %1, *8	// *8 = (int)0
+00000054 spd %-2.*10, %1	// *10 = (string)"showScrollBars"
+00000058 global %1
+00000060 gpd %2, %1.*11	// *11 = (string)"Window"
+00000064 gpd %3, %2.*12	// *12 = (string)"mainWindow"
+00000068 cp %-3, %3
+00000071 const %1, *13	// *13 = (int)800
+00000074 cp %-4, %1
+00000077 const %1, *14	// *14 = (int)600
+00000080 cp %-5, %1
+00000083 calld %0, %-2.*15(%-3)	// *15 = (string)"setCursorDefault"
+00000089 calld %1, %-2.*16(%-3)	// *16 = (string)"isValidObject"
+00000095 tt %1
+00000097 jnf 000000116
+00000099 cp %1, %-3
+00000102 gpd %2, %-3.*17	// *17 = (string)"pxWidth"
+00000106 cp %-4, %2
+00000109 gpd %2, %-3.*18	// *18 = (string)"pxHeight"
+00000113 cp %-5, %2
+00000116 const %2, *19	// *19 = (object)(object 0x0000000000000000:0x0000000000000000)
+00000119 gpd %3, %-2.*20	// *20 = (string)"Layer"
+00000123 new %1, %3(%-1, %2)
+00000129 calld %0, %-2.*21(%1)	// *21 = (string)"add"
+00000135 gpd %1, %-2.*22	// *22 = (string)"primaryLayer"
+00000139 calld %0, %1.*23(%-4, %-5)	// *23 = (string)"setSize"
+00000146 const %1, *24	// *24 = (int)1
+00000149 gpd %2, %-2.*22	// *22 = (string)"primaryLayer"
+00000153 spde %2.*25, %1	// *25 = (string)"visible"
+00000157 cl %-6
+00000159 cl %-7
+00000161 calld %1, %-2.*26(...)	// *26 = (string)"createBaseLayer"
+00000166 spd %-2.*27, %1	// *27 = (string)"baseLayer"
+00000170 const %2, *24	// *24 = (int)1
+00000173 spde %1.*25, %2	// *25 = (string)"visible"
+00000177 gpd %2, %1.*28	// *28 = (string)"basewidth"
+00000181 cp %-6, %2
+00000184 gpd %2, %1.*29	// *29 = (string)"baseheight"
+00000188 cp %-7, %2
+00000191 gpd %2, %1.*30	// *30 = (string)"baseleft"
+00000195 chs %2
+00000197 gpd %3, %1.*31	// *31 = (string)"basetop"
+00000201 chs %3
+00000203 gpd %4, %1.*32	// *32 = (string)"setPos"
+00000207 call %0, %4(%2, %3)
+00000213 calld %0, %-2.*33(%-6, %-7)	// *33 = (string)"initWindowStyle"
+00000220 srv %0
+00000222 ret
+
+(property) defaultFocusItemName 0x00000000028753F0
+
+
+(property getter) (getter) 0x00000000028767F0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"baseLayer"
+00000004 cdeq %1, %0
+00000007 jf 000000019
+00000009 gpd %2, %-2.*0	// *0 = (string)"baseLayer"
+00000013 gpd %3, %2.*1	// *1 = (string)"defaultFocusItemName"
+00000017 jmp 000000022
+00000019 cp %3, %0
+00000022 srv %3
+00000024 ret
+00000025 srv %0
+00000027 ret
+
+(property setter) (setter) 0x0000000002875CB0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"baseLayer"
+00000004 cdeq %1, %0
+00000007 jf 000000017
+00000009 gpd %1, %-2.*0	// *0 = (string)"baseLayer"
+00000013 spde %1.*1, %-3	// *1 = (string)"defaultFocusItemName"
+00000017 srv %0
+00000019 ret
+
+(function) finalize 0x0000000002876D90
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"tempLayer"
+00000004 cdeq %1, %0
+00000007 jf 000000015
+00000009 gpd %2, %-2.*0	// *0 = (string)"tempLayer"
+00000013 inv %2
+00000015 global %1
+00000017 gpd %2, %1.*1	// *1 = (string)"PoolWindow"
+00000021 calld %0, %2.*2(...)	// *2 = (string)"finalize"
+00000026 gpd %1, %-2.*3	// *3 = (string)"baseLayer"
+00000030 inv %1
+00000032 srv %0
+00000034 ret
+
+(function) start 0x0000000002876520
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"baseLayer"
+00000004 calld %0, %1.*1()	// *1 = (string)"onOpen"
+00000009 calld %0, %-2.*2()	// *2 = (string)"showModal"
+00000014 gpd %1, %-2.*3	// *3 = (string)"result"
+00000018 srv %1
+00000020 ret
+00000021 srv %0
+00000023 ret
+
+(function) open 0x0000000002876250
+
+#(1) Bytecode.
+00000000 calld %1, %-2.*0()	// *0 = (string)"start"
+00000005 cp %-3, %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"callback"
+00000012 cdeq %1, %0
+00000015 jf 000000023
+00000017 calld %0, %-2.*1(%-3)	// *1 = (string)"callback"
+00000023 srv %-3
+00000025 ret
+00000026 srv %0
+00000028 ret
+
+(function) addHook 0x0000000002876AC0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) removeHook 0x0000000002877060
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) doneFunc 0x0000000002877330
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"result"
+00000004 calld %0, %-2.*1()	// *1 = (string)"close"
+00000009 srv %0
+00000011 ret
+
+(function) onKeyDown 0x0000000002875710
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"PoolWindow"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"onKeyDown"
+00000011 gpd %1, %-2.*2	// *2 = (string)"VK_ESCAPE"
+00000015 ceq %-3, %1
+00000018 jnf 000000032
+00000020 const %1, *3	// *3 = (int)0
+00000023 spd %-2.*4, %1	// *4 = (string)"result"
+00000027 calld %0, %-2.*5()	// *5 = (string)"close"
+00000032 srv %0
+00000034 ret
+
+(function) onMouseDown 0x00000000028759E0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"mbRight"
+00000004 ceq %-5, %1
+00000007 jnf 000000021
+00000009 const %1, *1	// *1 = (int)0
+00000012 spd %-2.*2, %1	// *2 = (string)"result"
+00000016 calld %0, %-2.*3()	// *3 = (string)"close"
+00000021 srv %0
+00000023 ret
+
+(class) CursorMoveAction 0x0000000002875F80
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"CursorMoveAction"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 regmember
+00000009 spds %-1.*1, %0	// *1 = (string)"window"
+00000013 spds %-1.*2, %0	// *2 = (string)"layer"
+00000017 spds %-1.*3, %0	// *3 = (string)"x"
+00000021 spds %-1.*4, %0	// *4 = (string)"y"
+00000025 spds %-1.*5, %0	// *5 = (string)"cx"
+00000029 spds %-1.*6, %0	// *6 = (string)"cy"
+00000033 spds %-1.*7, %0	// *7 = (string)"lx"
+00000037 spds %-1.*8, %0	// *8 = (string)"ly"
+00000041 spds %-1.*9, %0	// *9 = (string)"cancel"
+00000045 spds %-1.*10, %0	// *10 = (string)"threshold"
+00000049 srv %0
+00000051 ret
+
+(class) CursorMoveActionHandler 0x000000000287A550
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"CursorMoveActionHandler"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"AbsoluteActionHandler"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 srv %0
+00000022 ret
+
+(super class getter proxy) CursorMoveActionHandler 0x0000000002879FB0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"AbsoluteActionHandler"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) CursorMoveActionHandler 0x000000000287C710
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"AbsoluteActionHandler"
+00000006 calld %0, %2.*0(...)	// *0 = (string)"AbsoluteActionHandler"
+00000011 srv %0
+00000013 ret
+
+(function) getResultValue 0x000000000287B630
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) doAction 0x000000000287B090
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (int)1
+00000003 cp %2, %-4
+00000006 gpd %3, %-2.*1	// *1 = (string)"time"
+00000010 div %2, %3
+00000013 sub %1, %2
+00000016 cp %-6, %1
+00000019 cp %1, %-3
+00000022 chkinv %1
+00000024 tf %1
+00000026 jf 000000049
+00000028 cp %2, %-6
+00000031 mul %2, %-6
+00000034 gpd %3, %-3.*2	// *2 = (string)"target"
+00000038 calld %4, %3.*3(%2, %-5)	// *3 = (string)"move"
+00000045 tt %4
+00000047 jnf 000000055
+00000049 const %1, *0	// *0 = (int)1
+00000052 srv %1
+00000054 ret
+00000055 srv %-5
+00000057 ret
+00000058 srv %0
+00000060 ret
+
+(property) cursor 0x0000000002879740
+
+
+(property setter) (setter) 0x0000000002878ED0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(property getter) (getter) 0x000000000287A280
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+00000003 srv %0
+00000005 ret
+
+(function) CursorMoveAction 0x0000000002879470
+
+#(1) Bytecode.
+00000000 cdeq %-8, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)4
+00000008 cp %-8, %1
+00000011 gpd %1, %-2.*1	// *1 = (string)"instance"
+00000015 cp %-9, %1
+00000018 tt %-9
+00000020 jnf 000000036
+00000022 cp %1, %-9
+00000025 chkinv %1
+00000027 tt %1
+00000029 jnf 000000036
+00000031 cp %2, %-9
+00000034 inv %2
+00000036 spd %-2.*1, %-1	// *1 = (string)"instance"
+00000040 spd %-2.*2, %-3	// *2 = (string)"window"
+00000044 spd %-2.*3, %-4	// *3 = (string)"layer"
+00000048 spd %-2.*4, %-5	// *4 = (string)"x"
+00000052 spd %-2.*5, %-6	// *5 = (string)"y"
+00000056 spd %-2.*6, %-8	// *6 = (string)"threshold"
+00000060 gpd %1, %-2.*3	// *3 = (string)"layer"
+00000064 chkinv %1
+00000066 tt %1
+00000068 jnf 000000098
+00000070 gpd %1, %-2.*3	// *3 = (string)"layer"
+00000074 gpd %2, %1.*7	// *7 = (string)"cursorX"
+00000078 spd %-2.*8, %2	// *8 = (string)"cx"
+00000082 spd %-2.*9, %2	// *9 = (string)"lx"
+00000086 gpd %3, %1.*10	// *10 = (string)"cursorY"
+00000090 spd %-2.*11, %3	// *11 = (string)"cy"
+00000094 spd %-2.*12, %3	// *12 = (string)"ly"
+00000098 global %1
+00000100 gpd %2, %1.*13	// *13 = (string)"Dictionary"
+00000104 new %1, %2()
+00000108 const %2, *14	// *14 = (string)"cursor"
+00000111 global %3
+00000113 gpd %4, %3.*13	// *13 = (string)"Dictionary"
+00000117 new %3, %4()
+00000121 const %4, *15	// *15 = (string)"handler"
+00000124 gpd %5, %-2.*16	// *16 = (string)"CursorMoveActionHandler"
+00000128 spis %3.%4, %5
+00000132 const %4, *17	// *17 = (string)"time"
+00000135 spis %3.%4, %-7
+00000139 spis %1.%2, %3
+00000143 gpd %2, %-2.*18	// *18 = (string)"stop"
+00000147 const %3, *19	// *19 = (int)1
+00000150 gpd %4, %-2.*2	// *2 = (string)"window"
+00000154 calld %0, %4.*20(%-1, %1, %2, %3)	// *20 = (string)"beginAction"
+00000163 const %1, *19	// *19 = (int)1
+00000166 gpd %2, %-2.*2	// *2 = (string)"window"
+00000170 spde %2.*21, %1	// *21 = (string)"ignoreTrackPseudoMenu"
+00000174 srv %0
+00000176 ret
+
+(function) finalize 0x000000000287B360
+
+#(1) Bytecode.
+00000000 cp %1, %-1
+00000003 chkinv %1
+00000005 tf %1
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 const %1, *0	// *0 = (int)0
+00000015 gpd %2, %-2.*1	// *1 = (string)"window"
+00000019 spde %2.*2, %1	// *2 = (string)"ignoreTrackPseudoMenu"
+00000023 gpd %1, %-2.*1	// *1 = (string)"window"
+00000027 calld %0, %1.*3(%-1)	// *3 = (string)"stopAction"
+00000033 gpd %1, %-2.*4	// *4 = (string)"instance"
+00000037 cdeq %1, %-1
+00000040 jnf 000000046
+00000042 spd %-2.*4, %0	// *4 = (string)"instance"
+00000046 srv %0
+00000048 ret
+
+(function) stop 0x0000000002879A10
+
+#(1) Bytecode.
+00000000 cp %1, %-1
+00000003 chkinv %1
+00000005 tt %1
+00000007 jnf 000000014
+00000009 cp %2, %-1
+00000012 inv %2
+00000014 srv %0
+00000016 ret
+
+(function) move 0x0000000002879CE0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"layer"
+00000004 chkinv %1
+00000006 tf %1
+00000008 jnf 000000016
+00000010 const %1, *1	// *1 = (int)1
+00000013 srv %1
+00000015 ret
+00000016 tt %-4
+00000018 jnf 000000049
+00000020 gpd %1, %-2.*2	// *2 = (string)"cancel"
+00000024 tf %1
+00000026 jnf 000000049
+00000028 gpd %1, %-2.*3	// *3 = (string)"x"
+00000032 gpd %2, %-2.*4	// *4 = (string)"y"
+00000036 gpd %3, %-2.*0	// *0 = (string)"layer"
+00000040 calld %0, %3.*5(%1, %2)	// *5 = (string)"setCursorPos"
+00000047 jmp 000000191
+00000049 gpd %1, %-2.*0	// *0 = (string)"layer"
+00000053 gpd %2, %-2.*6	// *6 = (string)"Math"
+00000057 gpd %3, %2.*7	// *7 = (string)"abs"
+00000061 cp %-5, %3
+00000064 gpd %2, %-2.*8	// *8 = (string)"threshold"
+00000068 cp %-6, %2
+00000071 gpd %3, %-2.*9	// *9 = (string)"lx"
+00000075 gpd %4, %1.*10	// *10 = (string)"cursorX"
+00000079 sub %3, %4
+00000082 call %2, %-5(%3)
+00000087 cgt %2, %-6
+00000090 jf 000000113
+00000092 gpd %4, %-2.*11	// *11 = (string)"ly"
+00000096 gpd %5, %1.*12	// *12 = (string)"cursorY"
+00000100 sub %4, %5
+00000103 call %3, %-5(%4)
+00000108 cgt %3, %-6
+00000111 jnf 000000123
+00000113 const %2, *1	// *1 = (int)1
+00000116 spd %-2.*2, %2	// *2 = (string)"cancel"
+00000120 srv %2
+00000122 ret
+00000123 gpd %2, %-2.*3	// *3 = (string)"x"
+00000127 gpd %3, %-2.*13	// *13 = (string)"cx"
+00000131 gpd %4, %-2.*3	// *3 = (string)"x"
+00000135 sub %3, %4
+00000138 mul %3, %-3
+00000141 add %2, %3
+00000144 gpd %5, %-2.*4	// *4 = (string)"y"
+00000148 gpd %6, %-2.*14	// *14 = (string)"cy"
+00000152 gpd %7, %-2.*4	// *4 = (string)"y"
+00000156 sub %6, %7
+00000159 mul %6, %-3
+00000162 add %5, %6
+00000165 gpd %8, %1.*5	// *5 = (string)"setCursorPos"
+00000169 call %0, %8(%2, %5)
+00000175 gpd %2, %1.*10	// *10 = (string)"cursorX"
+00000179 spd %-2.*9, %2	// *9 = (string)"lx"
+00000183 gpd %3, %1.*12	// *12 = (string)"cursorY"
+00000187 spd %-2.*11, %3	// *11 = (string)"ly"
+00000191 srv %0
+00000193 ret
+
+(property) instance 0x000000000287B900
+
+
+(property setter) (setter) 0x000000000287A820
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"CursorMoveAction"
+00000006 spde %2.*1, %-3	// *1 = (string)"Instance"
+00000010 srv %0
+00000012 ret
+
+(property getter) (getter) 0x000000000287AAF0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"CursorMoveAction"
+00000006 gpd %3, %2.*1	// *1 = (string)"Instance"
+00000010 srv %3
+00000012 ret
+00000013 srv %0
+00000015 ret
+
+(function expression) (anonymous) 0x000000000287BBD0
+
+#(1) Bytecode.
+00000000 tf %-3
+00000002 jf 000000038
+00000004 cp %1, %-3
+00000007 chkinv %1
+00000009 tf %1
+00000011 jf 000000038
+00000013 typeofd %2, %-3.*0	// *0 = (string)"beginAction"
+00000017 const %3, *1	// *1 = (string)"undefined"
+00000020 ceq %2, %3
+00000023 jf 000000038
+00000025 tf %-4
+00000027 jf 000000038
+00000029 cp %4, %-4
+00000032 chkinv %4
+00000034 tf %4
+00000036 jnf 000000041
+00000038 srv %0
+00000040 ret
+00000041 gpd %2, %-2.*2	// *2 = (string)"CursorMoveAction"
+00000045 new %1, %2(...)
+00000049 cp %-5, %1
+00000052 srv %0
+00000054 ret
+
+(class) MyYesNoDialogLayer 0x000000000287BEA0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyYesNoDialogLayer"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 gpd %1, %-2.*1	// *1 = (string)"DialogLayer"
+00000012 chgthis %1, %-1
+00000015 call %0, %1()
+00000019 regmember
+00000020 spds %-1.*2, %0	// *2 = (string)"callback"
+00000024 spds %-1.*3, %0	// *3 = (string)"trig1"
+00000028 spds %-1.*4, %0	// *4 = (string)"trig2"
+00000032 spds %-1.*5, %0	// *5 = (string)"defaultFocusItemName"
+00000036 spds %-1.*6, %0	// *6 = (string)"_fcitem"
+00000040 spds %-1.*7, %0	// *7 = (string)"result"
+00000044 srv %0
+00000046 ret
+
+(super class getter proxy) MyYesNoDialogLayer 0x000000000287C170
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"DialogLayer"
+00000004 srv %1
+00000006 ret
+00000007 nop
+
+(function) MyYesNoDialogLayer 0x000000000287ADC0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"config"
+00000004 gpd %2, %1.*1	// *1 = (string)"storage"
+00000008 cp %-7, %2
+00000011 gpd %1, %-3.*2	// *2 = (string)"uibase"
+00000015 const %2, *3	// *3 = (string)"MyYesNoDialogLayer : "
+00000018 add %2, %-7
+00000021 global %3
+00000023 gpd %4, %3.*4	// *4 = (string)"DialogLayer"
+00000027 calld %0, %4.*4(%-3, %1, %2)	// *4 = (string)"DialogLayer"
+00000035 const %1, *5	// *5 = (int)1
+00000038 spd %-2.*6, %1	// *6 = (string)"selProcessLock"
+00000042 spde %-1.*7, %-5	// *7 = (string)"callback"
+00000046 const %1, *8	// *8 = (string)"focusItemPhase2"
+00000049 gpd %2, %-2.*9	// *9 = (string)"atmAtIdle"
+00000053 calld %3, %-2.*10(%1, %2)	// *10 = (string)"createTrigger"
+00000060 spd %-2.*11, %3	// *11 = (string)"trig1"
+00000064 const %1, *12	// *12 = (string)"focusItemPhase3"
+00000067 gpd %2, %-2.*9	// *9 = (string)"atmAtIdle"
+00000071 calld %3, %-2.*10(%1, %2)	// *10 = (string)"createTrigger"
+00000078 spd %-2.*13, %3	// *13 = (string)"trig2"
+00000082 const %1, *14	// *14 = (int)0
+00000085 cp %-8, %1
+00000088 const %1, *14	// *14 = (int)0
+00000091 cp %-9, %1
+00000094 tt %-6
+00000096 jnf 000000116
+00000098 gpd %1, %-2.*0	// *0 = (string)"config"
+00000102 gpd %2, %1.*15	// *15 = (string)"bgOpacity"
+00000106 cp %-8, %2
+00000109 gpd %3, %1.*16	// *16 = (string)"bgColor"
+00000113 cp %-9, %3
+00000116 global %1
+00000118 gpd %2, %1.*17	// *17 = (string)"Dictionary"
+00000122 new %1, %2()
+00000126 const %2, *1	// *1 = (string)"storage"
+00000129 spis %1.%2, %-7
+00000133 const %2, *18	// *18 = (string)"partexcept"
+00000136 spis %1.%2, %-4
+00000140 const %2, *19	// *19 = (string)"bgopacity"
+00000143 spis %1.%2, %-8
+00000147 const %2, *20	// *20 = (string)"bgcolor"
+00000150 spis %1.%2, %-9
+00000154 calld %0, %-2.*21(%1)	// *21 = (string)"uiload"
+00000160 srv %0
+00000162 ret
+
+(function) finalize 0x000000000287C440
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"trig1"
+00000004 cdeq %1, %0
+00000007 jf 000000025
+00000009 gpd %2, %-2.*0	// *0 = (string)"trig1"
+00000013 chkinv %2
+00000015 tf %2
+00000017 jf 000000025
+00000019 gpd %3, %-2.*0	// *0 = (string)"trig1"
+00000023 inv %3
+00000025 gpd %1, %-2.*1	// *1 = (string)"trig2"
+00000029 cdeq %1, %0
+00000032 jf 000000050
+00000034 gpd %2, %-2.*1	// *1 = (string)"trig2"
+00000038 chkinv %2
+00000040 tf %2
+00000042 jf 000000050
+00000044 gpd %3, %-2.*1	// *1 = (string)"trig2"
+00000048 inv %3
+00000050 global %1
+00000052 gpd %2, %1.*2	// *2 = (string)"DialogLayer"
+00000056 calld %0, %2.*3()	// *3 = (string)"finalize"
+00000061 srv %0
+00000063 ret
+
+(property) inDialogWindow 0x000000000287C9E0
+
+
+(property getter) (getter) 0x0000000002888960
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"window"
+00000004 const %2, *1	// *1 = (string)"MyYesNoDialogWindow"
+00000007 chkins %1, %2
+00000010 srv %1
+00000012 ret
+00000013 srv %0
+00000015 ret
+
+(function) createTrigger 0x0000000002888C30
+
+#(1) Bytecode.
+00000000 cl %-5
+00000002 gpd %2, %-2.*0	// *0 = (string)"AsyncTrigger"
+00000006 new %1, %2(%-1, %-3)
+00000012 cp %-5, %1
+00000015 spde %1.*1, %-4	// *1 = (string)"mode"
+00000019 const %2, *2	// *2 = (int)1
+00000022 spde %1.*3, %2	// *3 = (string)"cached"
+00000026 srv %-5
+00000028 ret
+00000029 srv %0
+00000031 ret
+
+(function) onOpen 0x00000000028883C0
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (int)0
+00000003 spd %-2.*1, %1	// *1 = (string)"selProcessLock"
+00000007 const %1, *2	// *2 = (string)"dialog.open"
+00000010 calld %2, %-2.*3(%1)	// *3 = (string)"getSysSE"
+00000016 cp %-3, %2
+00000019 calld %1, %-2.*4(%-3)	// *4 = (string)"stateSysSE"
+00000025 const %2, *5	// *5 = (string)"play"
+00000028 ceq %1, %2
+00000031 jf 000000039
+00000033 calld %0, %-2.*6(%-3)	// *6 = (string)"playSysSE"
+00000039 gpd %1, %-2.*7	// *7 = (string)"defaultFocusItemName"
+00000043 calld %0, %-2.*8(%1)	// *8 = (string)"focusItem"
+00000049 gpd %1, %-2.*9	// *9 = (string)"config"
+00000053 gpd %2, %1.*10	// *10 = (string)"fadeTime"
+00000057 const %3, *0	// *0 = (int)0
+00000060 cgt %2, %3
+00000063 jnf 000000091
+00000065 gpd %4, %-2.*11	// *11 = (string)"inDialogWindow"
+00000069 tf %4
+00000071 jnf 000000091
+00000073 const %1, *12	// *12 = (int)1
+00000076 gpd %2, %-2.*9	// *9 = (string)"config"
+00000080 gpd %3, %2.*10	// *10 = (string)"fadeTime"
+00000084 calld %0, %-2.*13(%1, %3)	// *13 = (string)"showHideFade"
+00000091 srv %0
+00000093 ret
+
+(function) focusItem 0x000000000288A580
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"config"
+00000004 gpd %2, %1.*1	// *1 = (string)"cursorMoveTimeByFocus"
+00000008 cp %-4, %2
+00000011 cl %-5
+00000013 const %1, *2	// *2 = (string)""
+00000016 ceq %-3, %1
+00000019 jf 000000032
+00000021 gpd %2, %-1.*3	// *3 = (string)"names"
+00000025 gpi %3, %2.%-3
+00000029 cp %-5, %3
+00000032 cdeq %-5, %0
+00000035 jnf 000000048
+00000037 gpd %1, %-1.*3	// *3 = (string)"names"
+00000041 gpd %2, %1.*4	// *4 = (string)"no"
+00000045 cp %-5, %2
+00000048 cdeq %-5, %0
+00000051 jnf 000000064
+00000053 gpd %1, %-1.*3	// *3 = (string)"names"
+00000057 gpd %2, %1.*5	// *5 = (string)"yes"
+00000061 cp %-5, %2
+00000064 tf %-4
+00000066 jnf 000000076
+00000068 calld %0, %-2.*6(%-5)	// *6 = (string)"focusItemPhase1"
+00000074 jmp 000000138
+00000076 const %1, *7	// *7 = (int)0
+00000079 cgt %-4, %1
+00000082 jnf 000000138
+00000084 tt %-5
+00000086 jnf 000000138
+00000088 cp %2, %-5
+00000091 chkinv %2
+00000093 tt %2
+00000095 jnf 000000138
+00000097 cp %1, %-5
+00000100 gpd %2, %-2.*8	// *8 = (string)"window"
+00000104 gpd %3, %1.*9	// *9 = (string)"width"
+00000108 const %4, *10	// *10 = (int)2
+00000111 idiv %3, %4
+00000114 gpd %5, %1.*11	// *11 = (string)"height"
+00000118 const %6, *10	// *10 = (int)2
+00000121 idiv %5, %6
+00000124 gpd %7, %-2.*12	// *12 = (string)"CursorMoveAction"
+00000128 calld %0, %7.*13(%2, %-5, %3, %5, %-4)	// *13 = (string)"Start"
+00000138 srv %0
+00000140 ret
+
+(function) focusItemPhase1 0x000000000288AB20
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"_fcitem"
+00000004 cdeq %-3, %0
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 gpd %1, %-2.*0	// *0 = (string)"_fcitem"
+00000016 tt %1
+00000018 jnf 000000055
+00000020 gpd %2, %-2.*0	// *0 = (string)"_fcitem"
+00000024 chkinv %2
+00000026 tt %2
+00000028 jnf 000000055
+00000030 gpd %1, %-2.*0	// *0 = (string)"_fcitem"
+00000034 const %2, *1	// *1 = (int)0
+00000037 spde %1.*2, %2	// *2 = (string)"enabled"
+00000041 gpd %2, %1.*3	// *3 = (string)"linkNum"
+00000045 const %3, *4	// *4 = (int)1
+00000048 calld %0, %-2.*5(%2, %3)	// *5 = (string)"setFocusToLink"
+00000055 gpd %1, %-2.*6	// *6 = (string)"trig1"
+00000059 calld %0, %1.*7()	// *7 = (string)"trigger"
+00000064 srv %0
+00000066 ret
+
+(function) focusItemPhase2 0x000000000288B0C0
+
+#(1) Bytecode.
+00000000 cp %1, %-1
+00000003 chkinv %1
+00000005 tf %1
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 gpd %1, %-2.*0	// *0 = (string)"_fcitem"
+00000016 tt %1
+00000018 jnf 000000041
+00000020 gpd %2, %-2.*0	// *0 = (string)"_fcitem"
+00000024 chkinv %2
+00000026 tt %2
+00000028 jnf 000000041
+00000030 const %3, *1	// *1 = (int)1
+00000033 gpd %4, %-2.*0	// *0 = (string)"_fcitem"
+00000037 spde %4.*2, %3	// *2 = (string)"enabled"
+00000041 gpd %1, %-2.*3	// *3 = (string)"trig2"
+00000045 calld %0, %1.*4()	// *4 = (string)"trigger"
+00000050 srv %0
+00000052 ret
+
+(function) focusItemPhase3 0x000000000288A850
+
+#(1) Bytecode.
+00000000 cp %1, %-1
+00000003 chkinv %1
+00000005 tf %1
+00000007 jnf 000000012
+00000009 srv %0
+00000011 ret
+00000012 gpd %1, %-2.*0	// *0 = (string)"_fcitem"
+00000016 tt %1
+00000018 jnf 000000048
+00000020 gpd %2, %-2.*0	// *0 = (string)"_fcitem"
+00000024 chkinv %2
+00000026 tt %2
+00000028 jnf 000000048
+00000030 gpd %3, %-2.*0	// *0 = (string)"_fcitem"
+00000034 gpd %4, %3.*1	// *1 = (string)"linkNum"
+00000038 const %5, *2	// *2 = (int)1
+00000041 calld %0, %-2.*3(%4, %5)	// *3 = (string)"setFocusToLink"
+00000048 spd %-2.*0, %0	// *0 = (string)"_fcitem"
+00000052 srv %0
+00000054 ret
+
+(function) close 0x000000000288ADF0
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (int)1
+00000008 cp %-3, %1
+00000011 gpd %1, %-2.*1	// *1 = (string)"callback"
+00000015 cdeq %1, %0
+00000018 jf 000000029
+00000020 const %2, *2	// *2 = (int)0
+00000023 calld %0, %-2.*1(%2)	// *1 = (string)"callback"
+00000029 spd %-2.*1, %0	// *1 = (string)"callback"
+00000033 tt %-3
+00000035 jnf 000000046
+00000037 const %1, *3	// *3 = (string)"dialog.close"
+00000040 calld %0, %-2.*4(%1)	// *4 = (string)"playSysSE"
+00000046 global %1
+00000048 gpd %2, %1.*5	// *5 = (string)"DialogLayer"
+00000052 calld %0, %2.*6()	// *6 = (string)"close"
+00000057 srv %0
+00000059 ret
+
+(function) processLink 0x000000000288B390
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"DialogLayer"
+00000006 calld %0, %2.*1(%-3)	// *1 = (string)"processLink"
+00000012 gpd %1, %-2.*2	// *2 = (string)"links"
+00000016 gpi %2, %1.%-3
+00000020 cp %-4, %2
+00000023 cdeq %-4, %0
+00000026 jnf 000000031
+00000028 srv %0
+00000030 ret
+00000031 gpd %1, %-4.*3	// *3 = (string)"object"
+00000035 gpd %2, %1.*4	// *4 = (string)"name"
+00000039 calld %3, %-2.*5(%2)	// *5 = (string)"onItemClick"
+00000045 spd %-2.*6, %3	// *6 = (string)"result"
+00000049 gpd %1, %-2.*6	// *6 = (string)"result"
+00000053 cdeq %1, %0
+00000056 jf 000000063
+00000058 calld %0, %-2.*7()	// *7 = (string)"onResult"
+00000063 srv %0
+00000065 ret
+
+(function) invokeCallback 0x0000000002889D10
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"callback"
+00000004 cdeq %1, %0
+00000007 jf 000000019
+00000009 gpd %2, %-2.*1	// *1 = (string)"result"
+00000013 calld %0, %-2.*0(%2)	// *0 = (string)"callback"
+00000019 cp %1, %-1
+00000022 chkinv %1
+00000024 tt %1
+00000026 jnf 000000041
+00000028 spd %-2.*0, %0	// *0 = (string)"callback"
+00000032 const %1, *2	// *2 = (int)0
+00000035 calld %0, %-2.*3(%1)	// *3 = (string)"close"
+00000041 srv %0
+00000043 ret
+
+(function) onResult 0x000000000288B660
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"config"
+00000004 gpd %2, %1.*1	// *1 = (string)"fadeTime"
+00000008 const %3, *2	// *2 = (int)0
+00000011 cgt %2, %3
+00000014 jnf 000000048
+00000016 gpd %4, %-2.*3	// *3 = (string)"inDialogWindow"
+00000020 tf %4
+00000022 jnf 000000048
+00000024 const %1, *2	// *2 = (int)0
+00000027 gpd %2, %-2.*0	// *0 = (string)"config"
+00000031 gpd %3, %2.*1	// *1 = (string)"fadeTime"
+00000035 const %4, *2	// *2 = (int)0
+00000038 calld %0, %-2.*4(%1, %3, %4)	// *4 = (string)"showHideFade"
+00000046 jmp 000000053
+00000048 calld %0, %-2.*5()	// *5 = (string)"invokeCallback"
+00000053 srv %0
+00000055 ret
+
+(function) onShowHideFadeDone 0x000000000288B930
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"DialogLayer"
+00000006 calld %0, %2.*1(...)	// *1 = (string)"onShowHideFadeDone"
+00000011 tf %-3
+00000013 jnf 000000020
+00000015 calld %0, %-2.*2()	// *2 = (string)"invokeCallback"
+00000020 srv %0
+00000022 ret
+
+(function) onItemClick 0x000000000288BC00
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"yes"
+00000003 ceq %-3, %1
+00000006 jf 000000024
+00000008 const %2, *1	// *1 = (string)""
+00000011 calld %3, %-3.*2(%2)	// *2 = (string)"indexOf"
+00000017 const %4, *3	// *3 = (int)0
+00000020 clt %3, %4
+00000023 nf
+00000024 setf %5
+00000026 srv %5
+00000028 ret
+00000029 srv %0
+00000031 ret
+
+(property) config 0x000000000288BED0
+
+
+(property getter) (getter) 0x00000000028891D0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"MyYesNoDialog"
+00000006 srv %2
+00000008 ret
+00000009 srv %0
+00000011 ret
+
+(class) MyYesNoDialog 0x0000000002888F00
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"MyYesNoDialog"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 regmember
+00000009 global %1
+00000011 gpd %2, %1.*1	// *1 = (string)"Dictionary"
+00000015 new %1, %2()
+00000019 const %2, *2	// *2 = (string)" ?"
+00000022 const %3, *3	// *3 = (string)"AskTitle"
+00000025 spis %1.%2, %3
+00000029 const %2, *4	// *4 = (string)""
+00000032 const %3, *5	// *5 = (string)"AskExit"
+00000035 spis %1.%2, %3
+00000039 const %2, *6	// *6 = (string)""
+00000042 const %3, *7	// *7 = (string)"AskInit"
+00000045 spis %1.%2, %3
+00000049 const %2, *8	// *8 = (string)""
+00000052 const %3, *9	// *9 = (string)"AskLoad"
+00000055 spis %1.%2, %3
+00000059 const %2, *10	// *10 = (string)""
+00000062 const %3, *11	// *11 = (string)"AskOverwrite"
+00000065 spis %1.%2, %3
+00000069 const %2, *12	// *12 = (string)""
+00000072 const %3, *13	// *13 = (string)"AskQLoad"
+00000075 spis %1.%2, %3
+00000079 const %2, *14	// *14 = (string)""
+00000082 const %3, *15	// *15 = (string)"AskQSave"
+00000085 spis %1.%2, %3
+00000089 const %2, *16	// *16 = (string)""
+00000092 const %3, *17	// *17 = (string)"AskBackTo"
+00000095 spis %1.%2, %3
+00000099 const %2, *18	// *18 = (string)""
+00000102 const %3, *19	// *19 = (string)"AskNext"
+00000105 spis %1.%2, %3
+00000109 const %2, *20	// *20 = (string)""
+00000112 const %3, *21	// *21 = (string)"DoneQSave"
+00000115 spis %1.%2, %3
+00000119 const %2, *22	// *22 = (string)""
+00000122 const %3, *23	// *23 = (string)"DoneQLoad"
+00000125 spis %1.%2, %3
+00000129 spds %-1.*24, %1	// *24 = (string)"yesnoMap"
+00000133 global %1
+00000135 gpd %2, %1.*25	// *25 = (string)"Array"
+00000139 new %1, %2()
+00000143 const %2, *26	// *26 = (int)0
+00000146 const %3, *27	// *27 = (string)"?"
+00000149 spis %1.%2, %3
+00000153 inc %2
+00000155 const %3, *17	// *17 = (string)"AskBackTo"
+00000158 spis %1.%2, %3
+00000162 inc %2
+00000164 const %3, *28	// *28 = (string)""
+00000167 spis %1.%2, %3
+00000171 inc %2
+00000173 const %3, *29	// *29 = (string)"AskStartFail"
+00000176 spis %1.%2, %3
+00000180 inc %2
+00000182 const %3, *30	// *30 = (string)""
+00000185 spis %1.%2, %3
+00000189 inc %2
+00000191 const %3, *31	// *31 = (string)"AskLabelChanged"
+00000194 spis %1.%2, %3
+00000198 inc %2
+00000200 const %3, *32	// *32 = (string)"?"
+00000203 spis %1.%2, %3
+00000207 inc %2
+00000209 const %3, *33	// *33 = (string)"AskSave"
+00000212 spis %1.%2, %3
+00000216 inc %2
+00000218 const %3, *34	// *34 = (string)"?"
+00000221 spis %1.%2, %3
+00000225 inc %2
+00000227 const %3, *35	// *35 = (string)"AskLoad"
+00000230 spis %1.%2, %3
+00000234 inc %2
+00000236 spds %-1.*36, %1	// *36 = (string)"yesnoMatch"
+00000240 global %1
+00000242 gpd %2, %1.*37	// *37 = (string)"Dictionary"
+00000246 new %1, %2()
+00000250 const %2, *38	// *38 = (string)"AskOverwrite"
+00000253 const %3, *39	// *39 = (object)(object 0x000000000288A2B0:0x0000000000000000)
+00000256 spis %1.%2, %3
+00000260 const %2, *40	// *40 = (string)"AskInit"
+00000263 const %3, *41	// *41 = (object)(object 0x0000000002889770:0x0000000000000000)
+00000266 spis %1.%2, %3
+00000270 const %2, *42	// *42 = (string)"AskTitle"
+00000273 const %3, *43	// *43 = (object)(object 0x00000000028953D0:0x0000000000000000)
+00000276 spis %1.%2, %3
+00000280 const %2, *44	// *44 = (string)"AskExit"
+00000283 const %3, *45	// *45 = (object)(object 0x00000000028961E0:0x0000000000000000)
+00000286 spis %1.%2, %3
+00000290 spds %-1.*46, %1	// *46 = (string)"forceYesMap"
+00000294 global %1
+00000296 gpd %2, %1.*37	// *37 = (string)"Dictionary"
+00000300 new %1, %2()
+00000304 spds %-1.*47, %1	// *47 = (string)"_defaultFocusItem"
+00000308 global %1
+00000310 gpd %2, %1.*48	// *48 = (string)"MyYesNoDialog"
+00000314 spds %-1.*49, %2	// *49 = (string)"ThisClass"
+00000318 spds %-1.*50, %0	// *50 = (string)"origAskYesNo"
+00000322 srv %0
+00000324 ret
+
+(class) askYesNoCallbacks 0x0000000002888690
+
+#(1) Bytecode.
+00000000 const %1, *0	// *0 = (string)"askYesNoCallbacks"
+00000003 addci %-1, %1
+00000006 cl %1
+00000008 regmember
+00000009 srv %0
+00000011 ret
+
+(function) askYesNoCallbacks 0x0000000002889FE0
+
+#(1) Bytecode.
+00000000 spde %-1.*0, %-3	// *0 = (string)"yesFunc"
+00000004 spde %-1.*1, %-4	// *1 = (string)"noFunc"
+00000008 spde %-1.*2, %-5	// *2 = (string)"param"
+00000012 spde %-1.*3, %-6	// *3 = (string)"doneFunc"
+00000016 srv %0
+00000018 ret
+
+(function) finalize 0x0000000002889A40
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) Invoke 0x00000000028894A0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"yesFunc"
+00000004 cdeq %1, %0
+00000007 jf 000000023
+00000009 tf %-3
+00000011 jf 000000023
+00000013 gpd %2, %-2.*1	// *1 = (string)"param"
+00000017 calld %0, %-2.*0(%2)	// *0 = (string)"yesFunc"
+00000023 gpd %1, %-2.*2	// *2 = (string)"noFunc"
+00000027 cdeq %1, %0
+00000030 jf 000000047
+00000032 tf %-3
+00000034 nf
+00000035 jf 000000047
+00000037 gpd %2, %-2.*1	// *1 = (string)"param"
+00000041 calld %0, %-2.*2(%2)	// *2 = (string)"noFunc"
+00000047 gpd %1, %-2.*3	// *3 = (string)"doneFunc"
+00000051 cdeq %1, %0
+00000054 jf 000000066
+00000056 gpd %2, %-2.*1	// *1 = (string)"param"
+00000060 calld %0, %-2.*3(%2)	// *3 = (string)"doneFunc"
+00000066 srv %0
+00000068 ret
+
+(function expression) (anonymous) 0x000000000288A2B0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000006 cdeq %2, %0
+00000009 jf 000000025
+00000011 global %3
+00000013 gpd %4, %3.*0	// *0 = (string)"SystemConfig"
+00000017 gpd %5, %4.*1	// *1 = (string)"askOverwrite"
+00000021 lnot %5
+00000023 jmp 000000031
+00000025 const %3, *2	// *2 = (int)0
+00000028 cp %5, %3
+00000031 srv %5
+00000033 ret
+00000034 srv %0
+00000036 ret
+
+(function expression) (anonymous) 0x0000000002889770
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000006 cdeq %2, %0
+00000009 jf 000000025
+00000011 global %3
+00000013 gpd %4, %3.*0	// *0 = (string)"SystemConfig"
+00000017 gpd %5, %4.*1	// *1 = (string)"askInit"
+00000021 lnot %5
+00000023 jmp 000000031
+00000025 const %3, *2	// *2 = (int)0
+00000028 cp %5, %3
+00000031 srv %5
+00000033 ret
+00000034 srv %0
+00000036 ret
+
+(function expression) (anonymous) 0x00000000028953D0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000006 cdeq %2, %0
+00000009 jf 000000025
+00000011 global %3
+00000013 gpd %4, %3.*0	// *0 = (string)"SystemConfig"
+00000017 gpd %5, %4.*1	// *1 = (string)"askTitle"
+00000021 lnot %5
+00000023 jmp 000000031
+00000025 const %3, *2	// *2 = (int)0
+00000028 cp %5, %3
+00000031 srv %5
+00000033 ret
+00000034 srv %0
+00000036 ret
+
+(function expression) (anonymous) 0x00000000028961E0
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000006 cdeq %2, %0
+00000009 jf 000000025
+00000011 global %3
+00000013 gpd %4, %3.*0	// *0 = (string)"SystemConfig"
+00000017 gpd %5, %4.*1	// *1 = (string)"askExit"
+00000021 lnot %5
+00000023 jmp 000000031
+00000025 const %3, *2	// *2 = (int)0
+00000028 cp %5, %3
+00000031 srv %5
+00000033 ret
+00000034 srv %0
+00000036 ret
+
+(property) defaultFocusItem 0x0000000002893D50
+
+
+(property setter) (setter) 0x00000000028945C0
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"_defaultFocusItem"
+00000004 srv %0
+00000006 ret
+
+(property getter) (getter) 0x0000000002895F10
+
+#(1) Bytecode.
+00000000 global %1
+00000002 gpd %2, %1.*0	// *0 = (string)"SystemConfig"
+00000006 cdeq %2, %0
+00000009 jf 000000044
+00000011 gpd %3, %-2.*0	// *0 = (string)"SystemConfig"
+00000015 const %4, *1	// *1 = (string)"dialogDefaultFocusTable"
+00000018 typeofi %5, %3.%4
+00000022 const %6, *2	// *2 = (string)"Object"
+00000025 ceq %5, %6
+00000028 nf
+00000029 jf 000000044
+00000031 gpd %7, %-2.*0	// *0 = (string)"SystemConfig"
+00000035 const %8, *1	// *1 = (string)"dialogDefaultFocusTable"
+00000038 gpi %9, %7.%8
+00000042 jmp 000000051
+00000044 gpd %7, %-2.*3	// *3 = (string)"_defaultFocusItem"
+00000048 cp %9, %7
+00000051 srv %9
+00000053 ret
+00000054 srv %0
+00000056 ret
+
+(function) MyYesNoDialog 0x0000000002894890
+
+#(1) Bytecode.
+00000000 spd %-2.*0, %-3	// *0 = (string)"origAskYesNo"
+00000004 srv %0
+00000006 ret
+
+(function) finalize 0x00000000028964B0
+
+#(1) Bytecode.
+00000000 srv %0
+00000002 ret
+
+(function) getMessageMap 0x0000000002896780
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"yesnoMap"
+00000004 gpi %2, %1.%-3
+00000008 cp %-4, %2
+00000011 const %1, *1	// *1 = (int)0
+00000014 cp %-5, %1
+00000017 cdeq %-4, %0
+00000020 jnf 000000085
+00000022 gpd %1, %-2.*2	// *2 = (string)"yesnoMatch"
+00000026 gpd %2, %1.*3	// *3 = (string)"count"
+00000030 clt %-5, %2
+00000033 jnf 000000085
+00000035 gpd %1, %-2.*2	// *2 = (string)"yesnoMatch"
+00000039 gpi %2, %1.%-5
+00000043 calld %3, %-3.*4(%2)	// *4 = (string)"indexOf"
+00000049 const %4, *1	// *1 = (int)0
+00000052 clt %3, %4
+00000055 jf 000000077
+00000057 gpd %5, %-2.*2	// *2 = (string)"yesnoMatch"
+00000061 cp %6, %-5
+00000064 const %7, *5	// *5 = (int)1
+00000067 add %6, %7
+00000070 gpi %8, %5.%6
+00000074 cp %-4, %8
+00000077 const %1, *6	// *6 = (int)2
+00000080 add %-5, %1
+00000083 jmp 000000017
+00000085 srv %-4
+00000087 ret
+00000088 srv %0
+00000090 ret
+
+(function) useWindowDialog 0x0000000002896FF0
+
+#(1) Bytecode.
+00000000 gpd %1, %-2.*0	// *0 = (string)"kag"
+00000004 calld %2, %1.*1()	// *1 = (string)"isMoviePlaying"
+00000009 tt %2
+00000011 jnf 000000042
+00000013 gpd %3, %-2.*0	// *0 = (string)"kag"
+00000017 gpd %4, %3.*2	// *2 = (string)"movies"
+00000021 const %5, *3	// *3 = (int)0
+00000024 gpi %6, %4.%5
+00000028 gpd %7, %6.*4	// *4 = (string)"mode"
+00000032 gpd %8, %-2.*5	// *5 = (string)"vomLayer"
+00000036 ceq %7, %8
+00000039 nf
+00000040 jf 000000057
+00000042 const %9, *6	// *6 = (string)"checkUseWindowDialog"
+00000045 gpd %10, %-2.*0	// *0 = (string)"kag"
+00000049 calld %11, %10.*7(%9)	// *7 = (string)"forEachFunctionHook"
+00000055 tt %11
+00000057 setf %12
+00000059 srv %12
+00000061 ret
+00000062 srv %0
+00000064 ret
+
+(function) hasUiStorage 0x00000000028972C0
+
+#(1) Bytecode.
+00000000 cdeq %-3, %0
+00000003 jf 000000031
+00000005 gpd %1, %-2.*0	// *0 = (string)"ThisClass"
+00000009 gpd %2, %1.*1	// *1 = (string)"storage"
+00000013 const %3, *2	// *2 = (string)".func"
+00000016 add %2, %3
+00000019 gpd %4, %-2.*3	// *3 = (string)"Storages"
+00000023 calld %5, %4.*4(%2)	// *4 = (string)"isExistentStorage"
+00000029 tf %5
+00000031 setnf %6
+00000033 srv %6
+00000035 ret
+00000036 srv %0
+00000038 ret
+
+(function) askYesNo 0x00000000028937B0
+
+#(1) Bytecode.
+00000000 cdeq %-4, %0
+00000003 jnf 000000011
+00000005 const %1, *0	// *0 = (string)""
+00000008 cp %-4, %1
+00000011 calld %1, %-2.*1(%-3)	// *1 = (string)"getMessageMap"
+00000017 cp %-9, %1
+00000020 const %1, *2	// *2 = (string)"askYesNo"
+00000023 gpd %2, %-2.*3	// *3 = (string)"Debug"
+00000027 calld %0, %2.*4(%1, %-9, %-3)	// *4 = (string)"notice"
+00000035 calld %1, %-2.*5(%-9)	// *5 = (string)"hasUiStorage"
+00000041 cp %-10, %1
+00000044 gpd %2, %-2.*6	// *6 = (string)"askYesNoCallbacks"
+00000048 new %1, %2(%-5, %-6, %-7, %-8)
+00000056 cp %-11, %1
+00000059 const %1, *7	// *7 = (string)""
+00000062 ceq %-9, %1
+00000065 jf 000000077
+00000067 gpd %2, %-2.*8	// *8 = (string)"forceYesMap"
+00000071 gpi %3, %2.%-9
+00000075 jmp 000000083
+00000077 const %2, *9	// *9 = (int)0
+00000080 cp %3, %2
+00000083 cp %-12, %3
+00000086 cp %1, %-12
+00000089 typeof %1
+00000091 const %2, *10	// *10 = (string)"Object"
+00000094 ceq %1, %2
+00000097 jnf 000000106
+00000099 call %3, %-12()
+00000103 cp %-12, %3
+00000106 tt %-12
+00000108 jnf 000000122
+00000110 const %1, *11	// *11 = (int)1
+00000113 calld %2, %-11.*12(%1)	// *12 = (string)"Invoke"
+00000119 srv %2
+00000121 ret
+00000122 const %1, *7	// *7 = (string)""
+00000125 ceq %-9, %1
+00000128 jf 000000140
+00000130 gpd %2, %-2.*13	// *13 = (string)"defaultFocusItem"
+00000134 gpi %3, %2.%-9
+00000138 jmp 000000146
+00000140 const %2, *7	// *7 = (string)""
+00000143 cp %3, %2
+00000146 cp %-13, %3
+00000149 global %1
+00000151 gpd %2, %1.*14	// *14 = (string)"MyYesNoDialog"
+00000155 spde %2.*15, %-9	// *15 = (string)"currentTextPart"
+00000159 tt %-10
+00000161 jnf 000000274
+00000163 calld %1, %-2.*16()	// *16 = (string)"useWindowDialog"
+00000168 cp %-14, %1
+00000171 tt %-14
+00000173 jnf 000000204
+00000175 gpd %2, %-2.*17	// *17 = (string)"ThisClass"
+00000179 gpd %3, %2.*18	// *18 = (string)"dialogLayer"
+00000183 gpd %4, %-11.*12	// *12 = (string)"Invoke"
+00000187 gpd %5, %-2.*17	// *17 = (string)"ThisClass"
+00000191 gpd %6, %5.*19	// *19 = (string)"dialogWindow"
+00000195 new %1, %6(%-9, %3, %4)
+00000202 jmp 000000231
+00000204 gpd %2, %-2.*20	// *20 = (string)"kag"
+00000208 gpd %3, %-11.*12	// *12 = (string)"Invoke"
+00000212 const %4, *11	// *11 = (int)1
+00000215 gpd %5, %-2.*17	// *17 = (string)"ThisClass"
+00000219 gpd %6, %5.*18	// *18 = (string)"dialogLayer"
+00000223 new %1, %6(%2, %-9, %3, %4)
+00000231 cp %-15, %1
+00000234 typeofd %1, %-15.*21	// *21 = (string)"defaultFocusItemName"
+00000238 const %2, *22	// *22 = (string)"undefined"
+00000241 ceq %1, %2
+00000244 jf 000000258
+00000246 const %3, *7	// *7 = (string)""
+00000249 ceq %-13, %3
+00000252 jf 000000258
+00000254 spde %-15.*21, %-13	// *21 = (string)"defaultFocusItemName"
+00000258 calld %0, %-15.*23()	// *23 = (string)"open"
+00000263 tt %-14
+00000265 jnf 000000288
+00000267 cp %1, %-15
+00000270 inv %1
+00000272 jmp 000000288
+00000274 calld %1, %-2.*24(%-3, %-4, %-5, %-6, %-7, %-8)	// *24 = (string)"origAskYesNo"
+00000285 srv %1
+00000287 ret
+00000288 srv %0
+00000290 ret
+
+(function expression) (anonymous) 0x0000000002893A80
+
+#(1) Bytecode.
+00000000 cp %1, %-3
+00000003 num %1
+00000005 const %2, *0	// *0 = (int)0
+00000008 cgt %1, %2
+00000011 jnf 000000020
+00000013 cp %3, %-3
+00000016 int %3
+00000018 jmp 000000053
+00000020 const %3, *1	// *1 = (string)"no"
+00000023 ceq %-3, %3
+00000026 jf 000000041
+00000028 cp %4, %-3
+00000031 num %4
+00000033 const %5, *0	// *0 = (int)0
+00000036 clt %4, %5
+00000039 jnf 000000046
+00000041 const %6, *2	// *2 = (int)-1
+00000044 jmp 000000050
+00000046 gpd %6, %-1.*3	// *3 = (string)"defaultCursorMove"
+00000050 cp %3, %6
+00000053 cp %-4, %3
+00000056 spde %-1.*4, %-4	// *4 = (string)"cursorMoveTimeByFocus"
+00000060 srv %0
+00000062 ret
