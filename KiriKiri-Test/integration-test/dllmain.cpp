@@ -11,6 +11,7 @@
 #include <d3d9.h>
 
 #include "../include/neurosdk.h"
+#include "ncbind.hpp"
 #include "MinHook.h"
 #include "NeuroConsole.h"
 
@@ -683,6 +684,8 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         return 0;
     }
+    default:
+        return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
     }
 
     // Передаём все остальные сообщения оригинальной процедуре
@@ -1185,28 +1188,28 @@ void StartDeferredTJSInit() {
 // Хоткеи (thread-safe через Window Subclass)
 // ============================================================================
 
-//void HotkeyThread() {
-//    LogToFile("Hotkey thread started (F12 = console)\n");
-//
-//    while (g_HotkeyThreadRunning.load()) {
-//        // F12 - показать/скрыть Neuro Console
-//        if (GetAsyncKeyState(VK_F12) & 0x8000) {
-//            //LogToFile("F12 pressed - toggling Neuro Console\n");
-//            ToggleNeuroConsole();
-//            Sleep(300);  // Debounce
-//        }
-//
-//        Sleep(50);  // Не грузим CPU
-//    }
-//
-//    LogToFile("Hotkey thread stopped\n");
-//}
+void HotkeyThread() {
+    LogToFile("Hotkey thread started (F12 = console)\n");
+
+    while (g_HotkeyThreadRunning.load()) {
+        // F12 - показать/скрыть Neuro Console
+        if (GetAsyncKeyState(VK_F12) & 0x8000) {
+            //LogToFile("F12 pressed - toggling Neuro Console\n");
+            ToggleNeuroConsole();
+            Sleep(300);  // Debounce
+        }
+
+        Sleep(50);  // Не грузим CPU
+    }
+
+    LogToFile("Hotkey thread stopped\n");
+}
 
 void StartHotkeyThread() {
     if (g_HotkeyThreadRunning.exchange(true)) {
         return;
     }
-    //g_HotkeyThread = std::thread(HotkeyThread);
+    g_HotkeyThread = std::thread(HotkeyThread);
 }
 
 void StopHotkeyThread() {
@@ -1498,6 +1501,221 @@ public:
     }
 };
 
+// ============================================================================
+// neuroGetCurrentContext() — сбор контекста игры для Neuro-sama
+// Возвращает JSON строку с:
+//   - languageType, languageTag
+//   - backlogCount, recentEntries [{disp, text, voice, name}]
+//   - currentSpeaker, currentText, currentVoice, currentName
+//   - voicePrefix (3-буквенный префикс озвучки)
+//   - voiceMap (prefix → charaName)
+//   - currentScene, currentPage
+// ============================================================================
+static tjs_error TJS_INTF_METHOD NeuroGetCurrentContext(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("{\"error\":\"TJS not ready\"}");
+        return TJS_S_OK;
+    }
+
+    // TJS код: собирает контекст, возвращает JSON
+    // Используем IIFE для безопасного выполнения
+    const wchar_t* tjsCode =
+        L"(function(){"
+        L"  try {"
+        L"    var r = {};"
+        L"    r.languageType = typeof kag !== 'undefined' ? kag.languageType : -1;"
+        L"    r.languageTag = typeof CurrentLanguageTag !== 'undefined' ? CurrentLanguageTag : '';"
+        L"    r.hooksActive = !!(global.__neuroHooksInstalled && global.__neuroHooksEnabled);"
+        L"    r.lastTag = global.__neuroLastTag || '';"
+        L"    r.lastScene = global.__neuroLastScene || '';"
+        L"    r.pendingSend = !!(global.__neuroPendingSend);"
+        L"    global.__neuroPendingSend = false;"
+        L"    if (typeof kag !== 'undefined' && kag.backlogWindow && kag.backlogWindow._historyTextStore) {"
+        L"      var store = kag.backlogWindow._historyTextStore;"
+        L"      var data = store.data;"
+        L"      var cnt = store.count;"
+        L"      r.backlogCount = cnt;"
+        L"      var entries = [];"
+        L"      var start = cnt > 5 ? cnt - 5 : 0;"
+        L"      for (var i = start; i < cnt; i++) {"
+        L"        var e = data[i];"
+        L"        entries.push({disp:e.disp,text:e.text,voice:e.voice,name:e.name});"
+        L"      }"
+        L"      r.recentEntries = entries;"
+        L"    }"
+        L"    var ml = (typeof kag !== 'undefined' && kag.messageLayer) ? kag.messageLayer : null;"
+        L"    if (ml && ml.message) {"
+        L"      r.currentText = ml.message;"
+        L"      r.currentSpeaker = ml.name || '';"
+        L"    } else if (typeof kag !== 'undefined' && kag.backlogWindow && kag.backlogWindow._historyTextStore) {"
+        L"      var store = kag.backlogWindow._historyTextStore;"
+        L"      if (store.count > 0) {"
+        L"        var last = store.data[store.count - 1];"
+        L"        r.currentText = last.text;"
+        L"        r.currentSpeaker = last.disp;"
+        L"      }"
+        L"    } else {"
+        L"      r.currentText = '';"
+        L"      r.currentSpeaker = '';"
+        L"    }"
+        L"    if (typeof kag !== 'undefined' && kag.backlogWindow && kag.backlogWindow._historyTextStore) {"
+        L"      var store = kag.backlogWindow._historyTextStore;"
+        L"      if (store.count > 0) {"
+        L"        var last = store.data[store.count - 1];"
+        L"        r.currentVoice = last.voice;"
+        L"        r.currentName = last.name;"
+        L"        if (last.voice && last.name && typeof characterVoiceInfo !== 'undefined') {"
+        L"          var cinfo = characterVoiceInfo[last.name];"
+        L"          if (cinfo) r.voicePrefix = cinfo.file;"
+        L"        }"
+        L"      }"
+        L"    }"
+        L"    if (typeof characterVoiceInfo !== 'undefined') {"
+        L"      var vm = {};"
+        L"      for (var n in characterVoiceInfo) {"
+        L"        var f = characterVoiceInfo[n].file;"
+        L"        if (f) vm[f] = n;"
+        L"      }"
+        L"      r.voiceMap = vm;"
+        L"    }"
+        L"    r.currentScene = typeof kag !== 'undefined' ? kag.currentScene : '';"
+        L"    r.currentPage = typeof kag !== 'undefined' ? kag.currentPage : 0;"
+        L"    return System.toJSONString(r);"
+        L"  } catch(e) {"
+        L"    return '{\"error\":\"' + (e && e.message ? e.message : 'unknown') + '\"}';"
+        L"  }"
+        L"})()";
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(tjsCode), &execResult);
+
+    if (result) {
+        *result = execResult;
+    }
+
+    return TJS_S_OK;
+}
+
+// neuroStartHooks() — устанавливает хуки onTag/onScenarioLoaded/onLabel/onVoiceStart
+// Отслеживает релевантные теги (charaNew, playbgm, trans, и т.д.) и выставляет флаг
+// для автоматической отправки контекста.
+static tjs_error TJS_INTF_METHOD NeuroStartHooks(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("error: TJS not ready");
+        return TJS_S_OK;
+    }
+
+    const wchar_t* tjsCode =
+        L"(function(){"
+        L"  try {"
+        L"    if (typeof kag === 'undefined') return 'kag not ready';"
+        L"    if (global.__neuroHooksInstalled) return 'already installed';"
+        L"    global.__neuroHooksEnabled = true;"
+        L"    global.__neuroLastTag = '';"
+        L"    global.__neuroLastScene = '';"
+        L"    global.__neuroPendingSend = false;"
+        L"    var relevant = {charaNew:1,charaDelete:1,playbgm:1,stopbgm:1,trans:1,playvoice:1,video:1,quake:1};"
+        L"    kag.addHook('onTag', function(tag, params) {"
+        L"      if (!global.__neuroHooksEnabled) return true;"
+        L"      global.__neuroLastTag = tag;"
+        L"      if (relevant[tag]) global.__neuroPendingSend = true;"
+        L"      return true;"
+        L"    });"
+        L"    kag.addHook('onScenarioLoaded', function(storage) {"
+        L"      if (!global.__neuroHooksEnabled) return;"
+        L"      global.__neuroLastScene = storage;"
+        L"      global.__neuroPendingSend = true;"
+        L"    });"
+        L"    kag.addHook('onLabel', function(label) {"
+        L"      if (!global.__neuroHooksEnabled) return;"
+        L"      global.__neuroPendingSend = true;"
+        L"    });"
+        L"    kag.addHook('onVoiceStart', function(name, file) {"
+        L"      if (!global.__neuroHooksEnabled) return;"
+        L"      global.__neuroPendingSend = true;"
+        L"    });"
+        L"    global.__neuroHooksInstalled = true;"
+        L"    return 'hooks installed';"
+        L"  } catch(e) { return 'error: ' + String(e); }"
+        L"})()";
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(tjsCode), &execResult);
+    if (result) *result = execResult;
+    return TJS_S_OK;
+}
+
+// neuroStopHooks() — отключает установленные хуки (через флаг)
+static tjs_error TJS_INTF_METHOD NeuroStopHooks(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("error: TJS not ready");
+        return TJS_S_OK;
+    }
+
+    const wchar_t* tjsCode =
+        L"(function(){"
+        L"  global.__neuroHooksEnabled = false;"
+        L"  return 'hooks stopped';"
+        L"})()";
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(tjsCode), &execResult);
+    if (result) *result = execResult;
+    return TJS_S_OK;
+}
+
+// neuroBuildVoiceMap() — возвращает JSON: prefix → characterName
+static tjs_error TJS_INTF_METHOD NeuroBuildVoiceMap(
+    tTJSVariant* result,
+    tjs_int numparams,
+    tTJSVariant** param,
+    iTJSDispatch2* objthis)
+{
+    if (!IsTJSReady()) {
+        if (result) *result = TJS_W("{\"error\":\"TJS not ready\"}");
+        return TJS_S_OK;
+    }
+
+    const wchar_t* tjsCode =
+        L"(function(){"
+        L"  try {"
+        L"    if (typeof characterVoiceInfo === 'undefined') return '{}';"
+        L"    var vm = {};"
+        L"    for (var n in characterVoiceInfo) {"
+        L"      var f = characterVoiceInfo[n].file;"
+        L"      if (f) vm[f] = n;"
+        L"    }"
+        L"    return System.toJSONString(vm);"
+        L"  } catch(e) {"
+        L"    return '{}';"
+        L"  }"
+        L"})()";
+
+    tTJSVariant execResult;
+    TVPExecuteExpression(ttstr(tjsCode), &execResult);
+
+    if (result) {
+        *result = execResult;
+    }
+
+    return TJS_S_OK;
+}
+
 // Дамп объекта - показывает все члены объекта
 // Использование: neuroDump(obj) или neuroDump(obj, maxCount)
 static tjs_error TJS_INTF_METHOD NeuroDump(
@@ -1646,6 +1864,10 @@ static tTJSFunctionWrapper<NeuroShowConsole>* g_NeuroShowConsoleFunc = nullptr;
 static tTJSFunctionWrapper<NeuroExec>* g_NeuroExecFunc = nullptr;
 static tTJSFunctionWrapper<NeuroConsoleLog>* g_NeuroConsoleLogFunc = nullptr;
 static tTJSFunctionWrapper<NeuroDump>* g_NeuroDumpFunc = nullptr;
+static tTJSFunctionWrapper<NeuroStartHooks>* g_NeuroStartHooksFunc = nullptr;
+static tTJSFunctionWrapper<NeuroStopHooks>* g_NeuroStopHooksFunc = nullptr;
+static tTJSFunctionWrapper<NeuroGetCurrentContext>* g_NeuroGetCurrentContextFunc = nullptr;
+static tTJSFunctionWrapper<NeuroBuildVoiceMap>* g_NeuroBuildVoiceMapFunc = nullptr;
 
 void RegisterTJSFunction(iTJSDispatch2* global, const tjs_char* name, tTJSDispatch* func)
 {
@@ -1696,9 +1918,21 @@ bool RegisterAllFunctions()
     g_NeuroDumpFunc = new tTJSFunctionWrapper<NeuroDump>();
     RegisterTJSFunction(global, TJS_W("neuroDump"), g_NeuroDumpFunc);
 
+    g_NeuroGetCurrentContextFunc = new tTJSFunctionWrapper<NeuroGetCurrentContext>();
+    RegisterTJSFunction(global, TJS_W("neuroGetCurrentContext"), g_NeuroGetCurrentContextFunc);
+
+    g_NeuroBuildVoiceMapFunc = new tTJSFunctionWrapper<NeuroBuildVoiceMap>();
+    RegisterTJSFunction(global, TJS_W("neuroBuildVoiceMap"), g_NeuroBuildVoiceMapFunc);
+
+    g_NeuroStartHooksFunc = new tTJSFunctionWrapper<NeuroStartHooks>();
+    RegisterTJSFunction(global, TJS_W("neuroStartHooks"), g_NeuroStartHooksFunc);
+
+    g_NeuroStopHooksFunc = new tTJSFunctionWrapper<NeuroStopHooks>();
+    RegisterTJSFunction(global, TJS_W("neuroStopHooks"), g_NeuroStopHooksFunc);
+
     global->Release();
 
-    LogToFile("SUCCESS: All 10 functions registered!\n");
+    LogToFile("SUCCESS: All 14 functions registered!\n");
     LogToFile("  - neuroTest()\n");
     LogToFile("  - neuroGetVersion()\n");
     LogToFile("  - neuroEcho(param)\n");
@@ -1709,6 +1943,10 @@ bool RegisterAllFunctions()
     LogToFile("  - neuroExec(code)\n");
     LogToFile("  - neuroConsoleLog(\"text\")\n");
     LogToFile("  - neuroDump(obj)\n");
+    LogToFile("  - neuroGetCurrentContext()\n");
+    LogToFile("  - neuroBuildVoiceMap()\n");
+    LogToFile("  - neuroStartHooks()\n");
+    LogToFile("  - neuroStopHooks()\n");
 
     // Регистрируем перехват Debug.message -> NeuroConsole
     // ВАЖНО: используем ExecuteTJSAsync т.к. мы в init thread, не в main thread
@@ -1737,6 +1975,10 @@ void UnregisterAllFunctions()
         global->DeleteMember(0, TJS_W("neuroExec"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroConsoleLog"), NULL, global);
         global->DeleteMember(0, TJS_W("neuroDump"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroGetCurrentContext"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroBuildVoiceMap"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroStartHooks"), NULL, global);
+        global->DeleteMember(0, TJS_W("neuroStopHooks"), NULL, global);
         global->Release();
     }
 }
@@ -1782,6 +2024,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* e
     OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
     LogToFile("\n\n=== V2Link called ===\n");
 
+    TVPInitImportStub(exporter);
+    ncbAutoRegister::AllRegist();
+
     if (!exporter) {
         LogToFile("ERROR: exporter is NULL!\n");
         return E_FAIL;
@@ -1794,13 +2039,8 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* e
     }
     LogToFile("TVPInitImportStub OK\n");
 
-    // Инициализируем DX9 Hook для ImGui
-    LogToFile("Initializing DX9 hook for ImGui...\n");
-    if (CreateDummyWindowAndHook()) {
-        LogToFile("DX9 hook initialized successfully\n");
-    } else {
-        LogToFile("WARNING: DX9 hook failed - ImGui will not be available\n");
-    }
+    // DX9/ImGui hook отключён — используем NeuroConsole вместо ImGui
+    LogToFile("DX9/ImGui hook disabled - using NeuroConsole\n");
 
     // Запускаем отложенную инициализацию TJS в фоне
     LogToFile("Starting deferred TJS initialization...\n");
@@ -1837,8 +2077,8 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
     }
     g_TJSReady.store(false);
 
-    // Выключаем ImGui hook
-    ShutdownImGuiHook();
+    // ImGui hook был отключён — Shutdown не нужен
+    // if (g_ImGuiHookReady) ShutdownImGuiHook();
 
     // Освобождаем tp_stub
     TVPUninitImportStub();

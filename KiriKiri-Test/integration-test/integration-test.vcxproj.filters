@@ -22,6 +22,9 @@
     <Filter Include="Imgui\backends">
       <UniqueIdentifier>{f5575d0c-264d-4595-9f40-0a1682c42361}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ncbind">
+      <UniqueIdentifier>{12329371-7a63-4ca3-aaf0-164f91f16349}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -59,6 +62,9 @@
     </ClCompile>
     <ClCompile Include="ImGuiWindows.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ncbind\ncbind_auto.cpp">
+      <Filter>ncbind</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -102,6 +108,15 @@
     </ClInclude>
     <ClInclude Include="ImGuiWindows.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ncbind\ncb_foreach.h">
+      <Filter>ncbind</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ncbind\ncb_invoke.hpp">
+      <Filter>ncbind</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ncbind\ncbind.hpp">
+      <Filter>ncbind</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
