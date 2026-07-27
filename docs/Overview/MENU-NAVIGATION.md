@@ -71,7 +71,7 @@ kag.usingExtraConductor                              // true/false — внут�
 ```tjs
 SoundModeInstance.items.count              // количество треков
 SoundModeInstance.items[i].storage          // "BGM01"
-SoundModeInstance.items[i].title            // "海中都市"
+SoundModeInstance.items[i].title            // "海中都市" (всегда яп. из soundlist.csv)
 
 SoundModeInstance.onSelect(index);          // выбрать/играть трек
 SoundModeInstance.next();                   // следующая страница
@@ -83,10 +83,15 @@ SoundModeInstance.looping;                  // true/false — зациклива
 SoundModeInstance.playing;                  // текущий играющий storage
 SoundModeInstance.isAnyPlaying              // играет ли что-то
 SoundModeInstance.paused;                   // на паузе?
-SoundModeInstance.getTitle(index)           // название трека
+SoundModeInstance.getTitle(index)           // название трека (из soundlist.csv)
 SoundModeInstance.isSeen(index)             // прослушан ли?
 SoundModeInstance.currentVolume             // текущая громкость
 ```
+
+> **Важно:** Названия треков в галерее — это **UI-картинки** (языкозависимые), не текст.
+> `SoundModeInstance.items[i].title` и `getTitle(i)` всегда возвращают японские названия из `soundlist.csv`.
+> Английские/китайские варианты — предварительно отрендеренные изображения по пути `ui,music/一覧/en/${storage}/on/` (см. `extra.func`).
+> Для получения английских названий нужно создать отдельный mapping (например, в `neuro_scripts/`).
 
 ## Клик / взаимодействие
 
@@ -115,5 +120,13 @@ SystemHook.jump("title", "cgmode");
 
 ## Проверено в рантайме
 
-- `SystemHook.jump('cgmode', 'title')` → Extra → Title ✅
-- `SystemHook.jump('title', 'cgmode')` → Title → Extra ✅
+### SystemHook.jump
+- `SystemHook.jump('cgmode', 'title')` → Extra → Title ✅ (UI загружен)
+- `SystemHook.jump('title', 'cgmode')` → Title → Extra ✅ (UI загружен)
+- **Важно:** `SystemHook.jump()` меняет состояние, но **НЕ загружает UI-слой** (`[uiload]`). Картинки/фон могут пропасть.
+
+### startSubSystem (рекомендуется для UI)
+- `startSubSystem(1, 'soundmode')` → звучит как открытие звуковой галереи
+- `startSubSystem(1, 'cgmode')` → переход в CG галерею
+- **Важно:** `startSubSystem()` загружает UI через SystemScript — картинки и фон на месте ✅
+- Использовать вместо `SystemHook.jump()` когда нужен полный UI с графикой
