@@ -54,6 +54,14 @@
 - [x] kag.bgm, kag.voicePlayingRatio, kag.conductor — аудио-визуальный контекст
 - [x] Разобраны: backlog.tjs, multilang.tjs, rendermsgwin.tjs, langfileparser.tjs, LangRender.tjs, uimain.tjs, syslangtext.tjs, LineModeEx.tjs
 
+### Menu Navigation
+- [x] Документированы методы навигации по меню (docs/Overview/MENU-NAVIGATION.md)
+- [x] Проверено в рантайме: Extra → Title → Extra через SystemHook.jump()
+- [x] Проверено в рантайме: startSubSystem(1, 'cgmode') — UI с картинками ✅
+- [x] Проверено в рантайме: startSubSystem(1, 'soundmode') — UI с картинками ✅
+- [x] Установлено: SystemHook.jump() НЕ загружает UI, startSubSystem() загружает
+- [x] Исследованы: SoundModeInstance, startSubSystem, kag.process, kag.onPrimaryClick
+
 ### Сборка и утилиты
 - [x] psb-analyze.ps1 — bytecode-ordered PSB string extractor
 - [x] gen_ccdb.ps1 — compile_commands.json
@@ -100,6 +108,14 @@
 ### Auto-configuration
 - [ ] Автоприменение настроек при загрузке плагина
 - [ ] Формат конфига и расположение
+
+### Menu Navigation (TJS functions)
+- [ ] `neuroNavigateTo(state)` — переход между меню (title/game/cgmode/soundmode/etc.)
+- [ ] `neuroMenuClick()` — симуляция клика/выбора
+- [ ] `neuroMenuSelect(index)` — выбор пункта в активном меню (Music: трек, Select: опция)
+- [ ] `neuroGetMenuItems()` — список пунктов текущего меню
+- [ ] `neuroGetCurrentState()` — текущее состояние/меню
+- [ ] `neuroMusicPlay(index)` / `neuroMusicStop()` / `neuroMusicSetVolume(val)`
 
 ## Cancelled
 - [x] ~~ImGui Object Inspector~~ — не нужно, NeuroConsole + TCP клиент покрывают потребности
