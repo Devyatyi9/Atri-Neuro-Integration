@@ -1,0 +1,1013 @@
+// Decompiled by tjs2Decompiler (high)
+// objects=61, toplevel=0
+
+class KAGSoundBuffer {
+  function KAGSoundBuffer(a0, a1) {
+    this.sbclass = a1;
+    this.owner = a0;
+    return;
+  }
+
+  function finalize() {
+    return;
+  }
+
+  function fade() {
+    this.inFading = 1;
+    this.inFadeAndStop = 0;
+    this.inFadeAndPause = 0;
+    this.sbclass.fade();
+    return;
+  }
+
+  function stopFade() {
+    this.sbclass.stopFade();
+    this.inFadeAndStop = 0;
+    this.inFadeAndPause = 0;
+    return;
+  }
+
+  function stop() {
+    this.sbclass.stop();
+    this.inFadeAndStop = 0;
+    this.inFadeAndPause = 0;
+    return;
+  }
+
+  function fadeOutAndStop(a0, a1) {
+    var flag_1;
+    flag_1 = a1 === void;
+    if (!flag_1) {
+      a1 = 0;
+    }
+    this.inFading = 1;
+    this.inFadeAndStop = 1;
+    this.sbclass.fade(0, a0, a1);
+    return;
+  }
+
+  function fadeOutAndPause(a0, a1) {
+    var flag_1;
+    flag_1 = a1 === void;
+    if (!flag_1) {
+      a1 = 0;
+    }
+    this.inFading = 1;
+    this.inFadeAndPause = 1;
+    this.sbclass.fade(0, a0, a1);
+    return;
+  }
+
+  function onFadeCompleted() {
+    var flag_1, flag_2;
+    this.inFading = 0;
+    flag_1 = !!this.inFadeAndStop;
+    if (flag_1) {
+      flag_2 = !!this.inFadeAndPause;
+      if (!flag_2) {
+        this.sbclass.paused = 1;
+        this.inFadeAndPause = 0;
+      }
+    }
+    else {
+      this.sbclass.stop();
+      this.inFadeAndStop = 0;
+    }
+    this.sbclass.onFadeCompleted();
+    this.owner.onSoundBufferFadeCompleted(this);
+    return;
+  }
+
+  function onStatusChanged() {
+    var _fr1, flag_1, flag_2;
+    this.sbclass.onStatusChanged();
+    _fr1 = this.sbclass.status;
+    this.prevstatus = this.sbclass.status;
+    flag_1 = this.prevstatus == "play";
+    if (!flag_1) {
+      flag_2 = _fr1 == "stop";
+      if (!flag_2) {
+        this.owner.onSoundBufferStop(this);
+      }
+    }
+    return;
+  }
+}
+
+class KAGWaveSoundBuffer extends this.WaveSoundBuffer {
+  function KAGWaveSoundBuffer(a0) {
+    var r1_1;
+    this.WaveSoundBuffer(a0);
+    r1_1 = global;
+    this.KAGSoundBuffer(a0, r1_1.WaveSoundBuffer);
+    return;
+  }
+
+  function finalize() {
+    var r1_1, r1_2;
+    r1_1 = global;
+    r1_1.KAGSoundBuffer.finalize();
+    r1_2 = global;
+    r1_2.WaveSoundBuffer.finalize();
+    return;
+  }
+
+  function onLabel(a0) {
+    this.owner.owner.onBGMLabel(a0);
+    return;
+  }
+}
+
+class KAGMIDISoundBuffer extends this.MIDISoundBuffer {
+  function KAGMIDISoundBuffer(a0) {
+    var r1_1;
+    this.MIDISoundBuffer(a0);
+    r1_1 = global;
+    this.KAGSoundBuffer(a0, r1_1.MIDISoundBuffer);
+    return;
+  }
+
+  function finalize() {
+    var r1_1, r1_2;
+    r1_1 = global;
+    r1_1.KAGSoundBuffer.finalize();
+    r1_2 = global;
+    r1_2.MIDISoundBuffer.finalize();
+    return;
+  }
+}
+
+class KAGCDDASoundBuffer extends this.CDDASoundBuffer {
+  function KAGCDDASoundBuffer(a0) {
+    var r1_1;
+    this.CDDASoundBuffer(a0);
+    r1_1 = global;
+    this.KAGSoundBuffer(a0, r1_1.CDDASoundBuffer);
+    return;
+  }
+
+  function finalize() {
+    var r1_1, r1_2;
+    r1_1 = global;
+    r1_1.KAGSoundBuffer.finalize();
+    r1_2 = global;
+    r1_2.CDDASoundBuffer.finalize();
+    return;
+  }
+}
+
+class BGM {
+  function BGM(a0) {
+    var r1_2, r1_3, r2_1, r4_2, flag_1;
+    this.owner = a0;
+    // (this-change op omitted)
+    r1_2();
+    r1_3 = global;
+    r2_1 = (typeof r1_3);
+    flag_1 = r2_1 == "undefined";
+    if (!!flag_1) {
+      // (this-change op omitted)
+      r4_2();
+    }
+    this.createBuffers();
+    this.currentStorage = "";
+    this.playingStorage = "";
+    this.currentBuffer = this.buf1;
+    this._enabled = 1;
+    return;
+  }
+
+  function finalize() {
+    var r2_2, r2_5, flag_1, flag_2;
+    flag_1 = this.buf1 === void;
+    if (!!flag_1) {
+      r2_2 = VM_INV(this.buf1);
+    }
+    flag_2 = this.buf2 === void;
+    if (!!flag_2) {
+      r2_5 = VM_INV(this.buf2);
+    }
+    return;
+  }
+
+  function createBuffers() {
+    var r1_2, r1_5, r1_8, r1_10, r2_3, r2_6, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6;
+    var flag_8;
+    flag_1 = this.type == "Wave";
+    if (flag_1) {
+      flag_3 = this.type == "MIDI";
+      if (flag_3) {
+        flag_5 = this.type == "CDDA";
+        if (flag_5) {
+          this.buf1.looping = this.looping;
+          flag_8 = this.buf2 === void;
+          if (!!flag_8) {
+            this.buf2.looping = this.looping;
+          }
+          return;
+        }
+        else {
+          r1_8 = new this.KAGCDDASoundBuffer(this);
+          this.buf1 = r1_8;
+          flag_6 = !!this.doubleBuffered;
+          if (!flag_6) {
+            r1_10 = new this.Exception("CDDA ではクロスフェードを行えません。doubleBuffered = false に設定してください。");
+            throw r1_10;
+          }
+        }
+      }
+      else {
+        r1_5 = new this.KAGMIDISoundBuffer(this);
+        this.buf1 = r1_5;
+        flag_4 = !!this.doubleBuffered;
+        if (!flag_4) {
+          r2_6 = new this.KAGMIDISoundBuffer(this);
+          this.buf2 = r2_6;
+        }
+      }
+    }
+    else {
+      r1_2 = new this.KAGWaveSoundBuffer(this);
+      this.buf1 = r1_2;
+      flag_2 = !!this.doubleBuffered;
+      if (!flag_2) {
+        r2_3 = new this.KAGWaveSoundBuffer(this);
+        this.buf2 = r2_3;
+      }
+    }
+  }
+
+  function freeBuffers() {
+    var r2_2, r2_5, flag_1, flag_2;
+    flag_1 = this.buf1 === void;
+    if (!!flag_1) {
+      r2_2 = VM_INV(this.buf1);
+    }
+    flag_2 = this.buf2 === void;
+    if (!!flag_2) {
+      r2_5 = VM_INV(this.buf2);
+    }
+    return;
+  }
+
+  function changeDevice(a0) {
+    var r1_1, r1_2;
+    r1_1 = global;
+    r1_2 = new r1_1.Dictionary();
+    this.store(r1_2);
+    this.freeBuffers();
+    this.type = a0;
+    this.createBuffers();
+    this.restore(r1_2);
+    return;
+  }
+
+  function playBuffer(a0, a1, a2, a3, a4) {
+    var _fr1, _fr0, r1_9, r1_10, r1_12, r1_13, r1_16, r1_22, r1_24, r1_26, r1_34, r1_39;
+    var r1_41, r1_42, r2_2, r2_7, r2_10, r3_2, r3_11, r4_1, r4_2, r4_3, r4_4, flag_1;
+    var flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_8, flag_9, flag_10, flag_11, flag_12, flag_14;
+    var flag_16, flag_17, flag_18, flag_19, flag_20, flag_21, exc_0;
+    flag_1 = a3 === void;
+    if (!flag_1) {
+      a3 = 0;
+    }
+    _fr0 = 1;
+    flag_2 = this.type == "CDDA";
+    if (flag_2) {
+      flag_5 = this.type == "Wave";
+      if (flag_5) {
+        flag_8 = this.type == "MIDI";
+        if (!flag_8) {
+          r2_10 = this.Storages.isExistentStorage(a1);
+          flag_9 = !r2_10;
+          if (!flag_9) {
+            r1_22 = (a1 + ".mid");
+            _fr1 = r1_22;
+            r4_2 = this.Storages.isExistentStorage(r1_22);
+            flag_10 = !!r4_2;
+            if (flag_10) {
+              r1_24 = (a1 + ".smf");
+              _fr1 = r1_24;
+              r4_3 = this.Storages.isExistentStorage(r1_24);
+              flag_11 = !!r4_3;
+              if (flag_11) {
+                r1_26 = (a1 + ".mdi");
+                _fr1 = r1_26;
+                r4_4 = this.Storages.isExistentStorage(r1_26);
+                flag_12 = !!r4_4;
+                if (flag_12) {
+                  _fr0 = 0;
+                }
+                else {
+                  a1 = _fr1;
+                }
+              }
+              else {
+                a1 = _fr1;
+              }
+            }
+            else {
+              a1 = _fr1;
+            }
+          }
+          flag_14 = !!this.midiInitialMessage.length;
+          if (!flag_14) {
+            this.MIDISoundBuffer.midiOut(this.midiInitialMessage);
+          }
+        }
+      }
+      else {
+        r2_7 = this.Storages.isExistentStorage(a1);
+        flag_6 = !r2_7;
+        if (!flag_6) {
+          r1_16 = global;
+          r4_1 = this.getExistFileNameAutoExtFill(a1, r1_16.KAGSoundBuffer.SupportedExtensions);
+          _fr1 = r4_1;
+          flag_7 = r4_1 == "";
+          if (flag_7) {
+            a1 = _fr1;
+          }
+          else {
+            _fr0 = 0;
+          }
+        }
+      }
+      flag_16 = !!this._enabled;
+      if (flag_16) {
+        this.currentBuffer = a0;
+        return;
+      }
+      else {
+        flag_17 = !_fr0;
+        if (flag_17) {
+          this.setGain(a1);
+          a0.looping = a2;
+          a0.open(a1);
+          flag_18 = a4 === void;
+          if (!flag_18) {
+            this.owner.onBGMStart(a0.labels);
+            a0.paused = a3;
+            a0.play();
+            this.resetGain(a1);
+          }
+          else {
+            flag_19 = a0.labels === void;
+            if (flag_19) {
+              r3_11 = a0.labels[a4];
+              a4 = r3_11;
+              flag_20 = r3_11 === void;
+              if (flag_20) {
+                a4 = a4.samplePosition;
+                flag_21 = a4.samplePosition === void;
+                if (flag_21) {
+                  a0.samplePosition = a4;
+                }
+              }
+            }
+          }
+        }
+        else {
+          r1_34 = (a1 + ":BGMファイルがありません");
+          this.owner.errorSound(r1_34);
+          return;
+        }
+      }
+    }
+    else {
+      r2_2 = a1[1];
+      flag_3 = r2_2 == ":";
+      if (flag_3) {
+        r3_2 = this.Storages.searchCD(this.cdVolume);
+        _fr1 = r3_2;
+        flag_4 = r3_2 == "";
+        if (flag_4) {
+          r1_12 = (_fr1 + ":");
+          r1_13 = (r1_12 + a1);
+          a1 = r1_13;
+        }
+        else {
+          r1_9 = ("ボリュームラベル " + this.cdVolume);
+          r1_10 = (r1_9 + " を持った CD がドライブに入っていません");
+          this.dm(r1_10);
+          return;
+        }
+      }
+    }
+  }
+
+  function setGain(a0) {
+    var r2_1, flag_1;
+    r2_1 = (typeof this.owner);
+    flag_1 = r2_1 == "Object";
+    if (!flag_1) {
+      this.owner.addFileSoundGain(a0, "bgm");
+    }
+    return;
+  }
+
+  function resetGain(a0) {
+    var r2_1, flag_1;
+    r2_1 = (typeof this.owner);
+    flag_1 = r2_1 == "Object";
+    if (!flag_1) {
+      this.owner.removeFileSoundGain(a0);
+    }
+    return;
+  }
+
+  function play(a0) {
+    var _fr0, r1_4, r1_6, r1_9, r2_1, r2_3, r2_4, r2_11, r4_1, r4_2, r4_3, flag_1;
+    var flag_2, flag_3, flag_4, exc_0;
+    flag_1 = a0.loop === void;
+    if (flag_1) {
+      r2_3 = real(a0.loop);
+      r2_4 = r2_3;
+    }
+    else {
+      r2_1 = 1;
+      r2_4 = r2_1;
+    }
+    _fr0 = r2_4;
+    this.buf1.stop();
+    flag_2 = this.buf2 === void;
+    if (!!flag_2) {
+      this.buf2.stop();
+    }
+    this.stopFade();
+    this.buf1.volume = this.volume;
+    r1_9 = this.buf1;
+    r2_11 = a0.storage;
+    flag_3 = !!a0.paused;
+    if (flag_3) {
+      r4_2 = 0;
+      r4_3 = r4_2;
+    }
+    else {
+      r4_1 = 1;
+      r4_3 = r4_1;
+    }
+    this.playBuffer(r1_9, r2_11, _fr0, r4_3, a0.start);
+    flag_4 = !!_fr0;
+    if (flag_4) {
+      this.currentStorage = "";
+    }
+    else {
+      this.currentStorage = a0.storage;
+    }
+    this.playingStorage = a0.storage;
+    this.setLoop(_fr0);
+    return;
+  }
+
+  function fadeIn(a0) {
+    var _fr1, _fr0, r1_5, r1_7, r2_1, r2_3, r2_4, r2_5, r2_7, r2_8, flag_1, flag_2;
+    var flag_3, flag_4, flag_5, flag_6, flag_8, exc_0;
+    flag_1 = a0.loop === void;
+    if (flag_1) {
+      r2_3 = real(a0.loop);
+      r2_4 = r2_3;
+    }
+    else {
+      r2_1 = 1;
+      r2_4 = r2_1;
+    }
+    _fr0 = r2_4;
+    flag_2 = a0.time === void;
+    if (flag_2) {
+      r2_7 = real(a0.time);
+      r2_8 = r2_7;
+    }
+    else {
+      r2_5 = 5000;
+      r2_8 = r2_5;
+    }
+    _fr1 = r2_8;
+    this.buf1.stop();
+    flag_3 = this.buf2 === void;
+    if (!!flag_3) {
+      this.buf2.stop();
+    }
+    flag_4 = _fr1 == 0;
+    if (!flag_4) {
+      this.buf1.volume = this.volume;
+    }
+    else {
+      this.buf1.volume = 0;
+    }
+    this.playBuffer(this.buf1, a0.storage, _fr0, 0, a0.start);
+    flag_5 = !!this._enabled;
+    if (!flag_5) {
+      flag_6 = _fr1 == 0;
+      if (!!flag_6) {
+        this.currentBuffer.fade(this.volume, _fr1);
+      }
+    }
+    this.setLoop(_fr0);
+    flag_8 = !!_fr0;
+    if (flag_8) {
+      this.currentStorage = "";
+    }
+    else {
+      this.currentStorage = a0.storage;
+    }
+    this.playingStorage = a0.storage;
+    return;
+  }
+
+  function stop() {
+    var r1_3, r1_5, flag_1, exc_0;
+    this.buf1.stop();
+    flag_1 = this.buf2 === void;
+    if (!!flag_1) {
+      this.buf2.stop();
+    }
+    this.currentStorage = "";
+    this.playingStorage = "";
+    return;
+  }
+
+  function pause() {
+    var flag_1;
+    this.buf1.paused = 1;
+    flag_1 = this.buf2 === void;
+    if (!!flag_1) {
+      this.buf2.paused = 1;
+    }
+    return;
+  }
+
+  function resume(a0) {
+    var flag_1, flag_2, flag_3;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = 1;
+    }
+    flag_2 = !!a0;
+    if (!flag_2) {
+      this.buf1.volume = this.volume;
+    }
+    this.buf1.paused = 0;
+    flag_3 = this.buf2 === void;
+    if (!!flag_3) {
+      this.buf2.paused = 0;
+    }
+    return;
+  }
+
+  property paused {
+    getter() {
+      var flag_1;
+      flag_1 = !!this.currentBuffer.paused;
+      if (!flag_1) {
+      }
+      return true;
+    }
+  }
+
+  function fadeOut(a0) {
+    var flag_1;
+    flag_1 = !!this._enabled;
+    if (!flag_1) {
+      this.currentBuffer.fadeOutAndStop(a0.time);
+    }
+    this.currentStorage = "";
+    return;
+  }
+
+  function fadePause(a0) {
+    var flag_1;
+    flag_1 = !!this._enabled;
+    if (!flag_1) {
+      this.currentBuffer.fadeOutAndPause(a0.time);
+    }
+    return;
+  }
+
+  function fadeResume(a0) {
+    var _fr0, r2_2, r2_3, r2_4, flag_1, flag_2, flag_5, flag_6, flag_7;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      r2_3 = 0;
+      r2_4 = r2_3;
+    }
+    else {
+      flag_2 = a0.time === void;
+      if (flag_2) {
+        r2_2 = real(a0.time);
+        r2_4 = r2_2;
+      }
+    }
+    _fr0 = r2_4;
+    flag_5 = r2_4 == 0;
+    if (!flag_5) {
+      this.buf1.volume = this.volume;
+    }
+    else {
+      this.buf1.volume = 0;
+    }
+    this.resume(0);
+    flag_6 = !!this._enabled;
+    if (!flag_6) {
+      flag_7 = _fr0 == 0;
+      if (!!flag_7) {
+        this.currentBuffer.fade(this.volume, _fr0);
+      }
+    }
+    return;
+  }
+
+  function fade(a0) {
+    var _fr1, _fr0, r1_3, r1_4, r2_1, r2_3, r2_4, flag_1, flag_2;
+    flag_1 = a0.time === void;
+    if (flag_1) {
+      r2_3 = real(a0.time);
+      r2_4 = r2_3;
+    }
+    else {
+      r2_1 = 5000;
+      r2_4 = r2_1;
+    }
+    _fr0 = r2_4;
+    r1_3 = real(a0.volume);
+    r1_4 = (r1_3 * 1000);
+    _fr1 = r1_4;
+    flag_2 = !!this._enabled;
+    if (!flag_2) {
+      this.currentBuffer.fade(_fr1, _fr0);
+    }
+    this.volume = _fr1;
+    return;
+  }
+
+  function stopFade() {
+    var flag_1;
+    this.buf1.stopFade();
+    flag_1 = this.buf2 === void;
+    if (!!flag_1) {
+      this.buf2.stopFade();
+    }
+    return;
+  }
+
+  function exchange(a0) {
+    var _fr4, _fr3, _fr2, _fr1, _fr0, r2_2, r2_4, r2_5, r2_6, r2_8, r2_9, r2_10;
+    var r2_12, r2_13, r2_14, r2_16, r2_17, r2_19, r2_21, r2_22, r2_25, r2_26, r2_27, r2_32;
+    var r3_3, r3_4, r3_5, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_8, flag_9, flag_10;
+    var flag_11, flag_12, flag_13, flag_14, flag_15, flag_16, flag_18;
+    flag_1 = a0.storage == this.playingStorage;
+    if (flag_1) {
+      flag_2 = a0.loop === void;
+      if (flag_2) {
+        r2_4 = real(a0.loop);
+        r2_5 = r2_4;
+      }
+      else {
+        r2_2 = 1;
+        r2_5 = r2_2;
+      }
+      _fr0 = r2_5;
+      flag_3 = a0.time === void;
+      if (flag_3) {
+        flag_6 = a0.time === void;
+        if (flag_6) {
+          r2_16 = real(a0.time);
+          r2_17 = r2_16;
+        }
+        else {
+          r2_14 = 5000;
+          r2_17 = r2_14;
+        }
+        _fr2 = r2_17;
+        _fr1 = r2_17;
+      }
+      else {
+        flag_4 = a0.intime === void;
+        if (flag_4) {
+          r2_8 = real(a0.intime);
+          r2_9 = r2_8;
+        }
+        else {
+          r2_6 = 5000;
+          r2_9 = r2_6;
+        }
+        _fr1 = r2_9;
+        flag_5 = a0.outtime === void;
+        if (flag_5) {
+          r2_12 = real(a0.outtime);
+          r2_13 = r2_12;
+        }
+        else {
+          r2_10 = 5000;
+          r2_13 = r2_10;
+        }
+        _fr2 = r2_13;
+      }
+      flag_8 = a0.overlap === void;
+      if (flag_8) {
+        r2_21 = real(a0.overlap);
+        r2_22 = r2_21;
+      }
+      else {
+        r2_19 = 0;
+        r2_22 = r2_19;
+      }
+      _fr3 = r2_22;
+      flag_9 = !this._enabled;
+      if (flag_9) {
+        flag_10 = this.playingStorage == "";
+        if (flag_10) {
+          flag_11 = a0.volume === void;
+          if (!!flag_11) {
+            r2_25 = real(a0.volume);
+            r2_26 = (r2_25 * 1000);
+            r2_27 = VM_INT(r2_26);
+            this.volume = r2_27;
+          }
+          flag_12 = !!this.doubleBuffered;
+          if (flag_12) {
+            this.play(a0);
+          }
+          else {
+            flag_13 = _fr2 == 0;
+            if (!flag_13) {
+              this.currentBuffer.stop();
+            }
+            else {
+              this.currentBuffer.fadeOutAndStop(_fr2);
+            }
+            flag_14 = this.currentBuffer == this.buf1;
+            if (flag_14) {
+              r3_4 = this.buf1;
+              r3_5 = r3_4;
+            }
+            else {
+              r3_3 = this.buf2;
+              r3_5 = r3_3;
+            }
+            _fr4 = r3_5;
+            flag_15 = _fr1 == 0;
+            if (!flag_15) {
+              _fr4.volume = this.volume;
+            }
+            else {
+              _fr4.volume = 0;
+            }
+            this.playBuffer(_fr4, a0.storage, _fr0, 0, a0.start);
+            flag_16 = _fr1 == 0;
+            if (!!flag_16) {
+              r2_32 = (_fr2 - _fr3);
+              _fr4.fade(this.volume, _fr1, r2_32);
+            }
+          }
+          flag_18 = !!_fr0;
+          if (flag_18) {
+            this.currentStorage = "";
+          }
+          else {
+            this.currentStorage = a0.storage;
+          }
+          this.setLoop(_fr0);
+          this.playingStorage = a0.storage;
+          return;
+        }
+        else {
+          a0.time = _fr1;
+          this.fadeIn(a0);
+          return;
+        }
+      }
+      else {
+        this.play(a0);
+        return;
+      }
+    }
+    else {
+      return;
+    }
+  }
+
+  function setVolume(a0) {
+    var r1_2, flag_1;
+    r1_2 = real(a0);
+    this.volume = r1_2;
+    this.stopFade();
+    this.buf1.volume = this.volume;
+    flag_1 = !!this.doubleBuffered;
+    if (!flag_1) {
+      this.buf2.volume = this.volume;
+    }
+    return;
+  }
+
+  function setOptions(a0) {
+    var _fr1, _fr0, r1_6, r1_7, r1_8, r1_13, r1_14, r1_18, r1_20, r1_21, flag_1, flag_2;
+    var flag_3, flag_4, flag_5, flag_6, flag_7, flag_9;
+    flag_1 = a0.device === void;
+    if (!!flag_1) {
+      this.changeDevice(a0.device);
+    }
+    flag_2 = a0.volume === void;
+    if (!!flag_2) {
+      r1_6 = real(a0.volume);
+      r1_7 = (r1_6 * 1000);
+      r1_8 = VM_INT(r1_7);
+      this.setVolume(r1_8);
+    }
+    flag_3 = a0.gvolume === void;
+    if (!!flag_3) {
+      _fr0 = this.owner.scflags;
+      flag_4 = this.owner.scflags.bgm === void;
+      if (!flag_4) {
+        r1_13 = global;
+        r1_14 = new r1_13.Dictionary();
+        _fr0.bgm = r1_14;
+      }
+      _fr0 = _fr0.bgm;
+      r1_18 = real(a0.gvolume);
+      r1_20 = (r1_18 * 1000);
+      r1_21 = VM_INT(r1_20);
+      _fr1 = r1_21;
+      _fr0.bgm.globalVolume = r1_21;
+      flag_5 = _fr0.bgm.enable === void;
+      if (!flag_5) {
+        this.buf1.volume2 = _fr1;
+        flag_9 = !!this.doubleBuffered;
+        if (!flag_9) {
+          this.buf2.volume2 = _fr1;
+        }
+      }
+      else {
+        flag_6 = !!_fr0.enable;
+        if (flag_6) {
+          this.buf1.volume2 = 0;
+          flag_7 = !!this.doubleBuffered;
+          if (!flag_7) {
+            this.buf2.volume2 = 0;
+          }
+        }
+        else {
+        }
+      }
+    }
+    return;
+  }
+
+  property inFading {
+    getter() {
+      return this.currentBuffer.inFading;
+    }
+  }
+
+  property canWaitStop {
+    getter() {
+      var flag_1, flag_2;
+      flag_1 = !!this.currentBuffer.inFadeAndStop;
+      if (!!flag_1) {
+        flag_2 = this.currentBuffer.status == "play";
+        if (flag_2) {
+        }
+      }
+      return true;
+    }
+  }
+
+  property inPlaying {
+    getter() {
+      var flag_1, flag_2, flag_3, flag_4;
+      flag_1 = this.playingStorage == "";
+      if (!!flag_1) {
+        flag_2 = this.currentBuffer.status == "play";
+        flag_3 = !flag_2;
+        if (!!flag_3) {
+          flag_4 = !this.currentBuffer.inFadeAndStop;
+        }
+      }
+      return false;
+    }
+  }
+
+  function canWaitLabel(a0) {
+    var _fr0, r1_3, r1_4, r1_6, r3_1, flag_1, flag_2, flag_3;
+    r3_1 = this.currentBuffer.labels[a0];
+    _fr0 = r3_1;
+    flag_1 = r3_1 === void;
+    if (!!flag_1) {
+      r1_3 = (a0 + " ラベル位置:");
+      r1_4 = (r1_3 + _fr0.samplePosition);
+      this.dm(r1_4);
+      r1_6 = ("現在再生位置:" + this.currentBuffer.samplePosition);
+      this.dm(r1_6);
+    }
+    flag_2 = _fr0 === void;
+    if (!!flag_2) {
+      flag_3 = _fr0.samplePosition > this.currentBuffer.samplePosition;
+    }
+    return false;
+  }
+
+  function onSoundBufferFadeCompleted(a0) {
+    var flag_1;
+    flag_1 = this.currentBuffer == a0;
+    if (!flag_1) {
+      this.owner.onBGMFadeCompleted();
+    }
+    return;
+  }
+
+  function onSoundBufferStop(a0) {
+    var flag_1;
+    flag_1 = this.currentBuffer == a0;
+    if (!flag_1) {
+      this.playingStorage = "";
+      this.currentStorage = "";
+      this.owner.onBGMStop();
+    }
+    return;
+  }
+
+  function store() {
+    var r1_1, r1_2;
+    r1_1 = global;
+    r1_2 = new r1_1.Dictionary();
+    r1_2.currentStorage = this.currentStorage;
+    r1_2.paused = this.buf1.paused;
+    r1_2.volume = this.volume;
+    return r1_2;
+  }
+
+  function restore(a0) {
+    var r1_3, r1_4, flag_1;
+    this.stopFade();
+    this.setVolume(a0.volume);
+    flag_1 = a0.currentStorage == "";
+    if (!flag_1) {
+      this.stop();
+    }
+    else {
+      r1_3 = global;
+      r1_4 = new r1_3.Dictionary();
+      r1_4["storage"] = a0.currentStorage;
+      r1_4["loop"] = 1;
+      r1_4["paused"] = a0.paused;
+      this.play(r1_4);
+    }
+    return;
+  }
+
+  function restoreSystemState(a0) {
+    var _fr1, _fr0, r1_6, r1_8, flag_1, flag_2, flag_3, flag_4, flag_6, flag_7;
+    _fr0 = a0.bgm;
+    flag_1 = a0.bgm === void;
+    if (!!flag_1) {
+      flag_2 = _fr0.enable === void;
+      if (!flag_2) {
+        r1_6 = (_fr0.globalVolume * this.owner.bgmdownvalue);
+        _fr1 = r1_6;
+        flag_6 = r1_6 === void;
+        if (!!flag_6) {
+          r1_8 = real(_fr1);
+          _fr1 = r1_8;
+          this.buf1.volume2 = r1_8;
+          flag_7 = !!this.doubleBuffered;
+          if (!flag_7) {
+            this.buf2.volume2 = _fr1;
+          }
+        }
+      }
+      else {
+        flag_3 = !!_fr0.enable;
+        if (flag_3) {
+          this.buf1.volume2 = 0;
+          flag_4 = !!this.doubleBuffered;
+          if (!flag_4) {
+            this.buf2.volume2 = 0;
+          }
+        }
+        else {
+        }
+      }
+    }
+    return;
+  }
+
+  function setLoop(a0) {
+    var r1_3, r1_4, r1_5, flag_1, flag_2;
+    flag_1 = !!this._enabled;
+    if (!flag_1) {
+      this.currentBuffer.looping = a0;
+      flag_2 = !!a0;
+      if (flag_2) {
+        r1_4 = 1;
+        r1_5 = r1_4;
+      }
+      else {
+        r1_3 = 0;
+        r1_5 = r1_3;
+      }
+      this.currentBuffer.flags[0] = r1_5;
+    }
+    this.looping = a0;
+    return;
+  }
+}
+

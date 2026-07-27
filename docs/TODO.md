@@ -64,11 +64,21 @@
   - RegExp отключён (`TJS_NO_REGEXP`), Oniguruma не нужен
   - Сборка: `MSBuild tjscheck.vcxproj /p:Configuration=Release /p:Platform=Win32`
 - [x] Контекст вынесен в `neuro_scripts/context_monitor.tjs` (через `neuroExecFile`)
+- [x] **tjscheck: English error messages** — вместо пустых `TJS_MSG_DECL_NULL` (переведены из `tjsError_jp.h`)
+- [x] **tjscheck: bytecode detection** — `TJS2` сигнатура → `OK (compiled bytecode)`, пропуск 196 бинарных .tjs в ATRI
+- [x] **crate-1556/tjs2-decompiler (Python)** — основной декомпилятор вместо Rust tjs2dec
+  - CFG + region tree, extends/super restoration, switch/try, default params
+  - Batch скрипт `Tools/decompile_tjs.ps1`
+  - **196/196** бинарников декомпилированы в `D:\Games\ATRI-TestVersion\data-tjs-decompiled\`
+  - BYTECODE-RESEARCH.md обновлён
 
 ## In Progress
 
 - [ ] **Формат контекста для Neuro API** — спроектировать JSON структуру, определить триггеры отправки
-- [ ] **tjscheck: загружать locale/messages** — чтобы сообщения об ошибках отображались, а не пустая строка
+- [ ] **Верификация tjs-hooks/*.md** — сверка с Python декомпиляцией:
+  - Conductor: добавлены `fasttags`, `nexttags`, `parseLine`, `parseLineStr`, `loadParam`, `waitAll`, `pendingTriggers`, `waitStartTick`, `waitTimeout`
+  - BGM: `inPlaying` — **property в байткоде** (раньше считалось C++ side)
+  - HistoryLayer: добавлены `calcRelinePos`, `endAction`, `setNewAction`, `continueAction`, `clearAction`, `getActionInfo*`, `highlightAction`, `getLineStart2` и др.
 
 ## Planned
 

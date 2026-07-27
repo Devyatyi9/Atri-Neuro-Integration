@@ -2,6 +2,8 @@
 
 Источник: байткод игры `sysscn/multilang.tjs`
 
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/multilang.tjs.txt`.
+
 Центральная система поддержки нескольких языков. Управляет переключением языка, загружает шрифты, обрабатывает LanguageTags.
 
 > **Связь с LineModeEx.tjs:** `LanguageTags` + `CurrentLanguageTag` используются из multilang.tjs, а `parseLanguage` (хендлер `[language]` тега) и `characterVoiceInfo` — в `LineModeEx.tjs` (диалоговый движок, загружается отдельно).

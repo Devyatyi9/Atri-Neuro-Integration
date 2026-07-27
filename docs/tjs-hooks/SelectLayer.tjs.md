@@ -1,6 +1,8 @@
 # SelectLayer.tjs — Choice Selection Layer
 
 Источник: байткод игры `system/SelectLayer.tjs`
+
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/SelectLayer.tjs.txt`.
 Исходник: только в KAGeXpress (`original-kag-tjs/data/KAGeXpress_Sample/`), в kag3 отсутствует.
 
 ---

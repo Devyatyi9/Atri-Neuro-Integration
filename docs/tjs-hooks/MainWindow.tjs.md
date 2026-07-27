@@ -1,6 +1,8 @@
 # MainWindow.tjs — Главное окно/Контейнер
 
 Источник: байткод игры `system/MainWindow.tjs` (427 KB)
+
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/MainWindow.tjs.txt`.
 Сравнение: `docs/original-kag-tjs/data/kag3/MainWindow.tjs` (source)
 
 Главный класс-контейнер для всех слоёв и управления окном.

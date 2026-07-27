@@ -5,6 +5,8 @@
 
 **Файл модифицирован:** игра добавила класс `OneShotAsyncTrigger` и ~20 функций.
 
+**Декомпилятор tjs2dec:** все перечисленные хуки (`onTag`, `onStop`, `onScenarioLoad`, `onScenarioLoaded`, `onLabel`, `onJump`, `onCall`, `onReturn`, `onScript`) подтверждены в байткоде. См. `disasm/Conductor.tjs.txt`.
+
 ---
 
 ## Классы
@@ -15,8 +17,8 @@
 ### OneShotAsyncTrigger extends AsyncTrigger *(только в игре)*
 Одноразовый триггер. `cached = true`. Методы: `trigger()`, `cancel()`, `onFire()`, `assign(src)`.
 
-### BaseConductor extends KAGParser
-Базовый класс управления сценарием.
+### BaseConductor extends BaseConductorExtendClass (= KAGParser)
+Базовый класс управления сценарием. `BaseConductorExtendClass` — динамический алиас на `KAGParser` (инициализируется в top-level коде: `if (typeof global.BaseConductorExtendClass == "undefined") global.BaseConductorExtendClass = KAGParser;`).
 
 **Свойства:**
 - `timer` — Timer
@@ -24,9 +26,14 @@
 - `_interrupted: bool` — флаг прерывания
 - `timerEnabled: bool` — таймер активен
 - `pendings: Array` — отложенные теги
+- `fasttags: Array` — быстрые теги
+- `nexttags: Array` — следующие теги
 - `inProcessing: bool` — обработка timerCallback
 - `reentered: bool` — реентерабельность
 - `nextTimerTick: int` — следующий тик таймера
+- `parseLine: int` — текущая строка парсинга
+- `parseLineStr: string` — текущая строка (текст)
+- `loadParam` — параметр загрузки сценария
 
 **Методы:**
 
@@ -67,13 +74,18 @@
 ### Conductor extends BaseConductor
 
 **Свойства:**
-- `mStop`, `mRun`, `mWait` — константы статуса
+- `mStop`, `mRun`, `mWait` — константы статуса (0, 1, 2)
 - `owner` — Object (KAGEnvironment, т.е. `kag`)
 - `handlers` — Dictionary обработчиков тегов
-- `status` — int (mStop=0, mRun=1, mWait=2)
+- `status` — int (mStop=0, mRun=1, mWait=2), начальное `mStop`
 - `timeOutTimer` — Timer таймаута
-- `waitUntil` — Dictionary сигналов ожидания
-- `lastTagName` — string, имя последнего тега
+- `waitUntil` — Dictionary сигналов ожидания (`%[]`)
+- `waitAll` — Dictionary всех сигналов (`%[]`)
+- `lastTagName` — string, имя последнего тега (устанавливается в `onTag()`)
+- `pendingTriggers` — Array отложенных триггеров
+- `waitStartTick` — int, время начала таймаута
+- `waitTimeout` — int, длительность таймаута
+- `interrupted` — property (getter/setter), управляет `_interrupted` + timer/oneshot
 
 **Методы:**
 

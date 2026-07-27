@@ -1,6 +1,8 @@
 # MessageLayer.tjs — Message/Text Display Layer
 
 Источник: байткод игры `system/MessageLayer.tjs`
+
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/MessageLayer.tjs.txt`.
 Сравнение: `docs/original-kag-tjs/data/kag3/MessageLayer.tjs` (source)
 
 ---

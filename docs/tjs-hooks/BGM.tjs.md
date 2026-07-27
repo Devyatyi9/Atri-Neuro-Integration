@@ -22,12 +22,24 @@
 ### BGM
 Управление фоновой музыкой.
 
+**Декомпиляция (Python crate-1556):** все перечисленные функции и свойства подтверждены. `inPlaying` — **property** в байткоде (не C++ side):
+
+```javascript
+property inPlaying {
+    return playingStorage != "" && (currentBuffer.status == "play" && !currentBuffer.inFadeAndStop);
+}
+```
+
 **Свойства:**
 - `currentStorage` — string, текущий трек
 - `playingStorage` — string, играющий трек ("" если нет)
 - `volume` — int (0-1000)
 - `buf1`, `buf2` — KAGSoundBuffer (buf2 для crossfade)
 - `owner` — Object (KAGEnvironment)
+- `paused` — property getter/setter, состояние паузы
+- `inFading` — property getter, идёт ли fade
+- `canWaitStop` — property getter, можно ли ждать остановки
+- `inPlaying` — property getter: `playingStorage != "" && status == "play" && !inFadeAndStop`
 
 **Методы:**
 

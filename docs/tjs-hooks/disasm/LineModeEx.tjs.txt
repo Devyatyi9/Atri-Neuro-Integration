@@ -1,2516 +1,1803 @@
+// Decompiled by tjs2Decompiler (high)
+// objects=65, toplevel=0
+
+class TagQueue {
+  function TagQueue() {
+    return;
+  }
+
+  function clear() {
+    this.nexttags.clear();
+    this.pendings.clear();
+    return;
+  }
+
+  function hasData() {
+    var flag_1;
+    flag_1 = this.pendings.count > 0;
+    if (!flag_1) {
+    }
+    return true;
+  }
+
+  function getNextTag() {
+    var r2_2, r2_4, flag_1, flag_2;
+    flag_1 = this.nexttags.count > 0;
+    if (flag_1) {
+      flag_2 = this.pendings.count > 0;
+      if (flag_2) {
+        return;
+      }
+      else {
+        r2_4 = this.pendings.shift();
+        return r2_4;
+      }
+    }
+    else {
+      r2_2 = this.nexttags.shift();
+      return r2_2;
+    }
+  }
+
+  function addNextTag() {
+    var r1_1;
+    r1_1 = this.copyTag();
+    this.enqueueNextTag(r1_1);
+    return;
+  }
+
+  function enqueueNextTag() {
+    this.nexttags.push();
+    return;
+  }
+
+  function addTag() {
+    var r1_1;
+    r1_1 = this.copyTag();
+    this.enqueueTag(r1_1);
+    return;
+  }
+
+  function enqueueTag() {
+    this.pendings.push();
+    return;
+  }
+
+  function store(a0) {
+    var _fr0, r1_2, flag_2;
+    while (true) {
+      r1_2 = this.getNextTag();
+      _fr0 = r1_2;
+      flag_2 = r1_2 === void;
+      if (!flag_2) {
+        break;
+      }
+      a0.enqueueTag(_fr0);
+      continue;
+    }
+    return;
+  }
+}
+
+class LineModeLine {
+  function LineModeLine() {
+    return;
+  }
+
+  function hasLine() {
+    return true;
+  }
+
+  function hasData() {
+    var flag_1;
+    flag_1 = this.linetags.count > 0;
+    if (!flag_1) {
+    }
+    return true;
+  }
+
+  function initCommand() {
+    var flag_1;
+    flag_1 = this.commandtags.count == 0;
+    if (!flag_1) {
+      this._addCommandTag("startline");
+    }
+    return;
+  }
+
+  function addCommand(a0) {
+    this.initCommand();
+    this.commandtags.add(a0);
+    return;
+  }
+
+  function _addParseTag(a0, a1, a2, a3) {
+    var _fr1, _fr0, r1_1, r1_2, r1_3, r1_4, flag_1, flag_2, flag_3;
+    r1_1 = global;
+    r1_2 = new r1_1.Dictionary();
+    _fr0 = r1_2;
+    r1_3 = global;
+    r1_4 = new r1_3.Array();
+    _fr1 = r1_4;
+    this._copyTag(r1_2, r1_4, a1);
+    r1_4.unshift("tagname");
+    flag_1 = a0 === void;
+    if (!!flag_1) {
+      _fr0.tagname = a0;
+    }
+    _fr0.taglist = _fr1;
+    flag_2 = a2 === void;
+    if (!!flag_2) {
+      _fr0.runLine = a2;
+    }
+    flag_3 = a3 === void;
+    if (!!flag_3) {
+      _fr0.runCount = a3;
+    }
+    return _fr0;
+  }
+
+  function addParseTag(a0, a1, a2, a3) {
+    var _fr0, r1_1, r2_1, flag_1;
+    this.initCommand();
+    r1_1 = this._addParseTag(a0, a1, a2, a3);
+    _fr0 = r1_1;
+    flag_1 = a0 == "dispname";
+    if (!flag_1) {
+      this.dispnametag = _fr0;
+      r2_1 = this.Scripts.clone(_fr0);
+      r2_1.tagname = "starttext";
+      this.linetags.add(r2_1);
+    }
+    this.linetags.add(_fr0);
+    return;
+  }
+
+  function _addCommandTag(a0, a1, a2, a3) {
+    var _fr0, r1_1, flag_1;
+    r1_1 = this._addParseTag(a0, a1, a2, a3);
+    _fr0 = r1_1;
+    flag_1 = a0 == "startline";
+    if (!flag_1) {
+      this.startlinetag = _fr0;
+    }
+    this.commandtags.add(_fr0);
+    return;
+  }
+
+  function addCommandTag(a0, a1, a2, a3) {
+    this.initCommand();
+    this._addCommandTag(a0, a1, a2, a3);
+    return;
+  }
+
+  function clear() {
+    this.linetags.clear();
+    this.commandtags.clear();
+    this.dispnametag = void;
+    this.startlinetag = void;
+    this.lasttag = void;
+    return;
+  }
+
+  function endline(a0, a1) {
+    var flag_1, flag_2, flag_3, flag_5, flag_6, flag_7;
+    this.lasttag = a0;
+    flag_1 = this.dispnametag === void;
+    if (!!flag_1) {
+      flag_2 = a1.language === void;
+      if (!!flag_2) {
+        this.addTagParam(this.dispnametag, "language", a1.language);
+      }
+      flag_3 = !!a1.lineNowait;
+      if (!flag_3) {
+        this.addTagParam(this.dispnametag, "nowait", 1);
+      }
+    }
+    flag_5 = this.startlinetag === void;
+    if (!!flag_5) {
+      this.addTagParam(this.startlinetag, "vflag", a1.lineVoice);
+      this.addTagParam(this.startlinetag, "name", a1.lineName);
+      this.addTagParam(this.startlinetag, "text", a1.useText);
+      flag_6 = !!a1.lineNotext;
+      if (!flag_6) {
+        this.addTagParam(this.startlinetag, "notext", a1.lineNotext);
+      }
+      flag_7 = !!a1.lineSame;
+      if (!flag_7) {
+        this.addTagParam(this.startlinetag, "same", a1.lineSame);
+      }
+    }
+    return;
+  }
+
+  function outputline(a0, a1) {
+    var _fr0, flag_1, flag_2, flag_4, flag_5;
+    flag_1 = !!a1.lineVoice;
+    if (!flag_1) {
+      flag_2 = this.dispnametag === void;
+      if (!!flag_2) {
+        this.addTagParam(this.dispnametag, "nextvflag", a1.lineVoice);
+      }
+    }
+    _fr0 = void;
+    flag_4 = this.commandtags.count > 0;
+    if (!flag_4) {
+      a0.enqueueTag(this.commandtags);
+      _fr0 = 1;
+    }
+    flag_5 = this.linetags.count > 0;
+    if (!flag_5) {
+      a0.enqueueTag(this.linetags);
+      _fr0 = 1;
+    }
+    this.clear();
+    return _fr0;
+  }
+}
+
+class LineModeEx extends this.LineMode {
+  function LineModeEx(a0, a1) {
+    var r1_3, r1_4, r1_5, r1_6, r1_8, r1_10, flag_1;
+    flag_1 = a1 === void;
+    if (!flag_1) {
+      a1 = 1;
+    }
+    r1_3 = new this.TagQueue();
+    this.linecd = r1_3;
+    r1_4 = new this.LineModeLine();
+    this.prevLine = r1_4;
+    r1_5 = new this.LineModeLine();
+    this.currentLine = r1_5;
+    r1_6 = global;
+    r1_6.LineMode.LineMode(a0, a1);
+    // (this-change op omitted)
+    this.option_tags.linemode = r1_8;
+    // (this-change op omitted)
+    this.textTags.p = r1_10;
+    return;
+  }
+
+  function _onStore(a0) {
+    var r1_2, r2_2, r3_1, flag_1;
+    // (this-change op omitted)
+    r2_2();
+    r1_2 = global;
+    r1_2.LineMode.onStore(a0);
+    a0.checkNextVoice = this.checkNextVoice;
+    flag_1 = this.language === void;
+    if (!!flag_1) {
+      r3_1 = this.Scripts.clone(this.language);
+      a0.language = r3_1;
+    }
+    a0.ignoreCrToNext = this.ignoreCrToNext;
+    a0.showSame = this.showSame;
+    a0.caseMode = this.caseMode;
+    a0.caseStart = this.caseStart;
+    a0.caseCount = this.caseCount;
+    a0.caseMax = this.caseMax;
+    a0.textCount = this.textCount;
+    a0.useText = this.useText;
+    return;
+  }
+
+  function onStore(a0) {
+    var r4_2;
+    // (this-change op omitted)
+    r4_2(this.lineModeStore, 0);
+    return;
+  }
+
+  function onRestore(a0) {
+    var r1_1, r3_1, flag_1;
+    r1_1 = global;
+    r1_1.LineMode.onRestore(a0);
+    this.checkNextVoice = a0.checkNextVoice;
+    flag_1 = a0.language === void;
+    if (!flag_1) {
+      this.language = void;
+    }
+    else {
+      r3_1 = this.Scripts.clone(a0.language);
+      this.language = r3_1;
+    }
+    this.ignoreCrToNext = a0.ignoreCrToNext;
+    this.showSame = a0.showSame;
+    this.caseMode = a0.caseMode;
+    this.caseStart = a0.caseStart;
+    this.caseCount = a0.caseCount;
+    this.caseMax = a0.caseMax;
+    this.textCount = a0.textCount;
+    this.useText = a0.useText;
+    this.initLineModeStore();
+    return;
+  }
+
+  function onScenarioLoaded() {
+    var r1_1;
+    r1_1 = global;
+    r1_1.LineMode.onScenarioLoaded();
+    this.conductor.onTagExtract();
+    this.initLineModeStore();
+    return;
+  }
+
+  function initLineModeStore() {
+    this._onStore(this.lineModeStore);
+    return;
+  }
+
+  function updateLineModeStore() {
+    var r2_1, flag_1;
+    r2_1 = this.currentLine.hasData();
+    flag_1 = !r2_1;
+    if (!flag_1) {
+      this._onStore(this.lineModeStore);
+    }
+    return;
+  }
+
+  function initCaseMode() {
+    var flag_1;
+    flag_1 = !!this.caseMode;
+    if (!flag_1) {
+      this.errorCmd("警告:case 指定が閉じていません");
+    }
+    this.caseMode = 0;
+    this.caseStart = void;
+    this.caseCount = 0;
+    this.caseMax = 0;
+    this.textCount = 0;
+    this.useText = 0;
+    return;
+  }
+
+  function initLineMode() {
+    var r1_1;
+    r1_1 = global;
+    r1_1.LineMode.initLineMode();
+    this.lineVoice = 0;
+    this.lineName = "";
+    this.lineNowait = 0;
+    this.lineNotext = 0;
+    this.lineSame = 0;
+    this.linecd.clear();
+    this.prevLine.clear();
+    this.currentLine.clear();
+    this.delaytrans = 0;
+    this.btlevel = 0;
+    this.language = void;
+    this.ignoreCrToNext = 0;
+    this.caseMode = 0;
+    this.caseStart = void;
+    this.caseCount = 0;
+    this.caseMax = 0;
+    this.textCount = 0;
+    this.useText = 0;
+    return;
+  }
+
+  function mode_linemode(a0) {
+    var r1_1, r1_4, flag_1, flag_2, flag_3;
+    r1_1 = global;
+    r1_1.LineMode.mode_linemode(a0);
+    flag_1 = !this.parseForKag;
+    if (!flag_1) {
+      flag_2 = a0.checknextvoice === void;
+      flag_3 = !flag_2;
+      if (!flag_3) {
+        r1_4 = real(a0.checknextvoice);
+        this.checkNextVoice = r1_4;
+      }
+    }
+    return;
+  }
+
+  function initOption() {
+    var r1_1, flag_1;
+    r1_1 = this.checkEnd();
+    flag_1 = !!r1_1;
+    if (flag_1) {
+      return;
+    }
+    else {
+      this.checkPending();
+      return 1;
+    }
+  }
+
+  function flushLine(a0, a1) {
+    var r1_6, r1_7, r2_6, r3_1, r3_3, flag_1, flag_2, flag_3, flag_5, flag_6;
+    flag_1 = a1 === void;
+    if (!flag_1) {
+      a1 = 0;
+    }
+    this.delaytrans = 0;
+    flag_2 = !!a1;
+    if (!flag_2) {
+      flag_3 = this.textLength == 0;
+      if (!flag_3) {
+        r1_6 = string(a0);
+        r1_7 = (r1_6 + ":テキストが空の行が展開されています。font/styleなどテキストスタイル処理のタグはラインモードでは独立したタグではなく必ずテキストの冒頭に入れて下さい");
+        this.errorCmd(r1_7);
+      }
+    }
+    flag_5 = !!this.checkNextVoice;
+    if (flag_5) {
+      this.currentLine.endline(a0, this);
+      r3_3 = this.currentLine.outputline(this.linecd, this);
+      this.lineVoice = 0;
+      this.lineName = "";
+      this.lineNowait = 0;
+      this.lineNotext = 0;
+      this.lineSame = 0;
+      this.textLength = 0;
+      this.language = void;
+      return r3_3;
+    }
+    else {
+      r3_1 = this.prevLine.outputline(this.linecd, this);
+      this.currentLine.endline(a0, this);
+      this.prevLine = this.currentLine;
+      this.currentLine = this.prevLine;
+      this.lineVoice = 0;
+      this.lineName = "";
+      this.lineNowait = 0;
+      this.lineNotext = 0;
+      this.lineSame = 0;
+      this.textLength = 0;
+      this.language = void;
+      flag_6 = !!r3_1;
+      if (!!flag_6) {
+        r2_6 = this.prevLine.hasData();
+      }
+      return true;
+    }
+  }
+
+  function addParseTag(a0, a1) {
+    this.updateLineModeStore();
+    this.currentLine.addParseTag(a0, a1, this.runLine, this.runCount);
+    return;
+  }
+
+  function addCommandTag(a0, a1) {
+    this.updateLineModeStore();
+    this.currentLine.addCommandTag(a0, a1, this.runLine, this.runCount);
+    return;
+  }
+
+  function addCommand(a0) {
+    this.updateLineModeStore();
+    this.currentLine.addCommand(a0);
+    return;
+  }
+
+  function entryTag(a0, a1) {
+    this.addCommandTag(a0, a1);
+    return;
+  }
+
+  function getCharacterVoiceConfig(a0) {
+    var _fr0, r1_2, r1_3, r1_4, r2_1, flag_1;
+    r2_1 = this.characterVoiceInfo[a0];
+    _fr0 = r2_1;
+    flag_1 = r2_1 === void;
+    if (!flag_1) {
+      r1_3 = "";
+      r1_4 = r1_3;
+    }
+    else {
+      r1_2 = _fr0.config;
+      r1_4 = r1_2;
+    }
+    return r1_4;
+  }
+
+  function getCharacterVoicePer(a0) {
+    var _fr0, r1_2, r1_3, r1_4, r2_1, flag_1;
+    r2_1 = this.characterVoiceInfo[a0];
+    _fr0 = r2_1;
+    flag_1 = r2_1 === void;
+    if (!flag_1) {
+      r1_3 = this.VOICE_INFO_PER;
+      r1_4 = r1_3;
+    }
+    else {
+      r1_2 = _fr0.per;
+      r1_4 = r1_2;
+    }
+    return r1_4;
+  }
+
+  function getCharacterVoiceLevel(a0) {
+    var _fr0, r1_3, r1_4, r2_1, r2_4, r2_5, flag_1;
+    r2_1 = this.characterVoiceInfo[a0];
+    _fr0 = r2_1;
+    flag_1 = r2_1 === void;
+    if (!flag_1) {
+      r1_3 = global;
+      r1_4 = new r1_3.Array();
+      r1_4[0] = this.VOICE_INFO_VL1;
+      r2_4 = (0 + 1);
+      r1_4[r2_4] = this.VOICE_INFO_VL2;
+      r2_5 = (r2_4 + 1);
+      return r1_4;
+    }
+    else {
+      return _fr0.level;
+    }
+  }
+
+  function getCharacterTextColor(a0) {
+    var _fr0, r2_1, flag_1;
+    r2_1 = this.characterVoiceInfo[a0];
+    _fr0 = r2_1;
+    flag_1 = r2_1 === void;
+    if (!flag_1) {
+      return;
+    }
+    else {
+      return _fr0.color;
+    }
+  }
+
+  function loadCharacterVoiceInfo(a0) {
+    var _fr9, _fr8, _fr7, _fr6, _fr5, _fr4, _fr3, _fr2, _fr1, _fr0, r1_5, r1_12;
+    var r1_23, r1_24, r1_28, r1_29, r1_35, r1_37, r2_2, r2_4, r2_26, r2_27, r2_28, r2_35;
+    var r3_3, r3_4, r3_6, r3_8, r3_10, r3_13, r3_14, r3_15, r3_16, r3_19, r3_20, r3_21;
+    var r3_24, r4_10, r5_12, r5_15, r6_2, r6_3, r6_5, r6_6, r6_8, r6_9, r6_11, r6_12;
+    var r6_14, r6_15, r6_16, r6_17, r6_24, r6_25, r6_26, r6_27, r8_2, r8_3, r8_4, r8_5;
+    var r8_6, r8_7, r8_8, r8_9, flag_1, flag_3, flag_4, flag_5, flag_6, flag_7, flag_8, flag_10;
+    var flag_11, flag_13, flag_14, flag_16, flag_17, flag_19, flag_20, flag_21, flag_24, flag_25, flag_26, flag_29;
+    var flag_30, flag_33, flag_34, exc_0;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = "charvoice";
+    }
+    // (this-change op omitted)
+    r2_2();
+    this.characterVoiceList.clear();
+    r1_5 = this.loadConfigFile(a0);
+    _fr0 = r1_5;
+    _fr1 = this.VOICE_INFO_PER;
+    _fr2 = this.VOICE_INFO_VL1;
+    _fr3 = this.VOICE_INFO_VL2;
+    _fr4 = void;
+    _fr5 = 0;
+    while (true) {
+      flag_3 = _fr5 < _fr0.count;
+      if (flag_3) {
+        break;
+      }
+      r1_12 = _fr0[_fr5];
+      _fr6 = r1_12;
+      _fr7 = r1_12.count;
+      flag_4 = r1_12.count < 2;
+      if (!flag_4) {
+        _fr5 = (_fr5 + 1);
+        continue;
+      }
+      else {
+        r2_4 = _fr6[0];
+        r3_3 = r2_4.toLowerCase();
+        _fr8 = r3_3;
+        flag_5 = r3_3 == "";
+        if (flag_5) {
+          flag_6 = _fr8 == "default";
+          if (flag_6) {
+            r1_23 = global;
+            r1_24 = new r1_23.Dictionary();
+            r1_24["name"] = _fr8;
+            r4_10 = _fr6[1];
+            r1_24["file"] = r4_10;
+            _fr9 = r1_24;
+            flag_19 = _fr7 < 3;
+            if (!flag_19) {
+              r3_14 = "";
+              r3_15 = r3_14;
+              _fr9.config = r3_15;
+              flag_20 = _fr7 < 4;
+              if (!flag_20) {
+                r6_16 = _fr1;
+                r6_17 = r6_16;
+                _fr9.per = r6_17;
+                flag_24 = _fr7 < 5;
+                if (!flag_24) {
+                  r3_20 = "";
+                  r3_21 = r3_20;
+                  _fr9.alias = r3_21;
+                  r1_28 = global;
+                  r1_29 = new r1_28.Array();
+                  r2_26 = 0;
+                  flag_25 = _fr7 < 6;
+                  if (!flag_25) {
+                    r8_4 = _fr2;
+                    r8_5 = r8_4;
+                    r1_29[r2_26] = r8_5;
+                    r2_27 = (r2_26 + 1);
+                    flag_29 = _fr7 < 7;
+                    if (!flag_29) {
+                      r8_8 = _fr3;
+                      r8_9 = r8_8;
+                      r1_29[r2_27] = r8_9;
+                      r2_28 = (r2_27 + 1);
+                      _fr9.level = r1_29;
+                      flag_33 = _fr7 < 8;
+                      if (!flag_33) {
+                        r6_26 = _fr4;
+                        r6_27 = r6_26;
+                        _fr9.color = r6_27;
+                        this.characterVoiceInfo[_fr8] = _fr9;
+                        this.characterVoiceList.push(_fr9);
+                      }
+                      else {
+                        r3_24 = _fr6[7];
+                        flag_34 = r3_24 == "";
+                        if (flag_34) {
+                          r6_24 = _fr6[7];
+                          r6_25 = real(r6_24);
+                          r6_27 = r6_25;
+                        }
+                      }
+                    }
+                    else {
+                      r5_15 = _fr6[6];
+                      flag_30 = r5_15 == "";
+                      if (flag_30) {
+                        r8_6 = _fr6[6];
+                        r8_7 = real(r8_6);
+                        r8_9 = r8_7;
+                      }
+                    }
+                  }
+                  else {
+                    r5_12 = _fr6[5];
+                    flag_26 = r5_12 == "";
+                    if (flag_26) {
+                      r8_2 = _fr6[5];
+                      r8_3 = real(r8_2);
+                      r8_5 = r8_3;
+                    }
+                  }
+                }
+                else {
+                  r3_19 = _fr6[4];
+                  r3_21 = r3_19;
+                }
+              }
+              else {
+                r3_16 = _fr6[3];
+                flag_21 = r3_16 == "";
+                if (flag_21) {
+                  r6_14 = _fr6[3];
+                  r6_15 = real(r6_14);
+                  r6_17 = r6_15;
+                }
+              }
+            }
+            else {
+              r3_13 = _fr6[2];
+              r3_15 = r3_13;
+            }
+          }
+          else {
+            flag_7 = _fr7 < 4;
+            if (!flag_7) {
+              flag_10 = _fr7 < 6;
+              if (!flag_10) {
+                flag_13 = _fr7 < 7;
+                if (!flag_13) {
+                  flag_16 = _fr7 < 8;
+                  if (flag_16) {
+                    r3_10 = _fr6[7];
+                    flag_17 = r3_10 == "";
+                    if (flag_17) {
+                      r6_11 = _fr6[7];
+                      r6_12 = real(r6_11);
+                      _fr4 = r6_12;
+                    }
+                  }
+                }
+                else {
+                  r3_8 = _fr6[6];
+                  flag_14 = r3_8 == "";
+                  if (flag_14) {
+                    r6_8 = _fr6[6];
+                    r6_9 = real(r6_8);
+                    _fr3 = r6_9;
+                  }
+                }
+              }
+              else {
+                r3_6 = _fr6[5];
+                flag_11 = r3_6 == "";
+                if (flag_11) {
+                  r6_5 = _fr6[5];
+                  r6_6 = real(r6_5);
+                  _fr2 = r6_6;
+                }
+              }
+            }
+            else {
+              r3_4 = _fr6[3];
+              flag_8 = r3_4 == "";
+              if (flag_8) {
+                r6_2 = _fr6[3];
+                r6_3 = real(r6_2);
+                _fr1 = r6_3;
+              }
+            }
+          }
+        }
+      }
+      return;
+    }
+  }
+
+  function getAliasName(a0) {
+    var _fr0, r3_2, r3_4, r4_1, r5_1, r5_2, r5_3, r7_1, r9_1, r9_2, r9_3, flag_1;
+    var flag_2, flag_3, flag_4;
+    flag_1 = a0 == "";
+    if (!flag_1) {
+      r5_2 = void;
+      r5_3 = r5_2;
+    }
+    else {
+      r3_2 = string(a0);
+      r4_1 = r3_2.toLowerCase();
+      r5_1 = this.characterVoiceInfo[r4_1];
+      r5_3 = r5_1;
+    }
+    _fr0 = r5_3;
+    flag_2 = r5_3 === void;
+    if (!flag_2) {
+      return a0;
+    }
+    else {
+      flag_3 = _fr0.alias == "";
+      if (flag_3) {
+        r3_4 = _fr0.alias.charAt(0);
+        flag_4 = r3_4 == "&";
+        if (flag_4) {
+          r9_2 = _fr0.alias;
+          r9_3 = r9_2;
+        }
+        else {
+          r7_1 = _fr0.alias.substr(1);
+          r9_1 = this.Scripts.eval(r7_1);
+          r9_3 = r9_1;
+        }
+        return r9_3;
+      }
+    }
+  }
+
+  function convertVoice(a0, a1) {
+    var _fr0, r1_1, r1_3, r2_3, r2_5, r2_6, r2_7, r3_1, r4_1, flag_1, flag_2, flag_3;
+    var flag_4;
+    r1_1 = global;
+    r3_1 = r1_1.LineMode.convertVoice(a0, a1);
+    a1 = r3_1;
+    r1_3 = (typeof r3_1);
+    flag_1 = r1_3 == "Integer";
+    if (!flag_1) {
+      r2_3 = this.characterVoiceInfo[a0];
+      _fr0 = r2_3;
+      flag_2 = r2_3 === void;
+      if (!!flag_2) {
+        flag_3 = _fr0.file == "";
+        if (!!flag_3) {
+          flag_4 = this.voiceBase === void;
+          if (!flag_4) {
+            r2_6 = "";
+            r2_7 = r2_6;
+          }
+          else {
+            r2_5 = this.voiceBase;
+            r2_7 = r2_5;
+          }
+          r4_1 = _fr0.file.sprintf(r2_7, a1);
+          a1 = r4_1;
+        }
+      }
+    }
+    return a1;
+  }
+
+  function createDispname(a0) {
+    var r1_1, r1_3, flag_1;
+    r1_1 = global;
+    r1_1.LineMode.createDispname(a0);
+    r1_3 = real(a0.notext);
+    this.lineNotext = r1_3;
+    this.lineSame = this.showSame;
+    flag_1 = !!this.showSame;
+    if (flag_1) {
+      return 1;
+    }
+    else {
+      a0.same = this.showSame;
+      this.showSame = 0;
+      return 0;
+    }
+  }
+
+  function parseDispname() {
+    var r1_5, r4_1, r4_2, r4_3, r4_4, r7_1, r7_2, r7_3, flag_1, flag_2, flag_3;
+    flag_1 = !!this.checkNextVoice;
+    if (!flag_1) {
+      flag_2 = this.nextVoiceList.count > 0;
+      if (flag_2) {
+        r4_2 = 0;
+        r4_3 = r4_2;
+      }
+      else {
+        r4_1 = 1;
+        r4_3 = r4_1;
+      }
+      flag_3 = this.nameStr == "";
+      if (!flag_3) {
+        r7_2 = 0;
+        r7_3 = r7_2;
+      }
+      else {
+        r7_1 = 2;
+        r7_3 = r7_1;
+      }
+      r4_4 = (r4_3 | r7_3);
+      this.lineVoice = r4_4;
+    }
+    this.lineName = this.nameStr;
+    r1_5 = global;
+    r1_5.LineMode.parseDispname();
+    this.language = void;
+    this.useText = 1;
+    return;
+  }
+
+  function parseLanguage(a0) {
+    var _fr0, r1_1, r1_2, r1_7, r1_8, r2_6, flag_1, flag_2;
+    r1_1 = global;
+    r1_2 = new r1_1.Dictionary();
+    _fr0 = r1_2;
+    flag_1 = a0.name === void;
+    if (!!flag_1) {
+      _fr0.disp = a0.name;
+    }
+    flag_2 = this.language === void;
+    if (!flag_2) {
+      r1_7 = global;
+      r1_8 = new r1_7.Array();
+      this.language = r1_8;
+    }
+    r2_6 = real(a0.type);
+    this.language[r2_6] = _fr0;
+    this.addParseTag("language", a0);
+    this.afterName = 1;
+    return;
+  }
+
+  function parseL() {
+    var r1_3;
+    this.lineNowait = false;
+    r1_3 = global;
+    r1_3.LineMode.parseL();
+    this.flushLine("l", 1);
+    return;
+  }
+
+  function createP(a0) {
+    var r1_1, flag_1;
+    r1_1 = global;
+    r1_1.LineMode.createP(a0);
+    flag_1 = !!this.showSame;
+    if (flag_1) {
+      return 1;
+    }
+    else {
+      a0.same = 1;
+      return 0;
+    }
+  }
+
+  function parseP(a0) {
+    var r1_2, flag_1;
+    flag_1 = this.noWaitOnce === void;
+    if (flag_1) {
+    }
+    this.lineNowait = false;
+    r1_2 = global;
+    r1_2.LineMode.parseP(a0);
+    this.flushLine("p", 1);
+    return;
+  }
+
+  function parseR(a0) {
+    var r1_2, flag_1;
+    flag_1 = !this.ignoreCrToNext;
+    if (!flag_1) {
+      r1_2 = global;
+      r1_2.LineMode.parseR(a0);
+    }
+    return;
+  }
+
+  function checkL(a0) {
+    var r2_3, flag_1, flag_2, flag_4;
+    flag_1 = !this.parseForKag;
+    if (!flag_1) {
+      flag_2 = !!this.noCrOnce;
+      if (!flag_2) {
+        a0.nor = 1;
+      }
+    }
+    r2_3 = this.currentLine.hasLine();
+    flag_4 = !r2_3;
+    if (flag_4) {
+      this.addParseTag("l", a0);
+    }
+    else {
+      this.addCommand(a0);
+      this.flushLine("l");
+    }
+    return 1;
+  }
+
+  function checkEnd(a0) {
+    var _fr0, r1_4, r1_5, r1_9, r1_10, r1_13, r1_16, r1_17, r3_8, r3_9, r4_6, r4_7;
+    var flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_10, flag_11, flag_12;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = 1;
+    }
+    _fr0 = void;
+    flag_2 = !this.emptyLine;
+    if (!flag_2) {
+      r1_4 = global;
+      r1_5 = new r1_4.Dictionary();
+      r1_5["eol"] = 1;
+      this.parseR(r1_5);
+      _fr0 = 1;
+    }
+    flag_3 = !this.prevEmptyLine;
+    if (!flag_3) {
+      flag_4 = this.lineMode == this.LINEMODE_TEX;
+      if (!flag_4) {
+        r1_9 = global;
+        r1_10 = new r1_9.Dictionary();
+        r1_10["eol"] = 1;
+        this.parseR(r1_10);
+        _fr0 = 1;
+      }
+      else {
+        flag_5 = this.lineMode == this.LINEMODE_VN;
+        if (flag_5) {
+          flag_6 = this.lineMode == this.LINEMODE_FREE;
+          if (flag_6) {
+            flag_7 = this.lineMode == this.LINEMODE_FRVN;
+            if (!flag_7) {
+            }
+          }
+        }
+      }
+    }
+    while (true) {
+      r1_13 = this.flushLine();
+      flag_10 = !!r1_13;
+      if (flag_10) {
+        break;
+      }
+      _fr0 = 1;
+      continue;
+    }
+    flag_11 = !!a0;
+    if (!flag_11) {
+      flag_12 = !!this.useText;
+      if (!flag_12) {
+        r1_16 = global;
+        r1_17 = new r1_16.Dictionary();
+        r1_17["tagname"] = "er";
+        r1_17["all"] = "true";
+        r3_8 = global;
+        r3_9 = new r3_8.Array();
+        r3_9[0] = "tagname";
+        r4_6 = (0 + 1);
+        r3_9[r4_6] = "all";
+        r4_7 = (r4_6 + 1);
+        r1_17["taglist"] = r3_9;
+        r1_17["runLine"] = this.runLine;
+        r1_17["runCount"] = this.runCount;
+        this.linecd.enqueueTag(r1_17);
+        _fr0 = 1;
+      }
+      this.initCaseMode();
+    }
+    this.btlevel = 0;
+    this.delaytrans = 0;
+    return _fr0;
+  }
+
+  function _getNextTag() {
+    var _fr0, r2_1, r2_4, r2_5, r2_6, flag_1, flag_2, flag_3, flag_4;
+    r2_1 = this.linecd.getNextTag();
+    _fr0 = r2_1;
+    flag_1 = r2_1 === void;
+    if (!!flag_1) {
+      flag_2 = _fr0.tagname == "dispname";
+      flag_3 = !flag_2;
+      if (!!flag_3) {
+        flag_4 = this.caseStart === void;
+        if (!flag_4) {
+          r2_5 = this.textCount;
+          (this + 1);
+          r2_6 = r2_5;
+        }
+        else {
+          (this + 1);
+          r2_4 = (this.caseStart + this.caseCount);
+          r2_6 = r2_4;
+        }
+        _fr0.textCount = r2_6;
+      }
+    }
+    return _fr0;
+  }
+
+  function getNextTag() {
+    var _fr1, _fr0, r1_1, r1_4, r1_13, r1_19, r1_21, r1_22, r1_23, r1_27, r1_29, r1_32;
+    var r2_9, r3_5, r4_2, r4_4, flag_2, flag_3, flag_4, flag_5, flag_6, flag_8, flag_9, flag_10;
+    var flag_11, flag_12, flag_13, flag_15, flag_16, flag_17, flag_18, flag_19, exc_0;
+    r1_1 = this._getNextTag();
+    _fr0 = r1_1;
+    while (true) {
+      flag_2 = !!this.caseMode;
+      if (flag_2) {
+        break;
+      }
+      flag_3 = _fr0 === void;
+      flag_4 = !flag_3;
+      if (flag_4) {
+        while (true) {
+          flag_8 = _fr0 === void;
+          if (!flag_8) {
+            break;
+          }
+          flag_9 = _fr0.tagname == "case";
+          flag_10 = !flag_9;
+          if (!flag_10) {
+            return _fr0;
+          }
+          else {
+            r4_2 = this.Math.max(this.caseMax, this.caseCount);
+            this.caseMax = r4_2;
+            flag_11 = _fr0.exp == "";
+            if (flag_11) {
+              flag_12 = this.caseStart === void;
+              if (!flag_12) {
+                this.caseStart = this.textCount;
+              }
+              this.caseCount = 0;
+              r3_5 = this.conductor.eval(_fr0.exp);
+              _fr1 = r3_5;
+              flag_13 = !!_fr1;
+              if (flag_13) {
+                this.caseMode = 1;
+                r1_29 = this._getNextTag();
+                _fr0 = r1_29;
+                while (true) {
+                  flag_15 = !!this.caseMode;
+                  if (flag_15) {
+                    break;
+                  }
+                  flag_16 = _fr0 === void;
+                  flag_17 = !flag_16;
+                  if (flag_17) {
+                    while (true) {
+                      flag_8 = _fr0 === void;
+                      if (!flag_8) {
+                        break;
+                      }
+                    }
+                  }
+                  else {
+                  }
+                }
+              }
+              else {
+              }
+            }
+            else {
+            }
+          }
+        }
+      }
+      else {
+        flag_5 = _fr0.tagname == "case";
+        flag_6 = !flag_5;
+        if (!flag_6) {
+          r1_4 = this._getNextTag();
+          _fr0 = r1_4;
+          continue;
+        }
+      }
+    }
+  }
+
+  function checkPending() {
+    var _fr1, _fr0, r1_3, r2_1, r3_2, flag_1, flag_3, flag_4, flag_5, flag_6;
+    r2_1 = this.linecd.hasData();
+    flag_1 = !!r2_1;
+    if (flag_1) {
+      return;
+    }
+    else {
+      while (true) {
+        r1_3 = this.getNextTag();
+        _fr0 = r1_3;
+        flag_3 = r1_3 === void;
+        if (!flag_3) {
+          break;
+        }
+        r3_2 = this.conductor.onTagExtract(this.linecd, _fr0);
+        _fr1 = r3_2;
+        flag_4 = r3_2 === void;
+        if (!flag_4) {
+          this.conductor.enqueueTag(_fr0);
+          continue;
+        }
+        else {
+          flag_5 = !_fr1;
+          if (flag_5) {
+            flag_6 = _fr1 == 2;
+            if (flag_6) {
+              while (true) {
+                r1_3 = this.getNextTag();
+                _fr0 = r1_3;
+                flag_3 = r1_3 === void;
+                if (!flag_3) {
+                  break;
+                }
+              }
+              return 1;
+            }
+            else {
+              break;
+            }
+          }
+          else {
+          }
+        }
+      }
+    }
+  }
+
+  function checkVoiceParam(a0, a1) {
+    var _fr8, _fr7, _fr6, _fr5, _fr4, _fr3, _fr2, _fr1, _fr0, r1_1, r1_47, r1_48;
+    var r1_55, r1_60, r1_65, r1_70, r1_79, r1_80, r1_84, r1_91, r1_94, r1_95, r1_99, r1_104;
+    var r1_109, r1_114, r1_124, r1_125, r1_129, r1_136, r1_139, r1_140, r1_144, r1_149, r1_154, r1_159;
+    var r1_169, r1_170, r1_174, r1_181, r1_182, r1_186, r2_2, r2_4, r2_5, r2_45, r2_47, r2_48;
+    var r2_56, r2_57, r2_59, r2_60, r2_61, r2_62, r3_1, r3_2, r3_3, r3_4, r3_6, r3_7;
+    var r3_8, r3_10, r3_11, r3_12, r3_25, r3_27, r3_28, r4_1, r4_4, r5_2, r5_3, r5_4;
+    var flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_9, flag_10, flag_12, flag_13, flag_15;
+    var flag_16, flag_17, flag_18, flag_19, flag_20, flag_21, flag_23, flag_24, flag_25, flag_26, flag_27, flag_28;
+    var flag_29, flag_30, flag_31, flag_34, flag_35, flag_36, flag_37, flag_38, flag_39, flag_40, flag_41, flag_42;
+    var flag_45, flag_46, flag_47, flag_48, flag_51, flag_53, flag_54, flag_56, flag_57, flag_58, flag_59, flag_60;
+    var flag_61, flag_62, flag_63, flag_64, flag_65, flag_66;
+    r1_1 = global;
+    r3_1 = r1_1.LineMode.checkVoiceParam(a0, a1);
+    flag_1 = !!r3_1;
+    if (flag_1) {
+      flag_2 = a0 == "playvoice";
+      if (flag_2) {
+        r2_4 = this.conductor.onCheckVoice(a0, a1, this);
+        flag_4 = r2_4 === void;
+        if (!flag_4) {
+          _fr0 = 0;
+          r2_5 = this.characterVoiceInfo[a0];
+          flag_5 = r2_5 === void;
+          if (!!flag_5) {
+            flag_6 = a1.voice === void;
+            if (!!flag_6) {
+              flag_7 = a1.voice == "true";
+              if (!flag_7) {
+                r3_3 = void;
+                r3_4 = r3_3;
+              }
+              else {
+                r3_2 = a1.voice;
+                r3_4 = r3_2;
+              }
+              this.setCurrentVoice(a0, r3_4, a1);
+              this.removeTagParam(a1, "voice");
+              this.removeTagParam(a1, "replace");
+              this.removeTagParam(a1, "insert");
+              this.removeTagParam(a1, "noplayvoice");
+              this.removeTagParam(a1, "pan");
+              this.removeTagParam(a1, "noflip");
+              this.removeTagParam(a1, "fade");
+              this.removeTagParam(a1, "volume");
+            }
+            flag_9 = a1.nextvoice === void;
+            if (!!flag_9) {
+              flag_10 = a1.nextvoice == "true";
+              if (!flag_10) {
+                r3_7 = void;
+                r3_8 = r3_7;
+              }
+              else {
+                r3_6 = a1.nextvoice;
+                r3_8 = r3_6;
+              }
+              this.setCurrentVoice(a0, r3_8, a1);
+              this.entryNextVoice(a0);
+              this.removeTagParam(a1, "nextvoice");
+              this.removeTagParam(a1, "replace");
+              this.removeTagParam(a1, "insert");
+              this.removeTagParam(a1, "noplayvoice");
+              this.removeTagParam(a1, "pan");
+              this.removeTagParam(a1, "noflip");
+              this.removeTagParam(a1, "fade");
+              this.removeTagParam(a1, "volume");
+            }
+            flag_12 = a1.backvoice === void;
+            if (!!flag_12) {
+              flag_13 = a1.backvoice == "true";
+              if (!flag_13) {
+                r3_11 = void;
+                r3_12 = r3_11;
+              }
+              else {
+                r3_10 = a1.backvoice;
+                r3_12 = r3_10;
+              }
+              this.setCurrentVoice(a0, r3_12, a1);
+              this.entryNextVoice(a0, 1);
+              this.removeTagParam(a1, "backvoice");
+              this.removeTagParam(a1, "replace");
+              this.removeTagParam(a1, "insert");
+              this.removeTagParam(a1, "noplayvoice");
+              this.removeTagParam(a1, "pan");
+              this.removeTagParam(a1, "noflip");
+              this.removeTagParam(a1, "fade");
+              this.removeTagParam(a1, "volume");
+            }
+            _fr1 = void;
+            _fr2 = void;
+            _fr3 = void;
+            _fr4 = void;
+            _fr5 = void;
+            _fr6 = void;
+            flag_15 = a1.playvoice === void;
+            if (!!flag_15) {
+              r1_47 = global;
+              r1_48 = new r1_47.Dictionary();
+              r1_48["name"] = a0;
+              _fr7 = r1_48;
+              flag_16 = a1.playvoice == "";
+              if (!flag_16) {
+                this.getCurrentVoice(a0, _fr7);
+              }
+              else {
+                _fr7.voice = a1.playvoice;
+              }
+              flag_17 = a1.pan === void;
+              if (!!flag_17) {
+                _fr1 = 1;
+                r1_55 = real(a1.pan);
+                _fr7.pan = r1_55;
+              }
+              flag_18 = a1.noflip === void;
+              if (!!flag_18) {
+                _fr2 = 1;
+                r1_60 = real(a1.noflip);
+                _fr7.noflip = r1_60;
+              }
+              flag_19 = a1.fade === void;
+              if (!!flag_19) {
+                _fr3 = 1;
+                r1_65 = real(a1.fade);
+                _fr7.fade = r1_65;
+              }
+              flag_20 = a1.volume === void;
+              if (!!flag_20) {
+                _fr4 = 1;
+                r1_70 = real(a1.volume);
+                _fr7.fade = r1_70;
+              }
+              flag_21 = a1.delayrun === void;
+              if (!!flag_21) {
+                _fr7.delayrun = a1.delayrun;
+              }
+              this.entryTag("playvoice", _fr7);
+              _fr0 = 1;
+              this.removeTagParam(a1, "playvoice");
+            }
+            flag_23 = a1.bvoice === void;
+            if (!!flag_23) {
+              flag_24 = a1.bvoice == "";
+              if (flag_24) {
+                _fr7 = 1;
+                flag_26 = a1.loop === void;
+                if (!!flag_26) {
+                  r1_91 = real(a1.loop);
+                  _fr7 = r1_91;
+                  _fr5 = 1;
+                }
+                r1_94 = global;
+                r1_95 = new r1_94.Dictionary();
+                r1_95["name"] = a0;
+                r4_1 = this.filterVoice(a0, a1.bvoice);
+                r1_95["voice"] = r4_1;
+                r1_95["type"] = 1;
+                r1_95["loop"] = _fr7;
+                _fr8 = r1_95;
+                flag_27 = a1.pan === void;
+                if (!!flag_27) {
+                  _fr1 = 1;
+                  r1_99 = real(a1.pan);
+                  _fr8.pan = r1_99;
+                }
+                flag_28 = a1.noflip === void;
+                if (!!flag_28) {
+                  _fr2 = 1;
+                  r1_104 = real(a1.noflip);
+                  _fr8.noflip = r1_104;
+                }
+                flag_29 = a1.fade === void;
+                if (!!flag_29) {
+                  _fr3 = 1;
+                  r1_109 = real(a1.fade);
+                  _fr8.fade = r1_109;
+                }
+                flag_30 = a1.volume === void;
+                if (!!flag_30) {
+                  _fr4 = 1;
+                  r1_114 = real(a1.volume);
+                  _fr8.fade = r1_114;
+                }
+                flag_31 = a1.delayrun === void;
+                if (!!flag_31) {
+                  _fr8.delayrun = a1.delayrun;
+                }
+                this.entryTag("playvoice", _fr8);
+                _fr0 = 1;
+              }
+              else {
+                r1_79 = global;
+                r1_80 = new r1_79.Dictionary();
+                r1_80["name"] = a0;
+                r1_80["all"] = 1;
+                _fr7 = r1_80;
+                flag_25 = a1.time === void;
+                if (!!flag_25) {
+                  _fr6 = 1;
+                  r1_84 = real(a1.time);
+                  _fr7.time = r1_84;
+                }
+                this.entryTag("stopvoice", _fr7);
+                _fr0 = 1;
+              }
+              this.removeTagParam(a1, "bvoice");
+            }
+            flag_34 = a1.hvoice === void;
+            if (!!flag_34) {
+              flag_35 = a1.hvoice == "";
+              if (flag_35) {
+                _fr7 = 1;
+                flag_37 = a1.loop === void;
+                if (!!flag_37) {
+                  r1_136 = real(a1.loop);
+                  _fr7 = r1_136;
+                  _fr5 = 1;
+                }
+                r1_139 = global;
+                r1_140 = new r1_139.Dictionary();
+                r1_140["name"] = a0;
+                r4_4 = this.filterVoice(a0, a1.hvoice);
+                r1_140["voice"] = r4_4;
+                r1_140["type"] = 2;
+                r1_140["loop"] = _fr7;
+                _fr8 = r1_140;
+                flag_38 = a1.pan === void;
+                if (!!flag_38) {
+                  _fr1 = 1;
+                  r1_144 = real(a1.pan);
+                  _fr8.pan = r1_144;
+                }
+                flag_39 = a1.noflip === void;
+                if (!!flag_39) {
+                  _fr2 = 1;
+                  r1_149 = real(a1.noflip);
+                  _fr8.noflip = r1_149;
+                }
+                flag_40 = a1.fade === void;
+                if (!!flag_40) {
+                  _fr3 = 1;
+                  r1_154 = real(a1.fade);
+                  _fr8.fade = r1_154;
+                }
+                flag_41 = a1.volume === void;
+                if (!!flag_41) {
+                  _fr4 = 1;
+                  r1_159 = real(a1.volume);
+                  _fr8.fade = r1_159;
+                }
+                flag_42 = a1.delayrun === void;
+                if (!!flag_42) {
+                  _fr8.delayrun = a1.delayrun;
+                }
+                this.entryTag("playvoice", _fr8);
+                _fr0 = 1;
+              }
+              else {
+                r1_124 = global;
+                r1_125 = new r1_124.Dictionary();
+                r1_125["name"] = a0;
+                r1_125["all"] = 1;
+                _fr7 = r1_125;
+                flag_36 = a1.time === void;
+                if (!!flag_36) {
+                  _fr6 = 1;
+                  r1_129 = real(a1.time);
+                  _fr7.time = r1_129;
+                }
+                this.entryTag("stopvoice", _fr7);
+                _fr0 = 1;
+              }
+              this.removeTagParam(a1, "hvoice");
+            }
+            flag_45 = a1.fadevoice === void;
+            if (!!flag_45) {
+              flag_46 = a1.volume === void;
+              if (!flag_46) {
+                flag_47 = a1.fade === void;
+                if (!flag_47) {
+                  flag_48 = a1.fadevoice == "true";
+                  if (!flag_48) {
+                    r5_3 = 100;
+                    r5_4 = r5_3;
+                  }
+                  else {
+                    r5_2 = real(a1.fadevoice);
+                    r5_4 = r5_2;
+                  }
+                  r3_27 = r5_4;
+                  r3_28 = r3_27;
+                }
+                else {
+                  r3_25 = real(a1.fade);
+                  r3_28 = r3_25;
+                }
+                r2_47 = r3_28;
+                r2_48 = r2_47;
+              }
+              else {
+                r2_45 = real(a1.volume);
+                r2_48 = r2_45;
+              }
+              r1_169 = global;
+              r1_170 = new r1_169.Dictionary();
+              r1_170["name"] = a0;
+              r1_170["fade"] = r2_48;
+              _fr8 = r1_170;
+              flag_51 = a1.time === void;
+              if (!!flag_51) {
+                _fr6 = 1;
+                r1_174 = real(a1.time);
+                _fr8.time = r1_174;
+              }
+              this.entryTag("fadevoice", _fr8);
+              _fr0 = 1;
+              this.removeTagParam(a1, "fadevoice");
+            }
+            flag_53 = a1.stopvoice === void;
+            if (!!flag_53) {
+              r1_181 = global;
+              r1_182 = new r1_181.Dictionary();
+              r1_182["name"] = a0;
+              _fr7 = r1_182;
+              flag_54 = a1.time === void;
+              if (!!flag_54) {
+                _fr6 = 1;
+                r1_186 = real(a1.time);
+                _fr7.time = r1_186;
+              }
+              this.entryTag("stopvoice", _fr7);
+              _fr0 = 1;
+              this.removeTagParam(a1, "stopvoice");
+            }
+            flag_56 = a1.waitvoice === void;
+            if (!!flag_56) {
+              r2_56 = global;
+              r2_57 = new r2_56.Dictionary();
+              r2_57["name"] = a0;
+              this.entryTag("waitvoice", r2_57);
+              _fr0 = 1;
+              this.removeTagParam(a1, "waitvoice");
+            }
+            flag_57 = !!_fr5;
+            if (!flag_57) {
+              this.removeTagParam(a1, "loop");
+            }
+            flag_58 = !!_fr1;
+            if (!flag_58) {
+              this.removeTagParam(a1, "pan");
+            }
+            flag_59 = !!_fr2;
+            if (!flag_59) {
+              this.removeTagParam(a1, "noflip");
+            }
+            flag_60 = !!_fr3;
+            if (!flag_60) {
+              this.removeTagParam(a1, "fade");
+            }
+            flag_61 = !!_fr4;
+            if (!flag_61) {
+              this.removeTagParam(a1, "volume");
+            }
+            flag_62 = !!_fr6;
+            if (!flag_62) {
+              this.removeTagParam(a1, "time");
+            }
+            r2_59 = this.Scripts.getObjectCount(a1);
+            _fr7 = r2_59;
+            flag_63 = a1.runLine === void;
+            if (flag_63) {
+              r2_61 = this.ELMCOUNT;
+              r2_62 = r2_61;
+            }
+            else {
+              r2_60 = 2;
+              r2_62 = r2_60;
+            }
+            _fr8 = r2_62;
+            flag_64 = a1.delayrun === void;
+            if (!!flag_64) {
+              _fr8 = (_fr8 + 1);
+            }
+            flag_65 = _fr7 > _fr8;
+            if (!flag_65) {
+              flag_66 = !!_fr0;
+              if (!flag_66) {
+                this.entryTag(void, a1);
+              }
+            }
+            else {
+              _fr0 = 1;
+            }
+          }
+          return _fr0;
+        }
+        else {
+          return 1;
+        }
+      }
+      else {
+        flag_3 = a1.voice === void;
+        if (!flag_3) {
+          r2_2 = a1.name.toLowerCase();
+          this.getCurrentVoice(r2_2, a1);
+        }
+        return 0;
+      }
+    }
+    else {
+      return 1;
+    }
+  }
+
+  function checkTagExtract(a0) {
+    var _fr1, _fr0, r1_1, r1_2, r1_3, r1_4, r1_5, r1_6, r1_7, r1_14, r1_15, r1_17;
+    var r1_38, r1_39, r2_1, r3_1, r3_2, r3_4, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6;
+    var flag_7, flag_8, flag_9, flag_10, flag_11, flag_12, flag_14;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = void;
+    }
+    flag_2 = a0 === void;
+    if (!flag_2) {
+      r1_2 = void;
+      r1_3 = r1_2;
+    }
+    else {
+      r1_1 = a0.runLine;
+      r1_3 = r1_1;
+    }
+    this.runLine = r1_3;
+    flag_3 = a0 === void;
+    if (!flag_3) {
+      r1_5 = void;
+      r1_6 = r1_5;
+    }
+    else {
+      r1_4 = a0.runCount;
+      r1_6 = r1_4;
+    }
+    this.runCount = r1_6;
+    flag_4 = a0 === void;
+    if (flag_4) {
+      _fr1 = a0.tagname;
+      r2_1 = this.brTags[a0.tagname];
+      flag_5 = !!r2_1;
+      if (flag_5) {
+        flag_8 = !!this.lineMode;
+        if (flag_8) {
+          r1_39 = global;
+          r3_2 = r1_39.LineMode.checkTagExtract(a0);
+          _fr0 = r3_2;
+        }
+        else {
+          flag_9 = _fr1 == "case";
+          if (flag_9) {
+            flag_10 = _fr1 == "language";
+            if (flag_10) {
+              flag_11 = _fr1 == "same";
+              if (flag_11) {
+                flag_12 = _fr1 == "r";
+                if (!!flag_12) {
+                  this.ignoreCrToNext = 0;
+                }
+                r1_38 = global;
+                r3_1 = r1_38.LineMode.checkTagExtract(a0);
+                _fr0 = r3_1;
+              }
+              else {
+                this.noErOnce = 1;
+                this.showSame = 1;
+                _fr0 = 1;
+              }
+            }
+            else {
+              this.parseLanguage(a0);
+              this.ignoreCrToNext = 1;
+              _fr0 = 1;
+            }
+          }
+          else {
+            this.checkEnd(0);
+            this.linecd.enqueueTag(a0);
+            _fr0 = 1;
+          }
+        }
+      }
+      else {
+        this.noErOnce = 0;
+        this.ignoreCrToNext = 0;
+        flag_6 = !!this.textLine;
+        if (!flag_6) {
+          r1_14 = string(_fr1);
+          r1_15 = (r1_14 + ":テキスト行の途中に分岐処理や変数処理などラインモードと競合するタグがあります。空行をいれるなどして分離して下さい");
+          this.errorCmd(r1_15);
+        }
+        r1_17 = this.checkEnd();
+        flag_7 = !!r1_17;
+        if (flag_7) {
+          _fr0 = 0;
+        }
+        else {
+          this.linecd.enqueueTag(a0);
+          _fr0 = 1;
+        }
+        this.commandLine = 1;
+        this.initLineModeStore();
+      }
+    }
+    else {
+      r1_7 = this.checkEnd();
+      _fr0 = r1_7;
+      this.initLineModeStore();
+    }
+    flag_14 = !_fr0;
+    if (flag_14) {
+      this.checkPending();
+      return 1;
+    }
+    else {
+      r3_4 = this.conductor.onTagExtract(this.conductor, a0);
+      return r3_4;
+    }
+  }
+
+  function onLineModeTagExtract(a0) {
+    var r2_1;
+    r2_1 = this.conductor.onLineModeTagExtract(a0, this);
+    return false;
+  }
+
+  function checkCommand(a0, a1) {
+    var r1_12, r2_1, r2_3, r2_6, r2_9, r3_2, r3_3, r4_2, flag_1, flag_2, flag_3, flag_4;
+    var flag_6, flag_7, flag_8, flag_9, flag_10, flag_11, flag_12, flag_13, flag_14, flag_17, flag_18, flag_19;
+    var flag_20, flag_23;
+    flag_1 = !!this.textLine;
+    if (flag_1) {
+      flag_2 = !!1;
+      if (!flag_2) {
+        r2_6 = this.Scripts.clone(a1);
+        this.addCommand(r2_6);
+        flag_6 = a0 == "begintrans";
+        if (!flag_6) {
+          flag_23 = this.btlevel == 0;
+          if (!flag_23) {
+            this.delaytrans = false;
+          }
+          (this + 1);
+        }
+        else {
+          flag_7 = a0 == "begin";
+          if (flag_7) {
+            flag_8 = a0 == "endtrans";
+            if (!flag_8) {
+              flag_17 = this.btlevel > 0;
+              if (!flag_17) {
+                r1_12 = (this - 1);
+                flag_18 = r1_12 == 0;
+                if (!flag_18) {
+                  flag_19 = !this.delaytrans;
+                  if (!flag_19) {
+                    flag_20 = !a1.nosync;
+                    if (!flag_20) {
+                      this.addCommandTag("startline");
+                    }
+                  }
+                  this.delaytrans = 0;
+                }
+              }
+            }
+            else {
+              flag_9 = a0 == "end";
+              if (flag_9) {
+                r2_9 = this.waitTags[a0];
+                flag_10 = !!r2_9;
+                if (!flag_10) {
+                  this.addCommandTag("startline");
+                }
+                else {
+                  flag_11 = this.btlevel == 0;
+                  if (!flag_11) {
+                    flag_12 = !!a1.sync;
+                    if (flag_12) {
+                      flag_13 = !!a1.wait;
+                      if (flag_13) {
+                        flag_14 = !!a1.msgoff;
+                        if (!flag_14) {
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              else {
+              }
+            }
+          }
+          else {
+          }
+        }
+        return 1;
+      }
+      else {
+        flag_3 = !!this.checkNextVoice;
+        if (flag_3) {
+          r4_2 = this.waitTags[a0];
+          flag_4 = !r4_2;
+          if (flag_4) {
+            return;
+          }
+          else {
+          }
+        }
+      }
+    }
+    else {
+      r2_1 = this.Scripts.clone(a1);
+      r3_2 = (this.textLength + 1);
+      r3_3 = string(r3_2);
+      r2_3 = ("w" + r3_3);
+      this.addTagParam(r2_1, "delayrun", r2_3);
+      this.addCommand(r2_1);
+      return 1;
+    }
+  }
+}
 
-(top level script) global 0x000000000103CED0
-
-#(1) Bytecode.
-00000000 const %1, *0	// *0 = (object)(object 0x000000000103D8C0:0x0000000000000000)
-00000003 spds %-1.*1, %1	// *1 = (string)"TagQueue"
-00000007 const %1, *2	// *2 = (object)(object 0x0000000000F8E940:0x0000000000000000)
-00000010 spds %-1.*3, %1	// *3 = (string)"LineModeLine"
-00000014 const %1, *4	// *4 = (object)(object 0x0000000000F958B0:0x0000000000000000)
-00000017 spds %-1.*5, %1	// *5 = (string)"LineModeEx"
-00000021 cl %1
-00000023 global %1
-00000025 gpd %2, %1.*6	// *6 = (string)"Dictionary"
-00000029 new %1, %2()
-00000033 const %2, *7	// *7 = (string)"wait"
-00000036 const %3, *8	// *8 = (int)1
-00000039 spis %1.%2, %3
-00000043 const %2, *9	// *9 = (string)"waituntil"
-00000046 const %3, *8	// *8 = (int)1
-00000049 spis %1.%2, %3
-00000053 const %2, *10	// *10 = (string)"waitclick"
-00000056 const %3, *8	// *8 = (int)1
-00000059 spis %1.%2, %3
-00000063 const %2, *11	// *11 = (string)"wd"
-00000066 const %3, *8	// *8 = (int)1
-00000069 spis %1.%2, %3
-00000073 const %2, *12	// *12 = (string)"wc"
-00000076 const %3, *8	// *8 = (int)1
-00000079 spis %1.%2, %3
-00000083 const %2, *13	// *13 = (string)"wq"
-00000086 const %3, *8	// *8 = (int)1
-00000089 spis %1.%2, %3
-00000093 const %2, *14	// *14 = (string)"wa"
-00000096 const %3, *8	// *8 = (int)1
-00000099 spis %1.%2, %3
-00000103 const %2, *15	// *15 = (string)"wm"
-00000106 const %3, *8	// *8 = (int)1
-00000109 spis %1.%2, %3
-00000113 const %2, *16	// *16 = (string)"wt"
-00000116 const %3, *8	// *8 = (int)1
-00000119 spis %1.%2, %3
-00000123 const %2, *17	// *17 = (string)"wb"
-00000126 const %3, *8	// *8 = (int)1
-00000129 spis %1.%2, %3
-00000133 const %2, *18	// *18 = (string)"wf"
-00000136 const %3, *8	// *8 = (int)1
-00000139 spis %1.%2, %3
-00000143 const %2, *19	// *19 = (string)"wl"
-00000146 const %3, *8	// *8 = (int)1
-00000149 spis %1.%2, %3
-00000153 const %2, *20	// *20 = (string)"wp"
-00000156 const %3, *8	// *8 = (int)1
-00000159 spis %1.%2, %3
-00000163 const %2, *21	// *21 = (string)"ws"
-00000166 const %3, *8	// *8 = (int)1
-00000169 spis %1.%2, %3
-00000173 const %2, *22	// *22 = (string)"wv"
-00000176 const %3, *8	// *8 = (int)1
-00000179 spis %1.%2, %3
-00000183 const %2, *23	// *23 = (string)"waittrig"
-00000186 const %3, *8	// *8 = (int)1
-00000189 spis %1.%2, %3
-00000193 gpd %2, %-2.*5	// *5 = (string)"LineModeEx"
-00000197 spde %2.*24, %1	// *24 = (string)"waitTags"
-00000201 srv %0
-00000203 ret
-
-(class) TagQueue 0x000000000103D8C0
-
-#(1) Bytecode.
-00000000 const %1, *0	// *0 = (string)"TagQueue"
-00000003 addci %-1, %1
-00000006 cl %1
-00000008 regmember
-00000009 global %1
-00000011 gpd %2, %1.*1	// *1 = (string)"Array"
-00000015 new %1, %2()
-00000019 const %2, *2	// *2 = (int)0
-00000022 spds %-1.*3, %1	// *3 = (string)"nexttags"
-00000026 global %1
-00000028 gpd %2, %1.*1	// *1 = (string)"Array"
-00000032 new %1, %2()
-00000036 const %2, *2	// *2 = (int)0
-00000039 spds %-1.*4, %1	// *4 = (string)"pendings"
-00000043 srv %0
-00000045 ret
-
-(function) TagQueue 0x000000000103E2B0
-
-#(1) Bytecode.
-00000000 srv %0
-00000002 ret
-
-(function) clear 0x000000000103EBB0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"nexttags"
-00000004 calld %0, %1.*1()	// *1 = (string)"clear"
-00000009 gpd %1, %-2.*2	// *2 = (string)"pendings"
-00000013 calld %0, %1.*1()	// *1 = (string)"clear"
-00000018 srv %0
-00000020 ret
-
-(function) hasData 0x0000000000F893F0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"pendings"
-00000004 gpd %2, %1.*1	// *1 = (string)"count"
-00000008 const %3, *2	// *2 = (int)0
-00000011 cgt %2, %3
-00000014 jf 000000030
-00000016 gpd %4, %-2.*3	// *3 = (string)"nexttags"
-00000020 gpd %5, %4.*1	// *1 = (string)"count"
-00000024 const %6, *2	// *2 = (int)0
-00000027 cgt %5, %6
-00000030 setf %7
-00000032 srv %7
-00000034 ret
-00000035 srv %0
-00000037 ret
-
-(function) getNextTag 0x0000000000F8A500
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"nexttags"
-00000004 gpd %2, %1.*1	// *1 = (string)"count"
-00000008 const %3, *2	// *2 = (int)0
-00000011 cgt %2, %3
-00000014 jnf 000000028
-00000016 gpd %1, %-2.*0	// *0 = (string)"nexttags"
-00000020 calld %2, %1.*3()	// *3 = (string)"shift"
-00000025 srv %2
-00000027 ret
-00000028 gpd %1, %-2.*4	// *4 = (string)"pendings"
-00000032 gpd %2, %1.*1	// *1 = (string)"count"
-00000036 const %3, *2	// *2 = (int)0
-00000039 cgt %2, %3
-00000042 jnf 000000056
-00000044 gpd %1, %-2.*4	// *4 = (string)"pendings"
-00000048 calld %2, %1.*3()	// *3 = (string)"shift"
-00000053 srv %2
-00000055 ret
-00000056 srv %0
-00000058 ret
-
-(function) addNextTag 0x0000000000F8AE00
-
-#(1) Bytecode.
-00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
-00000005 calld %0, %-2.*1(%1)	// *1 = (string)"enqueueNextTag"
-00000011 srv %0
-00000013 ret
-
-(function) enqueueNextTag 0x0000000000F8B4F0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"nexttags"
-00000004 calld %0, %1.*1(...)	// *1 = (string)"push"
-00000009 srv %0
-00000011 ret
-
-(function) addTag 0x0000000000F8D7D0
-
-#(1) Bytecode.
-00000000 calld %1, %-2.*0(...)	// *0 = (string)"copyTag"
-00000005 calld %0, %-2.*1(%1)	// *1 = (string)"enqueueTag"
-00000011 srv %0
-00000013 ret
-
-(function) enqueueTag 0x0000000000F8DAA0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"pendings"
-00000004 calld %0, %1.*1(...)	// *1 = (string)"push"
-00000009 srv %0
-00000011 ret
-
-(function) store 0x0000000000F8E580
-
-#(1) Bytecode.
-00000000 cl %-4
-00000002 calld %1, %-2.*0()	// *0 = (string)"getNextTag"
-00000007 cp %-4, %1
-00000010 cdeq %1, %0
-00000013 jf 000000023
-00000015 calld %0, %-3.*1(%-4)	// *1 = (string)"enqueueTag"
-00000021 jmp 000000002
-00000023 srv %0
-00000025 ret
-
-(class) LineModeLine 0x0000000000F8E940
-
-#(1) Bytecode.
-00000000 const %1, *0	// *0 = (string)"LineModeLine"
-00000003 addci %-1, %1
-00000006 cl %1
-00000008 regmember
-00000009 global %1
-00000011 gpd %2, %1.*1	// *1 = (string)"Array"
-00000015 new %1, %2()
-00000019 const %2, *2	// *2 = (int)0
-00000022 spds %-1.*3, %1	// *3 = (string)"commandtags"
-00000026 global %1
-00000028 gpd %2, %1.*1	// *1 = (string)"Array"
-00000032 new %1, %2()
-00000036 const %2, *2	// *2 = (int)0
-00000039 spds %-1.*4, %1	// *4 = (string)"linetags"
-00000043 spds %-1.*5, %0	// *5 = (string)"dispnametag"
-00000047 spds %-1.*6, %0	// *6 = (string)"startlinetag"
-00000051 spds %-1.*7, %0	// *7 = (string)"lasttag"
-00000055 srv %0
-00000057 ret
-
-(function) LineModeLine 0x0000000000F8EDA0
-
-#(1) Bytecode.
-00000000 srv %0
-00000002 ret
-
-(function) hasLine 0x0000000000F8F0D0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"linetags"
-00000004 gpd %2, %1.*1	// *1 = (string)"count"
-00000008 const %3, *2	// *2 = (int)0
-00000011 cgt %2, %3
-00000014 setf %2
-00000016 srv %2
-00000018 ret
-00000019 srv %0
-00000021 ret
-
-(function) hasData 0x0000000000F8F490
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"linetags"
-00000004 gpd %2, %1.*1	// *1 = (string)"count"
-00000008 const %3, *2	// *2 = (int)0
-00000011 cgt %2, %3
-00000014 jf 000000026
-00000016 gpd %4, %-2.*3	// *3 = (string)"commandtags"
-00000020 gpd %5, %4.*1	// *1 = (string)"count"
-00000024 tt %5
-00000026 setf %6
-00000028 srv %6
-00000030 ret
-00000031 srv %0
-00000033 ret
-
-(function) initCommand 0x0000000000F94080
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"commandtags"
-00000004 gpd %2, %1.*1	// *1 = (string)"count"
-00000008 const %3, *2	// *2 = (int)0
-00000011 ceq %2, %3
-00000014 jnf 000000025
-00000016 const %1, *3	// *3 = (string)"startline"
-00000019 calld %0, %-2.*4(%1)	// *4 = (string)"_addCommandTag"
-00000025 srv %0
-00000027 ret
-
-(function) addCommand 0x0000000000F95360
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"initCommand"
-00000005 gpd %1, %-2.*1	// *1 = (string)"commandtags"
-00000009 calld %0, %1.*2(%-3)	// *2 = (string)"add"
-00000015 srv %0
-00000017 ret
-
-(function) _addParseTag 0x0000000000F966C0
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"Dictionary"
-00000006 new %1, %2()
-00000010 cp %-7, %1
-00000013 global %1
-00000015 gpd %2, %1.*1	// *1 = (string)"Array"
-00000019 new %1, %2()
-00000023 const %2, *2	// *2 = (int)0
-00000026 cp %-8, %1
-00000029 calld %0, %-2.*3(%-7, %-8, %-4)	// *3 = (string)"_copyTag"
-00000037 const %1, *4	// *4 = (string)"tagname"
-00000040 calld %0, %-8.*5(%1)	// *5 = (string)"unshift"
-00000046 cdeq %-3, %0
-00000049 jf 000000055
-00000051 spde %-7.*4, %-3	// *4 = (string)"tagname"
-00000055 spde %-7.*6, %-8	// *6 = (string)"taglist"
-00000059 cdeq %-5, %0
-00000062 jf 000000068
-00000064 spde %-7.*7, %-5	// *7 = (string)"runLine"
-00000068 cdeq %-6, %0
-00000071 jf 000000077
-00000073 spde %-7.*8, %-6	// *8 = (string)"runCount"
-00000077 srv %-7
-00000079 ret
-00000080 srv %0
-00000082 ret
-
-(function) addParseTag 0x0000000000F95E50
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"initCommand"
-00000005 calld %1, %-2.*1(%-3, %-4, %-5, %-6)	// *1 = (string)"_addParseTag"
-00000014 cp %-7, %1
-00000017 const %1, *2	// *2 = (string)"dispname"
-00000020 ceq %-3, %1
-00000023 jnf 000000059
-00000025 spd %-2.*3, %-7	// *3 = (string)"dispnametag"
-00000029 gpd %1, %-2.*4	// *4 = (string)"Scripts"
-00000033 calld %2, %1.*5(%-7)	// *5 = (string)"clone"
-00000039 cp %-8, %2
-00000042 const %1, *6	// *6 = (string)"starttext"
-00000045 spde %-8.*7, %1	// *7 = (string)"tagname"
-00000049 gpd %1, %-2.*8	// *8 = (string)"linetags"
-00000053 calld %0, %1.*9(%-8)	// *9 = (string)"add"
-00000059 gpd %1, %-2.*8	// *8 = (string)"linetags"
-00000063 calld %0, %1.*9(%-7)	// *9 = (string)"add"
-00000069 srv %0
-00000071 ret
-
-(function) _addCommandTag 0x0000000000F96C60
-
-#(1) Bytecode.
-00000000 calld %1, %-2.*0(%-3, %-4, %-5, %-6)	// *0 = (string)"_addParseTag"
-00000009 cp %-7, %1
-00000012 const %1, *1	// *1 = (string)"startline"
-00000015 ceq %-3, %1
-00000018 jnf 000000024
-00000020 spd %-2.*2, %-7	// *2 = (string)"startlinetag"
-00000024 gpd %1, %-2.*3	// *3 = (string)"commandtags"
-00000028 calld %0, %1.*4(%-7)	// *4 = (string)"add"
-00000034 srv %0
-00000036 ret
-
-(function) addCommandTag 0x0000000000F97200
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"initCommand"
-00000005 calld %0, %-2.*1(%-3, %-4, %-5, %-6)	// *1 = (string)"_addCommandTag"
-00000014 srv %0
-00000016 ret
-
-(function) clear 0x0000000000F974D0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"linetags"
-00000004 calld %0, %1.*1()	// *1 = (string)"clear"
-00000009 gpd %1, %-2.*2	// *2 = (string)"commandtags"
-00000013 calld %0, %1.*1()	// *1 = (string)"clear"
-00000018 spd %-2.*3, %0	// *3 = (string)"dispnametag"
-00000022 spd %-2.*4, %0	// *4 = (string)"startlinetag"
-00000026 spd %-2.*5, %0	// *5 = (string)"lasttag"
-00000030 srv %0
-00000032 ret
-
-(function) endline 0x0000000000F96F30
-
-#(1) Bytecode.
-00000000 spd %-2.*0, %-3	// *0 = (string)"lasttag"
-00000004 gpd %1, %-2.*1	// *1 = (string)"dispnametag"
-00000008 cdeq %1, %0
-00000011 jf 000000067
-00000013 gpd %1, %-4.*2	// *2 = (string)"language"
-00000017 cdeq %1, %0
-00000020 jf 000000041
-00000022 gpd %1, %-2.*1	// *1 = (string)"dispnametag"
-00000026 const %2, *2	// *2 = (string)"language"
-00000029 gpd %3, %-4.*2	// *2 = (string)"language"
-00000033 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000041 gpd %1, %-4.*4	// *4 = (string)"lineNowait"
-00000045 tt %1
-00000047 jnf 000000067
-00000049 gpd %1, %-2.*1	// *1 = (string)"dispnametag"
-00000053 const %2, *5	// *5 = (string)"nowait"
-00000056 const %3, *6	// *6 = (int)1
-00000059 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000067 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000071 cdeq %1, %0
-00000074 jf 000000187
-00000076 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000080 const %2, *8	// *8 = (string)"vflag"
-00000083 gpd %3, %-4.*9	// *9 = (string)"lineVoice"
-00000087 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000095 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000099 const %2, *10	// *10 = (string)"name"
-00000102 gpd %3, %-4.*11	// *11 = (string)"lineName"
-00000106 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000114 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000118 const %2, *12	// *12 = (string)"text"
-00000121 gpd %3, %-4.*13	// *13 = (string)"useText"
-00000125 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000133 gpd %1, %-4.*14	// *14 = (string)"lineNotext"
-00000137 tt %1
-00000139 jnf 000000160
-00000141 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000145 const %2, *15	// *15 = (string)"notext"
-00000148 gpd %3, %-4.*14	// *14 = (string)"lineNotext"
-00000152 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000160 gpd %1, %-4.*16	// *16 = (string)"lineSame"
-00000164 tt %1
-00000166 jnf 000000187
-00000168 gpd %1, %-2.*7	// *7 = (string)"startlinetag"
-00000172 const %2, *17	// *17 = (string)"same"
-00000175 gpd %3, %-4.*16	// *16 = (string)"lineSame"
-00000179 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000187 srv %0
-00000189 ret
-
-(function) outputline 0x0000000000F96990
-
-#(1) Bytecode.
-00000000 gpd %1, %-4.*0	// *0 = (string)"lineVoice"
-00000004 tt %1
-00000006 jnf 000000036
-00000008 gpd %1, %-2.*1	// *1 = (string)"dispnametag"
-00000012 cdeq %1, %0
-00000015 jf 000000036
-00000017 gpd %1, %-2.*1	// *1 = (string)"dispnametag"
-00000021 const %2, *2	// *2 = (string)"nextvflag"
-00000024 gpd %3, %-4.*0	// *0 = (string)"lineVoice"
-00000028 calld %0, %-2.*3(%1, %2, %3)	// *3 = (string)"addTagParam"
-00000036 cl %-5
-00000038 gpd %1, %-2.*4	// *4 = (string)"commandtags"
-00000042 gpd %2, %1.*5	// *5 = (string)"count"
-00000046 const %3, *6	// *6 = (int)0
-00000049 cgt %2, %3
-00000052 jnf 000000072
-00000054 gpd %1, %-2.*4	// *4 = (string)"commandtags"
-00000058 calld %0, %-3.*7(%1*)	// *7 = (string)"enqueueTag"
-00000066 const %1, *8	// *8 = (int)1
-00000069 cp %-5, %1
-00000072 gpd %1, %-2.*9	// *9 = (string)"linetags"
-00000076 gpd %2, %1.*5	// *5 = (string)"count"
-00000080 const %3, *6	// *6 = (int)0
-00000083 cgt %2, %3
-00000086 jnf 000000106
-00000088 gpd %1, %-2.*9	// *9 = (string)"linetags"
-00000092 calld %0, %-3.*7(%1*)	// *7 = (string)"enqueueTag"
-00000100 const %1, *8	// *8 = (int)1
-00000103 cp %-5, %1
-00000106 calld %0, %-2.*10()	// *10 = (string)"clear"
-00000111 srv %-5
-00000113 ret
-00000114 srv %0
-00000116 ret
-
-(class) LineModeEx 0x0000000000F958B0
-
-#(1) Bytecode.
-00000000 const %1, *0	// *0 = (string)"LineModeEx"
-00000003 addci %-1, %1
-00000006 cl %1
-00000008 gpd %1, %-2.*1	// *1 = (string)"LineMode"
-00000012 chgthis %1, %-1
-00000015 call %0, %1()
-00000019 regmember
-00000020 spds %-1.*2, %0	// *2 = (string)"linecd"
-00000024 spds %-1.*3, %0	// *3 = (string)"prevLine"
-00000028 spds %-1.*4, %0	// *4 = (string)"currentLine"
-00000032 const %1, *5	// *5 = (int)5
-00000035 spds %-1.*6, %1	// *6 = (string)"ELMCOUNT"
-00000039 spds %-1.*7, %0	// *7 = (string)"ignoreCrToNext"
-00000043 spds %-1.*8, %0	// *8 = (string)"language"
-00000047 spds %-1.*9, %0	// *9 = (string)"showSame"
-00000051 const %1, *10	// *10 = (int)0
-00000054 spds %-1.*11, %1	// *11 = (string)"caseMode"
-00000058 spds %-1.*12, %0	// *12 = (string)"caseStart"
-00000062 spds %-1.*13, %0	// *13 = (string)"caseCount"
-00000066 spds %-1.*14, %0	// *14 = (string)"caseMax"
-00000070 spds %-1.*15, %0	// *15 = (string)"textCount"
-00000074 spds %-1.*16, %0	// *16 = (string)"useText"
-00000078 spds %-1.*17, %0	// *17 = (string)"checkNextVoice"
-00000082 spds %-1.*18, %0	// *18 = (string)"lineVoice"
-00000086 spds %-1.*19, %0	// *19 = (string)"lineName"
-00000090 spds %-1.*20, %0	// *20 = (string)"lineNowait"
-00000094 spds %-1.*21, %0	// *21 = (string)"lineNotext"
-00000098 spds %-1.*22, %0	// *22 = (string)"lineSame"
-00000102 spds %-1.*23, %0	// *23 = (string)"delaytrans"
-00000106 spds %-1.*24, %0	// *24 = (string)"btlevel"
-00000110 global %1
-00000112 gpd %2, %1.*25	// *25 = (string)"Dictionary"
-00000116 new %1, %2()
-00000120 spds %-1.*26, %1	// *26 = (string)"lineModeStore"
-00000124 spds %-1.*27, %0	// *27 = (string)"runLine"
-00000128 spds %-1.*28, %0	// *28 = (string)"runCount"
-00000132 global %1
-00000134 gpd %2, %1.*25	// *25 = (string)"Dictionary"
-00000138 new %1, %2()
-00000142 spds %-1.*29, %1	// *29 = (string)"characterVoiceInfo"
-00000146 global %1
-00000148 gpd %2, %1.*30	// *30 = (string)"Array"
-00000152 new %1, %2()
-00000156 const %2, *31	// *31 = (int)0
-00000159 spds %-1.*32, %1	// *32 = (string)"characterVoiceList"
-00000163 const %1, *33	// *33 = (int)100
-00000166 spds %-1.*34, %1	// *34 = (string)"VOICE_INFO_PER"
-00000170 const %1, *35	// *35 = (int)10
-00000173 spds %-1.*36, %1	// *36 = (string)"VOICE_INFO_VL1"
-00000177 const %1, *37	// *37 = (int)44
-00000180 spds %-1.*38, %1	// *38 = (string)"VOICE_INFO_VL2"
-00000184 global %1
-00000186 gpd %2, %1.*25	// *25 = (string)"Dictionary"
-00000190 new %1, %2()
-00000194 const %2, *39	// *39 = (string)"break"
-00000197 const %3, *40	// *40 = (int)1
-00000200 spis %1.%2, %3
-00000204 const %2, *41	// *41 = (string)"s"
-00000207 const %3, *40	// *40 = (int)1
-00000210 spis %1.%2, %3
-00000214 const %2, *42	// *42 = (string)"label"
-00000217 const %3, *40	// *40 = (int)1
-00000220 spis %1.%2, %3
-00000224 const %2, *43	// *43 = (string)"autoindent"
-00000227 const %3, *40	// *40 = (int)1
-00000230 spis %1.%2, %3
-00000234 const %2, *44	// *44 = (string)"init"
-00000237 const %3, *40	// *40 = (int)1
-00000240 spis %1.%2, %3
-00000244 const %2, *45	// *45 = (string)"next"
-00000247 const %3, *40	// *40 = (int)1
-00000250 spis %1.%2, %3
-00000254 const %2, *46	// *46 = (string)"exit"
-00000257 const %3, *40	// *40 = (int)1
-00000260 spis %1.%2, %3
-00000264 const %2, *47	// *47 = (string)"endrecollection"
-00000267 const %3, *40	// *40 = (int)1
-00000270 spis %1.%2, %3
-00000274 const %2, *48	// *48 = (string)"eval"
-00000277 const %3, *40	// *40 = (int)1
-00000280 spis %1.%2, %3
-00000284 const %2, *49	// *49 = (string)"set"
-00000287 const %3, *40	// *40 = (int)1
-00000290 spis %1.%2, %3
-00000294 const %2, *50	// *50 = (string)"selinit"
-00000297 const %3, *40	// *40 = (int)1
-00000300 spis %1.%2, %3
-00000304 const %2, *51	// *51 = (string)"mselinit"
-00000307 const %3, *40	// *40 = (int)1
-00000310 spis %1.%2, %3
-00000314 const %2, *52	// *52 = (string)"selopt"
-00000317 const %3, *40	// *40 = (int)1
-00000320 spis %1.%2, %3
-00000324 const %2, *53	// *53 = (string)"mselopt"
-00000327 const %3, *40	// *40 = (int)1
-00000330 spis %1.%2, %3
-00000334 const %2, *54	// *54 = (string)"select"
-00000337 const %3, *40	// *40 = (int)1
-00000340 spis %1.%2, %3
-00000344 const %2, *55	// *55 = (string)"mselect"
-00000347 const %3, *40	// *40 = (int)1
-00000350 spis %1.%2, %3
-00000354 const %2, *56	// *56 = (string)"seladd"
-00000357 const %3, *40	// *40 = (int)1
-00000360 spis %1.%2, %3
-00000364 const %2, *57	// *57 = (string)"selhead"
-00000367 const %3, *40	// *40 = (int)1
-00000370 spis %1.%2, %3
-00000374 const %2, *58	// *58 = (string)"mseladd"
-00000377 const %3, *40	// *40 = (int)1
-00000380 spis %1.%2, %3
-00000384 const %2, *59	// *59 = (string)"gotostart"
-00000387 const %3, *40	// *40 = (int)1
-00000390 spis %1.%2, %3
-00000394 const %2, *60	// *60 = (string)"scenestart"
-00000397 const %3, *61	// *61 = (int)1
-00000400 spis %1.%2, %3
-00000404 const %2, *62	// *62 = (string)"scenestarttext"
-00000407 const %3, *61	// *61 = (int)1
-00000410 spis %1.%2, %3
-00000414 const %2, *63	// *63 = (string)"scenerestart"
-00000417 const %3, *61	// *61 = (int)1
-00000420 spis %1.%2, %3
-00000424 const %2, *64	// *64 = (string)"sceneplay"
-00000427 const %3, *61	// *61 = (int)1
-00000430 spis %1.%2, %3
-00000434 const %2, *65	// *65 = (string)"scenecheck"
-00000437 const %3, *61	// *61 = (int)1
-00000440 spis %1.%2, %3
-00000444 const %2, *66	// *66 = (string)"cancelskip"
-00000447 const %3, *61	// *61 = (int)1
-00000450 spis %1.%2, %3
-00000454 const %2, *67	// *67 = (string)"cancelautomode"
-00000457 const %3, *61	// *61 = (int)1
-00000460 spis %1.%2, %3
-00000464 spds %-1.*68, %1	// *68 = (string)"brTags"
-00000468 srv %0
-00000470 ret
-
-(super class getter proxy) LineModeEx 0x0000000000F95B80
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"LineMode"
-00000004 srv %1
-00000006 ret
-00000007 nop
-
-(function) LineModeEx 0x0000000000F96120
-
-#(1) Bytecode.
-00000000 cdeq %-4, %0
-00000003 jnf 000000011
-00000005 const %1, *0	// *0 = (int)1
-00000008 cp %-4, %1
-00000011 gpd %2, %-2.*1	// *1 = (string)"TagQueue"
-00000015 new %1, %2()
-00000019 spd %-2.*2, %1	// *2 = (string)"linecd"
-00000023 gpd %2, %-2.*3	// *3 = (string)"LineModeLine"
-00000027 new %1, %2()
-00000031 spd %-2.*4, %1	// *4 = (string)"prevLine"
-00000035 gpd %2, %-2.*3	// *3 = (string)"LineModeLine"
-00000039 new %1, %2()
-00000043 spd %-2.*5, %1	// *5 = (string)"currentLine"
-00000047 global %1
-00000049 gpd %2, %1.*6	// *6 = (string)"LineMode"
-00000053 calld %0, %2.*6(%-3, %-4)	// *6 = (string)"LineMode"
-00000060 gpd %1, %-2.*7	// *7 = (string)"mode_linemode"
-00000064 chgthis %1, %-1
-00000067 gpd %2, %-2.*8	// *8 = (string)"option_tags"
-00000071 spde %2.*9, %1	// *9 = (string)"linemode"
-00000075 gpd %1, %-2.*10	// *10 = (string)"parseP"
-00000079 chgthis %1, %-1
-00000082 gpd %2, %-2.*11	// *11 = (string)"textTags"
-00000086 spde %2.*12, %1	// *12 = (string)"p"
-00000090 srv %0
-00000092 ret
-
-(function) _onStore 0x0000000000F963F0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"Dictionary"
-00000004 gpd %2, %1.*1	// *1 = (string)"clear"
-00000008 chgthis %2, %-3
-00000011 call %0, %2()
-00000015 global %1
-00000017 gpd %2, %1.*2	// *2 = (string)"LineMode"
-00000021 calld %0, %2.*3(%-3)	// *3 = (string)"onStore"
-00000027 gpd %1, %-2.*4	// *4 = (string)"checkNextVoice"
-00000031 spde %-3.*4, %1	// *4 = (string)"checkNextVoice"
-00000035 gpd %1, %-2.*5	// *5 = (string)"language"
-00000039 cdeq %1, %0
-00000042 jf 000000062
-00000044 gpd %1, %-2.*5	// *5 = (string)"language"
-00000048 gpd %2, %-2.*6	// *6 = (string)"Scripts"
-00000052 calld %3, %2.*7(%1)	// *7 = (string)"clone"
-00000058 spde %-3.*5, %3	// *5 = (string)"language"
-00000062 gpd %1, %-2.*8	// *8 = (string)"ignoreCrToNext"
-00000066 spde %-3.*8, %1	// *8 = (string)"ignoreCrToNext"
-00000070 gpd %1, %-2.*9	// *9 = (string)"showSame"
-00000074 spde %-3.*9, %1	// *9 = (string)"showSame"
-00000078 gpd %1, %-2.*10	// *10 = (string)"caseMode"
-00000082 spde %-3.*10, %1	// *10 = (string)"caseMode"
-00000086 gpd %1, %-2.*11	// *11 = (string)"caseStart"
-00000090 spde %-3.*11, %1	// *11 = (string)"caseStart"
-00000094 gpd %1, %-2.*12	// *12 = (string)"caseCount"
-00000098 spde %-3.*12, %1	// *12 = (string)"caseCount"
-00000102 gpd %1, %-2.*13	// *13 = (string)"caseMax"
-00000106 spde %-3.*13, %1	// *13 = (string)"caseMax"
-00000110 gpd %1, %-2.*14	// *14 = (string)"textCount"
-00000114 spde %-3.*14, %1	// *14 = (string)"textCount"
-00000118 gpd %1, %-2.*15	// *15 = (string)"useText"
-00000122 spde %-3.*15, %1	// *15 = (string)"useText"
-00000126 srv %0
-00000128 ret
-
-(function) onStore 0x0000000000F99BC0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"lineModeStore"
-00000004 const %2, *1	// *1 = (int)0
-00000007 gpd %3, %-2.*2	// *2 = (string)"Dictionary"
-00000011 gpd %4, %3.*3	// *3 = (string)"assign"
-00000015 chgthis %4, %-3
-00000018 call %0, %4(%1, %2)
-00000024 srv %0
-00000026 ret
-
-(function) onRestore 0x0000000000F9B240
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1(%-3)	// *1 = (string)"onRestore"
-00000012 gpd %1, %-3.*2	// *2 = (string)"checkNextVoice"
-00000016 spd %-2.*2, %1	// *2 = (string)"checkNextVoice"
-00000020 gpd %1, %-3.*3	// *3 = (string)"language"
-00000024 cdeq %1, %0
-00000027 jf 000000049
-00000029 gpd %1, %-3.*3	// *3 = (string)"language"
-00000033 gpd %2, %-2.*4	// *4 = (string)"Scripts"
-00000037 calld %3, %2.*5(%1)	// *5 = (string)"clone"
-00000043 spd %-2.*3, %3	// *3 = (string)"language"
-00000047 jmp 000000053
-00000049 spd %-2.*3, %0	// *3 = (string)"language"
-00000053 gpd %1, %-3.*6	// *6 = (string)"ignoreCrToNext"
-00000057 spd %-2.*6, %1	// *6 = (string)"ignoreCrToNext"
-00000061 gpd %1, %-3.*7	// *7 = (string)"showSame"
-00000065 spd %-2.*7, %1	// *7 = (string)"showSame"
-00000069 gpd %1, %-3.*8	// *8 = (string)"caseMode"
-00000073 spd %-2.*8, %1	// *8 = (string)"caseMode"
-00000077 gpd %1, %-3.*9	// *9 = (string)"caseStart"
-00000081 spd %-2.*9, %1	// *9 = (string)"caseStart"
-00000085 gpd %1, %-3.*10	// *10 = (string)"caseCount"
-00000089 spd %-2.*10, %1	// *10 = (string)"caseCount"
-00000093 gpd %1, %-3.*11	// *11 = (string)"caseMax"
-00000097 spd %-2.*11, %1	// *11 = (string)"caseMax"
-00000101 gpd %1, %-3.*12	// *12 = (string)"textCount"
-00000105 spd %-2.*12, %1	// *12 = (string)"textCount"
-00000109 gpd %1, %-3.*13	// *13 = (string)"useText"
-00000113 spd %-2.*13, %1	// *13 = (string)"useText"
-00000117 calld %0, %-2.*14()	// *14 = (string)"initLineModeStore"
-00000122 srv %0
-00000124 ret
-
-(function) onScenarioLoaded 0x0000000000F9BAB0
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1()	// *1 = (string)"onScenarioLoaded"
-00000011 gpd %1, %-2.*2	// *2 = (string)"conductor"
-00000015 calld %0, %1.*3()	// *3 = (string)"onTagExtract"
-00000020 calld %0, %-2.*4()	// *4 = (string)"initLineModeStore"
-00000025 srv %0
-00000027 ret
-
-(function) initLineModeStore 0x0000000000F9B7E0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"lineModeStore"
-00000004 calld %0, %-2.*1(%1)	// *1 = (string)"_onStore"
-00000010 srv %0
-00000012 ret
-
-(function) updateLineModeStore 0x0000000000F9A430
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"currentLine"
-00000004 calld %2, %1.*1()	// *1 = (string)"hasData"
-00000009 tf %2
-00000011 jnf 000000023
-00000013 gpd %1, %-2.*2	// *2 = (string)"lineModeStore"
-00000017 calld %0, %-2.*3(%1)	// *3 = (string)"_onStore"
-00000023 srv %0
-00000025 ret
-
-(function) initCaseMode 0x0000000000F9ACA0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"caseMode"
-00000004 tt %1
-00000006 jnf 000000017
-00000008 const %1, *1	// *1 = (string)":case "
-00000011 calld %0, %-2.*2(%1)	// *2 = (string)"errorCmd"
-00000017 const %1, *3	// *3 = (int)0
-00000020 spd %-2.*0, %1	// *0 = (string)"caseMode"
-00000024 spd %-2.*4, %0	// *4 = (string)"caseStart"
-00000028 const %1, *3	// *3 = (int)0
-00000031 spd %-2.*5, %1	// *5 = (string)"caseCount"
-00000035 const %1, *3	// *3 = (int)0
-00000038 spd %-2.*6, %1	// *6 = (string)"caseMax"
-00000042 const %1, *3	// *3 = (int)0
-00000045 spd %-2.*7, %1	// *7 = (string)"textCount"
-00000049 const %1, *3	// *3 = (int)0
-00000052 spd %-2.*8, %1	// *8 = (string)"useText"
-00000056 srv %0
-00000058 ret
-
-(function) initLineMode 0x0000000000F9A700
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1()	// *1 = (string)"initLineMode"
-00000011 const %1, *2	// *2 = (int)0
-00000014 spd %-2.*3, %1	// *3 = (string)"lineVoice"
-00000018 const %1, *4	// *4 = (string)""
-00000021 spd %-2.*5, %1	// *5 = (string)"lineName"
-00000025 const %1, *2	// *2 = (int)0
-00000028 spd %-2.*6, %1	// *6 = (string)"lineNowait"
-00000032 const %1, *2	// *2 = (int)0
-00000035 spd %-2.*7, %1	// *7 = (string)"lineNotext"
-00000039 const %1, *2	// *2 = (int)0
-00000042 spd %-2.*8, %1	// *8 = (string)"lineSame"
-00000046 gpd %1, %-2.*9	// *9 = (string)"linecd"
-00000050 calld %0, %1.*10()	// *10 = (string)"clear"
-00000055 gpd %1, %-2.*11	// *11 = (string)"prevLine"
-00000059 calld %0, %1.*10()	// *10 = (string)"clear"
-00000064 gpd %1, %-2.*12	// *12 = (string)"currentLine"
-00000068 calld %0, %1.*10()	// *10 = (string)"clear"
-00000073 const %1, *2	// *2 = (int)0
-00000076 spd %-2.*13, %1	// *13 = (string)"delaytrans"
-00000080 const %1, *2	// *2 = (int)0
-00000083 spd %-2.*14, %1	// *14 = (string)"btlevel"
-00000087 spd %-2.*15, %0	// *15 = (string)"language"
-00000091 const %1, *2	// *2 = (int)0
-00000094 spd %-2.*16, %1	// *16 = (string)"ignoreCrToNext"
-00000098 const %1, *2	// *2 = (int)0
-00000101 spd %-2.*17, %1	// *17 = (string)"caseMode"
-00000105 spd %-2.*18, %0	// *18 = (string)"caseStart"
-00000109 const %1, *2	// *2 = (int)0
-00000112 spd %-2.*19, %1	// *19 = (string)"caseCount"
-00000116 const %1, *2	// *2 = (int)0
-00000119 spd %-2.*20, %1	// *20 = (string)"caseMax"
-00000123 const %1, *2	// *2 = (int)0
-00000126 spd %-2.*21, %1	// *21 = (string)"textCount"
-00000130 const %1, *2	// *2 = (int)0
-00000133 spd %-2.*22, %1	// *22 = (string)"useText"
-00000137 srv %0
-00000139 ret
-
-(function) mode_linemode 0x0000000000F9AF70
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1(%-3)	// *1 = (string)"mode_linemode"
-00000012 gpd %1, %-2.*2	// *2 = (string)"parseForKag"
-00000016 tf %1
-00000018 jnf 000000040
-00000020 gpd %2, %-3.*3	// *3 = (string)"checknextvoice"
-00000024 cdeq %2, %0
-00000027 nf
-00000028 jnf 000000040
-00000030 gpd %1, %-3.*3	// *3 = (string)"checknextvoice"
-00000034 num %1
-00000036 spde %-1.*4, %1	// *4 = (string)"checkNextVoice"
-00000040 srv %0
-00000042 ret
-
-(function) initOption 0x0000000000F9BD80
-
-#(1) Bytecode.
-00000000 calld %1, %-2.*0()	// *0 = (string)"checkEnd"
-00000005 tt %1
-00000007 jnf 000000020
-00000009 calld %0, %-2.*1()	// *1 = (string)"checkPending"
-00000014 const %1, *2	// *2 = (int)1
-00000017 srv %1
-00000019 ret
-00000020 srv %0
-00000022 ret
-
-(function) flushLine 0x0000000000F9D6D0
-
-#(1) Bytecode.
-00000000 cdeq %-4, %0
-00000003 jnf 000000011
-00000005 const %1, *0	// *0 = (int)0
-00000008 cp %-4, %1
-00000011 const %1, *0	// *0 = (int)0
-00000014 spd %-2.*1, %1	// *1 = (string)"delaytrans"
-00000018 tt %-4
-00000020 jnf 000000051
-00000022 gpd %1, %-2.*2	// *2 = (string)"textLength"
-00000026 const %2, *0	// *0 = (int)0
-00000029 ceq %1, %2
-00000032 jnf 000000051
-00000034 cp %1, %-3
-00000037 str %1
-00000039 const %2, *3	// *3 = (string)":font/style"
-00000042 add %1, %2
-00000045 calld %0, %-2.*4(%1)	// *4 = (string)"errorCmd"
-00000051 gpd %1, %-2.*5	// *5 = (string)"checkNextVoice"
-00000055 tt %1
-00000057 jnf 000000172
-00000059 gpd %1, %-2.*6	// *6 = (string)"linecd"
-00000063 gpd %2, %-2.*7	// *7 = (string)"prevLine"
-00000067 calld %3, %2.*8(%1, %-1)	// *8 = (string)"outputline"
-00000074 cp %-5, %3
-00000077 gpd %1, %-2.*9	// *9 = (string)"currentLine"
-00000081 calld %0, %1.*10(%-3, %-1)	// *10 = (string)"endline"
-00000088 gpd %1, %-2.*7	// *7 = (string)"prevLine"
-00000092 gpd %2, %-2.*9	// *9 = (string)"currentLine"
-00000096 spd %-2.*7, %2	// *7 = (string)"prevLine"
-00000100 spd %-2.*9, %1	// *9 = (string)"currentLine"
-00000104 const %1, *0	// *0 = (int)0
-00000107 spd %-2.*11, %1	// *11 = (string)"lineVoice"
-00000111 const %1, *12	// *12 = (string)""
-00000114 spd %-2.*13, %1	// *13 = (string)"lineName"
-00000118 const %1, *0	// *0 = (int)0
-00000121 spd %-2.*14, %1	// *14 = (string)"lineNowait"
-00000125 const %1, *0	// *0 = (int)0
-00000128 spd %-2.*15, %1	// *15 = (string)"lineNotext"
-00000132 const %1, *0	// *0 = (int)0
-00000135 spd %-2.*16, %1	// *16 = (string)"lineSame"
-00000139 const %1, *0	// *0 = (int)0
-00000142 spd %-2.*2, %1	// *2 = (string)"textLength"
-00000146 spd %-2.*17, %0	// *17 = (string)"language"
-00000150 tt %-5
-00000152 jf 000000165
-00000154 gpd %1, %-2.*7	// *7 = (string)"prevLine"
-00000158 calld %2, %1.*18()	// *18 = (string)"hasData"
-00000163 tt %2
-00000165 setf %3
-00000167 srv %3
-00000169 ret
-00000170 jmp 000000250
-00000172 gpd %1, %-2.*9	// *9 = (string)"currentLine"
-00000176 calld %0, %1.*10(%-3, %-1)	// *10 = (string)"endline"
-00000183 gpd %1, %-2.*6	// *6 = (string)"linecd"
-00000187 gpd %2, %-2.*9	// *9 = (string)"currentLine"
-00000191 calld %3, %2.*8(%1, %-1)	// *8 = (string)"outputline"
-00000198 cp %-5, %3
-00000201 const %1, *0	// *0 = (int)0
-00000204 spd %-2.*11, %1	// *11 = (string)"lineVoice"
-00000208 const %1, *12	// *12 = (string)""
-00000211 spd %-2.*13, %1	// *13 = (string)"lineName"
-00000215 const %1, *0	// *0 = (int)0
-00000218 spd %-2.*14, %1	// *14 = (string)"lineNowait"
-00000222 const %1, *0	// *0 = (int)0
-00000225 spd %-2.*15, %1	// *15 = (string)"lineNotext"
-00000229 const %1, *0	// *0 = (int)0
-00000232 spd %-2.*16, %1	// *16 = (string)"lineSame"
-00000236 const %1, *0	// *0 = (int)0
-00000239 spd %-2.*2, %1	// *2 = (string)"textLength"
-00000243 spd %-2.*17, %0	// *17 = (string)"language"
-00000247 srv %-5
-00000249 ret
-00000250 srv %0
-00000252 ret
-
-(function) addParseTag 0x0000000000F9B510
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"updateLineModeStore"
-00000005 gpd %1, %-2.*1	// *1 = (string)"runLine"
-00000009 gpd %2, %-2.*2	// *2 = (string)"runCount"
-00000013 gpd %3, %-2.*3	// *3 = (string)"currentLine"
-00000017 calld %0, %3.*4(%-3, %-4, %1, %2)	// *4 = (string)"addParseTag"
-00000026 srv %0
-00000028 ret
-
-(function) addCommandTag 0x0000000000F9C050
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"updateLineModeStore"
-00000005 gpd %1, %-2.*1	// *1 = (string)"runLine"
-00000009 gpd %2, %-2.*2	// *2 = (string)"runCount"
-00000013 gpd %3, %-2.*3	// *3 = (string)"currentLine"
-00000017 calld %0, %3.*4(%-3, %-4, %1, %2)	// *4 = (string)"addCommandTag"
-00000026 srv %0
-00000028 ret
-
-(function) addCommand 0x0000000000F9A9D0
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0()	// *0 = (string)"updateLineModeStore"
-00000005 gpd %1, %-2.*1	// *1 = (string)"currentLine"
-00000009 calld %0, %1.*2(%-3)	// *2 = (string)"addCommand"
-00000015 srv %0
-00000017 ret
-
-(function) entryTag 0x0000000000F9C320
-
-#(1) Bytecode.
-00000000 calld %0, %-2.*0(%-3, %-4)	// *0 = (string)"addCommandTag"
-00000007 srv %0
-00000009 ret
-
-(function) getCharacterVoiceConfig 0x0000000000F9D130
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"characterVoiceInfo"
-00000004 gpi %2, %1.%-3
-00000008 cp %-4, %2
-00000011 cdeq %-4, %0
-00000014 jf 000000022
-00000016 gpd %1, %-4.*1	// *1 = (string)"config"
-00000020 jmp 000000025
-00000022 const %1, *2	// *2 = (string)""
-00000025 cp %-5, %1
-00000028 srv %-5
-00000030 ret
-00000031 srv %0
-00000033 ret
-
-(function) getCharacterVoicePer 0x0000000000F9C5F0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"characterVoiceInfo"
-00000004 gpi %2, %1.%-3
-00000008 cp %-4, %2
-00000011 cdeq %-4, %0
-00000014 jf 000000022
-00000016 gpd %1, %-4.*1	// *1 = (string)"per"
-00000020 jmp 000000026
-00000022 gpd %1, %-2.*2	// *2 = (string)"VOICE_INFO_PER"
-00000026 cp %-5, %1
-00000029 srv %-5
-00000031 ret
-00000032 srv %0
-00000034 ret
-
-(function) getCharacterVoiceLevel 0x0000000000F9A160
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"characterVoiceInfo"
-00000004 gpi %2, %1.%-3
-00000008 cp %-4, %2
-00000011 cdeq %-4, %0
-00000014 jf 000000025
-00000016 gpd %1, %-4.*1	// *1 = (string)"level"
-00000020 srv %1
-00000022 ret
-00000023 jmp 000000061
-00000025 global %1
-00000027 gpd %2, %1.*2	// *2 = (string)"Array"
-00000031 new %1, %2()
-00000035 const %2, *3	// *3 = (int)0
-00000038 gpd %3, %-2.*4	// *4 = (string)"VOICE_INFO_VL1"
-00000042 spis %1.%2, %3
-00000046 inc %2
-00000048 gpd %3, %-2.*5	// *5 = (string)"VOICE_INFO_VL2"
-00000052 spis %1.%2, %3
-00000056 inc %2
-00000058 srv %1
-00000060 ret
-00000061 srv %0
-00000063 ret
-
-(function) getCharacterTextColor 0x0000000000F9CE60
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"characterVoiceInfo"
-00000004 gpi %2, %1.%-3
-00000008 cp %-4, %2
-00000011 cdeq %-4, %0
-00000014 jf 000000023
-00000016 gpd %1, %-4.*1	// *1 = (string)"color"
-00000020 srv %1
-00000022 ret
-00000023 srv %0
-00000025 ret
-
-(function) loadCharacterVoiceInfo 0x0000000000F9C8C0
-
-#(1) Bytecode.
-00000000 cdeq %-3, %0
-00000003 jnf 000000011
-00000005 const %1, *0	// *0 = (string)"charvoice"
-00000008 cp %-3, %1
-00000011 gpd %1, %-2.*1	// *1 = (string)"Dictionary"
-00000015 gpd %2, %1.*2	// *2 = (string)"clear"
-00000019 gpd %3, %-2.*3	// *3 = (string)"characterVoiceInfo"
-00000023 chgthis %2, %3
-00000026 call %0, %2()
-00000030 gpd %1, %-2.*4	// *4 = (string)"characterVoiceList"
-00000034 calld %0, %1.*2()	// *2 = (string)"clear"
-00000039 entry 000000580, %1
-00000042 calld %1, %-2.*5(%-3)	// *5 = (string)"loadConfigFile"
-00000048 cp %-4, %1
-00000051 gpd %1, %-2.*6	// *6 = (string)"VOICE_INFO_PER"
-00000055 cp %-5, %1
-00000058 gpd %1, %-2.*7	// *7 = (string)"VOICE_INFO_VL1"
-00000062 cp %-6, %1
-00000065 gpd %1, %-2.*8	// *8 = (string)"VOICE_INFO_VL2"
-00000069 cp %-7, %1
-00000072 cl %-8
-00000074 const %1, *9	// *9 = (int)0
-00000077 cp %-9, %1
-00000080 gpd %1, %-4.*10	// *10 = (string)"count"
-00000084 clt %-9, %1
-00000087 jnf 000000577
-00000089 gpi %1, %-4.%-9
-00000093 cp %-10, %1
-00000096 gpd %1, %-10.*10	// *10 = (string)"count"
-00000100 cp %-11, %1
-00000103 const %1, *11	// *11 = (int)2
-00000106 clt %-11, %1
-00000109 jf 000000573
-00000111 const %1, *9	// *9 = (int)0
-00000114 gpi %2, %-10.%1
-00000118 calld %3, %2.*12()	// *12 = (string)"toLowerCase"
-00000123 cp %-12, %3
-00000126 const %1, *13	// *13 = (string)""
-00000129 ceq %-12, %1
-00000132 jf 000000573
-00000134 const %1, *14	// *14 = (string)"default"
-00000137 ceq %-12, %1
-00000140 jnf 000000282
-00000142 const %1, *15	// *15 = (int)4
-00000145 clt %-11, %1
-00000148 jf 000000177
-00000150 const %2, *16	// *16 = (int)3
-00000153 gpi %3, %-10.%2
-00000157 const %4, *13	// *13 = (string)""
-00000160 ceq %3, %4
-00000163 jf 000000177
-00000165 const %5, *16	// *16 = (int)3
-00000168 gpi %6, %-10.%5
-00000172 num %6
-00000174 cp %-5, %6
-00000177 const %1, *17	// *17 = (int)6
-00000180 clt %-11, %1
-00000183 jf 000000212
-00000185 const %2, *18	// *18 = (int)5
-00000188 gpi %3, %-10.%2
-00000192 const %4, *13	// *13 = (string)""
-00000195 ceq %3, %4
-00000198 jf 000000212
-00000200 const %5, *18	// *18 = (int)5
-00000203 gpi %6, %-10.%5
-00000207 num %6
-00000209 cp %-6, %6
-00000212 const %1, *19	// *19 = (int)7
-00000215 clt %-11, %1
-00000218 jf 000000247
-00000220 const %2, *17	// *17 = (int)6
-00000223 gpi %3, %-10.%2
-00000227 const %4, *13	// *13 = (string)""
-00000230 ceq %3, %4
-00000233 jf 000000247
-00000235 const %5, *17	// *17 = (int)6
-00000238 gpi %6, %-10.%5
-00000242 num %6
-00000244 cp %-7, %6
-00000247 const %1, *20	// *20 = (int)8
-00000250 clt %-11, %1
-00000253 jf 000000282
-00000255 const %2, *19	// *19 = (int)7
-00000258 gpi %3, %-10.%2
-00000262 const %4, *13	// *13 = (string)""
-00000265 ceq %3, %4
-00000268 jf 000000282
-00000270 const %5, *19	// *19 = (int)7
-00000273 gpi %6, %-10.%5
-00000277 num %6
-00000279 cp %-8, %6
-00000282 global %1
-00000284 gpd %2, %1.*1	// *1 = (string)"Dictionary"
-00000288 new %1, %2()
-00000292 const %2, *21	// *21 = (string)"name"
-00000295 spis %1.%2, %-12
-00000299 const %2, *22	// *22 = (string)"file"
-00000302 const %3, *23	// *23 = (int)1
-00000305 gpi %4, %-10.%3
-00000309 spis %1.%2, %4
-00000313 cp %-13, %1
-00000316 const %1, *16	// *16 = (int)3
-00000319 clt %-11, %1
-00000322 jf 000000333
-00000324 const %2, *11	// *11 = (int)2
-00000327 gpi %3, %-10.%2
-00000331 jmp 000000339
-00000333 const %2, *13	// *13 = (string)""
-00000336 cp %3, %2
-00000339 spde %-13.*24, %3	// *24 = (string)"config"
-00000343 const %1, *15	// *15 = (int)4
-00000346 clt %-11, %1
-00000349 jf 000000377
-00000351 const %2, *16	// *16 = (int)3
-00000354 gpi %3, %-10.%2
-00000358 const %4, *13	// *13 = (string)""
-00000361 ceq %3, %4
-00000364 jf 000000377
-00000366 const %5, *16	// *16 = (int)3
-00000369 gpi %6, %-10.%5
-00000373 num %6
-00000375 jmp 000000380
-00000377 cp %6, %-5
-00000380 spde %-13.*25, %6	// *25 = (string)"per"
-00000384 const %1, *18	// *18 = (int)5
-00000387 clt %-11, %1
-00000390 jf 000000401
-00000392 const %2, *15	// *15 = (int)4
-00000395 gpi %3, %-10.%2
-00000399 jmp 000000407
-00000401 const %2, *13	// *13 = (string)""
-00000404 cp %3, %2
-00000407 spde %-13.*26, %3	// *26 = (string)"alias"
-00000411 global %1
-00000413 gpd %2, %1.*27	// *27 = (string)"Array"
-00000417 new %1, %2()
-00000421 const %2, *9	// *9 = (int)0
-00000424 const %3, *17	// *17 = (int)6
-00000427 clt %-11, %3
-00000430 jf 000000458
-00000432 const %4, *18	// *18 = (int)5
-00000435 gpi %5, %-10.%4
-00000439 const %6, *13	// *13 = (string)""
-00000442 ceq %5, %6
-00000445 jf 000000458
-00000447 const %7, *18	// *18 = (int)5
-00000450 gpi %8, %-10.%7
-00000454 num %8
-00000456 jmp 000000461
-00000458 cp %8, %-6
-00000461 spis %1.%2, %8
-00000465 inc %2
-00000467 const %3, *19	// *19 = (int)7
-00000470 clt %-11, %3
-00000473 jf 000000501
-00000475 const %4, *17	// *17 = (int)6
-00000478 gpi %5, %-10.%4
-00000482 const %6, *13	// *13 = (string)""
-00000485 ceq %5, %6
-00000488 jf 000000501
-00000490 const %7, *17	// *17 = (int)6
-00000493 gpi %8, %-10.%7
-00000497 num %8
-00000499 jmp 000000504
-00000501 cp %8, %-7
-00000504 spis %1.%2, %8
-00000508 inc %2
-00000510 spde %-13.*28, %1	// *28 = (string)"level"
-00000514 const %1, *20	// *20 = (int)8
-00000517 clt %-11, %1
-00000520 jf 000000548
-00000522 const %2, *19	// *19 = (int)7
-00000525 gpi %3, %-10.%2
-00000529 const %4, *13	// *13 = (string)""
-00000532 ceq %3, %4
-00000535 jf 000000548
-00000537 const %5, *19	// *19 = (int)7
-00000540 gpi %6, %-10.%5
-00000544 num %6
-00000546 jmp 000000551
-00000548 cp %6, %-8
-00000551 spde %-13.*29, %6	// *29 = (string)"color"
-00000555 gpd %1, %-2.*30	// *30 = (string)"characterVoiceInfo"
-00000559 spie %1.%-12, %-13
-00000563 gpd %1, %-2.*31	// *31 = (string)"characterVoiceList"
-00000567 calld %0, %1.*32(%-13)	// *32 = (string)"push"
-00000573 inc %-9
-00000575 jmp 000000080
-00000577 extry
-00000578 jmp 000000601
-00000580 cp %-4, %1
-00000583 const %1, *33	// *33 = (string)"():"
-00000586 gpd %2, %-4.*34	// *34 = (string)"message"
-00000590 str %2
-00000592 add %1, %2
-00000595 calld %0, %-2.*35(%1)	// *35 = (string)"dm"
-00000601 srv %0
-00000603 ret
-
-(function) getAliasName 0x0000000000F9D400
-
-#(1) Bytecode.
-00000000 const %1, *0	// *0 = (string)""
-00000003 ceq %-3, %1
-00000006 jf 000000028
-00000008 gpd %2, %-2.*1	// *1 = (string)"characterVoiceInfo"
-00000012 cp %3, %-3
-00000015 str %3
-00000017 calld %4, %3.*2()	// *2 = (string)"toLowerCase"
-00000022 gpi %5, %2.%4
-00000026 jmp 000000031
-00000028 cp %5, %0
-00000031 cp %-4, %5
-00000034 cdeq %-4, %0
-00000037 jf 000000107
-00000039 gpd %1, %-4.*3	// *3 = (string)"alias"
-00000043 const %2, *0	// *0 = (string)""
-00000046 ceq %1, %2
-00000049 jf 000000107
-00000051 const %1, *4	// *4 = (int)0
-00000054 gpd %2, %-4.*3	// *3 = (string)"alias"
-00000058 calld %3, %2.*5(%1)	// *5 = (string)"charAt"
-00000064 const %4, *6	// *6 = (string)"&"
-00000067 ceq %3, %4
-00000070 jnf 000000097
-00000072 const %5, *7	// *7 = (int)1
-00000075 gpd %6, %-4.*3	// *3 = (string)"alias"
-00000079 calld %7, %6.*8(%5)	// *8 = (string)"substr"
-00000085 gpd %8, %-2.*9	// *9 = (string)"Scripts"
-00000089 calld %9, %8.*10(%7)	// *10 = (string)"eval"
-00000095 jmp 000000104
-00000097 gpd %5, %-4.*3	// *3 = (string)"alias"
-00000101 cp %9, %5
-00000104 srv %9
-00000106 ret
-00000107 srv %-3
-00000109 ret
-00000110 srv %0
-00000112 ret
-
-(function) convertVoice 0x0000000000F9CB90
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %3, %2.*1(%-3, %-4)	// *1 = (string)"convertVoice"
-00000013 cp %-4, %3
-00000016 cp %1, %-4
-00000019 typeof %1
-00000021 const %2, *2	// *2 = (string)"Integer"
-00000024 ceq %1, %2
-00000027 jnf 000000089
-00000029 gpd %1, %-2.*3	// *3 = (string)"characterVoiceInfo"
-00000033 gpi %2, %1.%-3
-00000037 cp %-5, %2
-00000040 cdeq %-5, %0
-00000043 jf 000000089
-00000045 gpd %1, %-5.*4	// *4 = (string)"file"
-00000049 const %2, *5	// *5 = (string)""
-00000052 ceq %1, %2
-00000055 jf 000000089
-00000057 gpd %1, %-2.*6	// *6 = (string)"voiceBase"
-00000061 cdeq %1, %0
-00000064 jf 000000072
-00000066 gpd %2, %-2.*6	// *6 = (string)"voiceBase"
-00000070 jmp 000000075
-00000072 const %2, *5	// *5 = (string)""
-00000075 gpd %3, %-5.*4	// *4 = (string)"file"
-00000079 calld %4, %3.*7(%2, %-4)	// *7 = (string)"sprintf"
-00000086 cp %-4, %4
-00000089 srv %-4
-00000091 ret
-00000092 srv %0
-00000094 ret
-
-(function) createDispname 0x0000000000F99E90
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1(%-3)	// *1 = (string)"createDispname"
-00000012 gpd %1, %-3.*2	// *2 = (string)"notext"
-00000016 num %1
-00000018 spd %-2.*3, %1	// *3 = (string)"lineNotext"
-00000022 gpd %1, %-2.*4	// *4 = (string)"showSame"
-00000026 spd %-2.*5, %1	// *5 = (string)"lineSame"
-00000030 gpd %1, %-2.*4	// *4 = (string)"showSame"
-00000034 tt %1
-00000036 jnf 000000059
-00000038 gpd %1, %-2.*4	// *4 = (string)"showSame"
-00000042 spde %-3.*6, %1	// *6 = (string)"same"
-00000046 const %1, *7	// *7 = (int)0
-00000049 spd %-2.*4, %1	// *4 = (string)"showSame"
-00000053 const %1, *7	// *7 = (int)0
-00000056 srv %1
-00000058 ret
-00000059 const %1, *8	// *8 = (int)1
-00000062 srv %1
-00000064 ret
-00000065 srv %0
-00000067 ret
-
-(function) parseDispname 0x0000000000FAF600
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"checkNextVoice"
-00000004 tt %1
-00000006 jnf 000000059
-00000008 gpd %1, %-2.*1	// *1 = (string)"nextVoiceList"
-00000012 gpd %2, %1.*2	// *2 = (string)"count"
-00000016 const %3, *3	// *3 = (int)0
-00000019 cgt %2, %3
-00000022 jnf 000000029
-00000024 const %4, *4	// *4 = (int)1
-00000027 jmp 000000032
-00000029 const %4, *3	// *3 = (int)0
-00000032 gpd %5, %-2.*5	// *5 = (string)"nameStr"
-00000036 const %6, *6	// *6 = (string)""
-00000039 ceq %5, %6
-00000042 jf 000000049
-00000044 const %7, *7	// *7 = (int)2
-00000047 jmp 000000052
-00000049 const %7, *3	// *3 = (int)0
-00000052 bor %4, %7
-00000055 spd %-2.*8, %4	// *8 = (string)"lineVoice"
-00000059 gpd %1, %-2.*5	// *5 = (string)"nameStr"
-00000063 spd %-2.*9, %1	// *9 = (string)"lineName"
-00000067 global %1
-00000069 gpd %2, %1.*10	// *10 = (string)"LineMode"
-00000073 calld %0, %2.*11()	// *11 = (string)"parseDispname"
-00000078 spd %-2.*12, %0	// *12 = (string)"language"
-00000082 const %1, *4	// *4 = (int)1
-00000085 spd %-2.*13, %1	// *13 = (string)"useText"
-00000089 srv %0
-00000091 ret
-
-(function) parseLanguage 0x0000000000FAFBA0
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"Dictionary"
-00000006 new %1, %2()
-00000010 cp %-4, %1
-00000013 gpd %1, %-3.*1	// *1 = (string)"name"
-00000017 cdeq %1, %0
-00000020 jf 000000030
-00000022 gpd %1, %-3.*1	// *1 = (string)"name"
-00000026 spde %-4.*2, %1	// *2 = (string)"disp"
-00000030 gpd %1, %-2.*3	// *3 = (string)"language"
-00000034 cdeq %1, %0
-00000037 jnf 000000056
-00000039 global %1
-00000041 gpd %2, %1.*4	// *4 = (string)"Array"
-00000045 new %1, %2()
-00000049 const %2, *5	// *5 = (int)0
-00000052 spd %-2.*3, %1	// *3 = (string)"language"
-00000056 gpd %1, %-2.*3	// *3 = (string)"language"
-00000060 gpd %2, %-3.*6	// *6 = (string)"type"
-00000064 num %2
-00000066 spie %1.%2, %-4
-00000070 const %1, *3	// *3 = (string)"language"
-00000073 calld %0, %-2.*7(%1, %-3)	// *7 = (string)"addParseTag"
-00000080 const %1, *8	// *8 = (int)1
-00000083 spd %-2.*9, %1	// *9 = (string)"afterName"
-00000087 srv %0
-00000089 ret
-
-(function) parseL 0x0000000000FAFE70
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"noWaitTime"
-00000004 cdeq %1, %0
-00000007 setnf %1
-00000009 spd %-2.*1, %1	// *1 = (string)"lineNowait"
-00000013 global %1
-00000015 gpd %2, %1.*2	// *2 = (string)"LineMode"
-00000019 calld %0, %2.*3()	// *3 = (string)"parseL"
-00000024 const %1, *4	// *4 = (string)"l"
-00000027 const %2, *5	// *5 = (int)1
-00000030 calld %0, %-2.*6(%1, %2)	// *6 = (string)"flushLine"
-00000037 srv %0
-00000039 ret
-
-(function) createP 0x0000000000FADF80
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %0, %2.*1(%-3)	// *1 = (string)"createP"
-00000012 gpd %1, %-2.*2	// *2 = (string)"showSame"
-00000016 tt %1
-00000018 jnf 000000033
-00000020 const %1, *3	// *3 = (int)1
-00000023 spde %-3.*4, %1	// *4 = (string)"same"
-00000027 const %1, *5	// *5 = (int)0
-00000030 srv %1
-00000032 ret
-00000033 const %1, *3	// *3 = (int)1
-00000036 srv %1
-00000038 ret
-00000039 srv %0
-00000041 ret
-
-(function) parseP 0x0000000000FACEA0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"noWaitOnce"
-00000004 cdeq %1, %0
-00000007 jnf 000000016
-00000009 gpd %2, %-2.*1	// *1 = (string)"noWaitTime"
-00000013 cdeq %2, %0
-00000016 setnf %3
-00000018 spd %-2.*2, %3	// *2 = (string)"lineNowait"
-00000022 global %1
-00000024 gpd %2, %1.*3	// *3 = (string)"LineMode"
-00000028 calld %0, %2.*4(%-3)	// *4 = (string)"parseP"
-00000034 const %1, *5	// *5 = (string)"p"
-00000037 const %2, *6	// *6 = (int)1
-00000040 calld %0, %-2.*7(%1, %2)	// *7 = (string)"flushLine"
-00000047 srv %0
-00000049 ret
-
-(function) parseR 0x0000000000FADCB0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"ignoreCrToNext"
-00000004 tf %1
-00000006 jnf 000000020
-00000008 global %1
-00000010 gpd %2, %1.*1	// *1 = (string)"LineMode"
-00000014 calld %0, %2.*2(%-3)	// *2 = (string)"parseR"
-00000020 srv %0
-00000022 ret
-
-(function) checkL 0x0000000000FAC630
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"parseForKag"
-00000004 tf %1
-00000006 jnf 000000023
-00000008 gpd %2, %-2.*1	// *1 = (string)"noCrOnce"
-00000012 tt %2
-00000014 jnf 000000023
-00000016 const %1, *2	// *2 = (int)1
-00000019 spde %-3.*3, %1	// *3 = (string)"nor"
-00000023 gpd %1, %-2.*4	// *4 = (string)"currentLine"
-00000027 calld %2, %1.*5()	// *5 = (string)"hasLine"
-00000032 tf %2
-00000034 jnf 000000053
-00000036 calld %0, %-2.*6(%-3)	// *6 = (string)"addCommand"
-00000042 const %1, *7	// *7 = (string)"l"
-00000045 calld %0, %-2.*8(%1)	// *8 = (string)"flushLine"
-00000051 jmp 000000063
-00000053 const %1, *7	// *7 = (string)"l"
-00000056 calld %0, %-2.*9(%1, %-3)	// *9 = (string)"addParseTag"
-00000063 const %1, *2	// *2 = (int)1
-00000066 srv %1
-00000068 ret
-00000069 srv %0
-00000071 ret
-
-(function) checkEnd 0x0000000000FAF060
-
-#(1) Bytecode.
-00000000 cdeq %-3, %0
-00000003 jnf 000000011
-00000005 const %1, *0	// *0 = (int)1
-00000008 cp %-3, %1
-00000011 cl %-4
-00000013 gpd %1, %-2.*1	// *1 = (string)"emptyLine"
-00000017 tf %1
-00000019 jnf 000000053
-00000021 global %1
-00000023 gpd %2, %1.*2	// *2 = (string)"Dictionary"
-00000027 new %1, %2()
-00000031 const %2, *3	// *3 = (string)"eol"
-00000034 const %3, *0	// *0 = (int)1
-00000037 spis %1.%2, %3
-00000041 calld %0, %-2.*4(%1)	// *4 = (string)"parseR"
-00000047 const %1, *0	// *0 = (int)1
-00000050 cp %-4, %1
-00000053 gpd %1, %-2.*5	// *5 = (string)"prevEmptyLine"
-00000057 tf %1
-00000059 jnf 000000145
-00000061 gpd %2, %-2.*6	// *6 = (string)"lineMode"
-00000065 gpd %3, %-2.*7	// *7 = (string)"LINEMODE_TEX"
-00000069 ceq %2, %3
-00000072 jf 000000113
-00000074 gpd %4, %-2.*6	// *6 = (string)"lineMode"
-00000078 gpd %5, %-2.*8	// *8 = (string)"LINEMODE_VN"
-00000082 ceq %4, %5
-00000085 jf 000000113
-00000087 gpd %6, %-2.*6	// *6 = (string)"lineMode"
-00000091 gpd %7, %-2.*9	// *9 = (string)"LINEMODE_FREE"
-00000095 ceq %6, %7
-00000098 jf 000000113
-00000100 gpd %8, %-2.*6	// *6 = (string)"lineMode"
-00000104 gpd %9, %-2.*10	// *10 = (string)"LINEMODE_FRVN"
-00000108 ceq %8, %9
-00000111 jnf 000000145
-00000113 global %1
-00000115 gpd %2, %1.*2	// *2 = (string)"Dictionary"
-00000119 new %1, %2()
-00000123 const %2, *3	// *3 = (string)"eol"
-00000126 const %3, *0	// *0 = (int)1
-00000129 spis %1.%2, %3
-00000133 calld %0, %-2.*4(%1)	// *4 = (string)"parseR"
-00000139 const %1, *0	// *0 = (int)1
-00000142 cp %-4, %1
-00000145 calld %1, %-2.*11()	// *11 = (string)"flushLine"
-00000150 tt %1
-00000152 jnf 000000162
-00000154 const %1, *0	// *0 = (int)1
-00000157 cp %-4, %1
-00000160 jmp 000000145
-00000162 tt %-3
-00000164 jnf 000000288
-00000166 gpd %1, %-2.*12	// *12 = (string)"useText"
-00000170 tt %1
-00000172 jnf 000000283
-00000174 global %1
-00000176 gpd %2, %1.*2	// *2 = (string)"Dictionary"
-00000180 new %1, %2()
-00000184 const %2, *13	// *13 = (string)"tagname"
-00000187 const %3, *14	// *14 = (string)"er"
-00000190 spis %1.%2, %3
-00000194 const %2, *15	// *15 = (string)"all"
-00000197 const %3, *16	// *16 = (string)"true"
-00000200 spis %1.%2, %3
-00000204 const %2, *17	// *17 = (string)"taglist"
-00000207 global %3
-00000209 gpd %4, %3.*18	// *18 = (string)"Array"
-00000213 new %3, %4()
-00000217 const %4, *19	// *19 = (int)0
-00000220 const %5, *13	// *13 = (string)"tagname"
-00000223 spis %3.%4, %5
-00000227 inc %4
-00000229 const %5, *15	// *15 = (string)"all"
-00000232 spis %3.%4, %5
-00000236 inc %4
-00000238 spis %1.%2, %3
-00000242 const %2, *20	// *20 = (string)"runLine"
-00000245 gpd %3, %-2.*20	// *20 = (string)"runLine"
-00000249 spis %1.%2, %3
-00000253 const %2, *21	// *21 = (string)"runCount"
-00000256 gpd %3, %-2.*21	// *21 = (string)"runCount"
-00000260 spis %1.%2, %3
-00000264 cp %-5, %1
-00000267 gpd %1, %-2.*22	// *22 = (string)"linecd"
-00000271 calld %0, %1.*23(%-5)	// *23 = (string)"enqueueTag"
-00000277 const %1, *24	// *24 = (int)1
-00000280 cp %-4, %1
-00000283 calld %0, %-2.*25()	// *25 = (string)"initCaseMode"
-00000288 const %1, *19	// *19 = (int)0
-00000291 spd %-2.*26, %1	// *26 = (string)"btlevel"
-00000295 const %1, *19	// *19 = (int)0
-00000298 spd %-2.*27, %1	// *27 = (string)"delaytrans"
-00000302 srv %-4
-00000304 ret
-00000305 srv %0
-00000307 ret
-
-(function) _getNextTag 0x0000000000FAEAC0
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"linecd"
-00000004 calld %2, %1.*1()	// *1 = (string)"getNextTag"
-00000009 cp %-3, %2
-00000012 cdeq %-3, %0
-00000015 jf 000000068
-00000017 gpd %1, %-3.*2	// *2 = (string)"tagname"
-00000021 const %2, *3	// *3 = (string)"dispname"
-00000024 ceq %1, %2
-00000027 nf
-00000028 jf 000000068
-00000030 gpd %1, %-2.*4	// *4 = (string)"caseStart"
-00000034 cdeq %1, %0
-00000037 jf 000000056
-00000039 gpd %2, %-2.*4	// *4 = (string)"caseStart"
-00000043 gpd %3, %-2.*5	// *5 = (string)"caseCount"
-00000047 incpd %0, %-2.*5	// *5 = (string)"caseCount"
-00000051 add %2, %3
-00000054 jmp 000000064
-00000056 gpd %2, %-2.*6	// *6 = (string)"textCount"
-00000060 incpd %0, %-2.*6	// *6 = (string)"textCount"
-00000064 spde %-3.*6, %2	// *6 = (string)"textCount"
-00000068 srv %-3
-00000070 ret
-00000071 srv %0
-00000073 ret
-
-(function) getNextTag 0x0000000000FAC900
-
-#(1) Bytecode.
-00000000 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000005 cp %-3, %1
-00000008 gpd %1, %-2.*1	// *1 = (string)"caseMode"
-00000012 tt %1
-00000014 jnf 000000045
-00000016 cdeq %-3, %0
-00000019 nf
-00000020 jnf 000000045
-00000022 gpd %2, %-3.*2	// *2 = (string)"tagname"
-00000026 const %3, *3	// *3 = (string)"case"
-00000029 ceq %2, %3
-00000032 nf
-00000033 jnf 000000045
-00000035 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000040 cp %-3, %1
-00000043 jmp 000000008
-00000045 cdeq %-3, %0
-00000048 jf 000000308
-00000050 gpd %1, %-3.*2	// *2 = (string)"tagname"
-00000054 const %2, *3	// *3 = (string)"case"
-00000057 ceq %1, %2
-00000060 nf
-00000061 jf 000000308
-00000063 gpd %1, %-2.*4	// *4 = (string)"caseMax"
-00000067 gpd %2, %-2.*5	// *5 = (string)"caseCount"
-00000071 gpd %3, %-2.*6	// *6 = (string)"Math"
-00000075 calld %4, %3.*7(%1, %2)	// *7 = (string)"max"
-00000082 spd %-2.*4, %4	// *4 = (string)"caseMax"
-00000086 gpd %1, %-3.*8	// *8 = (string)"exp"
-00000090 const %2, *9	// *9 = (string)""
-00000093 ceq %1, %2
-00000096 jnf 000000142
-00000098 const %1, *10	// *10 = (int)0
-00000101 spd %-2.*1, %1	// *1 = (string)"caseMode"
-00000105 spd %-2.*11, %0	// *11 = (string)"caseStart"
-00000109 const %1, *10	// *10 = (int)0
-00000112 spd %-2.*5, %1	// *5 = (string)"caseCount"
-00000116 const %1, *10	// *10 = (int)0
-00000119 spd %-2.*4, %1	// *4 = (string)"caseMax"
-00000123 gpd %1, %-2.*4	// *4 = (string)"caseMax"
-00000127 addpd %0, %-2.*12, %1	// *12 = (string)"textCount"
-00000132 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000137 cp %-3, %1
-00000140 jmp 000000045
-00000142 gpd %1, %-2.*11	// *11 = (string)"caseStart"
-00000146 cdeq %1, %0
-00000149 jnf 000000159
-00000151 gpd %1, %-2.*12	// *12 = (string)"textCount"
-00000155 spd %-2.*11, %1	// *11 = (string)"caseStart"
-00000159 const %1, *10	// *10 = (int)0
-00000162 spd %-2.*5, %1	// *5 = (string)"caseCount"
-00000166 cl %-4
-00000168 entry 000000191, %1
-00000171 gpd %1, %-3.*8	// *8 = (string)"exp"
-00000175 gpd %2, %-2.*13	// *13 = (string)"conductor"
-00000179 calld %3, %2.*14(%1)	// *14 = (string)"eval"
-00000185 cp %-4, %3
-00000188 extry
-00000189 jmp 000000233
-00000191 cp %-5, %1
-00000194 const %1, *15	// *15 = (string)"case:"
-00000197 gpd %2, %-3.*8	// *8 = (string)"exp"
-00000201 str %2
-00000203 add %1, %2
-00000206 const %3, *16	// *16 = (string)":"
-00000209 add %1, %3
-00000212 gpd %4, %-5.*17	// *17 = (string)"message"
-00000216 str %4
-00000218 add %1, %4
-00000221 calld %0, %-2.*18(%1)	// *18 = (string)"dm"
-00000227 const %1, *10	// *10 = (int)0
-00000230 cp %-4, %1
-00000233 tt %-4
-00000235 jnf 000000254
-00000237 const %1, *10	// *10 = (int)0
-00000240 spd %-2.*1, %1	// *1 = (string)"caseMode"
-00000244 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000249 cp %-3, %1
-00000252 jmp 000000045
-00000254 const %1, *19	// *19 = (int)1
-00000257 spd %-2.*1, %1	// *1 = (string)"caseMode"
-00000261 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000266 cp %-3, %1
-00000269 gpd %1, %-2.*1	// *1 = (string)"caseMode"
-00000273 tt %1
-00000275 jnf 000000045
-00000277 cdeq %-3, %0
-00000280 nf
-00000281 jnf 000000045
-00000283 gpd %2, %-3.*2	// *2 = (string)"tagname"
-00000287 const %3, *3	// *3 = (string)"case"
-00000290 ceq %2, %3
-00000293 nf
-00000294 jnf 000000045
-00000296 calld %1, %-2.*0()	// *0 = (string)"_getNextTag"
-00000301 cp %-3, %1
-00000304 jmp 000000269
-00000306 jmp 000000045
-00000308 srv %-3
-00000310 ret
-00000311 srv %0
-00000313 ret
-
-(function) checkPending 0x0000000000FAE250
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"linecd"
-00000004 calld %2, %1.*1()	// *1 = (string)"hasData"
-00000009 tt %2
-00000011 jnf 000000085
-00000013 cl %-3
-00000015 calld %1, %-2.*2()	// *2 = (string)"getNextTag"
-00000020 cp %-3, %1
-00000023 cdeq %1, %0
-00000026 jf 000000079
-00000028 gpd %1, %-2.*0	// *0 = (string)"linecd"
-00000032 gpd %2, %-2.*3	// *3 = (string)"conductor"
-00000036 calld %3, %2.*4(%1, %-3)	// *4 = (string)"onTagExtract"
-00000043 cp %-4, %3
-00000046 cdeq %-4, %0
-00000049 jf 000000055
-00000051 tf %-4
-00000053 jnf 000000067
-00000055 gpd %1, %-2.*3	// *3 = (string)"conductor"
-00000059 calld %0, %1.*5(%-3)	// *5 = (string)"enqueueTag"
-00000065 jmp 000000015
-00000067 const %1, *6	// *6 = (int)2
-00000070 ceq %-4, %1
-00000073 jnf 000000015
-00000075 jmp 000000079
-00000077 jmp 000000015
-00000079 const %1, *7	// *7 = (int)1
-00000082 srv %1
-00000084 ret
-00000085 srv %0
-00000087 ret
-
-(function) checkVoiceParam 0x0000000000FAD170
-
-#(1) Bytecode.
-00000000 global %1
-00000002 gpd %2, %1.*0	// *0 = (string)"LineMode"
-00000006 calld %3, %2.*1(%-3, %-4)	// *1 = (string)"checkVoiceParam"
-00000013 cp %-5, %3
-00000016 tt %-5
-00000018 jnf 000000026
-00000020 const %1, *2	// *2 = (int)1
-00000023 srv %1
-00000025 ret
-00000026 const %1, *3	// *3 = (string)"playvoice"
-00000029 ceq %-3, %1
-00000032 jnf 000000065
-00000034 gpd %1, %-4.*4	// *4 = (string)"voice"
-00000038 cdeq %1, %0
-00000041 jnf 000000059
-00000043 gpd %1, %-4.*5	// *5 = (string)"name"
-00000047 calld %2, %1.*6()	// *6 = (string)"toLowerCase"
-00000052 calld %0, %-2.*7(%2, %-4)	// *7 = (string)"getCurrentVoice"
-00000059 const %1, *8	// *8 = (int)0
-00000062 srv %1
-00000064 ret
-00000065 gpd %1, %-2.*9	// *9 = (string)"conductor"
-00000069 calld %2, %1.*10(%-3, %-4, %-1)	// *10 = (string)"onCheckVoice"
-00000077 cdeq %2, %0
-00000080 jf 000000088
-00000082 const %1, *2	// *2 = (int)1
-00000085 srv %1
-00000087 ret
-00000088 const %1, *8	// *8 = (int)0
-00000091 cp %-5, %1
-00000094 gpd %1, %-2.*11	// *11 = (string)"characterVoiceInfo"
-00000098 gpi %2, %1.%-3
-00000102 cdeq %2, %0
-00000105 jf 000001772
-00000107 gpd %1, %-4.*4	// *4 = (string)"voice"
-00000111 cdeq %1, %0
-00000114 jf 000000225
-00000116 gpd %1, %-4.*4	// *4 = (string)"voice"
-00000120 const %2, *12	// *12 = (string)"true"
-00000123 ceq %1, %2
-00000126 jf 000000134
-00000128 gpd %3, %-4.*4	// *4 = (string)"voice"
-00000132 jmp 000000137
-00000134 cp %3, %0
-00000137 calld %0, %-2.*13(%-3, %3, %-4)	// *13 = (string)"setCurrentVoice"
-00000145 const %1, *4	// *4 = (string)"voice"
-00000148 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000155 const %1, *15	// *15 = (string)"replace"
-00000158 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000165 const %1, *16	// *16 = (string)"insert"
-00000168 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000175 const %1, *17	// *17 = (string)"noplayvoice"
-00000178 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000185 const %1, *18	// *18 = (string)"pan"
-00000188 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000195 const %1, *19	// *19 = (string)"noflip"
-00000198 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000205 const %1, *20	// *20 = (string)"fade"
-00000208 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000215 const %1, *21	// *21 = (string)"volume"
-00000218 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000225 gpd %1, %-4.*22	// *22 = (string)"nextvoice"
-00000229 cdeq %1, %0
-00000232 jf 000000349
-00000234 gpd %1, %-4.*22	// *22 = (string)"nextvoice"
-00000238 const %2, *12	// *12 = (string)"true"
-00000241 ceq %1, %2
-00000244 jf 000000252
-00000246 gpd %3, %-4.*22	// *22 = (string)"nextvoice"
-00000250 jmp 000000255
-00000252 cp %3, %0
-00000255 calld %0, %-2.*13(%-3, %3, %-4)	// *13 = (string)"setCurrentVoice"
-00000263 calld %0, %-2.*23(%-3)	// *23 = (string)"entryNextVoice"
-00000269 const %1, *22	// *22 = (string)"nextvoice"
-00000272 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000279 const %1, *15	// *15 = (string)"replace"
-00000282 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000289 const %1, *16	// *16 = (string)"insert"
-00000292 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000299 const %1, *17	// *17 = (string)"noplayvoice"
-00000302 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000309 const %1, *18	// *18 = (string)"pan"
-00000312 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000319 const %1, *19	// *19 = (string)"noflip"
-00000322 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000329 const %1, *20	// *20 = (string)"fade"
-00000332 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000339 const %1, *21	// *21 = (string)"volume"
-00000342 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000349 gpd %1, %-4.*24	// *24 = (string)"backvoice"
-00000353 cdeq %1, %0
-00000356 jf 000000477
-00000358 gpd %1, %-4.*24	// *24 = (string)"backvoice"
-00000362 const %2, *12	// *12 = (string)"true"
-00000365 ceq %1, %2
-00000368 jf 000000376
-00000370 gpd %3, %-4.*24	// *24 = (string)"backvoice"
-00000374 jmp 000000379
-00000376 cp %3, %0
-00000379 calld %0, %-2.*13(%-3, %3, %-4)	// *13 = (string)"setCurrentVoice"
-00000387 const %1, *25	// *25 = (int)1
-00000390 calld %0, %-2.*23(%-3, %1)	// *23 = (string)"entryNextVoice"
-00000397 const %1, *24	// *24 = (string)"backvoice"
-00000400 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000407 const %1, *15	// *15 = (string)"replace"
-00000410 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000417 const %1, *16	// *16 = (string)"insert"
-00000420 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000427 const %1, *17	// *17 = (string)"noplayvoice"
-00000430 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000437 const %1, *18	// *18 = (string)"pan"
-00000440 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000447 const %1, *19	// *19 = (string)"noflip"
-00000450 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000457 const %1, *20	// *20 = (string)"fade"
-00000460 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000467 const %1, *21	// *21 = (string)"volume"
-00000470 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000477 cl %-6
-00000479 cl %-7
-00000481 cl %-8
-00000483 cl %-9
-00000485 cl %-10
-00000487 cl %-11
-00000489 gpd %1, %-4.*26	// *26 = (string)"playvoice"
-00000493 cdeq %1, %0
-00000496 jf 000000690
-00000498 global %1
-00000500 gpd %2, %1.*27	// *27 = (string)"Dictionary"
-00000504 new %1, %2()
-00000508 const %2, *28	// *28 = (string)"name"
-00000511 spis %1.%2, %-3
-00000515 cp %-12, %1
-00000518 gpd %1, %-4.*26	// *26 = (string)"playvoice"
-00000522 const %2, *29	// *29 = (string)""
-00000525 ceq %1, %2
-00000528 jf 000000540
-00000530 gpd %1, %-4.*26	// *26 = (string)"playvoice"
-00000534 spde %-12.*30, %1	// *30 = (string)"voice"
-00000538 jmp 000000547
-00000540 calld %0, %-2.*31(%-3, %-12)	// *31 = (string)"getCurrentVoice"
-00000547 gpd %1, %-4.*18	// *18 = (string)"pan"
-00000551 cdeq %1, %0
-00000554 jf 000000572
-00000556 const %1, *25	// *25 = (int)1
-00000559 cp %-6, %1
-00000562 gpd %1, %-4.*18	// *18 = (string)"pan"
-00000566 num %1
-00000568 spde %-12.*18, %1	// *18 = (string)"pan"
-00000572 gpd %1, %-4.*19	// *19 = (string)"noflip"
-00000576 cdeq %1, %0
-00000579 jf 000000597
-00000581 const %1, *25	// *25 = (int)1
-00000584 cp %-7, %1
-00000587 gpd %1, %-4.*19	// *19 = (string)"noflip"
-00000591 num %1
-00000593 spde %-12.*19, %1	// *19 = (string)"noflip"
-00000597 gpd %1, %-4.*20	// *20 = (string)"fade"
-00000601 cdeq %1, %0
-00000604 jf 000000622
-00000606 const %1, *25	// *25 = (int)1
-00000609 cp %-8, %1
-00000612 gpd %1, %-4.*20	// *20 = (string)"fade"
-00000616 num %1
-00000618 spde %-12.*20, %1	// *20 = (string)"fade"
-00000622 gpd %1, %-4.*21	// *21 = (string)"volume"
-00000626 cdeq %1, %0
-00000629 jf 000000647
-00000631 const %1, *25	// *25 = (int)1
-00000634 cp %-9, %1
-00000637 gpd %1, %-4.*21	// *21 = (string)"volume"
-00000641 num %1
-00000643 spde %-12.*20, %1	// *20 = (string)"fade"
-00000647 gpd %1, %-4.*32	// *32 = (string)"delayrun"
-00000651 cdeq %1, %0
-00000654 jf 000000664
-00000656 gpd %2, %-4.*32	// *32 = (string)"delayrun"
-00000660 spde %-12.*32, %2	// *32 = (string)"delayrun"
-00000664 const %1, *26	// *26 = (string)"playvoice"
-00000667 calld %0, %-2.*33(%1, %-12)	// *33 = (string)"entryTag"
-00000674 const %1, *25	// *25 = (int)1
-00000677 cp %-5, %1
-00000680 const %1, *26	// *26 = (string)"playvoice"
-00000683 calld %0, %-2.*14(%-4, %1)	// *14 = (string)"removeTagParam"
-00000690 gpd %1, %-4.*34	// *34 = (string)"bvoice"
-00000694 cdeq %1, %0
-00000697 jf 000001012
-00000699 gpd %1, %-4.*34	// *34 = (string)"bvoice"
-00000703 const %2, *29	// *29 = (string)""
-00000706 ceq %1, %2
-00000709 jnf 000000784
-00000711 global %1
-00000713 gpd %2, %1.*27	// *27 = (string)"Dictionary"
-00000717 new %1, %2()
-00000721 const %2, *28	// *28 = (string)"name"
-00000724 spis %1.%2, %-3
-00000728 const %2, *35	// *35 = (string)"all"
-00000731 const %3, *25	// *25 = (int)1
-00000734 spis %1.%2, %3
-00000738 cp %-12, %1
-00000741 gpd %1, %-4.*36	// *36 = (string)"time"
-00000745 cdeq %1, %0
-00000748 jf 000000766
-00000750 const %1, *25	// *25 = (int)1
-00000753 cp %-11, %1
-00000756 gpd %1, %-4.*36	// *36 = (string)"time"
-00000760 num %1
-00000762 spde %-12.*36, %1	// *36 = (string)"time"
-00000766 const %1, *37	// *37 = (string)"stopvoice"
-00000769 calld %0, %-2.*33(%1, %-12)	// *33 = (string)"entryTag"
-00000776 const %1, *25	// *25 = (int)1
-00000779 cp %-5, %1
-00000782 jmp 000001002
-00000784 const %1, *25	// *25 = (int)1
-00000787 cp %-12, %1
-00000790 gpd %1, %-4.*38	// *38 = (string)"loop"
-00000794 cdeq %1, %0
-00000797 jf 000000814
-00000799 gpd %1, %-4.*38	// *38 = (string)"loop"
-00000803 num %1
-00000805 cp %-12, %1
-00000808 const %1, *25	// *25 = (int)1
-00000811 cp %-10, %1
-00000814 global %1
-00000816 gpd %2, %1.*27	// *27 = (string)"Dictionary"
-00000820 new %1, %2()
-00000824 const %2, *28	// *28 = (string)"name"
-00000827 spis %1.%2, %-3
-00000831 const %2, *30	// *30 = (string)"voice"
-00000834 gpd %3, %-4.*34	// *34 = (string)"bvoice"
-00000838 calld %4, %-2.*39(%-3, %3)	// *39 = (string)"filterVoice"
-00000845 spis %1.%2, %4
-00000849 const %2, *40	// *40 = (string)"type"
-00000852 const %3, *25	// *25 = (int)1
-00000855 spis %1.%2, %3
-00000859 const %2, *38	// *38 = (string)"loop"
-00000862 spis %1.%2, %-12
-00000866 cp %-13, %1
-00000869 gpd %1, %-4.*41	// *41 = (string)"pan"
-00000873 cdeq %1, %0
-00000876 jf 000000894
-00000878 const %1, *25	// *25 = (int)1
-00000881 cp %-6, %1
-00000884 gpd %1, %-4.*41	// *41 = (string)"pan"
-00000888 num %1
-00000890 spde %-13.*41, %1	// *41 = (string)"pan"
-00000894 gpd %1, %-4.*42	// *42 = (string)"noflip"
-00000898 cdeq %1, %0
-00000901 jf 000000919
-00000903 const %1, *25	// *25 = (int)1
-00000906 cp %-7, %1
-00000909 gpd %1, %-4.*42	// *42 = (string)"noflip"
-00000913 num %1
-00000915 spde %-13.*42, %1	// *42 = (string)"noflip"
-00000919 gpd %1, %-4.*43	// *43 = (string)"fade"
-00000923 cdeq %1, %0
-00000926 jf 000000944
-00000928 const %1, *25	// *25 = (int)1
-00000931 cp %-8, %1
-00000934 gpd %1, %-4.*43	// *43 = (string)"fade"
-00000938 num %1
-00000940 spde %-13.*43, %1	// *43 = (string)"fade"
-00000944 gpd %1, %-4.*44	// *44 = (string)"volume"
-00000948 cdeq %1, %0
-00000951 jf 000000969
-00000953 const %1, *25	// *25 = (int)1
-00000956 cp %-9, %1
-00000959 gpd %1, %-4.*44	// *44 = (string)"volume"
-00000963 num %1
-00000965 spde %-13.*43, %1	// *43 = (string)"fade"
-00000969 gpd %1, %-4.*32	// *32 = (string)"delayrun"
-00000973 cdeq %1, %0
-00000976 jf 000000986
-00000978 gpd %2, %-4.*32	// *32 = (string)"delayrun"
-00000982 spde %-13.*32, %2	// *32 = (string)"delayrun"
-00000986 const %1, *26	// *26 = (string)"playvoice"
-00000989 calld %0, %-2.*33(%1, %-13)	// *33 = (string)"entryTag"
-00000996 const %1, *25	// *25 = (int)1
-00000999 cp %-5, %1
-00001002 const %1, *34	// *34 = (string)"bvoice"
-00001005 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001012 gpd %1, %-4.*46	// *46 = (string)"hvoice"
-00001016 cdeq %1, %0
-00001019 jf 000001334
-00001021 gpd %1, %-4.*46	// *46 = (string)"hvoice"
-00001025 const %2, *29	// *29 = (string)""
-00001028 ceq %1, %2
-00001031 jnf 000001106
-00001033 global %1
-00001035 gpd %2, %1.*27	// *27 = (string)"Dictionary"
-00001039 new %1, %2()
-00001043 const %2, *28	// *28 = (string)"name"
-00001046 spis %1.%2, %-3
-00001050 const %2, *35	// *35 = (string)"all"
-00001053 const %3, *47	// *47 = (int)1
-00001056 spis %1.%2, %3
-00001060 cp %-12, %1
-00001063 gpd %1, %-4.*36	// *36 = (string)"time"
-00001067 cdeq %1, %0
-00001070 jf 000001088
-00001072 const %1, *47	// *47 = (int)1
-00001075 cp %-11, %1
-00001078 gpd %1, %-4.*36	// *36 = (string)"time"
-00001082 num %1
-00001084 spde %-12.*36, %1	// *36 = (string)"time"
-00001088 const %1, *37	// *37 = (string)"stopvoice"
-00001091 calld %0, %-2.*33(%1, %-12)	// *33 = (string)"entryTag"
-00001098 const %1, *47	// *47 = (int)1
-00001101 cp %-5, %1
-00001104 jmp 000001324
-00001106 const %1, *47	// *47 = (int)1
-00001109 cp %-12, %1
-00001112 gpd %1, %-4.*38	// *38 = (string)"loop"
-00001116 cdeq %1, %0
-00001119 jf 000001136
-00001121 gpd %1, %-4.*38	// *38 = (string)"loop"
-00001125 num %1
-00001127 cp %-12, %1
-00001130 const %1, *47	// *47 = (int)1
-00001133 cp %-10, %1
-00001136 global %1
-00001138 gpd %2, %1.*48	// *48 = (string)"Dictionary"
-00001142 new %1, %2()
-00001146 const %2, *49	// *49 = (string)"name"
-00001149 spis %1.%2, %-3
-00001153 const %2, *30	// *30 = (string)"voice"
-00001156 gpd %3, %-4.*46	// *46 = (string)"hvoice"
-00001160 calld %4, %-2.*39(%-3, %3)	// *39 = (string)"filterVoice"
-00001167 spis %1.%2, %4
-00001171 const %2, *40	// *40 = (string)"type"
-00001174 const %3, *50	// *50 = (int)2
-00001177 spis %1.%2, %3
-00001181 const %2, *38	// *38 = (string)"loop"
-00001184 spis %1.%2, %-12
-00001188 cp %-13, %1
-00001191 gpd %1, %-4.*41	// *41 = (string)"pan"
-00001195 cdeq %1, %0
-00001198 jf 000001216
-00001200 const %1, *47	// *47 = (int)1
-00001203 cp %-6, %1
-00001206 gpd %1, %-4.*41	// *41 = (string)"pan"
-00001210 num %1
-00001212 spde %-13.*41, %1	// *41 = (string)"pan"
-00001216 gpd %1, %-4.*42	// *42 = (string)"noflip"
-00001220 cdeq %1, %0
-00001223 jf 000001241
-00001225 const %1, *47	// *47 = (int)1
-00001228 cp %-7, %1
-00001231 gpd %1, %-4.*42	// *42 = (string)"noflip"
-00001235 num %1
-00001237 spde %-13.*42, %1	// *42 = (string)"noflip"
-00001241 gpd %1, %-4.*43	// *43 = (string)"fade"
-00001245 cdeq %1, %0
-00001248 jf 000001266
-00001250 const %1, *47	// *47 = (int)1
-00001253 cp %-8, %1
-00001256 gpd %1, %-4.*43	// *43 = (string)"fade"
-00001260 num %1
-00001262 spde %-13.*43, %1	// *43 = (string)"fade"
-00001266 gpd %1, %-4.*44	// *44 = (string)"volume"
-00001270 cdeq %1, %0
-00001273 jf 000001291
-00001275 const %1, *47	// *47 = (int)1
-00001278 cp %-9, %1
-00001281 gpd %1, %-4.*44	// *44 = (string)"volume"
-00001285 num %1
-00001287 spde %-13.*43, %1	// *43 = (string)"fade"
-00001291 gpd %1, %-4.*32	// *32 = (string)"delayrun"
-00001295 cdeq %1, %0
-00001298 jf 000001308
-00001300 gpd %2, %-4.*32	// *32 = (string)"delayrun"
-00001304 spde %-13.*32, %2	// *32 = (string)"delayrun"
-00001308 const %1, *51	// *51 = (string)"playvoice"
-00001311 calld %0, %-2.*33(%1, %-13)	// *33 = (string)"entryTag"
-00001318 const %1, *47	// *47 = (int)1
-00001321 cp %-5, %1
-00001324 const %1, *46	// *46 = (string)"hvoice"
-00001327 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001334 gpd %1, %-4.*52	// *52 = (string)"fadevoice"
-00001338 cdeq %1, %0
-00001341 jf 000001487
-00001343 gpd %1, %-4.*44	// *44 = (string)"volume"
-00001347 cdeq %1, %0
-00001350 jf 000001360
-00001352 gpd %2, %-4.*44	// *44 = (string)"volume"
-00001356 num %2
-00001358 jmp 000001406
-00001360 gpd %2, %-4.*43	// *43 = (string)"fade"
-00001364 cdeq %2, %0
-00001367 jf 000001377
-00001369 gpd %3, %-4.*43	// *43 = (string)"fade"
-00001373 num %3
-00001375 jmp 000001403
-00001377 gpd %3, %-4.*52	// *52 = (string)"fadevoice"
-00001381 const %4, *53	// *53 = (string)"true"
-00001384 ceq %3, %4
-00001387 jf 000001397
-00001389 gpd %5, %-4.*52	// *52 = (string)"fadevoice"
-00001393 num %5
-00001395 jmp 000001400
-00001397 const %5, *54	// *54 = (int)100
-00001400 cp %3, %5
-00001403 cp %2, %3
-00001406 cp %-12, %2
-00001409 global %1
-00001411 gpd %2, %1.*48	// *48 = (string)"Dictionary"
-00001415 new %1, %2()
-00001419 const %2, *49	// *49 = (string)"name"
-00001422 spis %1.%2, %-3
-00001426 const %2, *43	// *43 = (string)"fade"
-00001429 spis %1.%2, %-12
-00001433 cp %-13, %1
-00001436 gpd %1, %-4.*36	// *36 = (string)"time"
-00001440 cdeq %1, %0
-00001443 jf 000001461
-00001445 const %1, *47	// *47 = (int)1
-00001448 cp %-11, %1
-00001451 gpd %1, %-4.*36	// *36 = (string)"time"
-00001455 num %1
-00001457 spde %-13.*36, %1	// *36 = (string)"time"
-00001461 const %1, *52	// *52 = (string)"fadevoice"
-00001464 calld %0, %-2.*55(%1, %-13)	// *55 = (string)"entryTag"
-00001471 const %1, *47	// *47 = (int)1
-00001474 cp %-5, %1
-00001477 const %1, *52	// *52 = (string)"fadevoice"
-00001480 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001487 gpd %1, %-4.*37	// *37 = (string)"stopvoice"
-00001491 cdeq %1, %0
-00001494 jf 000001567
-00001496 global %1
-00001498 gpd %2, %1.*48	// *48 = (string)"Dictionary"
-00001502 new %1, %2()
-00001506 const %2, *49	// *49 = (string)"name"
-00001509 spis %1.%2, %-3
-00001513 cp %-12, %1
-00001516 gpd %1, %-4.*36	// *36 = (string)"time"
-00001520 cdeq %1, %0
-00001523 jf 000001541
-00001525 const %1, *47	// *47 = (int)1
-00001528 cp %-11, %1
-00001531 gpd %1, %-4.*36	// *36 = (string)"time"
-00001535 num %1
-00001537 spde %-12.*36, %1	// *36 = (string)"time"
-00001541 const %1, *37	// *37 = (string)"stopvoice"
-00001544 calld %0, %-2.*55(%1, %-12)	// *55 = (string)"entryTag"
-00001551 const %1, *47	// *47 = (int)1
-00001554 cp %-5, %1
-00001557 const %1, *37	// *37 = (string)"stopvoice"
-00001560 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001567 gpd %1, %-4.*56	// *56 = (string)"waitvoice"
-00001571 cdeq %1, %0
-00001574 jf 000001619
-00001576 const %1, *56	// *56 = (string)"waitvoice"
-00001579 global %2
-00001581 gpd %3, %2.*48	// *48 = (string)"Dictionary"
-00001585 new %2, %3()
-00001589 const %3, *49	// *49 = (string)"name"
-00001592 spis %2.%3, %-3
-00001596 calld %0, %-2.*55(%1, %2)	// *55 = (string)"entryTag"
-00001603 const %1, *47	// *47 = (int)1
-00001606 cp %-5, %1
-00001609 const %1, *56	// *56 = (string)"waitvoice"
-00001612 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001619 tt %-10
-00001621 jnf 000001633
-00001623 const %1, *38	// *38 = (string)"loop"
-00001626 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001633 tt %-6
-00001635 jnf 000001647
-00001637 const %1, *41	// *41 = (string)"pan"
-00001640 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001647 tt %-7
-00001649 jnf 000001661
-00001651 const %1, *42	// *42 = (string)"noflip"
-00001654 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001661 tt %-8
-00001663 jnf 000001675
-00001665 const %1, *43	// *43 = (string)"fade"
-00001668 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001675 tt %-9
-00001677 jnf 000001689
-00001679 const %1, *44	// *44 = (string)"volume"
-00001682 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001689 tt %-11
-00001691 jnf 000001703
-00001693 const %1, *57	// *57 = (string)"time"
-00001696 calld %0, %-2.*45(%-4, %1)	// *45 = (string)"removeTagParam"
-00001703 gpd %1, %-2.*58	// *58 = (string)"Scripts"
-00001707 calld %2, %1.*59(%-4)	// *59 = (string)"getObjectCount"
-00001713 cp %-12, %2
-00001716 gpd %1, %-4.*60	// *60 = (string)"runLine"
-00001720 cdeq %1, %0
-00001723 jnf 000001730
-00001725 const %2, *50	// *50 = (int)2
-00001728 jmp 000001734
-00001730 gpd %2, %-2.*61	// *61 = (string)"ELMCOUNT"
-00001734 cp %-13, %2
-00001737 gpd %1, %-4.*62	// *62 = (string)"delayrun"
-00001741 cdeq %1, %0
-00001744 jf 000001748
-00001746 inc %-13
-00001748 cgt %-12, %-13
-00001751 jf 000001761
-00001753 const %1, *47	// *47 = (int)1
-00001756 cp %-5, %1
-00001759 jmp 000001772
-00001761 tt %-5
-00001763 jnf 000001772
-00001765 calld %0, %-2.*55(%0, %-4)	// *55 = (string)"entryTag"
-00001772 srv %-5
-00001774 ret
-00001775 srv %0
-00001777 ret
-
-(function) checkTagExtract 0x0000000000FAF330
-
-#(1) Bytecode.
-00000000 cdeq %-3, %0
-00000003 jnf 000000008
-00000005 cp %-3, %0
-00000008 cdeq %-3, %0
-00000011 jf 000000019
-00000013 gpd %1, %-3.*0	// *0 = (string)"runLine"
-00000017 jmp 000000022
-00000019 cp %1, %0
-00000022 spd %-2.*0, %1	// *0 = (string)"runLine"
-00000026 cdeq %-3, %0
-00000029 jf 000000037
-00000031 gpd %1, %-3.*1	// *1 = (string)"runCount"
-00000035 jmp 000000040
-00000037 cp %1, %0
-00000040 spd %-2.*1, %1	// *1 = (string)"runCount"
-00000044 cl %-4
-00000046 cdeq %-3, %0
-00000049 jnf 000000066
-00000051 calld %1, %-2.*2()	// *2 = (string)"checkEnd"
-00000056 cp %-4, %1
-00000059 calld %0, %-2.*3()	// *3 = (string)"initLineModeStore"
-00000064 jmp 000000320
-00000066 gpd %1, %-3.*4	// *4 = (string)"tagname"
-00000070 cp %-5, %1
-00000073 gpd %1, %-2.*5	// *5 = (string)"brTags"
-00000077 gpi %2, %1.%-5
-00000081 tt %2
-00000083 jnf 000000171
-00000085 const %1, *6	// *6 = (int)0
-00000088 spd %-2.*7, %1	// *7 = (string)"noErOnce"
-00000092 const %1, *6	// *6 = (int)0
-00000095 spd %-2.*8, %1	// *8 = (string)"ignoreCrToNext"
-00000099 gpd %1, %-2.*9	// *9 = (string)"textLine"
-00000103 tt %1
-00000105 jnf 000000124
-00000107 cp %1, %-5
-00000110 str %1
-00000112 const %2, *10	// *10 = (string)":"
-00000115 add %1, %2
-00000118 calld %0, %-2.*11(%1)	// *11 = (string)"errorCmd"
-00000124 calld %1, %-2.*2()	// *2 = (string)"checkEnd"
-00000129 tt %1
-00000131 jnf 000000151
-00000133 gpd %1, %-2.*12	// *12 = (string)"linecd"
-00000137 calld %0, %1.*13(%-3)	// *13 = (string)"enqueueTag"
-00000143 const %1, *14	// *14 = (int)1
-00000146 cp %-4, %1
-00000149 jmp 000000157
-00000151 const %1, *6	// *6 = (int)0
-00000154 cp %-4, %1
-00000157 const %1, *14	// *14 = (int)1
-00000160 spd %-2.*15, %1	// *15 = (string)"commandLine"
-00000164 calld %0, %-2.*3()	// *3 = (string)"initLineModeStore"
-00000169 jmp 000000320
-00000171 gpd %1, %-2.*16	// *16 = (string)"lineMode"
-00000175 tt %1
-00000177 jnf 000000305
-00000179 const %1, *17	// *17 = (string)"case"
-00000182 ceq %-5, %1
-00000185 jnf 000000214
-00000187 const %1, *6	// *6 = (int)0
-00000190 calld %0, %-2.*2(%1)	// *2 = (string)"checkEnd"
-00000196 gpd %1, %-2.*12	// *12 = (string)"linecd"
-00000200 calld %0, %1.*13(%-3)	// *13 = (string)"enqueueTag"
-00000206 const %1, *14	// *14 = (int)1
-00000209 cp %-4, %1
-00000212 jmp 000000320
-00000214 const %1, *18	// *18 = (string)"language"
-00000217 ceq %-5, %1
-00000220 jnf 000000243
-00000222 calld %0, %-2.*19(%-3)	// *19 = (string)"parseLanguage"
-00000228 const %1, *14	// *14 = (int)1
-00000231 spd %-2.*8, %1	// *8 = (string)"ignoreCrToNext"
-00000235 const %1, *14	// *14 = (int)1
-00000238 cp %-4, %1
-00000241 jmp 000000320
-00000243 const %1, *20	// *20 = (string)"same"
-00000246 ceq %-5, %1
-00000249 jnf 000000273
-00000251 const %1, *14	// *14 = (int)1
-00000254 spd %-2.*7, %1	// *7 = (string)"noErOnce"
-00000258 const %1, *14	// *14 = (int)1
-00000261 spd %-2.*21, %1	// *21 = (string)"showSame"
-00000265 const %1, *14	// *14 = (int)1
-00000268 cp %-4, %1
-00000271 jmp 000000320
-00000273 const %1, *22	// *22 = (string)"r"
-00000276 ceq %-5, %1
-00000279 jf 000000288
-00000281 const %1, *6	// *6 = (int)0
-00000284 spd %-2.*8, %1	// *8 = (string)"ignoreCrToNext"
-00000288 global %1
-00000290 gpd %2, %1.*23	// *23 = (string)"LineMode"
-00000294 calld %3, %2.*24(%-3)	// *24 = (string)"checkTagExtract"
-00000300 cp %-4, %3
-00000303 jmp 000000320
-00000305 global %1
-00000307 gpd %2, %1.*23	// *23 = (string)"LineMode"
-00000311 calld %3, %2.*24(%-3)	// *24 = (string)"checkTagExtract"
-00000317 cp %-4, %3
-00000320 tf %-4
-00000322 jnf 000000342
-00000324 gpd %1, %-2.*25	// *25 = (string)"conductor"
-00000328 gpd %2, %-2.*25	// *25 = (string)"conductor"
-00000332 calld %3, %2.*26(%1, %-3)	// *26 = (string)"onTagExtract"
-00000339 srv %3
-00000341 ret
-00000342 calld %0, %-2.*27()	// *27 = (string)"checkPending"
-00000347 const %1, *14	// *14 = (int)1
-00000350 srv %1
-00000352 ret
-00000353 srv %0
-00000355 ret
-
-(function) onLineModeTagExtract 0x0000000000FAD440
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"conductor"
-00000004 calld %2, %1.*1(%-3, %-1)	// *1 = (string)"onLineModeTagExtract"
-00000011 cdeq %2, %0
-00000014 setnf %2
-00000016 srv %2
-00000018 ret
-00000019 srv %0
-00000021 ret
-
-(function) checkCommand 0x0000000000FAE520
-
-#(1) Bytecode.
-00000000 gpd %1, %-2.*0	// *0 = (string)"textLine"
-00000004 tt %1
-00000006 jnf 000000062
-00000008 gpd %1, %-2.*1	// *1 = (string)"Scripts"
-00000012 calld %2, %1.*2(%-4)	// *2 = (string)"clone"
-00000018 cp %-5, %2
-00000021 const %1, *3	// *3 = (string)"delayrun"
-00000024 const %2, *4	// *4 = (string)"w"
-00000027 gpd %3, %-2.*5	// *5 = (string)"textLength"
-00000031 const %4, *6	// *6 = (int)1
-00000034 add %3, %4
-00000037 str %3
-00000039 add %2, %3
-00000042 calld %0, %-2.*7(%-5, %1, %2)	// *7 = (string)"addTagParam"
-00000050 calld %0, %-2.*8(%-5)	// *8 = (string)"addCommand"
-00000056 const %1, *6	// *6 = (int)1
-00000059 srv %1
-00000061 ret
-00000062 const %1, *6	// *6 = (int)1
-00000065 tt %1
-00000067 jf 000000089
-00000069 gpd %2, %-2.*9	// *9 = (string)"checkNextVoice"
-00000073 tt %2
-00000075 jf 000000089
-00000077 gpd %3, %-2.*10	// *10 = (string)"waitTags"
-00000081 gpi %4, %3.%-3
-00000085 tf %4
-00000087 jnf 000000289
-00000089 gpd %1, %-2.*1	// *1 = (string)"Scripts"
-00000093 calld %2, %1.*2(%-4)	// *2 = (string)"clone"
-00000099 calld %0, %-2.*8(%2)	// *8 = (string)"addCommand"
-00000105 const %1, *11	// *11 = (string)"begintrans"
-00000108 ceq %-3, %1
-00000111 jf 000000121
-00000113 const %2, *12	// *12 = (string)"begin"
-00000116 ceq %-3, %2
-00000119 jnf 000000152
-00000121 gpd %1, %-2.*13	// *13 = (string)"btlevel"
-00000125 const %2, *14	// *14 = (int)0
-00000128 ceq %1, %2
-00000131 jnf 000000146
-00000133 gpd %1, %-4.*3	// *3 = (string)"delayrun"
-00000137 cdeq %1, %0
-00000140 setnf %1
-00000142 spd %-2.*15, %1	// *15 = (string)"delaytrans"
-00000146 incpd %0, %-2.*13	// *13 = (string)"btlevel"
-00000150 jmp 000000283
-00000152 const %1, *16	// *16 = (string)"endtrans"
-00000155 ceq %-3, %1
-00000158 jf 000000168
-00000160 const %2, *17	// *17 = (string)"end"
-00000163 ceq %-3, %2
-00000166 jnf 000000226
-00000168 gpd %1, %-2.*13	// *13 = (string)"btlevel"
-00000172 const %2, *14	// *14 = (int)0
-00000175 cgt %1, %2
-00000178 jnf 000000283
-00000180 decpd %1, %-2.*13	// *13 = (string)"btlevel"
-00000184 const %2, *14	// *14 = (int)0
-00000187 ceq %1, %2
-00000190 jnf 000000283
-00000192 gpd %1, %-2.*15	// *15 = (string)"delaytrans"
-00000196 tf %1
-00000198 jnf 000000217
-00000200 gpd %2, %-4.*18	// *18 = (string)"nosync"
-00000204 tf %2
-00000206 jnf 000000217
-00000208 const %1, *19	// *19 = (string)"startline"
-00000211 calld %0, %-2.*20(%1)	// *20 = (string)"addCommandTag"
-00000217 const %1, *14	// *14 = (int)0
-00000220 spd %-2.*15, %1	// *15 = (string)"delaytrans"
-00000224 jmp 000000283
-00000226 gpd %1, %-2.*10	// *10 = (string)"waitTags"
-00000230 gpi %2, %1.%-3
-00000234 tt %2
-00000236 jf 000000274
-00000238 gpd %3, %-2.*13	// *13 = (string)"btlevel"
-00000242 const %4, *14	// *14 = (int)0
-00000245 ceq %3, %4
-00000248 jnf 000000283
-00000250 gpd %5, %-4.*21	// *21 = (string)"sync"
-00000254 tt %5
-00000256 jf 000000274
-00000258 gpd %6, %-4.*22	// *22 = (string)"wait"
-00000262 tt %6
-00000264 jf 000000274
-00000266 gpd %7, %-4.*23	// *23 = (string)"msgoff"
-00000270 tt %7
-00000272 jnf 000000283
-00000274 const %1, *19	// *19 = (string)"startline"
-00000277 calld %0, %-2.*20(%1)	// *20 = (string)"addCommandTag"
-00000283 const %1, *6	// *6 = (int)1
-00000286 srv %1
-00000288 ret
-00000289 srv %0
-00000291 ret

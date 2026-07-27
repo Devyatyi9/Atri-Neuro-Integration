@@ -3,6 +3,8 @@
 Источник: байткод игры `system/Voice.tjs`
 Исходник: отсутствует в kag3/KAGeXpress
 
+**Декомпилятор tjs2dec:** класс `VoiceSoundBuffer` и все перечисленные методы подтверждены. Свойства `volume`, `volume2` в байткоде есть. `voicePlayingRatio` не в этом файле — вычисляется C++ стороной (см. GAME-EVENTS-REFERENCE.md). См. `disasm/Voice.tjs.txt`.
+
 ---
 
 ## VoiceSoundBuffer

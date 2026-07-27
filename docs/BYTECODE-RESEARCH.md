@@ -1,84 +1,144 @@
-# TJS Bytecode Research (2026-07-23)
+# TJS Bytecode Research (2026-07-27)
 
-## Полная распаковка data.xp3
+## Распакованные data.xp3
 
-Папка: `D:\Games\ATRI-TestVersion\new-extract-data`
+`D:\Games\ATRI-TestVersion\new-extract-data` — все `.tjs` файлы из data.xp3.
 
-Всего ~220 `.tjs` файлов.
+| Тип | Кол-во | Назначение |
+|-----|--------|------------|
+| Текстовые (UTF-16LE) | ~40 | UI, конфиги, сценарии, переходы, шрифты |
+| Скомпилированные (байткод `TJS2`) | ~196 | Движок (Conductor, Layers, BGM/SE/Voice, KAGEnv и т.д.) |
 
-### Текстовые (UTF-16LE, читаемые) — ~39 файлов
+Текстовые читаются напрямую и уже проанализированы в `docs/tjs-hooks/`.
 
-| Директория | Кол-во | Назначение |
-|------------|--------|------------|
-| `main/*.tjs` | 12 | Сюжетная логика, UI: `envinit.tjs` (196KB), `uimain.tjs` (236KB), `custom.tjs`, `default.tjs`, `Config.tjs` |
-| `scenario/transitions/*.tjs` | 22 | Эффекты переходов |
-| `scenario/scripts/*.tjs` | 3 | Скрипты сцен |
-| `font/*.tjs` | 1 | Шрифты |
-| `AppConfig.tjs` | 1 | Конфиг |
+Скомпилированные требуют дизассемблера/декопилятора.
 
-**→ 39 файлов можно читать напрямую.**
+---
 
-### Скомпилированные (TJS2 bytecode) — ~180 файлов
+## Инструмент: `crate-1556/tjs2-decompiler` (Python) — основной
 
-| Директория | Кол-во | Назначение |
-|------------|--------|------------|
-| `system/*.tjs` | 91 | Движок KiriKiri: Conductor, MainWindow, MessageLayer, SelectLayer, KAGEnv*, Stand*, BGM, SE, Voice, и т.д. |
-| `sysscn/*.tjs` | 89 | Системные экраны: saveload, option, backlog, title, voicemode, и т.д. |
-| `k2compat/*.tjs` | 12 | Совместимость с KiriKiri2 |
-| `dmmcloud/*.tjs` | 2 | DMM Cloud |
-| `startup.1.tjs` | 1 | Стартовый (дубль) |
+`F:\Users\User\Projects\tjs2-decompiler`
 
-## Доступные исходники из репозиториев
+Python-тул с полным CFG-анализом (control flow graph + region tree + dominators).  
+Декомпиляция на уровне, близком к исходному коду.
 
-- **`D:\ProjectsD\krkrz_dev\script\KAG3\data\system\`** — 21 файл (базовый набор)
-- **`D:\ProjectsD\KAGeXpress\Sample\system\`** — 29 файлов (чуть шире)
-- Остальные ~130 скомпилированных файлов не имеют исходников
+**Ключевые особенности:**
+- CFG + dominator tree → структурное восстановление if/while/switch/try
+- Реставрация `extends`, `super.`, default-параметров, property getter/setter
+- `else if` слияние, нормализация catch-переменных к `e`
+- Pretty-print с переносом строк >120 символов
+- Output: UTF-16LE BOM (стандарт TJS2) или utf-8, shift_jis, gbk
 
-### Проверено на Conductor.tjs
-
-Исходник `Conductor.tjs` из `krkrz_dev` НЕ совпадает с игровым байткодом:
-- В игре добавлен класс `OneShotAsyncTrigger` (отсутствует в исходнике)
-- В игре добавлен класс `Conductor` (наследует `BaseConductor`) — в исходнике он есть
-- Структура классов/функций в остальном схожа
-
-**Вывод:** игра модифицировала системные TJS-файлы. Исходники из репозиториев можно использовать как референс, но не как точную копию.
-
-## Инструмент: tjsDisasm
-
-- Путь: `D:\ProjectsD\tjsdisasm\release\bin\tjsdisasm.exe`
-- Работает со всеми опкодами TJS2
-- Вывод: ассемблерные мнемоники с аннотациями (строковые константы, inline-комментарии)
-- Поддерживает все ~60 опкодов
-- Есть исходники в `D:\ProjectsD\tjsdisasm\src\`
+**Критическое преимущество:** проверен на kag3/system, Krkr2Compat, KAGEX3/system и полной игре — декомпилированные скрипты **исполняемы**.
 
 ### Использование
 
 ```powershell
-# Запуск из командной строки (аргумент: путь до .tjs файла)
-& "D:\ProjectsD\tjsdisasm\release\bin\tjsdisasm.exe" "path\to\file.tjs" 2>&1
+# Одиночный файл
+python tjs2_decompiler.py input.tjs -o output.tjs
 
-# Пример: дамп Conductor.tjs
-& "D:\ProjectsD\tjsdisasm\release\bin\tjsdisasm.exe" "D:\Games\ATRI-TestVersion\new-extract-data\system\Conductor.tjs" 2>&1
+# Директория (рекурсивно, с сохранением структуры)
+python tjs2_decompiler.py input_dir/ -r -o output_dir/
 
-# Сохранение результата в файл
-& "D:\ProjectsD\tjsdisasm\release\bin\tjsdisasm.exe" "file.tjs" 2>&1 | Out-File -FilePath "dump.txt" -Encoding utf8
+# Кодировка
+python tjs2_decompiler.py input.tjs -o output.tjs -e utf-16le-bom
 ```
 
-Выходные данные содержат:
-- Заголовок байткода (top level script)
-- Все классы и функции с их смещениями
-- Тело каждой функции в виде ассемблерных инструкций с аннотациями констант
+### Батчевая декомпиляция ATRI
 
-## План: LLM-assisted decompilation
+Скрипт: `Tools\decompile_tjs.ps1`
 
-1. Прогнать все `system/*.tjs` и `sysscn/*.tjs` через tjsDisasm
-2. Для файлов с исходниками (krkrz_dev/KAGeXpress): Diff — найти изменения
-3. Для файлов без исходников: скормить дизассемблер LLM для реконструкции TJS
-4. Собрать карту событий (onTag, onLabel, onJump, etc.) для интеграции Neuro
+```powershell
+.\Tools\decompile_tjs.ps1                    # с дефолтными путями
+.\Tools\decompile_tjs.ps1 -Force             # перезаписать всё
+```
 
-## Ключевые файлы для интеграции (приоритет)
+Результат (`D:\Games\ATRI-TestVersion\data-tjs-decompiled\`):
 
-Из анализа `Conductor.tjs` (байткод) уже видны хуки событий:
+| Директория | Файлов |
+|------------|--------|
+| `root/` | 1 |
+| `dmmcloud/` | 2 |
+| `k2compat/` | 11 |
+| `sysscn/` | 81 |
+| `system/` | 101 |
+| `scenario/scripts/` | 3 |
+| `scenario/transitions/` | 23 |
+| **Всего** | **196/236** (40 текстовых пропущены) |
+
+### Пример качества декомпиляции
+
+Conductor.tjs (сравнение с Rust-версией):
+
+| Аспект | Python | Rust (tjs2dec) |
+|--------|--------|----------------|
+| `extends` | `class Conductor extends BaseConductor` | `this.Conductor = Conductor;` |
+| `switch/case` | ✅ `switch (arg1) { case -5: ... break; }` | if-else цепочки |
+| `try/catch(e)` | ✅ чистый блок | goto-подобные переходы |
+| `property` | `property interrupted { getter() ... setter() ... }` | Размазанные функции |
+| `super.Exception()` | ✅ восстановлено | Нет |
+| Default params | `run(arg0 = 0)` | Нет |
+| `incontextof` | `(Dictionary.assign incontextof waitUntil)(...)` | Нет |
+| `extends` chain | ✅ Conductor → BaseConductor → KAGParser | Нет |
+| Switch fallthrough | ✅ `pendings.insert(0, arg2)` (без `break`) | Нет |
+
+---
+
+## Инструмент: `tjs2dec` (Rust) — запасной
+
+`F:\Users\User\Projects\tjs2Decompiler\target\release\tjs2dec.exe`
+
+Rust-тул с SSA/HLIR анализом.
+
+### Подкоманды
+
+| Команда | Описание |
+|---------|----------|
+| `tjs2dec disasm file.tjs` | Дизассемблирование: мнемоники VM с аннотациями |
+| `tjs2dec tjs file.tjs` | Декомпиляция в TJS |
+| `tjs2dec ssa file.tjs` | SSA-форма для dataflow анализа |
+| `tjs2dec ssa --hlir file.tjs` | HLIR (High-Level IR) |
+| `tjs2dec emit-tjs file.tjs` | Генерация исполняемого TJS |
+
+### Примеры
+
+```powershell
+& "F:\Users\User\Projects\tjs2Decompiler\target\release\tjs2dec.exe" tjs "file.tjs" 2>&1
+& "F:\Users\User\Projects\tjs2Decompiler\target\release\tjs2dec.exe" disasm "file.tjs" 2>&1
+```
+
+---
+
+## Сравнение инструментов
+
+| Характеристика | Старый (`tjsdisasm`) | Rust (`tjs2dec`) | **Python (crate-1556)** |
+|----------------|---------------------|-------------------|------------------------|
+| Язык | C++ | Rust | Python |
+| Декомпиляция | ❌ | ✅ (`tjs` subcmd) | ✅ (основной режим) |
+| CFG + dominators | ❌ | SSA/HLIR | ✅ region tree |
+| `extends` / `super` | ❌ | ❌ | ✅ |
+| default params | ❌ | ❌ | ✅ |
+| pretty-print | ❌ | мин. | ✅ 120-col + else-if |
+| Batch | ❌ | ❌ | ✅ встроенный + скрипт |
+| switch/try | ❌ | ❌ | ✅ |
+| Executable output | ❌ | `emit-tjs` | ✅ (проверено на игре) |
+
+**Вывод:** **Python-версия предпочтительна** для чтения и анализа. Rust-версию используем если нужен SSA/HLIR или emit-tjs.
+
+---
+
+## Декомпилированные исходники (для сравнения)
+
+- `D:\ProjectsD\krkrz_dev\script\KAG3\data\system\` — 21 файл
+- `D:\ProjectsD\KAGeXpress\Sample\system\` — 29 файлов
+
+Системные `.tjs` в ATRI — модифицированные версии. Исходники из репозиториев — референс, но не точная копия.
+
+---
+
+## Ключевые события Conductor (из байткода)
+
+Декомпиляция `system\Conductor.tjs` подтверждает все события:
 
 | Событие | Функция | Вызовет owner-а |
 |---------|---------|-----------------|
@@ -92,6 +152,12 @@
 | Script | `onScript()` | `owner.onConductorScript()` |
 | Before tag | `onBeforeTag()` | `owner.onConductorBeforeTag()` |
 | Unknown tag | `onUnknownTag()` | `owner.onConductorUnknownTag()` |
-| Stop | `onStop()` | `owner.onConductorStop()` |
+| Stop | `onStop(arg0)` | `owner.onConductorStop()` |
 
-Это именно то, что нужно для перехвата игровых событий.
+### Дополнительно подтверждено
+
+- `Conductor.status`: 0 = mStop, 1 = mRun, 2 = mWait
+- `Conductor.lastTagName` = `tagName` в `onTag()`, сразу после вызова `handlers[tagName](arg0)`
+- `BaseConductor` → `KAGParser` (через `SuperConstructor` lookup)
+- `interrupted` property: getter = `_interrupted`, setter = управление timer/oneshot
+- Полный цикл `timerCallback()`: `while ((tag = getNextParseTag()) !== void) { onTag(tag); ... }`

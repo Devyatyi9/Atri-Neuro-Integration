@@ -1,0 +1,471 @@
+// Decompiled by tjs2Decompiler (high)
+// objects=25, toplevel=0
+
+class VoiceSoundBuffer extends this.WaveSoundBuffer {
+  function VoiceSoundBuffer(a0, a1) {
+    var _fr0, r1_1, r1_4, r1_6, r1_8, r1_9, r1_10, r2_4, flag_1, flag_2;
+    r1_1 = global;
+    r1_1.WaveSoundBuffer.WaveSoundBuffer(a0);
+    this.owner = a0;
+    this.id = a1;
+    this.prevstatus = this.status;
+    this.labelCount = 0;
+    r1_4 = new this.Timer(this.onFlip, "");
+    this.flipTimer = r1_4;
+    this.flipTimer.interval = this.lipFlipTime;
+    r2_4 = global;
+    r1_6 = new r2_4.WaveSoundBuffer.PhaseVocoder();
+    this.vocoder = r1_6;
+    this.vocoder.window = 256;
+    r1_8 = #InterObject(4);
+    _fr0 = r1_8;
+    r1_9 = (typeof a0);
+    flag_1 = r1_9 == "Object";
+    if (!!flag_1) {
+      this.setGain = _fr0;
+    }
+    r1_10 = (typeof a0);
+    flag_2 = r1_10 == "Object";
+    if (!!flag_2) {
+      this.resetGain = _fr0;
+    }
+    return;
+  }
+
+  function finalize() {
+    var r1_3, r1_4;
+    this.owner = void;
+    this.stop();
+    this.filters.clear();
+    r1_3 = VM_INV(this.vocoder);
+    r1_4 = global;
+    r1_4.WaveSoundBuffer.finalize();
+    return;
+  }
+
+  function setGain() {
+    this.owner.addVoiceGain();
+    return;
+  }
+
+  function resetGain() {
+    this.owner.removeVoiceGain();
+    return;
+  }
+
+  function canWait() {
+    return true;
+  }
+
+  function clearMode(a0) {
+    var flag_1, flag_2;
+    flag_1 = !!a0;
+    if (!flag_1) {
+      this.mode = 0;
+    }
+    else {
+      flag_2 = this.type == 0;
+      if (!flag_2) {
+      }
+    }
+    return;
+  }
+
+  function resetVolume() {
+    var r4_1, flag_1;
+    flag_1 = this.name == "";
+    if (!!flag_1) {
+      r4_1 = this.owner.getChVoiceVolume(this.name, this.type);
+      this.volume2 = r4_1;
+    }
+    return;
+  }
+
+  property speed {
+    getter() {
+      return this._speed;
+    }
+    setter(a0) {
+      var _fr1, _fr0, r1_5, r1_7, r1_8, r1_9, r1_15, r1_19, r1_21, r1_22, r1_23, r1_28;
+      var r1_31, r1_32, r2_4, r2_11, r2_14, r4_2, r4_5, r4_8, flag_1, flag_2, flag_3, flag_4;
+      var flag_5, exc_0;
+      flag_1 = a0 == this._speed;
+      if (!flag_1) {
+        return;
+      }
+      else {
+        this.speedChanging = 1;
+        _fr0 = void;
+        flag_2 = this.status == "play";
+        if (!flag_2) {
+          _fr0 = this.position;
+          r1_5 = global;
+          r1_5.WaveSoundBuffer.stop();
+          r2_4 = string(this.position);
+          r1_7 = ("ボイス一時停止:" + r2_4);
+          r1_8 = (r1_7 + ":");
+          r4_2 = string(this.totalTime);
+          r1_9 = (r1_8 + r4_2);
+          this.dm(r1_9);
+        }
+        this.filters.remove(this.vocoder);
+        flag_3 = a0 == 1;
+        if (!!flag_3) {
+          this.filters.add(this.vocoder);
+          r1_15 = (1 / a0);
+          this.vocoder.time = r1_15;
+        }
+        this.setGain(this.storage, this.name);
+        flag_4 = _fr0 === void;
+        if (!flag_4) {
+          this.resetGain(this.storage);
+          this._speed = a0;
+          this.speedChanging = 0;
+          this._onStatusChanged();
+        }
+        else {
+          r2_11 = global;
+          r2_11.WaveSoundBuffer.open(this.storage);
+          this.position = _fr0;
+          r1_19 = global;
+          r1_19.WaveSoundBuffer.play();
+          r2_14 = string(_fr0);
+          r1_21 = ("ボイス復帰:" + r2_14);
+          r1_22 = (r1_21 + ":");
+          r4_5 = string(this.position);
+          r1_23 = (r1_22 + r4_5);
+          this.dm(r1_23);
+        }
+      }
+    }
+  }
+
+  function _onStatusChanged() {
+    var _fr1, _fr0, r2_3, flag_1, flag_2, flag_3, flag_4, flag_6, flag_7, flag_8, flag_9;
+    _fr0 = this.prevstatus;
+    this.prevstatus = this.status;
+    _fr1 = this.status;
+    flag_1 = this.prevstatus == this.status;
+    if (!!flag_1) {
+      flag_2 = _fr1 == "play";
+      if (flag_2) {
+        flag_6 = _fr0 == "play";
+        if (!flag_6) {
+          flag_7 = _fr1 == "stop";
+          if (!flag_7) {
+            flag_8 = this.id === void;
+            if (!!flag_8) {
+              flag_9 = !!this.mode;
+              if (!flag_9) {
+                this.owner.onVoiceLabelStop();
+              }
+              this.owner.onVoiceStop(this.id, this.type, this.loop);
+            }
+          }
+        }
+      }
+      else {
+        flag_3 = this.id === void;
+        if (!!flag_3) {
+          this.owner.onVoiceStart(this.id, this.type, this.loop);
+          flag_4 = !!this.mode;
+          if (!flag_4) {
+            this.owner.onVoiceLabelStart(this);
+          }
+        }
+        this.labelCount = 0;
+        r2_3 = this.System.getTickCount();
+        this.startTime = r2_3;
+      }
+    }
+    return;
+  }
+
+  function onStatusChanged() {
+    var r1_1, r3_2, flag_1, flag_2, flag_3, flag_4;
+    r1_1 = global;
+    r1_1.WaveSoundBuffer.onStatusChanged();
+    flag_1 = !this.speedChanging;
+    if (!flag_1) {
+      flag_2 = this.owner === void;
+      flag_3 = !flag_2;
+      if (!flag_3) {
+        r3_2 = VM_CHKINV(this.owner);
+        flag_4 = !!r3_2;
+        if (!flag_4) {
+          this._onStatusChanged();
+        }
+      }
+    }
+    return;
+  }
+
+  function onLabel(a0) {
+    var r1_2, flag_1, flag_2, flag_3;
+    flag_1 = !!this.mode;
+    if (!flag_1) {
+      flag_2 = this.id === void;
+      flag_3 = !flag_2;
+      if (!flag_3) {
+        r1_2 = (this + 1);
+        this.owner.onVoiceLabel(a0, r1_2);
+      }
+    }
+    return;
+  }
+
+  function onFadeCompleted() {
+    var r1_2, flag_1;
+    flag_1 = this.volume == 0;
+    if (!flag_1) {
+      r1_2 = global;
+      r1_2.WaveSoundBuffer.stop();
+      this.flipTimer.enabled = 0;
+    }
+    return;
+  }
+
+  function onErrorVoice() {
+    var r2_1, r5_1, r5_2, r5_3, flag_1;
+    r2_1 = (typeof this.owner);
+    flag_1 = r2_1 == "Object";
+    if (flag_1) {
+      r5_2 = void;
+      r5_3 = r5_2;
+    }
+    else {
+      r5_1 = this.owner.onErrorVoice();
+      r5_3 = r5_1;
+    }
+    return r5_3;
+  }
+
+  function open(a0) {
+    var r1_1;
+    this.storage = a0;
+    r1_1 = global;
+    r1_1.WaveSoundBuffer.open();
+    return;
+  }
+
+  function fade(a0, a1) {
+    var r1_6, r1_8, r1_10, r3_1, flag_1, flag_2, flag_3;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = 100;
+    }
+    flag_2 = a1 === void;
+    if (!flag_2) {
+      a1 = 0;
+    }
+    flag_3 = a1 == 0;
+    if (flag_3) {
+      r1_10 = (a0 * 1000);
+      r3_1 = global;
+      r3_1.WaveSoundBuffer.fade(r1_10, a1);
+    }
+    else {
+      r1_6 = global;
+      r1_6.WaveSoundBuffer.stopFade();
+      r1_8 = (a0 * 1000);
+      this.volume = r1_8;
+    }
+    return;
+  }
+
+  function _start(a0, a1, a2) {
+    var _fr2, _fr1, _fr0, r1_7, r1_8, r1_12, r1_15, r1_16, r1_17, r1_19, r1_24, r1_26;
+    var r3_1, r3_5, r5_1, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_9;
+    flag_1 = a1 === void;
+    if (!flag_1) {
+      a1 = 0;
+    }
+    flag_2 = a2 === void;
+    if (!flag_2) {
+      a2 = 100;
+    }
+    this.open(a0);
+    this.looping = this.loop;
+    flag_3 = this.type == 2;
+    if (!flag_3) {
+      r1_7 = global;
+      r1_8 = new r1_7.Array();
+      _fr0 = r1_8;
+      r1_8.assign(this.labels);
+      flag_4 = r1_8.count > 0;
+      if (!flag_4) {
+        r1_12 = (_fr0.count \ 2);
+        r3_1 = this.intrandom(r1_12);
+        _fr1 = r3_1;
+        flag_5 = r3_1 > 0;
+        if (!flag_5) {
+          r1_15 = (_fr1 - 1);
+          r1_16 = (r1_15 * 2);
+          r1_17 = (r1_16 + 1);
+          r5_1 = _fr0[r1_17];
+          _fr2 = r5_1;
+          r1_19 = (typeof r5_1);
+          flag_6 = r1_19 == "Object";
+          if (!flag_6) {
+            flag_7 = !!_fr2;
+            if (!flag_7) {
+              this.samplePosition = _fr2.samplePosition;
+            }
+          }
+        }
+      }
+    }
+    flag_9 = a1 > 0;
+    if (flag_9) {
+      r1_26 = (a2 * 1000);
+      this.volume = r1_26;
+      this.play();
+    }
+    else {
+      this.volume = 0;
+      this.play();
+      r1_24 = (a2 * 1000);
+      r3_5 = global;
+      r3_5.WaveSoundBuffer.fade(r1_24, a1);
+    }
+    this.flipTimer.enabled = 1;
+    return;
+  }
+
+  function start(a0, a1, a2, a3, a4, a5, a6, a7, a8) {
+    var _fr1, _fr0, r1_15, r1_16, r1_18, r1_27, r1_29, r1_30, r2_4, r2_5, r2_6, r2_7;
+    var r2_8, r4_4, r6_1, r6_2, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_8;
+    var flag_9, flag_12, flag_13, exc_0;
+    flag_1 = a2 === void;
+    if (!flag_1) {
+      a2 = 0;
+    }
+    flag_2 = a3 === void;
+    if (!flag_2) {
+      a3 = 0;
+    }
+    flag_3 = a4 === void;
+    if (!flag_3) {
+      a4 = 0;
+    }
+    flag_4 = a5 === void;
+    if (!flag_4) {
+      a5 = 1;
+    }
+    flag_5 = a6 === void;
+    if (!flag_5) {
+      a6 = 1;
+    }
+    flag_6 = a7 === void;
+    if (!flag_6) {
+      a7 = 0;
+    }
+    flag_7 = a8 === void;
+    if (!flag_7) {
+      a8 = 100;
+    }
+    r1_15 = global;
+    r1_15.WaveSoundBuffer.stop();
+    r1_16 = global;
+    r1_16.WaveSoundBuffer.stopFade();
+    this.name = a0;
+    this.type = a3;
+    this.loop = a4;
+    this.mode = a5;
+    r1_18 = (a2 * 1000);
+    this.pan = r1_18;
+    r2_4 = this.owner.getCharacterVoiceLevel(a0);
+    _fr0 = r2_4;
+    flag_8 = r2_4 === void;
+    if (!flag_8) {
+      this.lipLevel1 = this.LIPLEVEL1;
+      this.lipLevel2 = this.LIPLEVEL2;
+    }
+    else {
+      r2_5 = _fr0[0];
+      r2_6 = (r2_5 / 100);
+      r6_1 = this.Math.pow(r2_6, 2);
+      this.lipLevel1 = r6_1;
+      r2_7 = _fr0[1];
+      r2_8 = (r2_7 / 100);
+      r6_2 = this.Math.pow(r2_8, 2);
+      this.lipLevel2 = r6_2;
+    }
+    flag_9 = !!a5;
+    if (flag_9) {
+    }
+    this.vmode = true;
+    flag_12 = a1 == "";
+    if (!flag_12) {
+      return;
+    }
+    else {
+      this.resetVolume();
+      this.setGain(a1, a0);
+      this._start(a1, a7, a8);
+      this.resetGain(a1);
+    }
+  }
+
+  function stop(a0) {
+    var r1_5, r2_1, flag_1, flag_2;
+    flag_1 = a0 === void;
+    if (!flag_1) {
+      a0 = 0;
+    }
+    this.name = void;
+    flag_2 = a0 > 0;
+    if (flag_2) {
+      r1_5 = global;
+      r1_5.WaveSoundBuffer.stop();
+      this.flipTimer.enabled = 0;
+    }
+    else {
+      r2_1 = global;
+      r2_1.WaveSoundBuffer.fade(0, a0);
+    }
+    return;
+  }
+
+  function onFlip() {
+    var _fr2, _fr1, r1_2, r2_3, r2_4, r2_5, flag_1, flag_2, flag_3, flag_4, flag_5, flag_6;
+    var flag_7;
+    flag_1 = this.status == "play";
+    if (!flag_1) {
+      flag_2 = !!this.vmode;
+      if (!flag_2) {
+        flag_3 = this.id === void;
+        flag_4 = !flag_3;
+        if (!flag_4) {
+          r1_2 = global;
+          flag_5 = !!r1_2.WaveSoundBuffer.enableGetSample;
+          if (flag_5) {
+            r2_3 = this.Math.random();
+            r2_4 = (r2_3 * 3);
+            r2_5 = VM_INT(r2_4);
+            _fr1 = r2_5;
+          }
+          else {
+            _fr2 = this.sampleValue;
+            flag_6 = this.sampleValue > this.lipLevel2;
+            if (flag_6) {
+              flag_7 = _fr2 > this.lipLevel1;
+              if (flag_7) {
+                _fr1 = 0;
+              }
+              else {
+                _fr1 = 1;
+              }
+            }
+            else {
+              _fr1 = 2;
+            }
+          }
+          this.owner.onVoiceFlip(this.id, _fr1);
+        }
+      }
+    }
+    return;
+  }
+}
+

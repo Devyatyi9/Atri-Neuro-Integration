@@ -1,6 +1,8 @@
 # SE.tjs — Sound Effects
 
 Источник: байткод игры `system/SE.tjs`
+
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/SE.tjs.txt`.
 Сравнение: `docs/original-kag-tjs/data/kag3/SE.tjs` (source)
 
 ---

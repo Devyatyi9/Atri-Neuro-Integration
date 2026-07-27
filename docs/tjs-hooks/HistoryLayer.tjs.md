@@ -3,6 +3,8 @@
 Источник: байткод игры `system/HistoryLayer.tjs`
 Сравнение: `docs/original-kag-tjs/data/kag3/HistoryLayer.tjs` (source)
 
+**Декомпиляция (Python crate-1556):** класс `HistoryLayer` наследует `Layer`. `currentName`/`currentChara`/`currentText` **не присутствуют в байткоде** — это C++ side/runtime. Вместо них в байткоде есть `currentLine`, `currentAction`, `currentActionExp`, `currentActionID` (для inline actions). Также есть `lastLine`/`lastAction` как `property` (getter/setter).
+
 Слой для просмотра истории прочитанного текста.
 
 ---
@@ -33,38 +35,47 @@
 
 ### Методы
 
-| Сигнатура | В исходнике |
-|-----------|:---:|
-| `clear()` | ✅ |
-| `save(name, message)` — сохранить запись в историю | ✅ |
-| `load()` — загрузить историю | ✅ |
-| `clearBack()` — очистить фон | ❌ |
-| `dispInit()` — инициализация отображения | ✅ |
-| `dispUninit()` — деинициализация | ✅ |
-| `drawLine()` — отрисовать строку истории | ❌ |
-| `drawPage()` — отрисовать страницу | ✅ |
-| `reline()` — перевод строки | ✅ |
-| `repage()` — смена страницы | ✅ |
-| `prevPage()` — предыдущая страница | ✅ |
-| `nextPage()` — следующая страница | ✅ |
-| `scrollUp()` / `scrollDown()` | ✅ |
-| `hide()` — скрыть | ✅ |
-| `setOptions(params)` | ✅ |
-| `makeButtons()` — создать кнопки | ❌ |
-| `store()` — сохранить состояние | ✅ |
-| `onMouseDown(x, y, button)` | ✅ |
-| `onMouseMove(x, y)` | ✅ |
-| `onMouseLeave()` | ✅ |
-| `onKeyDown(key)` | ✅ |
-| `onKeyPress(key)` | ✅ |
-| `onButtonClick(button)` | ✅ |
-| `windowMouseWheel(delta)` | ✅ |
-| `getLine(index)` — получить строку | ✅ |
-| `getPage(index)` — получить страницу | ✅ |
-| `getLineStart(index)` — начало строки | ✅ |
-| `beginIndent()` / `endIndent()` | ✅ |
-| `highlightAction()` | ❌ |
-| `updateButtonState()` | ❌ |
+| Сигнатура | В исходнике | В байткоде |
+|-----------|:---:|:---:|
+| `clear()` | ✅ | ✅ |
+| `save(name, message)` — сохранить запись в историю | ✅ | ✅ |
+| `load()` — загрузить историю | ✅ | ✅ |
+| `clearBack()` — очистить фон | ❌ | ✅ |
+| `calcRelinePos()` — расчёт позиции переноса | ❌ | ✅ |
+| `dispInit()` — инициализация отображения | ✅ | ✅ |
+| `dispUninit()` — деинициализация | ✅ | ✅ |
+| `drawLine()` — отрисовать строку истории | ❌ | ✅ |
+| `drawPage()` — отрисовать страницу | ✅ | ✅ |
+| `reline()` — перевод строки | ✅ | ✅ |
+| `repage()` — смена страницы | ✅ | ✅ |
+| `prevPage()` — предыдущая страница | ✅ | ✅ |
+| `nextPage()` — следующая страница | ✅ | ✅ |
+| `scrollUp()` / `scrollDown()` | ✅ | ✅ |
+| `hide()` — скрыть | ✅ | ✅ |
+| `setOptions(params)` | ✅ | ✅ |
+| `makeButtons()` — создать кнопки | ❌ | ✅ |
+| `store(arg0)` — сохранить состояние | ✅ | ✅ |
+| `endAction()` — завершить inline action | ❌ | ✅ |
+| `setNewAction(arg0)` — начать новый inline action | ❌ | ✅ |
+| `continueAction()` — продолжить action | ❌ | ✅ |
+| `clearAction()` — очистить action | ❌ | ✅ |
+| `getActionInfoFromPos(x, y)` | ❌ | ✅ |
+| `highlightAction(idx)` | ❌ | ✅ |
+| `clearActionHighlights()` | ❌ | ✅ |
+| `updateButtonState()` | ❌ | ✅ |
+| `onMouseDown(x, y, button)` | ✅ | ✅ |
+| `onMouseMove(x, y)` | ✅ | ✅ |
+| `onMouseLeave()` | ✅ | ✅ |
+| `onKeyDown(key)` | ✅ | ✅ |
+| `onKeyPress(key)` | ✅ | ✅ |
+| `onButtonClick(button)` | ✅ | ✅ |
+| `windowMouseWheel(delta)` | ✅ | ✅ |
+| `getLine(index)` — получить строку | ✅ | ✅ |
+| `getPage(index)` — получить страницу | ✅ | ✅ |
+| `getLineStart(index)` — начало строки | ✅ | ✅ |
+| `getLineStart2(dispStart, idx)` — альтернативный getLineStart | ❌ | ✅ |
+| `getActionInfo(idx)` / `getActionInfo2(dispStart, idx)` | ❌ | ✅ |
+| `beginIndent()` / `endIndent()` | ✅ | ✅ |
 
 ### Свойства текущего состояния (Neuro)
 

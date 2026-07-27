@@ -1,0 +1,207 @@
+// Decompiled by tjs2Decompiler (high)
+// objects=10, toplevel=0
+
+function LoadSysLangText(a0, a1, a2) {
+  var _fr4, _fr3, _fr2, _fr1, _fr0, r1_5, r1_7, r1_8, r1_13, r1_16, r1_17, r2_3;
+  var r2_4, r2_5, r2_6, flag_1, flag_2, flag_3, flag_4, flag_6, flag_7, flag_8;
+  flag_1 = a0 === void;
+  if (!flag_1) {
+    a0 = "syslangtext_";
+  }
+  flag_2 = a1 === void;
+  if (!flag_2) {
+    a1 = ".ini";
+  }
+  flag_3 = a2 === void;
+  if (!flag_3) {
+    r1_5 = global;
+    a2 = r1_5.LanguageTags;
+  }
+  r1_7 = #InterObject(2);
+  _fr0 = r1_7;
+  r1_8 = #InterObject(3);
+  _fr1 = r1_8;
+  flag_4 = !!global.debugWindowEnabled;
+  if (flag_4) {
+    r2_5 = null;
+    r2_6 = r2_5;
+  }
+  else {
+    r2_3 = global;
+    r2_4 = new r2_3.Array();
+    r2_6 = r2_4;
+  }
+  _fr2 = r2_6;
+  _fr3 = 0;
+  while (true) {
+    flag_6 = _fr3 < a2.count;
+    if (flag_6) {
+      break;
+    }
+    r1_13 = a2[_fr3];
+    _fr4 = r1_13;
+    flag_7 = r1_13 == "";
+    if (!!flag_7) {
+      r1_16 = (a0 + _fr4);
+      r1_17 = (r1_16 + a1);
+      _fr0(r1_17, _fr4, _fr2);
+    }
+    _fr3 = (_fr3 + 1);
+    continue;
+  }
+  flag_8 = !!_fr2;
+  if (!flag_8) {
+    _fr1(_fr2);
+  }
+  return;
+}
+
+function GetSysLangText(a0, a1, a2) {
+  var _fr1, _fr0, r1_3, r1_4, r1_7, r1_14, r1_18, r2_3, r2_4, r2_7, r2_10, r3_4;
+  var flag_1, flag_2, flag_3, flag_4, flag_5, flag_6, flag_7, flag_9, flag_11, flag_12, flag_13, flag_16;
+  flag_1 = a1 === void;
+  if (!flag_1) {
+    a1 = global.CurrentLanguageUITag;
+  }
+  flag_2 = a2 === void;
+  if (!flag_2) {
+    r1_3 = global;
+    r1_4 = new r1_3.Array();
+    r1_4[0] = "en";
+    r2_3 = (0 + 1);
+    r1_4[r2_3] = "jp";
+    r2_4 = (r2_3 + 1);
+    a2 = r1_4;
+  }
+  flag_3 = a1 === null;
+  if (!flag_3) {
+    r1_7 = global.GetSystemLangMessage();
+    a1 = r1_7;
+  }
+  flag_4 = a0 == "";
+  if (!flag_4) {
+    return;
+  }
+  else {
+    r3_4 = global.SystemLanguageText[a0];
+    _fr0 = r3_4;
+    flag_5 = r3_4 === void;
+    if (flag_5) {
+      flag_6 = a1 == "";
+      if (!flag_6) {
+        flag_9 = !a2;
+        if (flag_9) {
+          _fr1 = 0;
+          while (true) {
+            flag_11 = _fr1 < a2.count;
+            if (flag_11) {
+              break;
+            }
+            r1_14 = a2[_fr1];
+            a1 = r1_14;
+            flag_12 = r1_14 == "";
+            if (!flag_12) {
+              a1 = void;
+              _fr1 = (_fr1 + 1);
+              continue;
+            }
+            else {
+              r2_10 = _fr0[a1];
+              flag_13 = r2_10 === void;
+              if (!flag_13) {
+              }
+            }
+            flag_16 = a1 === void;
+            if (flag_16) {
+              r1_18 = _fr0[a1];
+              return r1_18;
+            }
+            else {
+              return;
+            }
+          }
+        }
+        else {
+          return;
+        }
+      }
+      else {
+        r2_7 = _fr0[a1];
+        flag_7 = r2_7 === void;
+        if (!flag_7) {
+        }
+      }
+    }
+    else {
+    }
+  }
+}
+
+function ResetAllMenuLangText(a0, a1) {
+  var _fr0, r1_1, r1_6, r1_7, r1_9, r3_1, r3_2, r3_3, r4_3, r4_4, flag_1, flag_2;
+  var flag_3, flag_4;
+  flag_1 = a0 === void;
+  if (!flag_1) {
+    r1_1 = global;
+    a0 = r1_1.kag;
+  }
+  flag_2 = a1 === void;
+  if (!flag_2) {
+    a1 = global.CurrentLanguageUITag;
+  }
+  r3_1 = global.SystemLanguageText["!menu"];
+  _fr0 = r3_1;
+  flag_3 = !!r3_1;
+  if (!flag_3) {
+    r1_6 = #InterObject(6);
+    // (this-change op omitted)
+    r3_2 = global;
+    r3_3 = new r3_2.Array();
+    r3_3[0] = "en";
+    r4_3 = (0 + 1);
+    r3_3[r4_3] = "jp";
+    r4_4 = (r4_3 + 1);
+    global.foreach(_fr0, r1_7, global.GetSysLangText, a1, r3_3);
+  }
+  global.resetCaptionFunctionKeys(a0);
+  a0.callResizeHook();
+  r1_9 = (typeof a0);
+  flag_4 = r1_9 == "Object";
+  if (!flag_4) {
+    a0.rewriteMenuRightJustify();
+  }
+  a0.callHook("onResetAllMenuLangText");
+  return;
+}
+
+function MakeSysLangProxy(a0) {
+  var r1_1, r2_1, r2_2, r3_1, r3_2;
+  r2_1 = #InterObject(8);
+  r3_1 = global;
+  r3_2 = new r3_1.Dictionary();
+  // (this-change op omitted)
+  r1_1 = r2_2(a0);
+  return r1_1;
+}
+
+function MakeSysLangProxyInSystemConfig(a0) {
+  var _fr1, _fr0, r1_4, r1_6, flag_2, flag_3;
+  _fr0 = 0;
+  while (true) {
+    flag_2 = _fr0 < a0.count;
+    if (flag_2) {
+      break;
+    }
+    r1_4 = a0[_fr0];
+    _fr1 = r1_4;
+    flag_3 = r1_4 == "";
+    if (!!flag_3) {
+      r1_6 = global.MakeSysLangProxy(_fr1);
+      global.SystemConfig[_fr1] = r1_6;
+    }
+    _fr0 = (_fr0 + 1);
+    continue;
+  }
+  return;
+}
+

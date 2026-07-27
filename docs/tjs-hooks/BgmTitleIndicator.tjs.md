@@ -2,6 +2,8 @@
 
 Источник: байткод игры `sysscn/bgmtitleindicator.tjs`
 
+**Подтверждено декомпилятором tjs2dec.** См. `disasm/bgmtitleindicator.tjs.txt`.
+
 Показывает название текущей BGM-композиции на экране при смене трека.
 
 ---

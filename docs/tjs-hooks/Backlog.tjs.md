@@ -2,6 +2,8 @@
 
 Источник: байткод игры `sysscn/backlog.tjs`
 
+**Декомпилятор tjs2dec:** все классы и методы подтверждены в байткоде. `currentText`/`currentName`/`currentChara` — свойства `HistoryTextStore`. См. `disasm/backlog.tjs.txt`.
+
 Содержит классы для хранения и отображения истории диалогов: `BacklogBase`, `DragScrollableBacklog`, `HistoryTextStore`.
 
 ---
