@@ -18,7 +18,7 @@ ATRI.exe (KiriKiri-Z)
 - **DLL Proxy Injection** — `version.dll` in the game directory loads `Neuro-Integration.dll`
 - **TJS2 Plugin** — registers native functions into the KiriKiri-Z scripting engine via ncbind
 - **Context Monitoring** — C++ polling thread calls external `.tjs` scripts every 200ms to track game state
-- **No TJS-level tag hooks** — `kag.addHook()`, `kag.conductor.onTag` etc. don't fire in ATRI; polling is the only viable approach
+- **Tag processing hooks не работают** — `kag.addHook()` не существует, `conductor.onTag` не hook chain. Работают: `window.addHook()` для `onConductorStop/Jump/RestoreTarget`; override `kag.onConductorLabel/ScenarioLoaded` для label/сценария; ContextMonitor (C++ polling, 200ms) — единственный способ для tag processing
 
 ## Key Findings
 

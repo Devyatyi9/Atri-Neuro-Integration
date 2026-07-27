@@ -100,54 +100,91 @@
 })()
 ```
 
-## 3. `neuroStartHooks()` — установка хуков
+## 3. Система перехвата (Hooks)
+
+**Важно: `kag.addHook()` не существует.** В ATRI нет универсального TJS-level hook механизма для tag processing. Работают следующие альтернативы:
+
+### 3a. `window.addHook(hookName, callback)` — для событий с callHook()
+
+Работает для строго определённых событий, где в коде есть явный `window.callHook()`:
+
+| Событие | Вызывается в | Описание |
+|---------|-------------|----------|
+| `"onConductorStop"` | `MainWindow.onConductorStop()` | Остановка кондуктора |
+| `"onConductorJump"` | `MainWindow.onConductorJump()` | Jump-переход |
+| `"onConductorRestoreTarget"` | `MainWindow.onConductorRestoreTarget()` | Восстановление цели |
+| `"onResetAll"` | — | Сброс всего |
+| `"onCacheClear"` | — | Очистка кэша |
+| `"onWindowResizeHook"` | — | Изменение размера окна |
+| `"onModeChangeHook"` | — | Смена режима |
+| `"onSELabel"` | AnimationLayer | Ожидание SE |
+| `"onEnvEvent"` + имя | ч/з `forEachEventHook()` | События окружения |
 
 ```javascript
-// Использует глобальные переменные для флагов:
-//   _neuroHooksInstalled — установлены ли хуки
-//   _neuroHooksEnabled   — активны ли хуки (для вкл/выкл без удаления)
-//   _neuroPendingSend    — флаг "нужно отправить контекст"
-//   _neuroLastTag        — последний тег
-//   _neuroLastScene      — последняя загруженная сцена
-
-(function(){
-  try {
-    if (typeof kag === 'undefined') { return 'kag not ready'; }
-    if (_neuroHooksInstalled) { return 'already installed'; }
-    _neuroHooksEnabled = true;
-    _neuroLastTag = '';
-    _neuroLastScene = '';
-    _neuroPendingSend = false;
-
-    kag.addHook('onTag', function(tag, params) {
-      if (!_neuroHooksEnabled) { return true; }
-      _neuroLastTag = tag;
-      /* релевантные теги пока не определены */
-      return true;
-    });
-    kag.addHook('onScenarioLoaded', function(storage) {
-      if (!_neuroHooksEnabled) { return; }
-      _neuroLastScene = storage;
-      _neuroPendingSend = true;
-    });
-    kag.addHook('onLabel', function(label) {
-      if (!_neuroHooksEnabled) { return; }
-      _neuroPendingSend = true;
-    });
-    kag.addHook('onVoiceStart', function(name, file) {
-      if (!_neuroHooksEnabled) { return; }
-      _neuroPendingSend = true;
-    });
-
-    _neuroHooksInstalled = true;
-    return 'hooks installed';
-  } catch(e) {
-    return 'error: ' + (e === null || e === void ? 'unknown' : e);
-  }
-})()
+window.addHook("onConductorStop", function(arg0, arg1) {
+    Debug.message("Conductor stopped: " + arg0);
+});
 ```
 
-## 4. `neuroStopHooks()` — отключение хуков
+### 3b. Override методов `kag.onConductor*()` — для label, scenario, beforeTag
+
+Эти методы **реально существуют** и вызываются из Conductor (см. `Conductor.tjs`):
+
+| Метод kag | Вызывается из | Статус |
+|-----------|---------------|--------|
+| `onConductorLabel(label, page)` | Conductor.onLabel() | ✅ Работает (есть в MainWindow) |
+| `onConductorScenarioLoaded(storage, loadParam)` | Conductor.onScenarioLoaded() | ✅ Работает |
+| `onConductorScenarioLoad(loadParam)` | Conductor.onScenarioLoad() | ✅ Работает |
+| `onConductorBeforeTag(tagname, tag)` | Conductor.onBeforeTag() | ⚠️ **Уходит в C++ ncbind forEachFunctionHook — не переопределяется** |
+| `onConductorUnknownTag(tagname, tag)` | Conductor.onUnknownTag() | ⚠️ **Аналогично — C++ side** |
+| `onConductorStop()` | Conductor.onStop() | ✅ Работает |
+| `onConductorJump()` | Conductor.onJump() | ✅ Работает |
+
+```javascript
+kag.onConductorLabel = function(label, page) {
+    _neuroLastLabel = label;
+    _neuroPendingSend = true;
+};
+kag.onConductorScenarioLoaded = function(storage, loadParam) {
+    _neuroLastScene = storage;
+    _neuroPendingSend = true;
+};
+```
+
+### 3c. `window.forEachEventHook(eventName, ...)` — для событий окружения
+
+Вызывается из `KAGEnvironment.onTagExtract()` и world-объектов:
+- `"onEnvParseMsgOnOff"` — msgon/msgoff
+- `"onEnvParseStartLine"` — начало строки
+- `"onEnvParseStartText"` — начало текста
+- `"onEnvParseSelect"` — выбор опции
+- `"onScenarioLoaded"` — сценарий загружен
+- `"onSceneLabel"` — метка сцены
+
+**Но: `addEventHook()` не существует** — `forEachEventHook` читает из внутреннего C++ реестра (ncbind). Нельзя добавить свою подписку из TJS.
+
+### 3d. ContextMonitor (C++ polling) — универсальный fallback
+
+Единственный работающий способ для tag processing (см. `ContextMonitor.cpp`):
+```cpp
+// Вызывается каждые 200ms:
+neuroExecFile("neuro_scripts/context_monitor.tjs", 1);
+```
+
+### Итог: что для чего использовать
+
+| Цель | Механизм | Работает? |
+|------|----------|:---------:|
+| Отследить label | `kag.onConductorLabel = fn` | ✅ |
+| Отследить сцену | `kag.onConductorScenarioLoaded = fn` | ✅ |
+| Поймать tag | ContextMonitor polling | ✅ |
+| Поймать voice start | `kag.voicePlayingRatio` (poll) | ✅ |
+| Поймать BGM start | `kag.bgm.inPlaying` (poll) | ✅ |
+| Перехватить обработку тега | — | ❌ |
+| `kag.addHook("onTag")` | — | ❌ не существует |
+| `kag.conductor.onTag = fn` | — | ❌ не hook, Dictionary lookup |
+
+## 4. `neuroStopHooks()` — деактивация перехвата
 
 ```javascript
 (function(){
@@ -192,41 +229,12 @@ kag.historyLayer.currentText
 
 ## 8. `neuroStartTagLogger([fileName])` — логгер KAG тегов
 
+**⚠️ `kag.addHook("onTag")` не работает.** Реализация через ContextMonitor (C++ polling, см. ContextMonitor.cpp).
 ```javascript
-(function(){
-  try {
-    if (typeof kag === 'undefined') return 'kag not ready';
-    if (_neuroTagLoggerRunning) return 'already running';
-    _neuroTagLoggerStats = {};
-    _neuroTagLoggerEntries = [];
-    _neuroTagLoggerRunning = true;
-    kag.addHook('onTag', function(tag, params) {
-      if (!_neuroTagLoggerRunning) return true;
-      var info = kag.getCurrentInfo();
-      var pstr = '';
-      if (params) {
-        var pkeys = Scripts.getObjectKeys(params);
-        for (var pi = 0; pi < pkeys.count; pi++) {
-          var k = pkeys[pi];
-          pstr += k + '=' + params[k] + ' ';
-        }
-      }
-      var entry = tag + '@' + (info ? info.file : '?')
-        + '.' + (info ? info.label : '?')
-        + ':' + (info ? info.line : '?');
-      if (pstr) entry += ' {' + pstr + '}';
-      _neuroTagLoggerEntries[_neuroTagLoggerEntries.length] = entry;
-      if (typeof _neuroTagLoggerStats[tag] != 'undefined')
-        _neuroTagLoggerStats[tag]++;
-      else
-        _neuroTagLoggerStats[tag] = 1;
-      return true;
-    });
-    return 'tag logger started, file=' + "neuro_tag_log.txt";
-  } catch(e) {
-    return 'error: ' + String(e);
-  }
-})()
+// Логика логгера выполняется в context_monitor.tjs:
+//   — опрашивает kag.conductor.lastTagName каждые 200ms
+//   — собирает статистику тегов в _neuroTagLoggerStats
+//   — пишет изменения в neuro_tag_log.txt через LogTagFile()
 ```
 
 ## 9. `neuroFlushTagLog()` — сброс буфера тегов в файл

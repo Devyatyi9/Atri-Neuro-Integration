@@ -300,27 +300,27 @@ Russian/modified names are likely in `custom.tjs` or via `kag.scflags` language 
 
 ## Event Hooks
 
-### Tag Execution Hook
-```javascript
-kag.addHook("onTag", function(tagName, params) {
-    Debug.message("Tag executed: " + tagName);
-    return true; // Continue execution
-});
-```
+**⚠️ `kag.addHook()` не существует.** Вместо этого используй:
 
-### Scenario Load Hook
+### Label / Scenario (через override методов kag)
 ```javascript
-kag.addHook("onScenarioLoaded", function(storage) {
+kag.onConductorLabel = function(label, page) {
+    Debug.message("Label: " + label);
+};
+kag.onConductorScenarioLoaded = function(storage, loadParam) {
     Debug.message("Loaded: " + storage);
+};
+```
+
+### Conductor Stop (через window.addHook)
+```javascript
+window.addHook("onConductorStop", function(arg0, arg1) {
+    Debug.message("Conductor stopped");
 });
 ```
 
-### Label Jump Hook
-```javascript
-kag.addHook("onLabel", function(labelName) {
-    Debug.message("Jumped to: " + labelName);
-});
-```
+### Tag processing — только C++ polling
+Единственный работающий способ — опрос `kag.conductor.lastTagName` каждые 200ms через ContextMonitor.
 
 ---
 

@@ -131,7 +131,7 @@ kag.historyLayer.currentText   // японский текст
 kag.historyLayer.data          // массив {disp, name, text, plaintext}
 kag.historyLayer.data[i].voice // void (нет голоса) или Object (есть)
 
-// ❌ kag.addHook НЕ РАБОТАЕТ (не реализован в ATRI)
+// ❌ kag.addHook НЕ СУЩЕСТВУЕТ (см. Hook-Mechanisms.md)
 // В KAGParserEx события вызываются через прямые методы kag:
 kag.onLabel = function(label) { ... };            // ✅
 kag.onScenarioLoaded = function(storage) { ... };  // ✅

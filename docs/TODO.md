@@ -79,6 +79,7 @@
   - Conductor: добавлены `fasttags`, `nexttags`, `parseLine`, `parseLineStr`, `loadParam`, `waitAll`, `pendingTriggers`, `waitStartTick`, `waitTimeout`
   - BGM: `inPlaying` — **property в байткоде** (раньше считалось C++ side)
   - HistoryLayer: добавлены `calcRelinePos`, `endAction`, `setNewAction`, `continueAction`, `clearAction`, `getActionInfo*`, `highlightAction`, `getLineStart2` и др.
+- [x] **Хуки: полная ревизия** — выяснено, что `kag.addHook()` не существует; `window.addHook()` работает для `onConductorStop/Jump/RestoreTarget`; override `kag.onConductorLabel/ScenarioLoaded` — работает; `onConductorBeforeTag/UnknownTag` — C++ ncbind (недоступно). Создан `docs/kirikiri/Hook-Mechanisms.md`
 
 ## Planned
 

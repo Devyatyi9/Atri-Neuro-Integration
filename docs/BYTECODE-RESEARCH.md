@@ -161,3 +161,11 @@ Rust-тул с SSA/HLIR анализом.
 - `BaseConductor` → `KAGParser` (через `SuperConstructor` lookup)
 - `interrupted` property: getter = `_interrupted`, setter = управление timer/oneshot
 - Полный цикл `timerCallback()`: `while ((tag = getNextParseTag()) !== void) { onTag(tag); ... }`
+
+### Важно о хуках
+
+- `onBeforeTag()` → `owner.onConductorBeforeTag()` → `kag.forEachFunctionHook("onBefore", ...)` — это **C++ ncbind**, переопределить из TJS нельзя
+- `onUnknownTag()` → `owner.onConductorUnknownTag()` → `kag.forEachFunctionHook("onUnknown", ...)` — тоже C++ ncbind
+- `onLabel()` → `owner.onConductorLabel()` — **можно переопределить**, это обычный TJS метод
+- `onScenarioLoaded()` → `owner.onConductorScenarioLoaded()` — **можно переопределить**
+- См. `docs/kirikiri/Hook-Mechanisms.md`

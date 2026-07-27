@@ -308,67 +308,35 @@
 
 ## Хуки и события 💡
 
-| Событие / Хук | Описание | Neuro |
-|---|---|---|
-| `onConductorLabel` | Метка сценария достигнута | 💡 |
-| `onConductorScenarioLoad` | Загрузка сценария | 💡 |
-| `onConductorScenarioLoaded` | Сценарий загружен | 💡 |
-| `onConductorScript` | Выполнение скрипта | |
-| `onConductorCall` | Вызов подпрограммы | |
-| `onConductorReturn` | Возврат из подпрограммы | |
-| `onConductorJump` | Прыжок по сценарию | |
-| `onConductorStop` | Остановка кондуктора | |
-| `onConductorUnknownTag` | Неизвестный тег | |
-| `onConductorBeforeTag` | Перед обработкой тега | |
-| `onConductorAfterReturn` | После возврата | |
-| `onConductorRestoreTarget` | Цель восстановления | |
-| `onVoiceStart` | Голос начал воспроизведение | 💡 |
-| `onVoiceStop` | Голос остановлен | 💡 |
-| `onVoiceLabel` | Голосовая метка | |
-| `onVoiceLabelStart` | Голосовая метка началась | |
-| `onVoiceLabelStop` | Голосовая метка закончилась | |
-| `onVoiceFlip` | Переворот голоса | |
-| `onBGMStart` | BGM начал | 💡 |
-| `onBGMStop` | BGM остановлен | 💡 |
-| `onBGMLabel` | BGM метка | |
-| `onBGMFadeCompleted` | Затухание BGM завершено | |
-| `onSEStart` | SE начал | |
-| `onSESoundBufferStop` | SE буфер остановлен | |
-| `onSESoundBufferFadeCompleted` | SE затухание завершено | |
-| `onSELabel` | SE метка | |
-| `onPrimaryClick` | Основной клик | 💡 |
-| `onPrimaryClickByKey` | Основной клик клавишей | |
-| `onPrimaryRightClick` | Правый клик | |
-| `onActivate` / `onDeactivate` | Активация/деактивация окна | |
-| `onResize` / `onResizing` | Изменение размера окна | |
-| `onMinimize` | Свёртывание окна | |
-| `onShow` / `onHide` | Показ/скрытие окна | |
-| `onKeyDown` / `onKeyUp` | Клавиша нажата/отпущена | |
-| `onMouseDown` / `onMouseUp` | Кнопка мыши нажата/отпущена | |
-| `onMouseMove` / `onMouseWheel` | Движение/колёсико мыши | |
-| `onMouseEnter` / `onMouseLeave` | Вход/выход мыши | |
-| `onCloseQuery` | Запрос закрытия окна | |
-| `onCloseYes` | Подтверждение закрытия | |
-| `onScreenSave` | Сохранение экрана | |
-| `onShutdown` | Завершение игры | 💡 |
-| `onTransitionEnd` | Переход завершён | |
-| `onAnimationStopped` | Анимация остановлена | |
-| `onMotionStart` / `onMotionStop` | Движение начато/остановлено | |
-| `onDisplayChanged` | Дисплей изменён | |
-| `onErrorVoice` | Ошибка голоса | |
-| `onCheckTagExtract` | Проверка извлечения тега | |
-| `onBookMarkStore` / `onBookMarkRestore` | Сохранение/восстановление сейва | |
-| `onConductor` | Любое событие кондуктора | |
-| `addHook(hookName, handler)` | Добавить хук | 💡 |
-| `removeHook(hookName)` | Удалить хук | |
-| `callHook(hookName, ...args)` | Вызвать хук | |
-| `forEachEventHook` | Итерация по хукам событий | |
-| `forEachFunctionHook` | Итерация по хукам функций | |
-| `onMoviePlay` / `onMovieStop` | Видео играет/остановлено | |
-| `onFlipTimerInterval` | Интервал таймера flip | |
-| `onQuakeTimerInterval` | Интервал таймера землетрясения | |
-| `onSquirrelThreadDone` | Поток squirrel завершён | |
-| `onMessageReceived` | Сообщение получено | |
+> ⚠️ См. `docs/kirikiri/Hook-Mechanisms.md` — полный разбор, что работает, а что нет.
+> Ключевое: `kag.addHook()` не существует. `window.addHook()` работает для `onConductorStop/Jump/RestoreTarget`.
+> Override `kag.onConductorLabel/ScenarioLoaded` — работает.
+
+| Событие / Хук | Описание | Neuro | Механизм |
+|---|---|---|---|
+| `onConductorLabel` | Метка сценария достигнута | 💡 | ✅ override `kag.onConductorLabel` |
+| `onConductorScenarioLoad` | Загрузка сценария | 💡 | ✅ override `kag.onConductorScenarioLoad` |
+| `onConductorScenarioLoaded` | Сценарий загружен | 💡 | ✅ override `kag.onConductorScenarioLoaded` |
+| `onConductorScript` | Выполнение скрипта | | ✅ override `kag.onConductorScript` |
+| `onConductorCall` | Вызов подпрограммы | | ✅ override |
+| `onConductorReturn` | Возврат из подпрограммы | | ✅ override |
+| `onConductorJump` | Прыжок по сценарию | | ✅ `window.addHook("onConductorJump")` |
+| `onConductorStop` | Остановка кондуктора | | ✅ `window.addHook("onConductorStop")` |
+| `onConductorUnknownTag` | Неизвестный тег | | ❌ C++ ncbind |
+| `onConductorBeforeTag` | Перед обработкой тега | | ❌ C++ ncbind |
+| `onConductorAfterReturn` | После возврата | | ✅ override |
+| `onConductorRestoreTarget` | Цель восстановления | | ✅ `window.addHook("onConductorRestoreTarget")` |
+| `onVoiceStart` | Голос начал воспроизведение | 💡 | ❌ нет хука |
+| `onVoiceStop` | Голос остановлен | 💡 | ❌ нет хука |
+| `onBGMStart` | BGM начал | 💡 | ❌ нет хука |
+| `onBGMStop` | BGM остановлен | 💡 | ❌ нет хука |
+| `onPrimaryClick` | Основной клик | 💡 | ❌ нет хука |
+| `onShutdown` | Завершение игры | 💡 | ❌ нет хука |
+| `addHook(hookName, handler)` | Добавить хук | 💡 | ✅ `window.addHook` |
+| `removeHook(hookName)` | Удалить хук | | ✅ `window.removeHook` |
+| `callHook(hookName, ...args)` | Вызвать хук | | ✅ есть в MainWindow |
+| `forEachEventHook` | Итерация по хукам событий | | ❌ C++ ncbind |
+| `forEachFunctionHook` | Итерация по хукам функций | | ❌ C++ ncbind | |
 
 ---
 
@@ -612,9 +580,14 @@ kag.cancelAutoMode()    // выключить авто
 kag.skipToLabel(name)   // пропустить до метки
 kag.loadScenario(storage, label)  // загрузить сценарий
 
-// События (хуки)
-kag.addHook("onConductorLabel", handler)
-kag.addHook("onVoiceStart", handler)
-kag.addHook("onPrimaryClick", handler)
-kag.addHook("onShutdown", handler)
+// События (только эти хуки реально работают)
+window.addHook("onConductorStop", handler)
+window.addHook("onConductorJump", handler)
+window.addHook("onConductorRestoreTarget", handler)
+
+// Для label/scenario — override методов kag (не хуки)
+kag.onConductorLabel = function(label, page) { handler(label); };
+kag.onConductorScenarioLoaded = function(storage, param) { handler(storage); };
+
+// ⚠️ kag.addHook() НЕ СУЩЕСТВУЕТ
 ```

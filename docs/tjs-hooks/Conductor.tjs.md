@@ -130,14 +130,13 @@
 ### Использование для интеграции
 
 ```javascript
-// В custom.tjs или через TVPExecuteExpression:
-kag.onConductorLabel = function(label) {
+// В custom.tjs или через neuroExecFile:
+kag.onConductorLabel = function(label, page) {
     Debug.message("Label: " + label);
 };
-kag.onConductorScenarioLoaded = function(storage) {
+kag.onConductorScenarioLoaded = function(storage, loadParam) {
     Debug.message("Loaded: " + storage);
 };
-kag.onConductorBeforeTag = function(tagname, tag) {
-    Debug.message("Tag: " + tagname);
-};
 ```
+
+**⚠️ `kag.onConductorBeforeTag` переопределять бессмысленно.** Он делегирует в `owner.onConductorBeforeTag()` → `kag.forEachFunctionHook("onBefore", ...)` — это C++ ncbind метод, недоступный для переопределения из TJS. Tag processing перехватывается только через ContextMonitor polling + `kag.conductor.lastTagName`.
