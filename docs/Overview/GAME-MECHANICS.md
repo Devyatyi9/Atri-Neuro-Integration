@@ -372,6 +372,73 @@ kag.conductor.curStorage + " [" + kag.conductor.curLabel + "]@" + kag.conductor.
 
 ---
 
+## Save/Load & Flag Persistence
+
+### Архитектура флагов
+
+| Переменная | Алиас | Тип | Сохраняется? | Описание |
+|-----------|-------|-----|-------------|----------|
+| `flags` | `f`, `kag.flags` | `%[]` | Через `pflags` | Живые игровые флаги |
+| `pflags` | — | `%[]` | Да (как `data.user`) | Снапшот `flags` на момент savable label |
+| `pcflags` | — | `%[]` | Да (как `data.core`) | Снапшот состояния движка |
+| `tflags` | `tf` | `%[]` | **Нет** | Runtime-флаги, никуда не сохраняются |
+| `sflags` | `sf` | `%[]` | Да (отдельный файл) | Системные флаги (CG, достижения) |
+
+### Ключевой нюанс: `storeFlags()` и снапшот `pflags`
+
+При ручном сохранении через меню вызывается `saveBookMarkToFile()`, который пишет:
+```tjs
+data.user = this.pflags;  // НЕ flags, а его снапшот!
+```
+
+`pflags` обновляется только при вызове `storeFlags()`, который происходит **автоматически при прохождении "savable label"** в сценарии (`doAutoLabel()`). Ручное сохранение **НЕ** вызывает `storeFlags()`.
+
+**Итог:** Если добавить кастомный ключ в `f` и сразу сохраниться — он не попадёт в файл, т.к. `pflags` ещё не синхронизирован.
+
+**Решение:** Форсировать `storeFlags()` перед сохранением:
+```tjs
+f.neuroData = %[myKey: 42];
+kag.storeFlags();  // принудительно sync f → pflags
+// Теперь можно сохраняться — данные попадут в файл
+```
+
+### Хуки onStore/onRestore
+
+При `storeFlags()` и `restoreFlags()` вызываются события `onStore` и `onRestore`:
+```tjs
+forEachEventHook("onStore", %[flags: pcflags, options: void]);
+forEachEventHook("onRestore", %[flags: f, clear: clear, options: elm]);
+```
+
+Через них можно добавить/восстановить кастомные данные в `f`:
+```tjs
+kag.addEventHook({
+    onStore: function(data) {
+        data.flags._neuroBgm = kag.bgm.playingStorage;
+    },
+    onRestore: function(data) {
+        kag.bgm.playingStorage = data.flags._neuroBgm;
+    }
+});
+```
+
+### `Dictionary.saveStruct` / `loadStruct`
+
+Для сохранения отдельного файла (не в сейв):
+```tjs
+// Сохранить
+var d = %[];
+d.neuroData = 42;
+(Dictionary.saveStruct incontextof d)(System.exePath + 'neuro_data.dat');
+// → файл: (const) %[ "neuroData" => 42 ]
+
+// Загрузить
+var loaded = %[];
+(Dictionary.loadStruct incontextof loaded)(System.exePath + 'neuro_data.dat');
+```
+
+---
+
 ## Neuro-sama Integration Points
 
 1. **Choice Detection**: Monitor `kag.addSelect()` and `kag.selectLayer`
