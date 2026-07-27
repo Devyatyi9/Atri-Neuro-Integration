@@ -75,11 +75,8 @@
 ## In Progress
 
 - [ ] **Формат контекста для Neuro API** — спроектировать JSON структуру, определить триггеры отправки
-- [ ] **Верификация tjs-hooks/*.md** — сверка с Python декомпиляцией:
-  - Conductor: добавлены `fasttags`, `nexttags`, `parseLine`, `parseLineStr`, `loadParam`, `waitAll`, `pendingTriggers`, `waitStartTick`, `waitTimeout`
-  - BGM: `inPlaying` — **property в байткоде** (раньше считалось C++ side)
-  - HistoryLayer: добавлены `calcRelinePos`, `endAction`, `setNewAction`, `continueAction`, `clearAction`, `getActionInfo*`, `highlightAction`, `getLineStart2` и др.
-- [x] **Хуки: полная ревизия** — выяснено, что `kag.addHook()` не существует; `window.addHook()` работает для `onConductorStop/Jump/RestoreTarget`; override `kag.onConductorLabel/ScenarioLoaded` — работает; `onConductorBeforeTag/UnknownTag` — C++ ncbind (недоступно). Создан `docs/kirikiri/Hook-Mechanisms.md`
+- [x] **Верификация tjs-hooks/*.md (15/15)** — расхождений с Python декомпиляцией нет. Обновлены: BGM.tjs.md (inPlaying — property в байткоде), Conductor.tjs.md (onBeforeTag — C++ ncbind), HistoryLayer.tjs.md (current* — C++ side, добавлены missing методы). Остальные 10 файлов (SE, RenderMsgwin, name, multilang, MsgHack, MessageLayer, BgmTitleIndicator, SelectLayer, MainWindow, Menus) — корректны.
+- [x] **Хуки: полная ревизия** — созданы `docs/kirikiri/Hook-Mechanisms.md` (карта механизмов) и `docs/Overview/INTERCEPTION-STRATEGY.md` (что для чего использовать)
 
 ## Planned
 
