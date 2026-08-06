@@ -96,11 +96,6 @@
 - [ ] `neuroSendActionResult(id, success, message)` — результат action
 - [ ] `neuroIsConnected()` — проверка подключения
 
-### Форк libneurosdk
-- [ ] Создать форк с поддержкой обновлённого Neuro API (startup ack)
-- [ ] Сверить diff старой и новой спецификации
-- [ ] Подключить форк вместо текущего submodule
-
 ### Batching
 - [ ] Ring buffer / queue для batch команд от Neuro SDK
 - [ ] WM_TJS_EXECUTE_BATCH — обработка всех команд за один цикл
