@@ -428,5 +428,4 @@ FodyWeavers.xsd
 *.msp
 
 TestNeuroLib/
-AGENTS.md
-.opencode/
+
