@@ -61,10 +61,13 @@ try {
         exit 0
     }
 
-    $arguments = if ($Check) { @("--dry-run", "--Werror") } else { @("-i") }
     $failedFiles = @()
     foreach ($file in $files) {
-        & $clangFormat @arguments -- $file
+        if ($Check) {
+            & $clangFormat --dry-run --Werror $file
+        } else {
+            & $clangFormat -i $file
+        }
         if ($LASTEXITCODE -ne 0) {
             $failedFiles += $file
         }

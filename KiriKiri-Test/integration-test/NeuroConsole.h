@@ -1,9 +1,9 @@
 #pragma once
 
 #include <windows.h>
-#include <vector>
-#include <mutex>
 #include <atomic>
+#include <mutex>
+#include <vector>
 
 // ============================================================================
 // NeuroConsole - TJS Debug Console
@@ -17,15 +17,17 @@ class ScriptingWindow;
 class tTJSVariant;
 
 // TJS execution functions (declared in dllmain.cpp)
-bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs = 5000);
+bool ExecuteTJSSync(wchar_t const *code,
+                    tTJSVariant *result,
+                    DWORD timeoutMs = 5000);
 
 // Добавить текст в Neuro Console вывод (объявлена в NeuroConsole.cpp)
-void AppendToNeuroConsole(const wchar_t* text, unsigned int color = 0x646464);
+void AppendToNeuroConsole(wchar_t const *text, unsigned int color = 0x646464);
 
 // Глобальные экземпляры (определёны в NeuroConsole.cpp)
-extern std::atomic<NeuroConsole*> g_Console;
+extern std::atomic<NeuroConsole *> g_Console;
 // Глобальные переменные для доступа
-extern std::atomic<ScriptingWindow*> g_ScriptingWindow;
+extern std::atomic<ScriptingWindow *> g_ScriptingWindow;
 
 // Константы для сообщений консоли
 constexpr int WM_CONSOLE_TOGGLE = WM_USER + 200;
@@ -37,7 +39,8 @@ constexpr size_t MAX_CONSOLE_TEXT_LENGTH = 100000;
 constexpr size_t MAX_COMMAND_LENGTH = 10000;
 
 // Добавить текст в Scripting Window вывод
-void AppendToScriptingWindow(const wchar_t* text, unsigned int color = 0x646464);
+void AppendToScriptingWindow(wchar_t const *text,
+                             unsigned int color = 0x646464);
 
 // Функции для управления консолью из dllmain.cpp
 void InitNeuroConsole();

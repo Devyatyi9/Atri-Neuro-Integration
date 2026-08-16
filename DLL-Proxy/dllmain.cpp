@@ -1,20 +1,18 @@
 #include <Windows.h>
 
-void Payload()
-{
+void Payload() {
 	HMODULE hModule = LoadLibraryW(L"Neuro-integration.dll");
 	if (hModule != NULL) {
-		OutputDebugStringW(L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
-	}
-	else {
+		OutputDebugStringW(
+		    L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
+	} else {
 	}
 }
 
-#define WRAPPER_GENFUNC(name) \
-	FARPROC orig_##name; \
-	__declspec(naked) void _##name() \
-	{ \
-		__asm jmp[orig_##name] \
+#define WRAPPER_GENFUNC(name)        \
+	FARPROC orig_##name;               \
+	__declspec(naked) void _##name() { \
+		__asm jmp[orig_##name]           \
 	}
 
 WRAPPER_GENFUNC(GetFileVersionInfoA)
@@ -35,15 +33,14 @@ WRAPPER_GENFUNC(VerLanguageNameW)
 WRAPPER_GENFUNC(VerQueryValueA)
 WRAPPER_GENFUNC(VerQueryValueW)
 
-#define WRAPPER_FUNC(name) \
-    if (hOriginalDll) { \
-        orig_##name = GetProcAddress(hOriginalDll, #name); \
-    } else { \
-        orig_##name = NULL; \
-    }
+#define WRAPPER_FUNC(name)                             \
+	if (hOriginalDll) {                                  \
+		orig_##name = GetProcAddress(hOriginalDll, #name); \
+	} else {                                             \
+		orig_##name = NULL;                                \
+	}
 
-void VersionDllInit()
-{
+void VersionDllInit() {
 	HMODULE hOriginalDll = LoadLibrary(L"C:\\Windows\\system32\\version.dll");
 	WRAPPER_FUNC(GetFileVersionInfoA);
 	WRAPPER_FUNC(GetFileVersionInfoByHandle);
@@ -64,10 +61,8 @@ void VersionDllInit()
 	WRAPPER_FUNC(VerQueryValueW);
 }
 
-BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID)
-{
-	if (r == DLL_PROCESS_ATTACH)
-	{
+BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID) {
+	if (r == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls(hModule);
 		VersionDllInit();
 		Payload();
