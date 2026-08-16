@@ -57,20 +57,20 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\krkr-sdk;..\ncbind;..\MinHook\include;..\dear-imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\krkr-sdk;..\ncbind</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
-      <AdditionalDependencies>libneurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;..\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>neurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
       <Command>
-if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
+if not exist "..\..\libneurosdk\build\Release\neurosdk.lib" (
   echo Building libneurosdk...
   cd "..\..\libneurosdk"
   if exist "build" rmdir /s /q build
@@ -94,15 +94,15 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\krkr-sdk;..\ncbind;..\MinHook\include;..\dear-imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\krkr-sdk;..\ncbind</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
-      <AdditionalDependencies>neurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;..\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>neurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
@@ -122,12 +122,6 @@ if not exist "$(SolutionDir)libneurosdk\build\Release\neurosdk.lib" (
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\dear-imgui\backends\imgui_impl_dx9.cpp" />
-    <ClCompile Include="..\dear-imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="..\dear-imgui\imgui.cpp" />
-    <ClCompile Include="..\dear-imgui\imgui_draw.cpp" />
-    <ClCompile Include="..\dear-imgui\imgui_tables.cpp" />
-    <ClCompile Include="..\dear-imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\ncbind\ncbind_auto.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ContextMonitor.cpp" />
@@ -135,20 +129,11 @@ if not exist "$(SolutionDir)libneurosdk\build\Release\neurosdk.lib" (
     <ClCompile Include="NeuroTCPServer.cpp" />
     <ClCompile Include="ScriptingWindow.cpp" />
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp" />
-    <ClCompile Include="ImGuiInit.cpp" />
-    <ClCompile Include="ImGuiWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="neuro.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\dear-imgui\backends\imgui_impl_dx9.h" />
-    <ClInclude Include="..\dear-imgui\backends\imgui_impl_win32.h" />
-    <ClInclude Include="..\dear-imgui\imgui.h" />
-    <ClInclude Include="..\dear-imgui\imgui_internal.h" />
-    <ClInclude Include="..\dear-imgui\imstb_rectpack.h" />
-    <ClInclude Include="..\dear-imgui\imstb_textedit.h" />
-    <ClInclude Include="..\dear-imgui\imstb_truetype.h" />
     <ClInclude Include="..\krkr-sdk\tp_stub.h" />
     <ClInclude Include="..\ncbind\ncbind.hpp" />
     <ClInclude Include="..\ncbind\ncb_foreach.h" />
@@ -157,8 +142,6 @@ if not exist "$(SolutionDir)libneurosdk\build\Release\neurosdk.lib" (
     <ClInclude Include="NeuroConsole.h" />
     <ClInclude Include="NeuroTCPServer.h" />
     <ClInclude Include="ScriptingWindow.h" />
-    <ClInclude Include="ImGuiInit.h" />
-    <ClInclude Include="ImGuiWindows.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -13,14 +13,8 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Imgui">
-      <UniqueIdentifier>{3d0e4e73-753e-45b7-98d4-ae0621b9aa85}</UniqueIdentifier>
-    </Filter>
     <Filter Include="krkr-sdk">
       <UniqueIdentifier>{a3793f62-8faf-482a-81b2-2a300d073d00}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Imgui\backends">
-      <UniqueIdentifier>{f5575d0c-264d-4595-9f40-0a1682c42361}</UniqueIdentifier>
     </Filter>
     <Filter Include="ncbind">
       <UniqueIdentifier>{12329371-7a63-4ca3-aaf0-164f91f16349}</UniqueIdentifier>
@@ -36,32 +30,8 @@
     <ClCompile Include="ScriptingWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\dear-imgui\imgui.cpp">
-      <Filter>Imgui</Filter>
-    </ClCompile>
     <ClCompile Include="..\krkr-sdk\tp_stub.cpp">
       <Filter>krkr-sdk</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dear-imgui\backends\imgui_impl_dx9.cpp">
-      <Filter>Imgui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dear-imgui\backends\imgui_impl_win32.cpp">
-      <Filter>Imgui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dear-imgui\imgui_draw.cpp">
-      <Filter>Imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dear-imgui\imgui_tables.cpp">
-      <Filter>Imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dear-imgui\imgui_widgets.cpp">
-      <Filter>Imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="ImGuiInit.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ImGuiWindows.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\ncbind\ncbind_auto.cpp">
       <Filter>ncbind</Filter>
@@ -85,35 +55,8 @@
     <ClInclude Include="ScriptingWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\dear-imgui\imgui.h">
-      <Filter>Imgui</Filter>
-    </ClInclude>
     <ClInclude Include="..\krkr-sdk\tp_stub.h">
       <Filter>krkr-sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\backends\imgui_impl_dx9.h">
-      <Filter>Imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\backends\imgui_impl_win32.h">
-      <Filter>Imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\imgui_internal.h">
-      <Filter>Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\imstb_rectpack.h">
-      <Filter>Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\imstb_textedit.h">
-      <Filter>Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dear-imgui\imstb_truetype.h">
-      <Filter>Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGuiInit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGuiWindows.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\ncbind\ncb_foreach.h">
       <Filter>ncbind</Filter>
