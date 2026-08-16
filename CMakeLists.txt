@@ -55,6 +55,7 @@ if(ATRI_BUILD_PROTOTYPE)
         KiriKiri-Test/integration-test/Logging.cpp
         KiriKiri-Test/integration-test/NeuroConsole.cpp
         KiriKiri-Test/integration-test/NeuroTCPServer.cpp
+        KiriKiri-Test/integration-test/SelfLink.cpp
         KiriKiri-Test/integration-test/ScriptingWindow.cpp
         KiriKiri-Test/integration-test/neuro.def
         KiriKiri-Test/krkr-sdk/tp_stub.cpp
