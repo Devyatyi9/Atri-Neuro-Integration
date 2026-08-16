@@ -1,4 +1,5 @@
 #include "ContextMonitor.h"
+#include "Logging.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <atomic>
@@ -11,11 +12,7 @@
 #include "../krkr-sdk/tp_stub.h"
 #pragma warning(pop)
 
-void LogToFile(char const *message);
 bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs);
-
-// External declaration: logs a string directly to neuro_tag_log.txt
-void LogTagFile(char const *text);
 
 static std::atomic<bool> g_MonitorRunning(false);
 static std::thread g_MonitorThread;

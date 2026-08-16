@@ -12,6 +12,7 @@
 
 #include "../include/neurosdk.h"
 #include "ContextMonitor.h"
+#include "Logging.h"
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
 #include "ncbind.hpp"
@@ -49,55 +50,6 @@ static std::string g_NeuroURL = "ws://localhost:8000";
 // Registered actions (для отслеживания)
 static std::vector<std::string> g_RegisteredActions;
 static std::mutex g_ActionsMutex;
-
-// Forward declaration for logging
-void LogToFile(char const *message);
-
-// ============================================================================
-// Буферизованное логирование
-// ============================================================================
-static FILE *g_LogFile = nullptr;
-static std::mutex g_LogMutex;
-
-void LogToFile(char const *message) {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (!g_LogFile) {
-		g_LogFile = fopen("plugin_log.txt", "a");
-		if (!g_LogFile)
-			return;
-	}
-	fprintf(g_LogFile, "%s", message);
-	fflush(g_LogFile);  // Гарантирует запись при краше
-}
-
-void CloseLogFile() {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (g_LogFile) {
-		fclose(g_LogFile);
-		g_LogFile = nullptr;
-	}
-}
-
-static FILE *g_TagLogFile = nullptr;
-
-void LogTagFile(char const *text) {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (!g_TagLogFile) {
-		g_TagLogFile = fopen("neuro_tag_log.txt", "a");
-		if (!g_TagLogFile)
-			return;
-	}
-	fprintf(g_TagLogFile, "%s", text);
-	fflush(g_TagLogFile);
-}
-
-void CloseTagLogFile() {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (g_TagLogFile) {
-		fclose(g_TagLogFile);
-		g_TagLogFile = nullptr;
-	}
-}
 
 // ============================================================================
 // Self-linking: поиск iTVPFunctionExporter в памяти

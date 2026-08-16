@@ -8,6 +8,7 @@
 #include <list>
 #include <mutex>
 #include <vector>
+#include "Logging.h"
 #include "NeuroTCPServer.h"
 
 // Для tTJSVariant и ttstr
@@ -18,8 +19,6 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-// Forward declarations from dllmain
-void LogToFile(char const *message);
 bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs);
 
 // ============================================================================
