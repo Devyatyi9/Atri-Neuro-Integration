@@ -1,6 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
-#include <commctrl.h>  // SetWindowSubclass
 #include <cstdio>
 #include <cstring>
 #include <thread>
@@ -8,32 +7,14 @@
 #include <mutex>
 #include <vector>
 #include <string>
-#include <d3d9.h>
 
 #include "../include/neurosdk.h"
 #include "ncbind.hpp"
-#include "MinHook.h"
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
 #include "ContextMonitor.h"
 
-#pragma comment(lib, "comctl32.lib")
-#pragma comment(lib, "libMinHook.x86.lib")
-#pragma comment(lib, "d3d9.lib")
 #define WIN32_LEAN_AND_MEAN
-
-// Global game window handle
-extern HWND g_GameWindow;
-
-// ============================================================================
-// ImGui + DX9 Hook includes
-// ============================================================================
-#include "imgui.h"
-#include "backends/imgui_impl_dx9.h"
-#include "backends/imgui_impl_win32.h"
-
-// ImGui Win32 handler - declaration (commented out in imgui_impl_win32.h)
-LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // ============================================================================
 // KiriKiri SDK - tp_stub (для консоли и TVPExecuteExpression)
@@ -69,140 +50,6 @@ static std::mutex g_ActionsMutex;
 
 // Forward declaration for logging
 void LogToFile(const char* message);
-
-// ============================================================================
-// DX9 Hook для ImGui
-// ============================================================================
-
-typedef HRESULT(WINAPI* EndScene_t)(IDirect3DDevice9*);
-static EndScene_t g_OriginalEndScene = nullptr;
-static IDirect3DDevice9* g_GameDevice = nullptr;
-static bool g_ImGuiHookReady = false;
-
-// Forward declarations
-void InitImGuiHook();
-void ShutdownImGuiHook();
-void ImGui_NewFrame();
-void ImGui_Render();
-void RenderImGuiWindows();
-void ToggleImGui();
-bool IsImGuiVisible();
-
-// EndScene hook - здесь рендерим ImGui
-static HRESULT WINAPI hkEndScene(IDirect3DDevice9* pDevice) {
-    g_GameDevice = pDevice;
-
-    if (!g_ImGuiHookReady) {
-        InitImGuiHook();
-    }
-
-    // Проверяем F12 для toggle
-    static bool f12Pressed = false;
-    if (GetAsyncKeyState(VK_F12) & 0x8000) {
-        if (!f12Pressed) {
-            ToggleImGui();
-            f12Pressed = true;
-        }
-    } else {
-        f12Pressed = false;
-    }
-
-    // Рендерим ImGui только когда включён
-    if (g_ImGuiHookReady && IsImGuiVisible()) {
-        ImGui_NewFrame();
-        RenderImGuiWindows();
-        ImGui_Render();
-    }
-
-    return g_OriginalEndScene(pDevice);
-}
-
-// Создать Dummy Window для получения EndScene адреса
-bool CreateDummyWindowAndHook() {
-    // Создаём скрытое окно
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
-    wc.lpfnWndProc = DefWindowProcW;
-    wc.hInstance = GetModuleHandleW(nullptr);
-    wc.lpszClassName = L"DummyDX9Class";
-    RegisterClassExW(&wc);
-
-    HWND hwnd = CreateWindowExW(0, L"DummyDX9Class", L"Dummy",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-        CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr,
-        GetModuleHandleW(nullptr), nullptr);
-
-    // Создаём D3D9
-    IDirect3D9* d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
-    if (!d3d9) {
-        LogToFile("[DX9] Failed to create D3D9\n");
-        return false;
-    }
-
-    // Параметры device
-    D3DPRESENT_PARAMETERS pp = {};
-    pp.BackBufferWidth = 1;
-    pp.BackBufferHeight = 1;
-    pp.BackBufferFormat = D3DFMT_UNKNOWN;
-    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    pp.hDeviceWindow = hwnd;
-    pp.Windowed = TRUE;
-
-    // Создаём device
-    IDirect3DDevice9* dummyDevice = nullptr;
-    HRESULT hr = d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd,
-        D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &dummyDevice);
-
-    if (FAILED(hr) || !dummyDevice) {
-        LogToFile("[DX9] Failed to create dummy device\n");
-        d3d9->Release();
-        return false;
-    }
-
-    // Получаем VTable и EndScene адрес
-    void** vtable = *(void***)dummyDevice;
-    EndScene_t endSceneAddr = (EndScene_t)vtable[42];  // EndScene is at index 42
-
-    LogToFile("[DX9] EndScene address obtained\n");
-
-    // Удаляем dummy device и окно
-    dummyDevice->Release();
-    d3d9->Release();
-    DestroyWindow(hwnd);
-    UnregisterClassW(L"DummyDX9Class", GetModuleHandleW(nullptr));
-
-    // Инициализируем MinHook
-    MH_Initialize();
-
-    // Создаём hook
-    MH_CreateHook(endSceneAddr, hkEndScene, (void**)&g_OriginalEndScene);
-    MH_EnableHook(endSceneAddr);
-
-    LogToFile("[DX9] EndScene hooked successfully\n");
-    return true;
-}
-
-void InitImGuiHook() {
-    if (g_ImGuiHookReady || !g_GameDevice) return;
-
-    extern void ImGui_Init(IDirect3DDevice9*, HWND);
-
-    // Получаем HWND игры (из существующего кода)
-    ImGui_Init(g_GameDevice, g_GameWindow);
-    // g_ImGuiVisible остаётся false - пользователь включает вручную через F12
-
-    g_ImGuiHookReady = true;
-    LogToFile("[ImGui] Hook initialized\n");
-}
-
-void ShutdownImGuiHook() {
-    extern void ImGui_Shutdown();
-    ImGui_Shutdown();
-
-    MH_DisableHook(MH_ALL_HOOKS);
-    MH_Uninitialize();
-
-    g_ImGuiHookReady = false;
-}
 
 // ============================================================================
 // Буферизованное логирование
@@ -660,21 +507,6 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     // Считаем вызовы (для диагностики)
     g_SubclassCallCount++;
 
-    // Блокируем ввод игры когда ImGui видим - передаём ВСЕ сообщения мыши в ImGui
-    if (g_ImGuiHookReady && IsImGuiVisible()) {
-        bool isMouseMsg = (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST) || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHOVER;
-        if (isMouseMsg) {
-            // Всегда передаём в ImGui - он сам решит обрабатывать или нет
-            if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
-                return 0;  // ImGui обработал
-            }
-            // Если ImGui хочет захватить мышь, блокируем для игры
-            if (ImGui::GetIO().WantCaptureMouse) {
-                return 0;
-            }
-        }
-    }
-
     switch (msg) {
     case WM_TJS_EXECUTE: {
         // Асинхронный вызов - код передаётся как копия, нужно освободить
@@ -928,189 +760,6 @@ bool ExecuteTJSSync(const wchar_t* code, tTJSVariant* result, DWORD timeoutMs) {
         }
         return false;
     }
-}
-
-// ============================================================================
-// ImGui Object Inspector Helper Functions
-// ============================================================================
-
-// Результаты для ImGui (глобальные буферы)
-static std::string g_ImGuiKeysResult;
-static std::string g_ImGuiValueResult;
-static std::string g_ImGuiTypeResult;
-static int g_ImGuiKeysCount = 0;
-
-// Helper function to convert TJS string to std::string (with UTF-8 support for Japanese)
-static std::string TJSStringToStdString(const ttstr& tjsStr) {
-    const tjs_char* wstr = tjsStr.c_str();
-    if (!wstr) return "";
-    
-    size_t len = 0;
-    while (wstr[len]) len++;
-    
-    if (len == 0) return "";
-    
-    // Convert wide string (UTF-16) to UTF-8
-    int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, nullptr, 0, nullptr, nullptr);
-    if (requiredSize <= 0) return "";
-    
-    std::string result;
-    result.resize(requiredSize);
-    WideCharToMultiByte(CP_UTF8, 0, wstr, (int)len, &result[0], requiredSize, nullptr, nullptr);
-    
-    return result;
-}
-
-// Получить ключи объекта (lazy loading)
-extern "C" __declspec(dllexport) const char* neuroImGuiGetKeys(const char* objectName, int offset, int count) {
-    g_ImGuiKeysResult.clear();
-    g_ImGuiKeysCount = 0;
-
-    if (!g_TJSReady.load()) {
-        g_ImGuiKeysResult = "TJS not ready";
-        return g_ImGuiKeysResult.c_str();
-    }
-
-    // Простейший TJS код - как в работающем Refresh
-    char code[512];
-    snprintf(code, sizeof(code), 
-        "Scripts.getObjectKeys(%s).join('\x0A')",
-        objectName);
-
-    tTJSVariant result;
-    wchar_t wcode[512];
-    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
-    
-    if (ExecuteTJSSync(wcode, &result, 10000)) {
-        ttstr str = result;
-        std::string fullResult = TJSStringToStdString(str);
-        
-        // Просто сохраняем все ключи - ImGui сам покажет нужное количество
-        g_ImGuiKeysResult = fullResult;
-        
-        // Считаем количество ключей
-        g_ImGuiKeysCount = 0;
-        for (size_t i = 0; i < fullResult.size(); i++) {
-            if (fullResult[i] == '\x0A' || i == 0) g_ImGuiKeysCount++;
-        }
-    } else {
-        g_ImGuiKeysResult = "error";
-    }
-
-    return g_ImGuiKeysResult.c_str();
-}
-
-extern "C" __declspec(dllexport) int neuroImGuiGetKeysCount() {
-    return g_ImGuiKeysCount;
-}
-
-// Получить тип свойства: "function", "object", "string", "number", "undefined", "unknown"
-extern "C" __declspec(dllexport) const char* neuroImGuiGetPropertyType(const char* objectName, const char* propName) {
-    g_ImGuiTypeResult.clear();
-
-    if (!g_TJSReady.load()) {
-        g_ImGuiTypeResult = "unknown";
-        return g_ImGuiTypeResult.c_str();
-    }
-
-    char code[512];
-    snprintf(code, sizeof(code),
-        "(function() {"
-        "  try {"
-        "    var obj = %s;"
-        "    if (obj === undefined || obj === null) return 'undefined';"
-        "    var val = obj[%s];"
-        "    if (val === undefined) return 'undefined';"
-        "    var t = typeof val;"
-        "    if (t === 'function') return 'function';"
-        "    if (t === 'object') return 'object';"
-        "    return 'value';"
-        "  } catch(e) { return 'unknown'; }"
-        "})()",
-        objectName, propName);
-
-    // Используем ExecuteTJSSync для thread safety
-    tTJSVariant result;
-    wchar_t wcode[512];
-    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
-    
-    if (ExecuteTJSSync(wcode, &result, 5000)) {
-        ttstr str = result;
-        g_ImGuiTypeResult = TJSStringToStdString(str);
-    } else {
-        g_ImGuiTypeResult = "execution failed";
-    }
-
-    return g_ImGuiTypeResult.c_str();
-}
-
-// Получить значение свойства (как строка)
-extern "C" __declspec(dllexport) const char* neuroImGuiGetPropertyValue(const char* objectName, const char* propName) {
-    g_ImGuiValueResult.clear();
-
-    if (!g_TJSReady.load()) {
-        g_ImGuiValueResult = "TJS not ready";
-        return g_ImGuiValueResult.c_str();
-    }
-
-    char code[1024];
-    snprintf(code, sizeof(code),
-        "(function() {"
-        "  try {"
-        "    var obj = %s;"
-        "    if (obj === undefined || obj === null) return '[undefined]';"
-        "    var val = obj[%s];"
-        "    if (val === undefined) return '[undefined]';"
-        "    if (typeof val === 'function') return '[function]';"
-        "    if (typeof val === 'object') return '[object]';"
-        "    if (typeof val === 'string') return val;"
-        "    return String(val);"
-        "  } catch(e) { return '[error]'; }"
-        "})()",
-        objectName, propName);
-
-    // Используем ExecuteTJSSync для thread safety
-    tTJSVariant result;
-    wchar_t wcode[1024];
-    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
-    
-    if (ExecuteTJSSync(wcode, &result, 5000)) {
-        ttstr str = result;
-        g_ImGuiValueResult = TJSStringToStdString(str);
-    } else {
-        g_ImGuiValueResult = "execution failed";
-    }
-
-    return g_ImGuiValueResult.c_str();
-}
-
-// Получить переменные f (flags)
-extern "C" __declspec(dllexport) const char* neuroImGuiGetFlags(const char* flagType) {
-    g_ImGuiValueResult.clear();
-
-    if (!g_TJSReady.load()) {
-        g_ImGuiValueResult = "TJS not ready";
-        return g_ImGuiValueResult.c_str();
-    }
-
-    const char* varName = (strcmp(flagType, "sf") == 0) ? "sf" : (strcmp(flagType, "tf") == 0) ? "tf" : "f";
-
-    // Простейший TJS код - просто получить ключи
-    char code[256];
-    snprintf(code, sizeof(code), "Scripts.getObjectKeys(%s).join('\x0A')", varName);
-
-    tTJSVariant result;
-    wchar_t wcode[256];
-    mbstowcs_s(nullptr, wcode, code, _TRUNCATE);
-    
-    if (ExecuteTJSSync(wcode, &result, 10000)) {
-        ttstr str = result;
-        g_ImGuiValueResult = TJSStringToStdString(str);
-    } else {
-        g_ImGuiValueResult = "error";
-    }
-
-    return g_ImGuiValueResult.c_str();
 }
 
 // ============================================================================
@@ -2141,9 +1790,6 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(iTVPFunctionExporter* e
     }
     LogToFile("TVPInitImportStub OK\n");
 
-    // DX9/ImGui hook отключён — используем NeuroConsole вместо ImGui
-    LogToFile("DX9/ImGui hook disabled - using NeuroConsole\n");
-
     // Запускаем отложенную инициализацию TJS в фоне
     LogToFile("Starting deferred TJS initialization...\n");
     StartDeferredTJSInit();
@@ -2188,9 +1834,6 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink()
         g_ScriptDispatch = nullptr;
     }
     g_TJSReady.store(false);
-
-    // ImGui hook был отключён — Shutdown не нужен
-    // if (g_ImGuiHookReady) ShutdownImGuiHook();
 
     // Освобождаем tp_stub
     TVPUninitImportStub();
