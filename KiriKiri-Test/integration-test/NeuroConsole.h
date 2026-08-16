@@ -5,6 +5,8 @@
 #include <mutex>
 #include <vector>
 
+#include "TJSExecutor.h"
+
 // ============================================================================
 // NeuroConsole - TJS Debug Console
 // ============================================================================
@@ -14,12 +16,6 @@
 // Forward declarations
 class NeuroConsole;
 class ScriptingWindow;
-class tTJSVariant;
-
-// TJS execution functions (declared in dllmain.cpp)
-bool ExecuteTJSSync(wchar_t const *code,
-                    tTJSVariant *result,
-                    DWORD timeoutMs = 5000);
 
 // Добавить текст в Neuro Console вывод (объявлена в NeuroConsole.cpp)
 void AppendToNeuroConsole(wchar_t const *text, unsigned int color = 0x646464);

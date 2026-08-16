@@ -3,11 +3,9 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include "../include/neurosdk.h"
@@ -16,6 +14,7 @@
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
 #include "SelfLink.h"
+#include "TJSExecutor.h"
 #include "ncbind.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -31,12 +30,9 @@
 // ============================================================================
 // Глобальные переменные для отложенной инициализации
 // ============================================================================
-static std::atomic<bool> g_TJSReady(false);
 static std::atomic<bool> g_InitThreadRunning(false);
 static std::atomic<bool> g_HotkeyThreadRunning(false);
-static iTJSDispatch2 *g_ScriptDispatch = nullptr;
 static std::thread g_HotkeyThread;  // Для корректного join()
-static DWORD g_MainThreadId = 0;    // ID главного потока игры
 
 // ============================================================================
 // Neuro SDK - глобальные переменные
@@ -82,10 +78,6 @@ void NeuroLogCallback(neurosdk_severity_e severity,
 	LogToFile(buf);
 }
 #pragma endregion
-// Forward declarations для TJS execution
-void ExecuteTJSAsync(wchar_t const *code);
-bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs);
-
 #pragma region Neuro2
 // Обработка входящего Action от Neuro
 void HandleNeuroAction(char const *id, char const *name, char const *data) {
@@ -370,369 +362,6 @@ bool NeuroForceAction(char const *state,
 	return true;
 }
 #pragma endregion
-// ============================================================================
-// Thread-safe TJS execution через Window Subclass
-// ============================================================================
-// ВАЖНО: TJS2 НЕ потокобезопасен! Все вызовы TVPExecuteExpression и т.п.
-// должны происходить из главного потока.
-//
-// Решение: Subclass главного окна игры и обрабатывать наши сообщения там.
-// Это гарантирует что сообщения обрабатываются в message loop игры.
-// ============================================================================
-static HWND g_GameWindow = nullptr;
-static WNDPROC g_OriginalWndProc = nullptr;
-static const UINT WM_TJS_EXECUTE = WM_USER + 100;
-static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
-static std::atomic<bool> g_AcceptTJSCalls(false);
-
-struct TJSSyncCallData {
-	std::wstring code;
-	tTJSVariant result;
-	HANDLE completedEvent;
-	std::atomic<bool> cancelled;
-	bool executed;
-
-	TJSSyncCallData()
-	    : completedEvent(CreateEvent(nullptr, FALSE, FALSE, nullptr)),
-	      cancelled(false),
-	      executed(false) { }
-
-	~TJSSyncCallData() {
-		if (completedEvent) {
-			CloseHandle(completedEvent);
-		}
-	}
-};
-
-static std::mutex g_TJSSyncCallsMutex;
-static std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>>
-    g_TJSSyncCalls;
-static std::atomic<UINT_PTR> g_NextTJSSyncCallId(1);
-
-static std::shared_ptr<TJSSyncCallData> TakeTJSSyncCall(UINT_PTR id) {
-	std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
-	auto it = g_TJSSyncCalls.find(id);
-	if (it == g_TJSSyncCalls.end()) {
-		return nullptr;
-	}
-	auto call = std::move(it->second);
-	g_TJSSyncCalls.erase(it);
-	return call;
-}
-
-static void CancelTJSSyncCalls() {
-	std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>> calls;
-	{
-		std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
-		calls.swap(g_TJSSyncCalls);
-	}
-	for (auto const &entry : calls) {
-		entry.second->cancelled.store(true, std::memory_order_release);
-		SetEvent(entry.second->completedEvent);
-	}
-}
-
-// Проверка главного потока
-bool IsMainThread() {
-	return GetCurrentThreadId() == g_MainThreadId;
-}
-
-// Счётчик для отладки - сколько раз вызван SubclassedWndProc
-static std::atomic<int> g_SubclassCallCount(0);
-
-// Subclassed Window Procedure
-LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
-                                   UINT msg,
-                                   WPARAM wParam,
-                                   LPARAM lParam) {
-	// Считаем вызовы (для диагностики)
-	g_SubclassCallCount++;
-
-	switch (msg) {
-		case WM_TJS_EXECUTE: {
-			// Асинхронный вызов - код передаётся как копия, нужно освободить
-			LogToFile("  [Subclass] WM_TJS_EXECUTE received!\n");
-			wchar_t *code = (wchar_t *)wParam;
-			if (code && g_TJSReady.load()) {
-				LogToFile("  [Subclass] Executing TJS async\n");
-				tTJSVariant dummy;
-				TVPExecuteExpression(ttstr(code), &dummy);
-			}
-			delete[] code;
-			return 0;
-		}
-
-		case WM_TJS_EXECUTE_SYNC: {
-			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
-			if (data) {
-				try {
-					if (!data->cancelled.load(std::memory_order_acquire) &&
-					    !data->code.empty() && g_TJSReady.load()) {
-						TVPExecuteExpression(ttstr(data->code.c_str()), &data->result);
-						data->executed = true;
-					}
-				} catch (...) {
-					LogToFile("  [ExecuteTJSSync] TJS execution threw an exception\n");
-				}
-				SetEvent(data->completedEvent);
-			}
-			return 0;
-		}
-		default:
-			return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
-	}
-
-	// Передаём все остальные сообщения оригинальной процедуре
-	return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
-}
-
-// Структура для передачи данных в EnumWindows
-struct EnumWindowsData {
-	HWND foundWindow;
-	HWND kirikiriWindow;  // Приоритетное окно KiriKiri
-};
-
-// Callback для EnumWindows - ищем главное окно нашего процесса
-BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
-	DWORD windowPid;
-	GetWindowThreadProcessId(hwnd, &windowPid);
-
-	if (windowPid == GetCurrentProcessId()) {
-		// Проверяем что это видимое окно верхнего уровня
-		if (IsWindowVisible(hwnd) && GetParent(hwnd) == NULL) {
-			// Получаем класс окна
-			wchar_t className[256] = {0};
-			GetClassNameW(hwnd, className, 256);
-
-			EnumWindowsData *data = (EnumWindowsData *)lParam;
-
-			// Пропускаем диалоговые окна (#32770)
-			if (wcscmp(className, L"#32770") == 0) {
-				return TRUE;  // Продолжаем искать
-			}
-
-			// Приоритет для окна KiriKiri (TTVPWindowForm)
-			if (wcsstr(className, L"TTVPWindowForm") != nullptr ||
-			    wcsstr(className, L"TVPMainWindow") != nullptr) {
-				data->kirikiriWindow = hwnd;
-				return FALSE;  // Нашли окно KiriKiri, прекращаем
-			}
-
-			// Сохраняем первое подходящее окно как fallback
-			if (!data->foundWindow) {
-				data->foundWindow = hwnd;
-			}
-		}
-	}
-	return TRUE;
-}
-
-// Subclass главного окна игры
-bool SubclassGameWindow() {
-	// Ждём появления окна игры (до 5 секунд)
-	LogToFile("Waiting for game window...\n");
-
-	for (int attempt = 0; attempt < 50; attempt++) {
-		EnumWindowsData enumData = {nullptr, nullptr};
-		EnumWindows(EnumWindowsCallback, (LPARAM)&enumData);
-
-		g_GameWindow = enumData.kirikiriWindow ? enumData.kirikiriWindow
-		                                       : enumData.foundWindow;
-
-		if (g_GameWindow) {
-			char buf[128];
-			sprintf_s(buf, "  Found window on attempt %d\n", attempt + 1);
-			LogToFile(buf);
-			break;
-		}
-
-		Sleep(100);  // Ждём 100мс между попытками
-	}
-
-	if (!g_GameWindow) {
-		LogToFile("ERROR: Could not find game window after 5 seconds\n");
-		return false;
-	}
-
-	char buf[512];
-	sprintf_s(buf, "Found game window: HWND=%p\n", g_GameWindow);
-	LogToFile(buf);
-
-	// Получаем информацию об окне для диагностики
-	wchar_t className[256] = {0};
-	wchar_t windowTitle[256] = {0};
-	GetClassNameW(g_GameWindow, className, 256);
-	GetWindowTextW(g_GameWindow, windowTitle, 256);
-
-	char diagBuf[1024];
-	sprintf_s(diagBuf, "  Window class: %ls\n  Window title: %ls\n", className,
-	          windowTitle);
-	LogToFile(diagBuf);
-
-	// Получаем и сохраняем thread ID окна (главный поток игры)
-	g_MainThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
-	DWORD currentThreadId = GetCurrentThreadId();
-	sprintf_s(diagBuf, "  Window thread (main): %lu, Current thread: %lu\n",
-	          g_MainThreadId, currentThreadId);
-	LogToFile(diagBuf);
-
-	// Subclass окно через SetWindowLongPtr
-	g_OriginalWndProc = (WNDPROC)SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC,
-	                                              (LONG_PTR)SubclassedWndProc);
-
-	if (!g_OriginalWndProc) {
-		DWORD err = GetLastError();
-		sprintf_s(diagBuf, "ERROR: SetWindowLongPtr failed, error=%lu\n", err);
-		LogToFile(diagBuf);
-		g_GameWindow = nullptr;
-		return false;
-	}
-
-	LogToFile("Game window subclassed successfully\n");
-	g_AcceptTJSCalls.store(true, std::memory_order_release);
-	return true;
-}
-
-// Восстановление оригинальной процедуры окна
-void UnsubclassGameWindow() {
-	g_AcceptTJSCalls.store(false, std::memory_order_release);
-	CancelTJSSyncCalls();
-	if (g_GameWindow && g_OriginalWndProc) {
-		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
-		LogToFile("Game window unsubclassed\n");
-	}
-	g_GameWindow = nullptr;
-	g_OriginalWndProc = nullptr;
-}
-
-// ============================================================================
-// Thread-safe TJS execution functions
-// ============================================================================
-
-// Асинхронный вызов TJS (fire-and-forget)
-// Можно вызывать из любого потока!
-void ExecuteTJSAsync(wchar_t const *code) {
-	if (!g_GameWindow || !code)
-		return;
-
-	// Копируем строку (будет удалена в обработчике)
-	size_t len = wcslen(code) + 1;
-	wchar_t *codeCopy = new wchar_t[len];
-	wcscpy_s(codeCopy, len, code);
-
-	PostMessage(g_GameWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
-}
-
-// Синхронный вызов TJS с ожиданием результата
-// Можно вызывать из любого потока!
-bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
-	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
-	    !IsWindow(g_GameWindow) || !code)
-		return false;
-
-	// 1. ОБОРАЧИВАЕМ КОД
-	// Создаем строку, которая перехватывает ошибки TJS и возвращает их как текст.
-	std::wstring wrappedCode =
-	    L"(function(){ try { return (" + std::wstring(code) +
-	    L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + e.message; } })()";
-
-	// Хелпер для быстрой проверки результата на наличие ошибки (опционально)
-	// NeuroConsole сама разберет ошибку, но здесь мы можем вернуть true, чтобы
-	// цепочка не прервалась
-
-	// ==========================================
-	// СЦЕНАРИЙ А: Вызов из главного потока
-	// ==========================================
-	if (IsMainThread()) {
-		LogToFile("[ExecuteTJSSync] Running on main thread\n");
-		if (g_TJSReady.load()) {
-			try {
-				TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
-				return true;
-			} catch (...) {
-				LogToFile("[ExecuteTJSSync] TJS execution threw an exception\n");
-				return false;
-			}
-		}
-		LogToFile("[ExecuteTJSSync] TJS not ready on main thread\n");
-		return false;
-	}
-
-	// ==========================================
-	// СЦЕНАРИЙ Б: Вызов из другого потока
-	// ==========================================
-	// LogToFile("[ExecuteTJSSync] Running on worker thread, posting message\n");
-
-	// The pending map owns queued state independently from the caller. Messages
-	// carry only an ID, so timeout or teardown cannot expose a dangling pointer.
-	auto data = std::make_shared<TJSSyncCallData>();
-	data->code = wrappedCode;
-
-	if (!data->completedEvent) {
-		return false;
-	}
-
-	// char diagBuf[256];
-	// sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p\n",
-	// g_GameWindow); LogToFile(diagBuf);
-
-	UINT_PTR callId;
-	{
-		std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
-		if (!g_AcceptTJSCalls.load(std::memory_order_acquire)) {
-			return false;
-		}
-		do {
-			callId = g_NextTJSSyncCallId.fetch_add(1, std::memory_order_relaxed);
-		} while (callId == 0 ||
-		         g_TJSSyncCalls.find(callId) != g_TJSSyncCalls.end());
-		g_TJSSyncCalls.emplace(callId, data);
-	}
-	BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC,
-	                              static_cast<WPARAM>(callId), 0);
-	if (!postResult) {
-		// DWORD err = GetLastError();
-		// sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n",
-		// err); LogToFile(diagBuf);
-		TakeTJSSyncCall(callId);
-		return false;
-	}
-
-	DWORD waitResult = WaitForSingleObject(data->completedEvent, timeoutMs);
-	bool completed = waitResult == WAIT_OBJECT_0;
-	bool executed = completed && data->executed;
-	if (executed && result) {
-		*result = data->result;
-	}
-	if (!completed) {
-		data->cancelled.store(true, std::memory_order_release);
-		TakeTJSSyncCall(callId);
-		LogToFile("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
-	}
-	return executed;
-}
-
-// ============================================================================
-// Отложенная инициализация TJS
-// ============================================================================
-
-void TryInitTJS() {
-	if (g_TJSReady.load())
-		return;
-
-	__try {
-		iTJSDispatch2 *dispatch = TVPGetScriptDispatch();
-		if (dispatch) {
-			g_ScriptDispatch = dispatch;
-			g_TJSReady.store(true);
-			LogToFile("TJS initialized successfully!\n");
-			OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized!\n");
-		}
-	} __except (EXCEPTION_EXECUTE_HANDLER) {
-		LogToFile("TryInitTJS: EXCEPTION caught!\n");
-	}
-}
-
 // Forward declarations
 bool RegisterAllFunctions();
 void StartHotkeyThread();
@@ -743,7 +372,7 @@ void DeferredTJSInitThread() {
 	int const maxAttempts = 100;  // 10 секунд максимум
 	int const intervalMs = 100;
 
-	for (int i = 0; i < maxAttempts && !g_TJSReady.load(); i++) {
+	for (int i = 0; i < maxAttempts; i++) {
 		Sleep(intervalMs);
 		TryInitTJS();
 
@@ -754,13 +383,16 @@ void DeferredTJSInitThread() {
 			          maxAttempts);
 			LogToFile(buf);
 		}
+
+		if (IsTJSReady())
+			break;
 	}
 
-	if (g_TJSReady.load()) {
+	if (IsTJSReady()) {
 		LogToFile("Deferred TJS init: SUCCESS\n");
 
 		// Subclass окна игры для thread-safe TJS вызовов
-		if (!SubclassGameWindow()) {
+		if (!InitializeTJSExecutor()) {
 			LogToFile("WARNING: Window subclass failed, TJS calls may be unsafe\n");
 		}
 
@@ -847,14 +479,6 @@ void StopHotkeyThread() {
 	if (g_HotkeyThread.joinable()) {
 		g_HotkeyThread.join();  // Ждём корректного завершения
 	}
-}
-
-// Проверка готовности TJS (можно вызывать из TJS функций)
-bool IsTJSReady() {
-	if (g_TJSReady.load())
-		return true;
-	TryInitTJS();  // Попробуем инициализировать при первом вызове
-	return g_TJSReady.load();
 }
 
 // ============================================================================
@@ -1787,9 +1411,6 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	// Закрываем консоль
 	ShutdownNeuroConsole();
 
-	// Восстанавливаем оригинальную процедуру окна
-	UnsubclassGameWindow();
-
 	// Удаляем logging handler
 	tTJSVariant dummy;
 	TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"),
@@ -1798,12 +1419,8 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	// Отменяем регистрацию функций через ncbind
 	ncbAutoRegister::AllUnregist();
 
-	// Освобождаем ScriptDispatch если был получен
-	if (g_ScriptDispatch) {
-		g_ScriptDispatch->Release();
-		g_ScriptDispatch = nullptr;
-	}
-	g_TJSReady.store(false);
+	// Stop TJS marshalling and release the script dispatch after TJS cleanup.
+	ShutdownTJSExecutor();
 
 	// Освобождаем tp_stub
 	TVPUninitImportStub();

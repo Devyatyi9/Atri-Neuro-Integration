@@ -1,5 +1,6 @@
 #include "ContextMonitor.h"
 #include "Logging.h"
+#include "TJSExecutor.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <atomic>
@@ -11,8 +12,6 @@
 #pragma warning(disable : 26495)
 #include "../krkr-sdk/tp_stub.h"
 #pragma warning(pop)
-
-bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs);
 
 static std::atomic<bool> g_MonitorRunning(false);
 static std::thread g_MonitorThread;

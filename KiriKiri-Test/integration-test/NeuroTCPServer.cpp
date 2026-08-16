@@ -10,6 +10,7 @@
 #include <vector>
 #include "Logging.h"
 #include "NeuroTCPServer.h"
+#include "TJSExecutor.h"
 
 // Для tTJSVariant и ttstr
 #pragma warning(push)
@@ -18,8 +19,6 @@
 #pragma warning(pop)
 
 #pragma comment(lib, "ws2_32.lib")
-
-bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs);
 
 // ============================================================================
 // Состояние сервера

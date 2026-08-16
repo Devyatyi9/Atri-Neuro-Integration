@@ -19,7 +19,7 @@
 #include "../krkr-sdk/tp_stub.h"
 #pragma warning(pop)
 
-#include "NeuroConsole.h"  // ExecuteTJSSync declaration
+#include "NeuroConsole.h"
 #include "ScriptingWindow.h"
 
 // Флаг для включения/выключения debug output

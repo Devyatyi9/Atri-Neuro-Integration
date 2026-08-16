@@ -19,6 +19,7 @@
 
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
+#include "TJSExecutor.h"
 
 // Глобальные переменные
 std::atomic<ScriptingWindow *> g_ScriptingWindow{nullptr};
