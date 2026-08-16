@@ -53,6 +53,7 @@ if(ATRI_BUILD_PROTOTYPE)
         KiriKiri-Test/integration-test/dllmain.cpp
         KiriKiri-Test/integration-test/ContextMonitor.cpp
         KiriKiri-Test/integration-test/Logging.cpp
+        KiriKiri-Test/integration-test/NeuroClient.cpp
         KiriKiri-Test/integration-test/NeuroConsole.cpp
         KiriKiri-Test/integration-test/NeuroTCPServer.cpp
         KiriKiri-Test/integration-test/SelfLink.cpp
