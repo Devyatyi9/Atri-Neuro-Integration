@@ -20,7 +20,7 @@ param(
 
 $GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
 $GameProcessName = "ATRI-MyDearMoments-"
-$PluginDll = "F:\ProjectsF\KiriKiri-Z-Neuro-Integration\KiriKiri-Test\integration-test\Release\Neuro-Integration.dll"
+$PluginDll = "F:\ProjectsF\Atri-Neuro-Integration\out\build\win32-prototype-debug\Debug\Neuro-Integration.dll"
 $GameDir = "D:\Games\ATRI-TestVersion"
 
 function Restart-Game {

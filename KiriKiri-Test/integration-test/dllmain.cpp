@@ -3,9 +3,11 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "../include/neurosdk.h"
@@ -511,18 +513,54 @@ static HWND g_GameWindow = nullptr;
 static WNDPROC g_OriginalWndProc = nullptr;
 static const UINT WM_TJS_EXECUTE = WM_USER + 100;
 static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
+static std::atomic<bool> g_AcceptTJSCalls(false);
 
-// Структура для синхронного вызова с результатом (выделяется в куче!)
 struct TJSSyncCallData {
-	std::wstring
-	    code;  // ИЗМЕНЕНО: std::wstring вместо указателя для безопасности памяти
-	tTJSVariant *result;
+	std::wstring code;
+	tTJSVariant result;
 	HANDLE completedEvent;
-	std::atomic<bool> processed;  // Флаг обработки для безопасного удаления
+	std::atomic<bool> cancelled;
+	bool executed;
 
 	TJSSyncCallData()
-	    : result(nullptr), completedEvent(nullptr), processed(false) { }
+	    : completedEvent(CreateEvent(nullptr, FALSE, FALSE, nullptr)),
+	      cancelled(false),
+	      executed(false) { }
+
+	~TJSSyncCallData() {
+		if (completedEvent) {
+			CloseHandle(completedEvent);
+		}
+	}
 };
+
+static std::mutex g_TJSSyncCallsMutex;
+static std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>>
+    g_TJSSyncCalls;
+static std::atomic<UINT_PTR> g_NextTJSSyncCallId(1);
+
+static std::shared_ptr<TJSSyncCallData> TakeTJSSyncCall(UINT_PTR id) {
+	std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
+	auto it = g_TJSSyncCalls.find(id);
+	if (it == g_TJSSyncCalls.end()) {
+		return nullptr;
+	}
+	auto call = std::move(it->second);
+	g_TJSSyncCalls.erase(it);
+	return call;
+}
+
+static void CancelTJSSyncCalls() {
+	std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>> calls;
+	{
+		std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
+		calls.swap(g_TJSSyncCalls);
+	}
+	for (auto const &entry : calls) {
+		entry.second->cancelled.store(true, std::memory_order_release);
+		SetEvent(entry.second->completedEvent);
+	}
+}
 
 // Проверка главного потока
 bool IsMainThread() {
@@ -555,20 +593,18 @@ LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 		}
 
 		case WM_TJS_EXECUTE_SYNC: {
-			// Синхронный вызов - возвращает результат
-			// LogToFile("  [Subclass] WM_TJS_EXECUTE_SYNC received!\n"); // Можно
-			// раскомментировать для отладки
-			TJSSyncCallData *data = (TJSSyncCallData *)wParam;
+			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
 			if (data) {
-				// ИЗМЕНЕНО: используем !data->code.empty() и .c_str()
-				if (!data->code.empty() && g_TJSReady.load()) {
-					// LogToFile("  [Subclass] Executing TJS sync\n");
-					TVPExecuteExpression(ttstr(data->code.c_str()), data->result);
+				try {
+					if (!data->cancelled.load(std::memory_order_acquire) &&
+					    !data->code.empty() && g_TJSReady.load()) {
+						TVPExecuteExpression(ttstr(data->code.c_str()), &data->result);
+						data->executed = true;
+					}
+				} catch (...) {
+					LogToFile("  [ExecuteTJSSync] TJS execution threw an exception\n");
 				}
-				data->processed.store(true);  // Помечаем как обработанное
-				if (data->completedEvent) {
-					SetEvent(data->completedEvent);
-				}
+				SetEvent(data->completedEvent);
 			}
 			return 0;
 		}
@@ -683,11 +719,14 @@ bool SubclassGameWindow() {
 	}
 
 	LogToFile("Game window subclassed successfully\n");
+	g_AcceptTJSCalls.store(true, std::memory_order_release);
 	return true;
 }
 
 // Восстановление оригинальной процедуры окна
 void UnsubclassGameWindow() {
+	g_AcceptTJSCalls.store(false, std::memory_order_release);
+	CancelTJSSyncCalls();
 	if (g_GameWindow && g_OriginalWndProc) {
 		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
 		LogToFile("Game window unsubclassed\n");
@@ -717,7 +756,8 @@ void ExecuteTJSAsync(wchar_t const *code) {
 // Синхронный вызов TJS с ожиданием результата
 // Можно вызывать из любого потока!
 bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
-	if (!g_GameWindow || !IsWindow(g_GameWindow) || !code)
+	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
+	    !IsWindow(g_GameWindow) || !code)
 		return false;
 
 	// 1. ОБОРАЧИВАЕМ КОД
@@ -736,8 +776,13 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	if (IsMainThread()) {
 		LogToFile("[ExecuteTJSSync] Running on main thread\n");
 		if (g_TJSReady.load()) {
-			TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
-			return true;
+			try {
+				TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
+				return true;
+			} catch (...) {
+				LogToFile("[ExecuteTJSSync] TJS execution threw an exception\n");
+				return false;
+			}
 		}
 		LogToFile("[ExecuteTJSSync] TJS not ready on main thread\n");
 		return false;
@@ -748,14 +793,12 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	// ==========================================
 	// LogToFile("[ExecuteTJSSync] Running on worker thread, posting message\n");
 
-	// Выделяем в куче. Теперь code - это std::wstring, данные копируются внутрь.
-	TJSSyncCallData *data = new TJSSyncCallData();
-	data->code = wrappedCode;  // БЕЗОПАСНОЕ КОПИРОВАНИЕ
-	data->result = result;
-	data->completedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	// The pending map owns queued state independently from the caller. Messages
+	// carry only an ID, so timeout or teardown cannot expose a dangling pointer.
+	auto data = std::make_shared<TJSSyncCallData>();
+	data->code = wrappedCode;
 
 	if (!data->completedEvent) {
-		delete data;
 		return false;
 	}
 
@@ -763,44 +806,40 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	// sprintf_s(diagBuf, "  [ExecuteTJSSync] Posting to HWND=%p\n",
 	// g_GameWindow); LogToFile(diagBuf);
 
-	BOOL postResult =
-	    PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC, (WPARAM)data, 0);
+	UINT_PTR callId;
+	{
+		std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
+		if (!g_AcceptTJSCalls.load(std::memory_order_acquire)) {
+			return false;
+		}
+		do {
+			callId = g_NextTJSSyncCallId.fetch_add(1, std::memory_order_relaxed);
+		} while (callId == 0 ||
+		         g_TJSSyncCalls.find(callId) != g_TJSSyncCalls.end());
+		g_TJSSyncCalls.emplace(callId, data);
+	}
+	BOOL postResult = PostMessage(g_GameWindow, WM_TJS_EXECUTE_SYNC,
+	                              static_cast<WPARAM>(callId), 0);
 	if (!postResult) {
 		// DWORD err = GetLastError();
 		// sprintf_s(diagBuf, "  [ExecuteTJSSync] PostMessage FAILED! Error=%lu\n",
 		// err); LogToFile(diagBuf);
-		CloseHandle(data->completedEvent);
-		delete data;
+		TakeTJSSyncCall(callId);
 		return false;
 	}
 
 	DWORD waitResult = WaitForSingleObject(data->completedEvent, timeoutMs);
-	CloseHandle(data->completedEvent);
-	data->completedEvent = nullptr;
-
-	if (waitResult == WAIT_OBJECT_0) {
-		// Успешно обработано - безопасно удаляем
-		delete data;
-		return true;
-	} else {
-		// Timeout!
-		// sprintf_s(diagBuf, "  [ExecuteTJSSync] TIMEOUT!\n");
-		// LogToFile(diagBuf);
-
-		if (data->processed.load()) {
-			// Обработано после timeout - безопасно удаляем
-			delete data;
-		} else {
-			// НЕ удаляем! Оставляем утечку - лучше чем crash.
-			// Благодаря std::wstring в структуре, данные строки тоже выживут
-			// и будут корректно использованы (или проигнорированы) главным потоком,
-			// когда он проснется.
-			LogToFile(
-			    "  [ExecuteTJSSync] WARNING: Memory leak to prevent use-after-free "
-			    "(Timeout)\n");
-		}
-		return false;
+	bool completed = waitResult == WAIT_OBJECT_0;
+	bool executed = completed && data->executed;
+	if (executed && result) {
+		*result = data->result;
 	}
+	if (!completed) {
+		data->cancelled.store(true, std::memory_order_release);
+		TakeTJSSyncCall(callId);
+		LogToFile("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
+	}
+	return executed;
 }
 
 // ============================================================================
