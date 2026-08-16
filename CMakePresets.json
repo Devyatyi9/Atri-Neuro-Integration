@@ -1,0 +1,55 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 30,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "win32-base",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "ATRI_BUILD_PROTOTYPE": "OFF"
+      }
+    },
+    {
+      "name": "win32-debug",
+      "inherits": "win32-base"
+    },
+    {
+      "name": "win32-release",
+      "inherits": "win32-base"
+    },
+    {
+      "name": "win32-prototype-debug",
+      "inherits": "win32-base",
+      "cacheVariables": {
+        "ATRI_BUILD_PROTOTYPE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win32-debug",
+      "configurePreset": "win32-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win32-release",
+      "configurePreset": "win32-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "win32-prototype-debug",
+      "configurePreset": "win32-prototype-debug",
+      "configuration": "Debug",
+      "targets": [
+        "atri_neuro_prototype"
+      ]
+    }
+  ]
+}

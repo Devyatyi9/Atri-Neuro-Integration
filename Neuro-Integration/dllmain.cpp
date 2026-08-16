@@ -1,6 +1,6 @@
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 #include <windows.h>
-#include "../include/neurosdk.h"
+#include <neurosdk.h>
 
 DWORD WINAPI InitThreadProc(LPVOID lpParameter){
     MessageBox(NULL, L"Hello from Neuro integration dll", L"Neuro-integration", MB_OK);
