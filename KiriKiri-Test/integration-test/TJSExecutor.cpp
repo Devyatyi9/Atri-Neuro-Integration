@@ -47,6 +47,25 @@ static std::mutex g_TJSSyncCallsMutex;
 static std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>>
     g_TJSSyncCalls;
 static std::atomic<UINT_PTR> g_NextTJSSyncCallId(1);
+static std::mutex g_TJSAsyncCallsMutex;
+static std::unordered_map<UINT_PTR, std::wstring> g_TJSAsyncCalls;
+static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
+
+static std::wstring TakeTJSAsyncCall(UINT_PTR id) {
+	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
+	auto it = g_TJSAsyncCalls.find(id);
+	if (it == g_TJSAsyncCalls.end()) {
+		return {};
+	}
+	auto code = std::move(it->second);
+	g_TJSAsyncCalls.erase(it);
+	return code;
+}
+
+static void CancelTJSAsyncCalls() {
+	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
+	g_TJSAsyncCalls.clear();
+}
 
 static std::shared_ptr<TJSSyncCallData> TakeTJSSyncCall(UINT_PTR id) {
 	std::lock_guard<std::mutex> lock(g_TJSSyncCallsMutex);
@@ -86,13 +105,16 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 	switch (msg) {
 		case WM_TJS_EXECUTE: {
 			LogToFile("  [Subclass] WM_TJS_EXECUTE received!\n");
-			wchar_t *code = (wchar_t *)wParam;
-			if (code && g_TJSReady.load()) {
+			auto code = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
+			if (!code.empty() && g_TJSReady.load()) {
 				LogToFile("  [Subclass] Executing TJS async\n");
 				tTJSVariant dummy;
-				TVPExecuteExpression(ttstr(code), &dummy);
+				try {
+					TVPExecuteExpression(ttstr(code.c_str()), &dummy);
+				} catch (...) {
+					LogToFile("  [ExecuteTJSAsync] TJS execution threw an exception\n");
+				}
 			}
-			delete[] code;
 			return 0;
 		}
 
@@ -213,6 +235,7 @@ static bool SubclassGameWindow() {
 
 static void UnsubclassGameWindow() {
 	g_AcceptTJSCalls.store(false, std::memory_order_release);
+	CancelTJSAsyncCalls();
 	CancelTJSSyncCalls();
 	if (g_GameWindow && g_OriginalWndProc) {
 		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
@@ -236,14 +259,29 @@ void ShutdownTJSExecutor() {
 }
 
 void ExecuteTJSAsync(wchar_t const *code) {
-	if (!g_GameWindow || !code)
+	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
+	    !IsWindow(g_GameWindow) || !code || !*code) {
 		return;
+	}
 
-	size_t len = wcslen(code) + 1;
-	wchar_t *codeCopy = new wchar_t[len];
-	wcscpy_s(codeCopy, len, code);
+	UINT_PTR callId;
+	{
+		std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
+		if (!g_AcceptTJSCalls.load(std::memory_order_acquire)) {
+			return;
+		}
+		do {
+			callId = g_NextTJSAsyncCallId.fetch_add(1, std::memory_order_relaxed);
+		} while (callId == 0 ||
+		         g_TJSAsyncCalls.find(callId) != g_TJSAsyncCalls.end());
+		g_TJSAsyncCalls.emplace(callId, code);
+	}
 
-	PostMessage(g_GameWindow, WM_TJS_EXECUTE, (WPARAM)codeCopy, 0);
+	if (!PostMessage(g_GameWindow, WM_TJS_EXECUTE, static_cast<WPARAM>(callId),
+	                 0)) {
+		TakeTJSAsyncCall(callId);
+		LogToFile("  [ExecuteTJSAsync] Failed to post to the game window\n");
+	}
 }
 
 bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
