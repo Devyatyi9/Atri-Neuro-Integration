@@ -1,1 +1,0 @@
-KAGParser, assign, callLabel, callStackDepth, clear, clearCallStack, curLabel, curLine, curLineStr, curPos, curStorage, debugLevel, finalize, getNextTag, goToLabel, ignoreCR, interrupt, loadScenario, macroParams, macros, mp, multiLineTagEnabled, paramMacros, popMacroArgs, processSpecialTags, resetInterrupt, restore, store

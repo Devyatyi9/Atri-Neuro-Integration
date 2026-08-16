@@ -1,1 +1,0 @@
-LangRender, _internalRenderLang, getMainLangFontScale, getMainLangLineSpaceScale, getMultiLangLineSpaceScale, getSubLangFontScale, onFontChange, render, renderLang

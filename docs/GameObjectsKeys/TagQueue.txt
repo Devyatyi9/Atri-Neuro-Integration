@@ -1,1 +1,0 @@
-TagQueue, addNextTag, addTag, clear, enqueueNextTag, enqueueTag, getNextTag, hasData, store

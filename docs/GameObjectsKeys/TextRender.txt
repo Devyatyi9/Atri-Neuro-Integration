@@ -1,1 +1,0 @@
-TextRender, _drawGraphEffect, clearLinkColor, draw, drawCh, drawGraph, drawRuby, drawText, getGraphLayer, getLinkOfPosition, getLinkRects, getRect, getTextColor, internalDrawText, isLinkContains, onEval, onFontChange, onGetGraphSize, onGetTextWidth, onLabel, redraw, render, setBase, setDefaultFont, setDefaultFromMessageLayer, setDefaultStyle, setFont, setLinkColor
