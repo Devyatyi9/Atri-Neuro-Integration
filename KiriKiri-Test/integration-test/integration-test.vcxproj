@@ -101,21 +101,21 @@ if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
-      <AdditionalDependencies>libneurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>neurosdk.lib;libMinHook.x86.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;..\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
       <Command>
-if not exist "..\..\libneurosdk\build\Release\libneurosdk.lib" (
+if not exist "$(SolutionDir)libneurosdk\build\Release\neurosdk.lib" (
   echo Building libneurosdk...
-  cd "..\..\libneurosdk"
+  cd "$(SolutionDir)libneurosdk"
   if exist "build" rmdir /s /q build
-  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON
+  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON -DENABLE_PERMESSAGE_DEFLATE=OFF
   cmake --build build --config Release
   echo libneurosdk built successfully
 )
-    </Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Build libneurosdk</Message>

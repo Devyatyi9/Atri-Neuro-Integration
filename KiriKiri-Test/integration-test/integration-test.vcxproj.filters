@@ -66,6 +66,12 @@
     <ClCompile Include="..\ncbind\ncbind_auto.cpp">
       <Filter>ncbind</Filter>
     </ClCompile>
+    <ClCompile Include="ContextMonitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NeuroTCPServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="neuro.def">
@@ -117,6 +123,12 @@
     </ClInclude>
     <ClInclude Include="..\ncbind\ncbind.hpp">
       <Filter>ncbind</Filter>
+    </ClInclude>
+    <ClInclude Include="ContextMonitor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NeuroTCPServer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
