@@ -17,7 +17,7 @@
 // For tTJSVariant and ttstr.
 #pragma warning(push)
 #pragma warning(disable : 26495)
-#include "../krkr-sdk/tp_stub.h"
+#include "tp_stub.h"
 #pragma warning(pop)
 
 #pragma comment(lib, "ws2_32.lib")

@@ -13,10 +13,9 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{93517643-e2e1-4f4b-aa15-51af5be01cc7}</ProjectGuid>
-    <RootNamespace>KiriKiriTest</RootNamespace>
+    <ProjectGuid>{cee8a27a-8897-4dd2-991d-40212e3f1169}</ProjectGuid>
+    <RootNamespace>integrationtest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>KiriKiri-linker</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -45,26 +44,45 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>version</TargetName>
+    <TargetName>Neuro-Integration</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>version</TargetName>
+    <TargetName>Neuro-Integration</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;KIRIKIRITEST_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;INTEGRATIONTEST_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\..\lib\krkr-sdk;..\..\lib\ncbind</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>Source.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
+      <AdditionalDependencies>neurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <PreBuildEvent>
+      <Command>
+if not exist "..\..\libneurosdk\build\Release\neurosdk.lib" (
+  echo Building libneurosdk...
+  cd "..\..\libneurosdk"
+  if exist "build" rmdir /s /q build
+  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON
+  cmake --build build --config Release
+  echo libneurosdk built successfully
+)
+    </Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Build libneurosdk</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -72,23 +90,58 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;KIRIKIRITEST_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;INTEGRATIONTEST_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>..\..\libneurosdk\include;..\..\lib\krkr-sdk;..\..\lib\ncbind</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>Source.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>neuro.def</ModuleDefinitionFile>
+      <AdditionalDependencies>neurosdk.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\libneurosdk\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <PreBuildEvent>
+      <Command>
+if not exist "$(SolutionDir)..\libneurosdk\build\Release\neurosdk.lib" (
+  echo Building libneurosdk...
+  cd "$(SolutionDir)..\libneurosdk"
+  if exist "build" rmdir /s /q build
+  cmake -B build -G "Visual Studio 17 2022" -A Win32 -DNEURO_BUILD_STATIC=ON -DENABLE_PERMESSAGE_DEFLATE=OFF
+  cmake --build build --config Release
+  echo libneurosdk built successfully
+)
+      </Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Build libneurosdk</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\lib\ncbind\ncbind_auto.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="ContextMonitor.cpp" />
+    <ClCompile Include="NeuroConsole.cpp" />
+    <ClCompile Include="NeuroTCPServer.cpp" />
+    <ClCompile Include="ScriptingWindow.cpp" />
+    <ClCompile Include="..\..\lib\krkr-sdk\tp_stub.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Source.def" />
+    <None Include="neuro.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\krkr-sdk\tp_stub.h" />
+    <ClInclude Include="..\..\lib\ncbind\ncbind.hpp" />
+    <ClInclude Include="..\..\lib\ncbind\ncb_foreach.h" />
+    <ClInclude Include="..\..\lib\ncbind\ncb_invoke.hpp" />
+    <ClInclude Include="ContextMonitor.h" />
+    <ClInclude Include="NeuroConsole.h" />
+    <ClInclude Include="NeuroTCPServer.h" />
+    <ClInclude Include="ScriptingWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

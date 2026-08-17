@@ -1,6 +1,8 @@
 {
   "cmake.useCMakePresets": "always",
-  "cmake.configurePreset": "win32-prototype-debug",
-  "cmake.buildPreset": "win32-prototype-debug",
-  "cmake.generator": "Visual Studio 17 2022"
+  "cmake.configureOnOpen": true,
+  "cmake.configurePreset": "win32-clangd",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/out/build/win32-clangd"
+  ]
 }

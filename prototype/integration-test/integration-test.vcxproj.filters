@@ -30,10 +30,10 @@
     <ClCompile Include="ScriptingWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\krkr-sdk\tp_stub.cpp">
+    <ClCompile Include="..\..\lib\krkr-sdk\tp_stub.cpp">
       <Filter>krkr-sdk</Filter>
     </ClCompile>
-    <ClCompile Include="..\ncbind\ncbind_auto.cpp">
+    <ClCompile Include="..\..\lib\ncbind\ncbind_auto.cpp">
       <Filter>ncbind</Filter>
     </ClCompile>
     <ClCompile Include="ContextMonitor.cpp">
@@ -55,16 +55,16 @@
     <ClInclude Include="ScriptingWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\krkr-sdk\tp_stub.h">
+    <ClInclude Include="..\..\lib\krkr-sdk\tp_stub.h">
       <Filter>krkr-sdk</Filter>
     </ClInclude>
-    <ClInclude Include="..\ncbind\ncb_foreach.h">
+    <ClInclude Include="..\..\lib\ncbind\ncb_foreach.h">
       <Filter>ncbind</Filter>
     </ClInclude>
-    <ClInclude Include="..\ncbind\ncb_invoke.hpp">
+    <ClInclude Include="..\..\lib\ncbind\ncb_invoke.hpp">
       <Filter>ncbind</Filter>
     </ClInclude>
-    <ClInclude Include="..\ncbind\ncbind.hpp">
+    <ClInclude Include="..\..\lib\ncbind\ncbind.hpp">
       <Filter>ncbind</Filter>
     </ClInclude>
     <ClInclude Include="ContextMonitor.h">

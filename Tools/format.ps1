@@ -31,10 +31,8 @@ try {
 
     $excludedRoots = @(
         "libneurosdk/",
-        "KiriKiri-Test/krkr-sdk/",
-        "KiriKiri-Test/ncbind/",
-        "KiriKiri-Test/dear-imgui/",
-        "KiriKiri-Test/MinHook/"
+        "lib/krkr-sdk/",
+        "lib/ncbind/"
     )
     $sourceExtensions = @(".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
     $generatedDirectoryPattern = "(^|/)(build|builds|generated|out|bin|obj|CMakeFiles|Debug|Release|RelWithDebInfo|MinSizeRel|_build|cmake-build-[^/]+)(/|$)"

@@ -37,6 +37,21 @@
       "cacheVariables": {
         "ATRI_BUILD_PROTOTYPE": "ON"
       }
+    },
+    {
+      "name": "win32-clangd",
+      "displayName": "Win32 clangd database",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "ATRI_BUILD_PROTOTYPE": "ON",
+        "ATRI_CONFIGURE_ALL_TARGETS": "ON",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_C_COMPILER_TARGET": "i686-pc-windows-msvc",
+        "CMAKE_CXX_COMPILER_TARGET": "i686-pc-windows-msvc",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     }
   ],
   "buildPresets": [

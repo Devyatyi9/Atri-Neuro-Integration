@@ -1,5 +1,0 @@
----
-Checks: '-*,bugprone-*,performance-*'
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
-...

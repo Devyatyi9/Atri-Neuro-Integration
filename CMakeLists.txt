@@ -10,7 +10,8 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
     message(FATAL_ERROR "ATRI requires a 32-bit (Win32/x86) build. Configure with -A Win32.")
 endif()
 
-option(ATRI_BUILD_PROTOTYPE "Build the KiriKiri-Test integration prototype" OFF)
+option(ATRI_BUILD_PROTOTYPE "Build the legacy integration prototype" OFF)
+option(ATRI_CONFIGURE_ALL_TARGETS "Configure clean and prototype targets together" OFF)
 
 set(NEURO_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(NEURO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -34,7 +35,7 @@ target_link_options(atri_version_proxy PRIVATE
     "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/proxy/Source.def"
 )
 
-if(NOT ATRI_BUILD_PROTOTYPE)
+if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
     add_library(atri_neuro_integration SHARED
         src/integration/dllmain.cpp
         src/integration/PluginLifecycle.cpp
@@ -42,7 +43,7 @@ if(NOT ATRI_BUILD_PROTOTYPE)
         src/integration/SelfLink.cpp
         src/integration/SelfLink.h
         src/integration/neuro.def
-        KiriKiri-Test/krkr-sdk/tp_stub.cpp
+        lib/krkr-sdk/tp_stub.cpp
     )
     set_target_properties(atri_neuro_integration PROPERTIES
         OUTPUT_NAME Neuro-Integration
@@ -52,7 +53,7 @@ if(NOT ATRI_BUILD_PROTOTYPE)
         _UNICODE
     )
     target_include_directories(atri_neuro_integration PRIVATE
-        KiriKiri-Test/krkr-sdk
+        lib/krkr-sdk
     )
     target_link_options(atri_neuro_integration PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/integration/neuro.def"
@@ -61,21 +62,21 @@ endif()
 
 if(ATRI_BUILD_PROTOTYPE)
     add_library(atri_neuro_prototype SHARED
-        KiriKiri-Test/integration-test/dllmain.cpp
-        KiriKiri-Test/integration-test/PluginLifecycle.cpp
-        KiriKiri-Test/integration-test/ContextMonitor.cpp
-        KiriKiri-Test/integration-test/Logging.cpp
-        KiriKiri-Test/integration-test/NeuroClient.cpp
-        KiriKiri-Test/integration-test/NeuroConsole.cpp
-        KiriKiri-Test/integration-test/NeuroTCPServer.cpp
-        KiriKiri-Test/integration-test/SelfLink.cpp
-        KiriKiri-Test/integration-test/ScriptingWindow.cpp
-        KiriKiri-Test/integration-test/TJSBindings.cpp
-        KiriKiri-Test/integration-test/TJSExecutor.cpp
-        KiriKiri-Test/integration-test/UtfConversion.cpp
-        KiriKiri-Test/integration-test/neuro.def
-        KiriKiri-Test/krkr-sdk/tp_stub.cpp
-        KiriKiri-Test/ncbind/ncbind_auto.cpp
+        prototype/integration-test/dllmain.cpp
+        prototype/integration-test/PluginLifecycle.cpp
+        prototype/integration-test/ContextMonitor.cpp
+        prototype/integration-test/Logging.cpp
+        prototype/integration-test/NeuroClient.cpp
+        prototype/integration-test/NeuroConsole.cpp
+        prototype/integration-test/NeuroTCPServer.cpp
+        prototype/integration-test/SelfLink.cpp
+        prototype/integration-test/ScriptingWindow.cpp
+        prototype/integration-test/TJSBindings.cpp
+        prototype/integration-test/TJSExecutor.cpp
+        prototype/integration-test/UtfConversion.cpp
+        prototype/integration-test/neuro.def
+        lib/krkr-sdk/tp_stub.cpp
+        lib/ncbind/ncbind_auto.cpp
     )
     set_target_properties(atri_neuro_prototype PROPERTIES
         OUTPUT_NAME Neuro-Integration
@@ -87,14 +88,14 @@ if(ATRI_BUILD_PROTOTYPE)
         _UNICODE
     )
     target_include_directories(atri_neuro_prototype PRIVATE
-        KiriKiri-Test/krkr-sdk
-        KiriKiri-Test/ncbind
+        lib/krkr-sdk
+        lib/ncbind
     )
     target_link_libraries(atri_neuro_prototype PRIVATE
         neurosdk
     )
     target_link_options(atri_neuro_prototype PRIVATE
-        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/KiriKiri-Test/integration-test/neuro.def"
+        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/integration-test/neuro.def"
         /NODEFAULTLIB:LIBCMT
     )
 endif()
