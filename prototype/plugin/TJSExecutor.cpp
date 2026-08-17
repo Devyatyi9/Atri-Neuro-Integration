@@ -14,6 +14,7 @@
 #pragma warning(pop)
 
 #include "Logging.h"
+#include "PluginLifecycle.h"
 
 static std::atomic<bool> g_TJSReady(false);
 static iTJSDispatch2 *g_ScriptDispatch = nullptr;
@@ -104,6 +105,13 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 	g_SubclassCallCount++;
 
 	switch (msg) {
+		case WM_CLOSE: {
+			// The host does not call V2Unlink during normal process exit.
+			WNDPROC const originalWndProc = g_OriginalWndProc;
+			ShutdownPluginWorkers();
+			return CallWindowProc(originalWndProc, hwnd, msg, wParam, lParam);
+		}
+
 		case WM_TJS_EXECUTE: {
 			LogToFile("  [Subclass] WM_TJS_EXECUTE received!\n");
 			auto code = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));

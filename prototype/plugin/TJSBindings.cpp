@@ -15,6 +15,7 @@
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroConsole.h"
+#include "PluginLifecycle.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
@@ -52,6 +53,36 @@ static tjs_error TJS_INTF_METHOD NeuroGetVersion(tTJSVariant *result,
 		*result = (tTVInteger)100;  // Version 1.0.0
 	}
 
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD
+NeuroBeginExitShutdown(tTJSVariant *result,
+                       tjs_int numparams,
+                       tTJSVariant **param,
+                       iTJSDispatch2 *objthis) {
+	// System.exit runs on the game main thread, so joining native workers is
+	// safe.
+	ShutdownPluginWorkers();
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroConfirmExit(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	// Queue the click so the TCP worker can return before exit teardown joins it.
+	ExecuteTJSAsync(
+	    L"(function(){ if (MyYesNoDialog.currentTextPart == 'AskExit' && "
+	    L"kag.currentDialog && kag.currentDialog.names.yes) { "
+	    L"kag.currentDialog.processLink(kag.currentDialog.names.yes.linkNum); "
+	    L"return 1; } return 0; })()");
+	if (result) {
+		*result = (tTVInteger)1;
+	}
 	return TJS_S_OK;
 }
 
@@ -642,6 +673,8 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 
 NCB_REGISTER_FUNCTION(neuroTest, NeuroTestFunction);
 NCB_REGISTER_FUNCTION(neuroGetVersion, NeuroGetVersion);
+NCB_REGISTER_FUNCTION(neuroBeginExitShutdown, NeuroBeginExitShutdown);
+NCB_REGISTER_FUNCTION(neuroConfirmExit, NeuroConfirmExit);
 NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
                       NeuroStressBlockNextSyncCall);
 NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
@@ -660,6 +693,11 @@ NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
 
 void RegisterTJSBindings() {
 	ncbAutoRegister::AllRegist();
+	ExecuteTJSAsync(
+	    L"kag.onExitMenuItemClick = (function(originalExit) { "
+	    L"return function() { neuroBeginExitShutdown(); return originalExit(); "
+	    L"}; "
+	    L"})(kag.onExitMenuItemClick);");
 }
 
 void UnregisterTJSBindings() {

@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "ContextMonitor.h"
+#include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "NeuroConsole.h"
@@ -22,6 +23,8 @@ static std::atomic<bool> g_InitThreadStopRequested(false);
 static std::thread g_InitThread;
 static std::atomic<bool> g_HotkeyThreadRunning(false);
 static std::thread g_HotkeyThread;
+static std::atomic<bool> g_WorkerShutdownStarted(false);
+static std::atomic<bool> g_ShutdownStarted(false);
 
 static void StartHotkeyThread();
 
@@ -182,18 +185,31 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
 	return S_OK;
 }
 
-extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
-	OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
-	LogToFile("V2Unlink called - cleaning up\n");
+void ShutdownPluginWorkers() {
+	if (g_WorkerShutdownStarted.exchange(true)) {
+		return;
+	}
 
+	LogToFile("Plugin worker shutdown started\n");
+
+	// Release workers blocked on main-thread TJS calls before joining them.
+	StopAcceptingTJSCalls();
 	StopDeferredTJSInit();
 	StopHotkeyThread();
 	StopContextMonitor();
 	NeuroDisconnect();
 	ShutdownNeuroConsole();
-	// Cancel pending synchronous calls before joining their TCP worker threads.
-	StopAcceptingTJSCalls();
 	StopTCPServer();
+	CloseGameDebugLogFile();
+}
+
+void ShutdownPluginLifecycle() {
+	if (g_ShutdownStarted.exchange(true)) {
+		return;
+	}
+
+	LogToFile("Plugin lifecycle shutdown started\n");
+	ShutdownPluginWorkers();
 
 	tTJSVariant dummy;
 	TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"),
@@ -206,6 +222,12 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	LogToFile("Cleanup complete\n");
 	CloseTagLogFile();
 	CloseLogFile();
+}
+
+extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
+	OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
+	LogToFile("V2Unlink called - cleaning up\n");
+	ShutdownPluginLifecycle();
 
 	return S_OK;
 }

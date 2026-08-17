@@ -1,5 +1,8 @@
 #include "GameDebugLog.h"
 
+#include <windows.h>
+
+#include <cstdio>
 #include <deque>
 #include <mutex>
 #include <utility>
@@ -11,6 +14,30 @@ constexpr std::size_t kMaxDebugLogCharacters = 100000;
 std::mutex g_DebugLogMutex;
 std::deque<std::wstring> g_DebugLogLines;
 std::size_t g_DebugLogCharacters = 0;
+FILE *g_DebugLogFile = nullptr;
+
+void AppendGameDebugLogFile(std::wstring const &line) {
+	if (!g_DebugLogFile) {
+		g_DebugLogFile = _wfopen(L"game_debug_log.txt", L"ab");
+		if (!g_DebugLogFile) {
+			return;
+		}
+	}
+
+	int const size = WideCharToMultiByte(CP_UTF8, 0, line.data(),
+	                                     static_cast<int>(line.size()), nullptr,
+	                                     0, nullptr, nullptr);
+	if (size <= 0) {
+		return;
+	}
+
+	std::string utf8(static_cast<std::size_t>(size), '\0');
+	WideCharToMultiByte(CP_UTF8, 0, line.data(), static_cast<int>(line.size()),
+	                    &utf8[0], size, nullptr, nullptr);
+	fwrite(utf8.data(), 1, utf8.size(), g_DebugLogFile);
+	fwrite("\r\n", 1, 2, g_DebugLogFile);
+	fflush(g_DebugLogFile);
+}
 }  // namespace
 
 void AppendGameDebugLog(std::wstring const &line) {
@@ -19,6 +46,7 @@ void AppendGameDebugLog(std::wstring const &line) {
 	}
 
 	std::lock_guard<std::mutex> lock(g_DebugLogMutex);
+	AppendGameDebugLogFile(line);
 	if (line.size() > kMaxDebugLogCharacters) {
 		g_DebugLogLines.clear();
 		g_DebugLogCharacters = 0;
@@ -66,4 +94,12 @@ void ClearGameDebugLog() {
 	std::lock_guard<std::mutex> lock(g_DebugLogMutex);
 	g_DebugLogLines.clear();
 	g_DebugLogCharacters = 0;
+}
+
+void CloseGameDebugLogFile() {
+	std::lock_guard<std::mutex> lock(g_DebugLogMutex);
+	if (g_DebugLogFile) {
+		fclose(g_DebugLogFile);
+		g_DebugLogFile = nullptr;
+	}
 }
