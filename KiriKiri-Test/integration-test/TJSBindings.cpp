@@ -16,6 +16,7 @@
 #include "NeuroConsole.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
+#include "UtfConversion.h"
 
 namespace {
 
@@ -400,37 +401,38 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 	buf[size] = 0;
 	fclose(f);
 
-	int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
-	std::vector<wchar_t> wideBuf(wideLen);
-	MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
+	std::wstring wideCode;
+	if (!Utf8ToUtf16(buf.data(), static_cast<size_t>(size), wideCode) ||
+	    wideCode.find(L'\0') != std::wstring::npos) {
+		if (result)
+			*result = TJS_W("error: file is not valid UTF-8");
+		return TJS_S_OK;
+	}
 
 	bool silent = (numparams >= 2 && param[1]->Type() == tvtInteger &&
 	               (tjs_int)(*param[1]) != 0);
-
-	auto toUtf8 = [](wchar_t const *text) -> std::string {
-		int length = WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
-		if (length <= 0)
-			return "";
-		std::vector<char> bytes(length);
-		WideCharToMultiByte(CP_UTF8, 0, text, -1, bytes.data(), length, NULL, NULL);
-		return std::string(bytes.data());
-	};
 
 	if (!silent) {
 		std::string code(buf.data());
 		if (code.size() > 500)
 			code.resize(500);
-		std::string entry = "\n=== EXEC FILE: " + toUtf8(filename.c_str()) +
-		                    " ===\n" + code + "\n--- RESULT ---\n";
+		std::string utf8Filename;
+		if (!Utf16ToUtf8(filename.c_str(), filename.GetLen(), utf8Filename))
+			utf8Filename = "<invalid UTF-16 filename>";
+		std::string entry = "\n=== EXEC FILE: " + utf8Filename + " ===\n" + code +
+		                    "\n--- RESULT ---\n";
 		LogToFile(entry.c_str());
 	}
 
 	tTJSVariant execResult;
-	TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
+	TVPExecuteExpression(ttstr(wideCode.c_str()), &execResult);
 
 	if (!silent) {
 		ttstr resultString(execResult);
-		std::string entry = toUtf8(resultString.c_str()) + "\n=== END ===\n";
+		std::string utf8Result;
+		if (!Utf16ToUtf8(resultString.c_str(), resultString.GetLen(), utf8Result))
+			utf8Result = "<invalid UTF-16 result>";
+		std::string entry = utf8Result + "\n=== END ===\n";
 		LogToFile(entry.c_str());
 	}
 

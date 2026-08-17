@@ -1,6 +1,7 @@
 #include "ContextMonitor.h"
 #include "Logging.h"
 #include "TJSExecutor.h"
+#include "UtfConversion.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <atomic>
@@ -42,18 +43,10 @@ static void ContextMonitorThread() {
 			continue;
 
 		// Write changes to neuro_tag_log.txt.
-		int utf8Len = WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, NULL,
-		                                  0, NULL, NULL);
-		if (utf8Len > 0) {
-			std::string utf8Result(utf8Len, '\0');
-			WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, &utf8Result[0],
-			                    utf8Len, NULL, NULL);
-			// Remove the trailing null.
-			while (!utf8Result.empty() && utf8Result.back() == '\0')
-				utf8Result.pop_back();
-			if (!utf8Result.empty()) {
-				LogTagFile(utf8Result.c_str());
-			}
+		std::string utf8Result;
+		if (Utf16ToUtf8(resultStr.c_str(), resultStr.GetLen(), utf8Result) &&
+		    !utf8Result.empty()) {
+			LogTagFile(utf8Result.c_str());
 		}
 	}
 

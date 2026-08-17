@@ -61,6 +61,7 @@ if(ATRI_BUILD_PROTOTYPE)
         KiriKiri-Test/integration-test/ScriptingWindow.cpp
         KiriKiri-Test/integration-test/TJSBindings.cpp
         KiriKiri-Test/integration-test/TJSExecutor.cpp
+        KiriKiri-Test/integration-test/UtfConversion.cpp
         KiriKiri-Test/integration-test/neuro.def
         KiriKiri-Test/krkr-sdk/tp_stub.cpp
         KiriKiri-Test/ncbind/ncbind_auto.cpp

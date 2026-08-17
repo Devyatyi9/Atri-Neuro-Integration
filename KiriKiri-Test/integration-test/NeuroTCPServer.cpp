@@ -12,6 +12,7 @@
 #include "Logging.h"
 #include "NeuroTCPServer.h"
 #include "TJSExecutor.h"
+#include "UtfConversion.h"
 
 // For tTJSVariant and ttstr.
 #pragma warning(push)
@@ -141,17 +142,12 @@ static void HandleClient(SOCKET clientSock,
 		if (code.empty())
 			continue;
 
-		// UTF-8 → UTF-16
-		int wideLen =
-		    MultiByteToWideChar(CP_UTF8, 0, code.data(), (int)code.size(), NULL, 0);
-		if (wideLen <= 0) {
+		std::wstring wideCode;
+		if (!Utf8ToUtf16(code.data(), code.size(), wideCode) ||
+		    wideCode.find(L'\0') != std::wstring::npos) {
 			SendToClient(clientSock, "error: invalid UTF-8");
 			continue;
 		}
-		std::vector<wchar_t> wideBuf(wideLen);
-		MultiByteToWideChar(CP_UTF8, 0, code.data(), (int)code.size(),
-		                    wideBuf.data(), wideLen);
-		std::wstring wideCode(wideBuf.data(), wideLen);
 
 		// Execute TJS code synchronously, with a 10-second timeout.
 		tTJSVariant tjsResult;
@@ -160,13 +156,9 @@ static void HandleClient(SOCKET clientSock,
 		std::string response;
 		if (ok) {
 			ttstr resultStr(tjsResult);
-			int utf8Len = WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, NULL,
-			                                  0, NULL, NULL);
-			if (utf8Len > 0) {
-				response.resize(utf8Len - 1);
-				WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, &response[0],
-				                    utf8Len, NULL, NULL);
-			} else {
+			if (!Utf16ToUtf8(resultStr.c_str(), resultStr.GetLen(), response)) {
+				response = "error: invalid UTF-16 result";
+			} else if (response.empty()) {
 				response = "(empty)";
 			}
 		} else {
