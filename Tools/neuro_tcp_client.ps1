@@ -29,7 +29,12 @@ function Restart-Game {
     foreach ($p in $procs) {
         Write-Host "Killing game process (PID $($p.Id))..."
         $p.Kill()
-        $p.WaitForExit(5000)
+        if (-not $p.WaitForExit(5000)) {
+            throw "Game process did not exit within 5 seconds (PID $($p.Id))."
+        }
+    }
+    if (Get-Process -Name $GameProcessName -ErrorAction SilentlyContinue) {
+        throw "Game process is still running; refusing to start a second instance."
     }
     Start-Sleep -Milliseconds 500
 
