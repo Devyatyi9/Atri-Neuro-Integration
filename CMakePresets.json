@@ -30,6 +30,13 @@
       "cacheVariables": {
         "ATRI_BUILD_PROTOTYPE": "ON"
       }
+    },
+    {
+      "name": "win32-prototype-release",
+      "inherits": "win32-base",
+      "cacheVariables": {
+        "ATRI_BUILD_PROTOTYPE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -47,6 +54,14 @@
       "name": "win32-prototype-debug",
       "configurePreset": "win32-prototype-debug",
       "configuration": "Debug",
+      "targets": [
+        "atri_neuro_prototype"
+      ]
+    },
+    {
+      "name": "win32-prototype-release",
+      "configurePreset": "win32-prototype-release",
+      "configuration": "Release",
       "targets": [
         "atri_neuro_prototype"
       ]

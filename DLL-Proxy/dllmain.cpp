@@ -1,12 +1,19 @@
 #include <Windows.h>
 
-void Payload() {
+static void Payload() {
 	HMODULE hModule = LoadLibraryW(L"Neuro-integration.dll");
 	if (hModule != NULL) {
 		OutputDebugStringW(
 		    L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
 	} else {
+		OutputDebugStringW(
+		    L"[Version.dll] Failed to load Neuro-integration.dll.\n");
 	}
+}
+
+static DWORD WINAPI PayloadThreadProc(LPVOID) {
+	Payload();
+	return 0;
 }
 
 #define WRAPPER_GENFUNC(name)        \
@@ -65,7 +72,11 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID) {
 	if (r == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls(hModule);
 		VersionDllInit();
-		Payload();
+		HANDLE thread =
+		    CreateThread(nullptr, 0, PayloadThreadProc, nullptr, 0, nullptr);
+		if (thread) {
+			CloseHandle(thread);
+		}
 	}
 	return TRUE;
 }
