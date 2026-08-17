@@ -25,7 +25,7 @@ set(NEURO_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(NEURO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(NEURO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ENABLE_PERMESSAGE_DEFLATE OFF CACHE BOOL "" FORCE)
-add_subdirectory(libneurosdk EXCLUDE_FROM_ALL)
+add_subdirectory(lib/neurosdk EXCLUDE_FROM_ALL)
 
 add_library(atri_version_proxy SHARED
     src/proxy/dllmain.cpp

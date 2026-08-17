@@ -30,7 +30,7 @@ try {
     }
 
     $excludedRoots = @(
-        "libneurosdk/",
+        "lib/neurosdk/",
         "lib/krkr-sdk/",
         "lib/ncbind/"
     )
