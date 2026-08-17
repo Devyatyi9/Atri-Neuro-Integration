@@ -1,0 +1,73 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Build: Prototype Debug",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:\\Windows\\System32\\cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "cmake --preset win32-prototype-debug && cmake --build --preset win32-prototype-debug"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Build: Prototype Release",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:\\Windows\\System32\\cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "cmake --preset win32-prototype-release && cmake --build --preset win32-prototype-release"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Build: Clean Debug",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:\\Windows\\System32\\cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "cmake --preset win32-debug && cmake --build --preset win32-debug"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Build: Clean Release",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:\\Windows\\System32\\cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "cmake --preset win32-release && cmake --build --preset win32-release"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Launch ATRI Test Game (Prototype)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "D:\\Games\\ATRI-TestVersion\\ATRI-MyDearMoments-.exe",
+      "args": [],
+      "cwd": "D:\\Games\\ATRI-TestVersion",
+      "console": "internalConsole",
+      "preLaunchTask": "Deploy: Prototype Debug"
+    },
+    {
+      "name": "Attach to ATRI Test Game",
+      "type": "cppvsdbg",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ]
+}

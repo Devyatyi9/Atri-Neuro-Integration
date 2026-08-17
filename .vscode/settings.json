@@ -1,0 +1,6 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configurePreset": "win32-prototype-debug",
+  "cmake.buildPreset": "win32-prototype-debug",
+  "cmake.generator": "Visual Studio 17 2022"
+}

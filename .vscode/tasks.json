@@ -1,0 +1,131 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Configure: Prototype Debug",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "win32-prototype-debug"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Prototype Debug",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "--preset",
+        "win32-prototype-debug"
+      ],
+      "dependsOn": "Configure: Prototype Debug",
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Configure: Prototype Release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "win32-prototype-release"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Prototype Release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "--preset",
+        "win32-prototype-release"
+      ],
+      "dependsOn": "Configure: Prototype Release",
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Configure: Clean Debug",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "win32-debug"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Clean Debug",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "--preset",
+        "win32-debug"
+      ],
+      "dependsOn": "Configure: Clean Debug",
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Configure: Clean Release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "win32-release"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Clean Release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "--preset",
+        "win32-release"
+      ],
+      "dependsOn": "Configure: Clean Release",
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Format Check",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\Tools\\format.ps1",
+        "-Check"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy: Prototype Debug",
+      "type": "shell",
+      "command": "Copy-Item",
+      "args": [
+        "-LiteralPath",
+        "${workspaceFolder}\\out\\build\\win32-prototype-debug\\Debug\\Neuro-Integration.dll",
+        "-Destination",
+        "D:\\Games\\ATRI-TestVersion\\Neuro-Integration.dll",
+        "-Force"
+      ],
+      "dependsOn": "Build: Prototype Debug",
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ]
+}
