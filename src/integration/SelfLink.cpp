@@ -48,7 +48,7 @@ iTVPFunctionExporter *WaitForExporterInit(DWORD timeoutMs) {
 		return nullptr;
 	}
 	auto const *const nt =
-	    reinterpret_cast<const IMAGE_NT_HEADERS *>(baseAddress + ntOffset);
+	    reinterpret_cast<const IMAGE_NT_HEADERS *>(imageBase + ntOffset);
 	if (!IsReadableImageAddress(imageBase, nt, sizeof(*nt)) ||
 	    nt->Signature != IMAGE_NT_SIGNATURE ||
 	    nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
