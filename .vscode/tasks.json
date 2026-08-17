@@ -137,6 +137,19 @@
       "problemMatcher": []
     },
     {
+      "label": "Clang-Tidy",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\Tools\\clang-tidy.ps1"
+      ],
+      "dependsOn": "Configure: clangd Database",
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
       "label": "Deploy: Prototype Debug",
       "type": "shell",
       "command": "Copy-Item",
