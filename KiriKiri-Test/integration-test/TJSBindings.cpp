@@ -407,48 +407,31 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 	bool silent = (numparams >= 2 && param[1]->Type() == tvtInteger &&
 	               (tjs_int)(*param[1]) != 0);
 
+	auto toUtf8 = [](wchar_t const *text) -> std::string {
+		int length = WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
+		if (length <= 0)
+			return "";
+		std::vector<char> bytes(length);
+		WideCharToMultiByte(CP_UTF8, 0, text, -1, bytes.data(), length, NULL, NULL);
+		return std::string(bytes.data());
+	};
+
 	if (!silent) {
-		FILE *lf = fopen("plugin_log.txt", "a");
-		if (lf) {
-			auto toUtf8 = [](wchar_t const *w) -> std::string {
-				int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
-				if (len <= 0)
-					return "";
-				std::vector<char> b(len);
-				WideCharToMultiByte(CP_UTF8, 0, w, -1, b.data(), len, NULL, NULL);
-				return std::string(b.data());
-			};
-			std::string fn8 = toUtf8(filename.c_str());
-			fprintf(lf, "\n=== EXEC FILE: %s ===\n", fn8.c_str());
-			std::string narrowCode(buf.data());
-			if (narrowCode.size() > 500)
-				narrowCode.resize(500);
-			fprintf(lf, "%s\n", narrowCode.c_str());
-			fprintf(lf, "--- RESULT ---\n");
-			fclose(lf);
-		}
+		std::string code(buf.data());
+		if (code.size() > 500)
+			code.resize(500);
+		std::string entry = "\n=== EXEC FILE: " + toUtf8(filename.c_str()) +
+		                    " ===\n" + code + "\n--- RESULT ---\n";
+		LogToFile(entry.c_str());
 	}
 
 	tTJSVariant execResult;
 	TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
 
 	if (!silent) {
-		FILE *lf = fopen("plugin_log.txt", "a");
-		if (lf) {
-			auto toUtf8 = [](wchar_t const *w) -> std::string {
-				int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
-				if (len <= 0)
-					return "";
-				std::vector<char> b(len);
-				WideCharToMultiByte(CP_UTF8, 0, w, -1, b.data(), len, NULL, NULL);
-				return std::string(b.data());
-			};
-			ttstr resultStr(execResult);
-			std::string res8 = toUtf8(resultStr.c_str());
-			fprintf(lf, "%s\n", res8.c_str());
-			fprintf(lf, "=== END ===\n");
-			fclose(lf);
-		}
+		ttstr resultString(execResult);
+		std::string entry = toUtf8(resultString.c_str()) + "\n=== END ===\n";
+		LogToFile(entry.c_str());
 	}
 
 	if (result)

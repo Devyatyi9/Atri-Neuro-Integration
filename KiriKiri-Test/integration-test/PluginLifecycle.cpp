@@ -203,6 +203,7 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	TVPUninitImportStub();
 
 	LogToFile("Cleanup complete\n");
+	CloseTagLogFile();
 	CloseLogFile();
 
 	return S_OK;
