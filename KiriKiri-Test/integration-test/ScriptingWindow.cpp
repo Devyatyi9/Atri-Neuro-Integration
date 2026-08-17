@@ -1,5 +1,5 @@
 // ============================================================================
-// ScriptingWindow - Многострочный TJS редактор
+// ScriptingWindow: multi-line TJS editor.
 // ============================================================================
 
 #include <richedit.h>
@@ -21,13 +21,13 @@
 #include "ScriptingWindow.h"
 #include "TJSExecutor.h"
 
-// Глобальные переменные
+// Global variables.
 std::atomic<ScriptingWindow *> g_ScriptingWindow{nullptr};
 ScriptingWindow *ScriptingWindow::s_Instance = nullptr;
 WNDPROC ScriptingWindow::s_OriginalRichEditProc = nullptr;
 
 // ============================================================================
-// Реализация методов класса
+// Class method implementations.
 // ============================================================================
 
 ScriptingWindow::ScriptingWindow()
@@ -41,19 +41,19 @@ ScriptingWindow::ScriptingWindow()
 }
 
 ScriptingWindow::~ScriptingWindow() {
-	// Восстанавливаем оригинальную процедуру
+	// Restore the original procedure.
 	if (m_hRichEdit && s_OriginalRichEditProc) {
 		SetWindowLongPtr(m_hRichEdit, GWLP_WNDPROC,
 		                 (LONG_PTR)s_OriginalRichEditProc);
 	}
 
-	// Удаляем все созданные шрифты
+	// Delete all created fonts.
 	for (HFONT font : m_fonts) {
 		DeleteObject(font);
 	}
 	m_fonts.clear();
 
-	// Освобождаем RichEdit DLL
+	// Release the RichEdit DLL.
 	if (m_hRichEditDll) {
 		FreeLibrary(m_hRichEditDll);
 	}
@@ -64,12 +64,12 @@ ScriptingWindow::~ScriptingWindow() {
 }
 
 bool ScriptingWindow::Create() {
-	// Загружаем RichEdit DLL
+	// Load the RichEdit DLL.
 	m_hRichEditDll = LoadLibraryW(L"Msftedit.dll");
 	if (!m_hRichEditDll)
 		return false;
 
-	// Регистрируем класс окна
+	// Register the window class.
 	WNDCLASSW wc = {};
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = GetModuleHandle(NULL);
@@ -84,7 +84,7 @@ bool ScriptingWindow::Create() {
 		}
 	}
 
-	// Создаём окно
+	// Create the window.
 	m_hWnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, L"ScriptingWindowClass",
 	                         L"Scripting Window - Multi-line TJS Editor",
 	                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -93,7 +93,7 @@ bool ScriptingWindow::Create() {
 	if (!m_hWnd)
 		return false;
 
-	// Создаём RichEdit для многострочного редактирования
+	// Create a RichEdit control for multi-line editing.
 	m_hRichEdit =
 	    CreateWindowExW(0, MSFTEDIT_CLASS, L"",
 	                    WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL |
@@ -103,11 +103,11 @@ bool ScriptingWindow::Create() {
 	if (!m_hRichEdit)
 		return false;
 
-	// Subclass RichEdit для кастомной обработки Enter
+	// Subclass RichEdit for custom Enter handling.
 	s_OriginalRichEditProc = (WNDPROC)SetWindowLongPtr(m_hRichEdit, GWLP_WNDPROC,
 	                                                   (LONG_PTR)RichEditProc);
 
-	// Устанавливаем шрифт
+	// Set the font.
 	HFONT hFont =
 	    CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
 	                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
@@ -116,7 +116,7 @@ bool ScriptingWindow::Create() {
 	m_fonts.push_back(hFont);
 	SendMessageW(m_hRichEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-	// Создаём кнопки
+	// Create the buttons.
 	m_hExecute = CreateWindowW(L"BUTTON", L"Execute",
 	                           WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0,
 	                           m_hWnd, NULL, GetModuleHandle(NULL), NULL);
@@ -129,12 +129,12 @@ bool ScriptingWindow::Create() {
 	    CreateWindowW(L"BUTTON", L"Close", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 	                  0, 0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
-	// Устанавливаем шрифты для кнопок
+	// Set the button fonts.
 	SendMessageW(m_hExecute, WM_SETFONT, (WPARAM)hFont, TRUE);
 	SendMessageW(m_hClear, WM_SETFONT, (WPARAM)hFont, TRUE);
 	SendMessageW(m_hClose, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-	// Устанавливаем начальный текст
+	// Set the initial text.
 	SetWindowTextW(
 	    m_hRichEdit,
 	    L"// Scripting Window - Multi-line TJS Editor\n"
@@ -146,7 +146,7 @@ bool ScriptingWindow::Create() {
 	    L"keys.join(\", \");\n"
 	    L"})()\n");
 
-	// Располагаем элементы
+	// Lay out the controls.
 	OnResize(800, 600);
 
 	return true;
@@ -161,12 +161,12 @@ void ScriptingWindow::OnResize(int width, int height) {
 	int const padding = 5;
 	int const buttonSpacing = 5;
 
-	// RichEdit занимает всё пространство кроме нижней панели кнопок
+	// RichEdit fills the area above the bottom button panel.
 	int editHeight = height - buttonHeight - padding * 2;
 	SetWindowPos(m_hRichEdit, NULL, padding, padding, width - padding * 2,
 	             editHeight, SWP_NOZORDER);
 
-	// Кнопки в нижней части
+	// Buttons at the bottom.
 	int buttonY = height - buttonHeight - padding;
 	int totalButtonWidth = buttonWidth * 3 + buttonSpacing * 2;
 	int startX = (width - totalButtonWidth) / 2;
@@ -183,7 +183,7 @@ void ScriptingWindow::ExecuteScript() {
 	if (!m_hRichEdit)
 		return;
 
-	// Получаем текст из RichEdit
+	// Get text from RichEdit.
 	int textLength = GetWindowTextLengthW(m_hRichEdit);
 	if (textLength == 0)
 		return;
@@ -196,10 +196,10 @@ void ScriptingWindow::ExecuteScript() {
 	if (script.empty())
 		return;
 
-	// Выполняем скрипт через TVPExecuteScript (для многострочных)
+	// Execute the multi-line script through TVPExecuteScript.
 	tTJSVariant result;
 	if (ExecuteTJSSync(script.c_str(), &result)) {
-		// Проверяем на исключение
+		// Check for an exception.
 		if (result.Type() == tvtString) {
 			std::wstring strVal = result.GetString();
 			if (strVal.find(L"!!!TJS_EXCEPTION!!!") == 0) {
@@ -210,7 +210,7 @@ void ScriptingWindow::ExecuteScript() {
 			}
 		}
 
-		// Определяем тип результата
+		// Determine the result type.
 		std::wstring typeStr = L"Unknown";
 		switch (result.Type()) {
 			case tvtVoid:
@@ -241,7 +241,7 @@ void ScriptingWindow::ExecuteScript() {
 		}
 
 		std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";
-		AppendResult(output.c_str(), RGB(0, 200, 0));  // Зеленый для успеха
+		AppendResult(output.c_str(), RGB(0, 200, 0));  // Green for success.
 	} else {
 		AppendResult(L"Critical Error: TJS execution failed or timed out.\n",
 		             RGB(255, 0, 0));
@@ -258,13 +258,13 @@ void ScriptingWindow::AppendResult(wchar_t const *text, COLORREF color) {
 	if (!m_hRichEdit)
 		return;
 
-	// Добавляем текст в конец RichEdit
+	// Append text to the end of RichEdit.
 	CHARRANGE cr;
 	cr.cpMin = -1;
 	cr.cpMax = -1;
 	SendMessageW(m_hRichEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
 
-	// Устанавливаем цвет
+	// Set the color.
 	CHARFORMAT2W cf;
 	ZeroMemory(&cf, sizeof(cf));
 	cf.cbSize = sizeof(cf);
@@ -272,15 +272,15 @@ void ScriptingWindow::AppendResult(wchar_t const *text, COLORREF color) {
 	cf.crTextColor = color;
 	SendMessageW(m_hRichEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
-	// Добавляем текст
+	// Append text.
 	SendMessageW(m_hRichEdit, EM_REPLACESEL, FALSE, (LPARAM)text);
 
-	// Прокручиваем вниз
+	// Scroll to the bottom.
 	SendMessageW(m_hRichEdit, WM_VSCROLL, SB_BOTTOM, 0);
 }
 
 // ============================================================================
-// Статические функции
+// Static functions.
 // ============================================================================
 
 LRESULT CALLBACK ScriptingWindow::RichEditProc(HWND hwnd,
@@ -294,13 +294,13 @@ LRESULT CALLBACK ScriptingWindow::RichEditProc(HWND hwnd,
 			}
 			return 0;
 		}
-		// Enter должен переносить строку, а не выполнять
+		// Enter inserts a newline instead of executing.
 		if (wParam == VK_RETURN && !(GetKeyState(VK_CONTROL) & 0x8000)) {
-			return 0;  // Блокируем стандартное поведение Enter
+			return 0;  // Block default Enter behavior.
 		}
 	}
 
-	// Блокируем WM_CHAR для Enter (иначе будет beep)
+	// Block WM_CHAR for Enter to prevent a beep.
 	if (msg == WM_CHAR && wParam == '\r') {
 		return 0;
 	}
@@ -370,7 +370,7 @@ LRESULT CALLBACK ScriptingWindow::WindowProc(HWND hwnd,
 }
 
 // ============================================================================
-// Публичные функции управления
+// Public control functions.
 // ============================================================================
 
 void ScriptingWindow::Show() {

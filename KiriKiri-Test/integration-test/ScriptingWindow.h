@@ -12,7 +12,7 @@
 class tTJSVariant;
 
 // ============================================================================
-// ScriptingWindow - Многострочный TJS редактор
+// ScriptingWindow: multi-line TJS editor.
 // ============================================================================
 
 class ScriptingWindow {
@@ -23,14 +23,14 @@ class ScriptingWindow {
 	HWND m_hClear;
 	HWND m_hClose;
 
-	// Управление ресурсами
+	// Resource management.
 	HMODULE m_hRichEditDll;
 	std::vector<HFONT> m_fonts;
 
 	static ScriptingWindow *s_Instance;
 	static WNDPROC s_OriginalRichEditProc;
 
-	// Subclass процедура для RichEdit
+	// RichEdit subclass procedure.
 	static LRESULT CALLBACK RichEditProc(HWND hwnd,
 	                                     UINT msg,
 	                                     WPARAM wParam,
@@ -59,5 +59,5 @@ class ScriptingWindow {
 	bool IsVisible() const { return m_hWnd && IsWindowVisible(m_hWnd); }
 };
 
-// Глобальная переменная для доступа
+// Global access variable.
 extern std::atomic<ScriptingWindow *> g_ScriptingWindow;

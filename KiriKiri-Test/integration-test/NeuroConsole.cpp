@@ -1,5 +1,5 @@
 // ============================================================================
-// Класс: Консоль для выполнения TJS команд
+// Class: console for executing TJS commands.
 // ============================================================================
 
 #include <richedit.h>
@@ -11,7 +11,8 @@
 #include <thread>
 #include <vector>
 
-// RichEdit загружается динамически через LoadLibrary("Msftedit.dll") в Create()
+// RichEdit is loaded dynamically through LoadLibrary("Msftedit.dll") in
+// Create().
 
 // KiriKiri SDK
 #pragma warning(push)
@@ -22,33 +23,34 @@
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
 
-// Флаг для включения/выключения debug output
+// Flag for enabling or disabling debug output.
 static std::atomic<bool> g_DebugOutputEnabled(true);
 
 class NeuroConsole {
  private:
 	HWND m_hWnd;
-	HWND m_hOutput;       // RichEdit для вывода
-	HWND m_hInput;        // Edit для ввода команд
-	HWND m_hExecute;      // Кнопка Execute
-	HWND m_hClear;        // Кнопка Clear
-	HWND m_hScriptMode;   // Кнопка Script Mode
-	HWND m_hAlwaysOnTop;  // Чекбокс AlwaysOnTop
-	HWND m_hDebugOutput;  // Чекбокс Debug Output
-	HWND m_hNoWrapper;    // Чекбокс No Wrapper
+	HWND m_hOutput;       // RichEdit output control.
+	HWND m_hInput;        // Command input edit control.
+	HWND m_hExecute;      // Execute button.
+	HWND m_hClear;        // Clear button.
+	HWND m_hScriptMode;   // Script Mode button.
+	HWND m_hAlwaysOnTop;  // AlwaysOnTop checkbox.
+	HWND m_hDebugOutput;  // Debug Output checkbox.
+	HWND m_hNoWrapper;    // No Wrapper checkbox.
 
-	std::vector<std::wstring> m_history;  // История команд
+	std::vector<std::wstring> m_history;  // Command history.
 	int m_historyIndex;
 
-	// Управление ресурсами для предотвращения утечек
+	// Resource management to prevent leaks.
 	HMODULE m_hRichEditDll;
-	std::vector<HFONT> m_fonts;  // Хранилище созданных шрифтов
+	std::vector<HFONT> m_fonts;  // Created font storage.
 
 	static NeuroConsole *s_Instance;
-	static WNDPROC s_OriginalEditProc;    // Для subclass Edit control (ввод)
-	static WNDPROC s_OriginalOutputProc;  // Для subclass RichEdit control (вывод)
+	static WNDPROC s_OriginalEditProc;  // Input Edit control subclass procedure.
+	static WNDPROC
+	    s_OriginalOutputProc;  // Output RichEdit control subclass procedure.
 
-	// Subclass процедура для поля вывода - обработка Esc и Ctrl+A
+	// Output field subclass procedure for Esc and Ctrl+A handling.
 	static LRESULT CALLBACK OutputEditProc(HWND hwnd,
 	                                       UINT msg,
 	                                       WPARAM wParam,
@@ -64,43 +66,43 @@ class NeuroConsole {
 				return 0;
 			}
 		}
-		// Блокируем WM_CHAR для Esc и Ctrl+A (иначе будет beep)
+		// Block WM_CHAR for Esc and Ctrl+A to prevent a beep.
 		if (msg == WM_CHAR && (wParam == 27 || wParam == 1)) {
 			return 0;
 		}
 		return CallWindowProc(s_OriginalOutputProc, hwnd, msg, wParam, lParam);
 	}
 
-	// Subclass процедура для поля ввода - обработка Enter, стрелок и Ctrl+A
+	// Input field subclass procedure for Enter, arrow keys, and Ctrl+A.
 	static LRESULT CALLBACK InputEditProc(HWND hwnd,
 	                                      UINT msg,
 	                                      WPARAM wParam,
 	                                      LPARAM lParam) {
 		if (msg == WM_KEYDOWN) {
 			if (wParam == VK_RETURN) {
-				// Enter нажат - выполняем команду
+				// Enter pressed: execute the command.
 				if (s_Instance) {
 					s_Instance->ExecuteCommand();
 				}
-				return 0;  // Не передаём Enter дальше
+				return 0;  // Do not pass Enter further.
 			} else if (wParam == VK_UP) {
-				// Стрелка вверх - предыдущая команда из истории
+				// Up arrow: previous command from history.
 				if (s_Instance) {
 					s_Instance->HistoryUp();
 				}
 				return 0;
 			} else if (wParam == VK_DOWN) {
-				// Стрелка вниз - следующая команда из истории
+				// Down arrow: next command from history.
 				if (s_Instance) {
 					s_Instance->HistoryDown();
 				}
 				return 0;
 			} else if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
-				// Ctrl+A - выделить всё
+				// Ctrl+A: select all.
 				SendMessage(hwnd, EM_SETSEL, 0, -1);
 				return 0;
 			} else if (wParam == VK_ESCAPE) {
-				// Esc - скрыть консоль
+				// Esc: hide the console.
 				OutputDebugStringW(L"[NeuroConsole] ESC pressed in input\n");
 				if (s_Instance && s_Instance->m_hWnd) {
 					ShowWindow(s_Instance->m_hWnd, SW_HIDE);
@@ -108,11 +110,11 @@ class NeuroConsole {
 				return 0;
 			}
 		}
-		// Блокируем WM_CHAR для Enter, Esc и Ctrl+A (иначе будет beep)
+		// Block WM_CHAR for Enter, Esc, and Ctrl+A to prevent a beep.
 		if (msg == WM_CHAR && (wParam == '\r' || wParam == 27 || wParam == 1)) {
 			return 0;
 		}
-		// Все остальные сообщения - оригинальной процедуре
+		// Pass all other messages to the original procedure.
 		return CallWindowProc(s_OriginalEditProc, hwnd, msg, wParam, lParam);
 	}
 
@@ -144,7 +146,7 @@ class NeuroConsole {
 			}
 
 			case WM_COMMAND: {
-				// Клик на кнопку Execute
+				// Execute button click.
 				if ((HWND)lParam == console->m_hExecute) {
 					if (console) {
 						console->ExecuteCommand();
@@ -152,36 +154,36 @@ class NeuroConsole {
 					return 0;
 				}
 
-				// Клик на кнопку Script Mode
+				// Script Mode button click.
 				if ((HWND)lParam == console->m_hScriptMode) {
 					ToggleScriptingWindow();
 					return 0;
 				}
 
-				// Клик на кнопку Clear
+				// Clear button click.
 				if ((HWND)lParam == console->m_hClear) {
 					if (console)
 						console->ClearOutput();
 					return 0;
 				}
 
-				// Чекбокс AlwaysOnTop
+				// AlwaysOnTop checkbox.
 				if ((HWND)lParam == console->m_hAlwaysOnTop) {
 					if (console)
 						console->OnAlwaysOnTopChanged();
 					return 0;
 				}
 
-				// Чекбокс Debug Output
+				// Debug Output checkbox.
 				if ((HWND)lParam == console->m_hDebugOutput) {
 					if (console)
 						console->OnDebugOutputChanged();
 					return 0;
 				}
 
-				// Чекбокс No Wrapper
+				// No Wrapper checkbox.
 				if ((HWND)lParam == console->m_hNoWrapper) {
-					// Нет специальной обработки - состояние проверяется при выполнении
+					// No special handling; state is checked during execution.
 					return 0;
 				}
 				break;
@@ -214,7 +216,7 @@ class NeuroConsole {
 		int const scriptModeWidth = 100;
 		int const checkboxWidth = 100;
 
-		// Output занимает почти всё окно (минус место для чекбоксов внизу)
+		// Output fills most of the window, leaving space for bottom checkboxes.
 		int outputHeight = height - inputHeight - checkboxHeight - padding * 4;
 		SetWindowPos(m_hOutput, NULL, padding, padding, width - padding * 2,
 		             outputHeight, SWP_NOZORDER);
@@ -240,7 +242,7 @@ class NeuroConsole {
 		SetWindowPos(m_hClear, NULL, clearX, inputY, buttonWidth, inputHeight,
 		             SWP_NOZORDER);
 
-		// Checkboxes row (внизу) - теперь 3 чекбокса
+		// Bottom checkbox row with three checkboxes.
 		int checkboxY = inputY + inputHeight + padding;
 		SetWindowPos(m_hAlwaysOnTop, NULL, padding, checkboxY, checkboxWidth,
 		             checkboxHeight, SWP_NOZORDER);
@@ -275,7 +277,7 @@ class NeuroConsole {
 
 		if (m_historyIndex < (int)m_history.size()) {
 			SetWindowTextW(m_hInput, m_history[m_historyIndex].c_str());
-			// Курсор в конец
+			// Move the cursor to the end.
 			SendMessage(m_hInput, EM_SETSEL, -1, -1);
 		}
 	}
@@ -291,15 +293,15 @@ class NeuroConsole {
 		if (m_historyIndex < (int)m_history.size()) {
 			SetWindowTextW(m_hInput, m_history[m_historyIndex].c_str());
 		} else {
-			// После последней команды - пустая строка
+			// After the last command, use an empty line.
 			SetWindowTextW(m_hInput, L"");
 		}
-		// Курсор в конец
+		// Move the cursor to the end.
 		SendMessage(m_hInput, EM_SETSEL, -1, -1);
 	}
 
 	void ExecuteCommand() {
-		// Получаем текст команды безопасно
+		// Safely get the command text.
 		int textLength = GetWindowTextLengthW(m_hInput);
 		if (textLength == 0)
 			return;
@@ -314,22 +316,22 @@ class NeuroConsole {
 		GetWindowTextW(m_hInput, &command[0], textLength + 1);
 		command.resize(wcslen(command.c_str()));
 
-		// Добавляем в историю
+		// Add to history.
 		m_history.push_back(command);
 		m_historyIndex = (int)m_history.size();
 
-		// Выводим команду
+		// Output the command.
 		AppendOutput(L">> ", RGB(0, 150, 0));
 		AppendOutput(command.c_str(), RGB(0, 0, 0));
 		AppendOutput(L"\n", RGB(0, 0, 0));
 
-		// Выполняем TJS код
+		// Execute TJS code.
 		ExecuteTJSCommand(command.c_str());
 
-		// Очищаем поле ввода
+		// Clear the input field.
 		SetWindowTextW(m_hInput, L"");
 
-		// Фокус обратно на input
+		// Return focus to the input field.
 		SetFocus(m_hInput);
 	}
 
@@ -338,7 +340,7 @@ class NeuroConsole {
 			return;
 		std::wstring cleanCode = code;
 
-		// Безопасная очистка с использованием iswspace()
+		// Safely trim using iswspace().
 		while (!cleanCode.empty() &&
 		       (cleanCode.back() == L';' || iswspace(cleanCode.back()))) {
 			cleanCode.pop_back();
@@ -346,27 +348,27 @@ class NeuroConsole {
 		if (cleanCode.empty())
 			return;
 
-		// Проверяем состояние чекбокса "No Wrapper"
+		// Check the No Wrapper checkbox state.
 		BOOL noWrapperChecked =
 		    (SendMessage(m_hNoWrapper, BM_GETCHECK, 0, 0) == BST_CHECKED);
 
 		std::wstring finalCode;
 		if (noWrapperChecked) {
-			// Выполняем код без обёртки
+			// Execute code without a wrapper.
 			finalCode = cleanCode;
 		} else {
-			// Оборачиваем в try-catch для безопасности
+			// Wrap in try-catch for safety.
 			finalCode = L"(function(){ try { return (" + cleanCode +
 			            L"); } catch(e) { return \"!!!TJS_EXCEPTION!!! \" + "
 			            L"e.message; } })()";
 		}
 
 		tTJSVariant result;
-		// Вызываем синхронную функцию из dllmain
+		// Call the synchronous function from dllmain.
 		if (ExecuteTJSSync(finalCode.c_str(), &result)) {
-			// 1. Проверяем на исключение (наша обертка !!!TJS_EXCEPTION!!!)
+			// 1. Check for an exception from our !!!TJS_EXCEPTION!!! wrapper.
 			if (result.Type() == tvtString) {
-				// Используем .GetString() для получения указателя на внутреннюю строку
+				// Use .GetString() to access the internal string.
 				std::wstring strVal = result.GetString();
 				if (strVal.find(L"!!!TJS_EXCEPTION!!!") == 0) {
 					std::wstring errMsg = strVal.substr(20);
@@ -376,7 +378,7 @@ class NeuroConsole {
 				}
 			}
 
-			// 2. Определяем тип для вывода
+			// 2. Determine the type for output.
 			std::wstring typeStr = L"Unknown";
 			switch (result.Type()) {
 				case tvtVoid:
@@ -399,18 +401,18 @@ class NeuroConsole {
 					break;
 			}
 
-			// 3. Безопасно конвертируем результат в строку
-			// Используем явное приведение к ttstr, а затем к c_str()
+			// 3. Safely convert the result to a string.
+			// Explicitly cast to ttstr, then call c_str().
 			std::wstring valStr;
 			if (result.Type() == tvtVoid) {
 				valStr = L"void";
 			} else {
-				// Самый надежный способ конвертации в KiriKiri SDK
+				// Most reliable conversion method in the KiriKiri SDK.
 				valStr = ttstr(result).c_str();
 			}
 
 			std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";
-			AppendOutput(output.c_str(), RGB(0, 255, 0));  // Зеленый для успеха
+			AppendOutput(output.c_str(), RGB(0, 255, 0));  // Green for success.
 
 		} else {
 			AppendOutput(L"Critical Error: TJS execution failed or timed out.\n",
@@ -425,13 +427,13 @@ class NeuroConsole {
 		if (!m_hOutput)
 			return;
 
-		// Переходим в конец текста
+		// Move to the end of the text.
 		CHARRANGE cr;
 		cr.cpMin = -1;
 		cr.cpMax = -1;
 		SendMessageW(m_hOutput, EM_EXSETSEL, 0, (LPARAM)&cr);
 
-		// Устанавливаем цвет
+		// Set the color.
 		CHARFORMAT2W cf;
 		ZeroMemory(&cf, sizeof(cf));
 		cf.cbSize = sizeof(cf);
@@ -439,10 +441,10 @@ class NeuroConsole {
 		cf.crTextColor = color;
 		SendMessageW(m_hOutput, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
-		// Добавляем текст
+		// Append text.
 		SendMessageW(m_hOutput, EM_REPLACESEL, FALSE, (LPARAM)text);
 
-		// Прокручиваем вниз
+		// Scroll to the bottom.
 		SendMessageW(m_hOutput, WM_VSCROLL, SB_BOTTOM, 0);
 	}
 
@@ -462,13 +464,13 @@ class NeuroConsole {
 	}
 
 	bool Create() {
-		// Загружаем RichEdit DLL
+		// Load the RichEdit DLL.
 		m_hRichEditDll = LoadLibraryW(L"Msftedit.dll");
 		if (!m_hRichEditDll) {
 			return false;
 		}
 
-		// Регистрируем класс окна
+		// Register the window class.
 		WNDCLASSW wc = {};
 		wc.lpfnWndProc = WindowProc;
 		wc.hInstance = GetModuleHandle(NULL);
@@ -477,7 +479,7 @@ class NeuroConsole {
 		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 		RegisterClassW(&wc);
 
-		// Создаём независимое окно
+		// Create an independent window.
 		m_hWnd = CreateWindowExW(WS_EX_TOOLWINDOW, L"NeuroConsoleClass",
 		                         L"Neuro Console - TJS Command Executor",
 		                         WS_OVERLAPPEDWINDOW, 100, 100, 800, 600, NULL,
@@ -486,18 +488,18 @@ class NeuroConsole {
 		if (!m_hWnd)
 			return false;
 
-		// Создаём RichEdit для вывода
+		// Create a RichEdit control for output.
 		m_hOutput =
 		    CreateWindowExW(0, MSFTEDIT_CLASS, L"",
 		                    WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE |
 		                        ES_READONLY | ES_AUTOVSCROLL,
 		                    0, 0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
-		// Subclass RichEdit для обработки Esc и Ctrl+A
+		// Subclass RichEdit to handle Esc and Ctrl+A.
 		s_OriginalOutputProc = (WNDPROC)SetWindowLongPtr(m_hOutput, GWLP_WNDPROC,
 		                                                 (LONG_PTR)OutputEditProc);
 
-		// Устанавливаем шрифт для output
+		// Set the output font.
 		CHARFORMAT2W cf;
 		ZeroMemory(&cf, sizeof(cf));
 		cf.cbSize = sizeof(cf);
@@ -507,16 +509,16 @@ class NeuroConsole {
 		cf.bCharSet = DEFAULT_CHARSET;
 		SendMessageW(m_hOutput, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
 
-		// Создаём Edit для ввода
+		// Create an Edit control for input.
 		m_hInput = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
 		                           WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL, 0, 0, 0,
 		                           0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
-		// Subclass Edit для обработки Enter
+		// Subclass Edit to handle Enter.
 		s_OriginalEditProc = (WNDPROC)SetWindowLongPtr(m_hInput, GWLP_WNDPROC,
 		                                               (LONG_PTR)InputEditProc);
 
-		// Создаём кнопки
+		// Create the buttons.
 		m_hExecute =
 		    CreateWindowW(L"BUTTON", L"Run", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 		                  0, 0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
@@ -525,37 +527,37 @@ class NeuroConsole {
 		                         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0,
 		                         m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
-		// Создаём кнопку Script Mode для открытия многострочного редактора
+		// Create the Script Mode button to open the multi-line editor.
 		m_hScriptMode = CreateWindowW(
 		    L"BUTTON", L"Script Mode", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0,
 		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
-		// Создаём чекбоксы
+		// Create the checkboxes.
 		m_hAlwaysOnTop = CreateWindowW(
 		    L"BUTTON", L"Always On Top", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0,
 		    0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
-		// По умолчанию выключён (окно создано без WS_EX_TOPMOST)
+		// Disabled by default; the window is created without WS_EX_TOPMOST.
 		SendMessage(m_hAlwaysOnTop, BM_SETCHECK, BST_UNCHECKED, 0);
 
 		m_hDebugOutput = CreateWindowW(
 		    L"BUTTON", L"Debug Output", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0,
 		    0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
-		// По умолчанию включён
+		// Enabled by default.
 		SendMessage(m_hDebugOutput, BM_SETCHECK, BST_CHECKED, 0);
 
 		m_hNoWrapper = CreateWindowW(
 		    L"BUTTON", L"No Wrapper", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0, 0,
 		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
-		// По умолчанию выключен
+		// Disabled by default.
 		SendMessage(m_hNoWrapper, BM_SETCHECK, BST_UNCHECKED, 0);
 
-		// Устанавливаем шрифт
+		// Set the font.
 		HFONT hFont =
 		    CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
 		                DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
-		// Сохраняем шрифт для последующего удаления
+		// Keep the font for later deletion.
 		m_fonts.push_back(hFont);
 
 		SendMessageW(m_hInput, WM_SETFONT, (WPARAM)hFont, TRUE);
@@ -566,7 +568,7 @@ class NeuroConsole {
 		SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hNoWrapper, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-		// Приветственное сообщение
+		// Welcome message.
 		AppendOutput(L"=== Neuro Console Ready ===\n", RGB(0, 100, 200));
 		AppendOutput(
 		    L"Enter TJS commands below and press Enter or click Execute.\n\n",
@@ -623,7 +625,7 @@ class NeuroConsole {
 	bool IsVisible() const { return m_hWnd && IsWindowVisible(m_hWnd); }
 
 	~NeuroConsole() {
-		// Восстанавливаем оригинальные процедуры перед удалением
+		// Restore the original procedures before deletion.
 		if (m_hOutput && s_OriginalOutputProc) {
 			SetWindowLongPtr(m_hOutput, GWLP_WNDPROC, (LONG_PTR)s_OriginalOutputProc);
 		}
@@ -631,13 +633,13 @@ class NeuroConsole {
 			SetWindowLongPtr(m_hInput, GWLP_WNDPROC, (LONG_PTR)s_OriginalEditProc);
 		}
 
-		// Удаляем все созданные шрифты
+		// Delete all created fonts.
 		for (HFONT font : m_fonts) {
 			DeleteObject(font);
 		}
 		m_fonts.clear();
 
-		// Освобождаем RichEdit DLL
+		// Release the RichEdit DLL.
 		if (m_hRichEditDll) {
 			FreeLibrary(m_hRichEditDll);
 			m_hRichEditDll = nullptr;
@@ -654,11 +656,11 @@ WNDPROC NeuroConsole::s_OriginalEditProc = nullptr;
 WNDPROC NeuroConsole::s_OriginalOutputProc = nullptr;
 
 // ============================================================================
-// Реализация глобальных функций для Scripting Window
+// Global Scripting Window function implementations.
 // ============================================================================
 
 void InitScriptingWindow() {
-	// Создаём Scripting Window в основном потоке
+	// Create Scripting Window on the main thread.
 	ScriptingWindow *window = new ScriptingWindow();
 	if (window->Create()) {
 		g_ScriptingWindow.store(window);
@@ -694,7 +696,7 @@ bool IsScriptingWindowVisible() {
 }
 
 // ============================================================================
-// Console Thread - создаёт окно и запускает message loop
+// Console thread: creates the window and runs the message loop.
 // ============================================================================
 
 static std::atomic<NeuroConsole *> g_Console{nullptr};
@@ -702,21 +704,21 @@ static std::thread g_ConsoleThread;
 static std::atomic<bool> g_ConsoleThreadRunning{false};
 static std::atomic<bool> g_ConsoleReady{false};
 static std::atomic<HWND> g_ConsoleHWND{
-    nullptr};                      // Для кросс-поточной коммуникации
-static std::mutex g_ConsoleMutex;  // Для thread-safe операций
+    nullptr};                      // For cross-thread communication.
+static std::mutex g_ConsoleMutex;  // For thread-safe operations.
 
-// Custom messages для управления консолью из других потоков
-// (определены в NeuroConsole.h)
+// Custom messages for console control from other threads.
+// Defined in NeuroConsole.h.
 
-// Структура для передачи данных через PostMessage
+// Structure for passing data through PostMessage.
 struct ConsoleAppendData {
 	wchar_t *text;
 	COLORREF color;
 };
 
-// Поток консоли с собственным message loop
+// Console thread with its own message loop.
 void ConsoleThreadProc() {
-	// Создаём консоль В ЭТОМ потоке
+	// Create the console on this thread.
 	NeuroConsole *console = new NeuroConsole();
 	g_Console.store(console);
 	if (!g_Console.load()->Create()) {
@@ -729,11 +731,10 @@ void ConsoleThreadProc() {
 	g_ConsoleHWND.store(g_Console.load()->GetHWND());
 	g_ConsoleReady.store(true);
 
-	// Message loop для консоли - ЭТО КРИТИЧЕСКИ ВАЖНО!
-	// Без этого окно не будет обрабатывать события
+	// The console message loop is critical for event processing.
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0)) {
-		// Обрабатываем наши custom messages
+		// Handle custom messages.
 		if (msg.hwnd == g_ConsoleHWND.load() || msg.hwnd == NULL) {
 			if (msg.message == WM_CONSOLE_TOGGLE) {
 				NeuroConsole *console = g_Console.load();
@@ -742,7 +743,7 @@ void ConsoleThreadProc() {
 				continue;
 			}
 			if (msg.message == WM_CONSOLE_SHUTDOWN) {
-				break;  // Выход из message loop
+				break;  // Exit the message loop.
 			}
 			if (msg.message == WM_CONSOLE_APPEND) {
 				std::lock_guard<std::mutex> lock(g_ConsoleMutex);
@@ -761,7 +762,7 @@ void ConsoleThreadProc() {
 		DispatchMessage(&msg);
 	}
 
-	// Cleanup после выхода из loop
+	// Cleanup after exiting the loop.
 	NeuroConsole *consoleToDelete = g_Console.load();
 	if (consoleToDelete) {
 		delete consoleToDelete;
@@ -772,18 +773,18 @@ void ConsoleThreadProc() {
 }
 
 // ============================================================================
-// Экспортируемые функции для использования из dllmain.cpp
+// Exported functions for use from dllmain.cpp.
 // ============================================================================
 
 void InitNeuroConsole() {
 	if (g_ConsoleThreadRunning.load()) {
-		return;  // Уже запущен
+		return;  // Already running.
 	}
 
 	g_ConsoleThreadRunning.store(true);
 	g_ConsoleThread = std::thread(ConsoleThreadProc);
 
-	// Ждём готовности консоли (до 2 секунд)
+	// Wait for the console to become ready, up to two seconds.
 	for (int i = 0; i < 20 && !g_ConsoleReady.load(); i++) {
 		Sleep(100);
 	}
@@ -794,12 +795,12 @@ void ShutdownNeuroConsole() {
 		return;
 	}
 
-	// Отправляем сообщение о закрытии в поток консоли
+	// Send the shutdown message to the console thread.
 	if (g_ConsoleHWND) {
 		PostMessage(g_ConsoleHWND, WM_CONSOLE_SHUTDOWN, 0, 0);
 	}
 
-	// Ждём завершения потока
+	// Wait for the thread to finish.
 	if (g_ConsoleThread.joinable()) {
 		g_ConsoleThread.join();
 	}
@@ -808,12 +809,12 @@ void ShutdownNeuroConsole() {
 }
 
 void ToggleNeuroConsole() {
-	// Если поток не запущен - запускаем
+	// Start the thread if it is not running.
 	if (!g_ConsoleThreadRunning.load()) {
 		InitNeuroConsole();
 	}
 
-	// Отправляем сообщение toggle в поток консоли
+	// Send the toggle message to the console thread.
 	if (g_ConsoleHWND) {
 		PostMessage(g_ConsoleHWND, WM_CONSOLE_TOGGLE, 0, 0);
 	}
@@ -828,11 +829,11 @@ void AppendToNeuroConsole(wchar_t const *text, unsigned int color) {
 	if (!g_ConsoleReady.load() || !g_Console.load() || !text)
 		return;
 
-	// Проверяем, включён ли debug output
+	// Check whether debug output is enabled.
 	if (!g_DebugOutputEnabled.load())
 		return;
 
-	// Безопасная проверка длины текста
+	// Safely check the text length.
 	size_t len = wcslen(text);
 	if (len == 0)
 		return;
@@ -841,7 +842,7 @@ void AppendToNeuroConsole(wchar_t const *text, unsigned int color) {
 		len = MAX_CONSOLE_TEXT_LENGTH;
 	}
 
-	// Копируем текст (будет удалён в обработчике)
+	// Copy the text; the handler deletes it.
 	wchar_t *textCopy = new wchar_t[len + 1];
 	wcscpy_s(textCopy, len + 1, text);
 	textCopy[len] = L'\0';
@@ -850,11 +851,11 @@ void AppendToNeuroConsole(wchar_t const *text, unsigned int color) {
 	data->text = textCopy;
 	data->color = (COLORREF)color;
 
-	// Отправляем в поток консоли с проверкой
+	// Send to the console thread with failure handling.
 	HWND consoleHwnd = g_ConsoleHWND.load();
 	if (consoleHwnd) {
 		if (!PostMessage(consoleHwnd, WM_CONSOLE_APPEND, (WPARAM)data, 0)) {
-			// Если PostMessage не сработал, очищаем память
+			// Release memory if PostMessage fails.
 			delete[] textCopy;
 			delete data;
 		}

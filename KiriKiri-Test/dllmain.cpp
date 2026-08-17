@@ -4,8 +4,8 @@
 #define WIN32_LEAN_AND_MEAN
 
 // ============================================================================
-// Минимальный загрузчик плагина (self-linking)
-// Вся логика поиска iTVPFunctionExporter теперь в плагине
+// Minimal plugin loader (self-linking)
+// The plugin now handles all iTVPFunctionExporter lookup logic.
 // ============================================================================
 
 void LoadPlugin() {
@@ -23,7 +23,7 @@ void LoadPlugin() {
 
 	OutputDebugStringW(L"[Version.dll] Neuro-integration.dll loaded\n");
 
-	// Вызываем InitPlugin из плагина — он сам найдёт exporter и вызовет V2Link
+	// Call InitPlugin; it finds the exporter and calls V2Link itself.
 	typedef bool (*InitPluginFunc)();
 	InitPluginFunc initPlugin =
 	    (InitPluginFunc)GetProcAddress(hPlugin, "InitPlugin");
@@ -54,7 +54,7 @@ void LoadPlugin() {
 }
 
 // ============================================================================
-// Проксирование version.dll (ваш существующий код)
+// version.dll proxying (existing code)
 // ============================================================================
 #define WRAPPER_GENFUNC(name)        \
 	FARPROC orig_##name;               \
@@ -125,11 +125,11 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID) {
 
 		OutputDebugStringW(L"[Version.dll] DLL_PROCESS_ATTACH\n");
 
-		// Инициализируем проксирование оригинальной version.dll
+		// Initialize proxying for the original version.dll.
 		VersionDllInit();
 
-		// Запускаем загрузку плагина в отдельном потоке
-		// ВАЖНО: используем detach() чтобы поток работал независимо
+		// Load the plugin on a separate thread.
+		// Important: detach so the thread runs independently.
 		std::thread(LoadPlugin).detach();
 	}
 	return TRUE;

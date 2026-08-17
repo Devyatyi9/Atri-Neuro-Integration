@@ -28,9 +28,9 @@ static void ContextMonitorThread() {
 			break;
 
 		tTJSVariant result;
-		// Вызываем внешний TJS-скрипт.
-		// neuroExecFile возвращает результат последнего выражения.
-		// silent=true — не логировать в plugin_log.txt
+		// Run the external TJS script.
+		// neuroExecFile returns the result of the final expression.
+		// silent=true: do not log to plugin_log.txt.
 		bool ok = ExecuteTJSSync(
 		    L"neuroExecFile(\"neuro_scripts/context_monitor.tjs\", 1)", &result,
 		    5000);
@@ -41,14 +41,14 @@ static void ContextMonitorThread() {
 		if (resultStr.IsEmpty())
 			continue;
 
-		// Если есть изменения — пишем в neuro_tag_log.txt
+		// Write changes to neuro_tag_log.txt.
 		int utf8Len = WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, NULL,
 		                                  0, NULL, NULL);
 		if (utf8Len > 0) {
 			std::string utf8Result(utf8Len, '\0');
 			WideCharToMultiByte(CP_UTF8, 0, resultStr.c_str(), -1, &utf8Result[0],
 			                    utf8Len, NULL, NULL);
-			// Убираем trailing null
+			// Remove the trailing null.
 			while (!utf8Result.empty() && utf8Result.back() == '\0')
 				utf8Result.pop_back();
 			if (!utf8Result.empty()) {

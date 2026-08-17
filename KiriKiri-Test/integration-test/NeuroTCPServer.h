@@ -5,15 +5,15 @@
 #include <thread>
 
 // ============================================================================
-// NeuroTCPServer — TCP сервер для удалённого выполнения TJS кода
+// NeuroTCPServer: TCP server for remote TJS code execution.
 // ============================================================================
-// Позволяет внешним инструментам отправлять TJS команды в плагин.
+// Allows external tools to send TJS commands to the plugin.
 //
-// Протокол:
+// Protocol:
 //   Client → Server: [4-byte LE length][UTF-8 TJS code]
 //   Server → Client: [4-byte LE length][UTF-8 result]
 //
-// Потокобезопасность: использует ExecuteTJSSync() через PostMessage/Subclass.
+// Thread safety: uses ExecuteTJSSync() through PostMessage/subclassing.
 
 constexpr int NEURO_TCP_PORT = 18700;
 constexpr int NEURO_TCP_MAX_CLIENTS = 4;

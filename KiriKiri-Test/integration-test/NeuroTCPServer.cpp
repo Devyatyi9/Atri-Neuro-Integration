@@ -1,4 +1,4 @@
-// Winsock2 должен быть включён ДО windows.h
+// Winsock2 must be included before windows.h.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
@@ -13,7 +13,7 @@
 #include "NeuroTCPServer.h"
 #include "TJSExecutor.h"
 
-// Для tTJSVariant и ttstr
+// For tTJSVariant and ttstr.
 #pragma warning(push)
 #pragma warning(disable : 26495)
 #include "../krkr-sdk/tp_stub.h"
@@ -22,13 +22,13 @@
 #pragma comment(lib, "ws2_32.lib")
 
 // ============================================================================
-// Состояние сервера
+// Server state.
 // ============================================================================
 static std::atomic<bool> g_TCPServerRunning(false);
 static std::thread g_TCPServerThread;
 static SOCKET g_ListenSocket = INVALID_SOCKET;
 
-// Список активных клиентских сокетов (для закрытия при остановке)
+// Active client sockets, closed during shutdown.
 static std::mutex g_ClientsMutex;
 static std::list<SOCKET> g_ActiveClients;
 static std::mutex g_ClientThreadsMutex;
@@ -41,7 +41,7 @@ struct ClientThread {
 static std::vector<ClientThread> g_ClientThreads;
 
 // ============================================================================
-// Утилиты
+// Utilities.
 // ============================================================================
 
 static void LogTCP(char const *msg) {
@@ -88,7 +88,7 @@ static void ReapFinishedClientThreads() {
 	}
 }
 
-// Отправить строку клиенту: [4-byte LE length][data]
+// Send a string to the client: [4-byte LE length][data].
 static bool SendToClient(SOCKET sock, std::string const &data) {
 	uint32_t len = (uint32_t)data.size();
 	int sent = send(sock, (char const *)&len, 4, 0);
@@ -102,7 +102,7 @@ static bool SendToClient(SOCKET sock, std::string const &data) {
 	return true;
 }
 
-// Получить строку от клиента: [4-byte LE length][data]
+// Receive a string from the client: [4-byte LE length][data].
 static bool RecvFromClient(SOCKET sock, std::string &out) {
 	out.clear();
 	uint32_t len = 0;
@@ -123,7 +123,7 @@ static bool RecvFromClient(SOCKET sock, std::string &out) {
 }
 
 // ============================================================================
-// Обработка одного клиента
+// Single-client handling.
 // ============================================================================
 
 static void HandleClient(SOCKET clientSock,
@@ -153,7 +153,7 @@ static void HandleClient(SOCKET clientSock,
 		                    wideBuf.data(), wideLen);
 		std::wstring wideCode(wideBuf.data(), wideLen);
 
-		// Выполняем TJS код (синхронно, до 10 сек)
+		// Execute TJS code synchronously, with a 10-second timeout.
 		tTJSVariant tjsResult;
 		bool ok = ExecuteTJSSync(wideCode.c_str(), &tjsResult, 10000);
 
@@ -178,7 +178,7 @@ static void HandleClient(SOCKET clientSock,
 		}
 	}
 
-	// Очистка
+	// Cleanup.
 	closesocket(clientSock);
 	{
 		std::lock_guard<std::mutex> lock(g_ClientsMutex);
@@ -191,7 +191,7 @@ static void HandleClient(SOCKET clientSock,
 }
 
 // ============================================================================
-// Поток сервера
+// Server thread.
 // ============================================================================
 
 static void TCPServerThread() {
@@ -295,7 +295,7 @@ static void TCPServerThread() {
 }
 
 // ============================================================================
-// Публичные функции
+// Public functions.
 // ============================================================================
 
 bool StartTCPServer() {

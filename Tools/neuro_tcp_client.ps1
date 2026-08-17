@@ -1,15 +1,15 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Отправляет TJS код в плагин через TCP или управляет игрой.
+    Sends TJS code to the plugin over TCP or controls the game.
 .PARAMETER Code
-    TJS код для выполнения. Если не указан, читает из stdin.
+    TJS code to execute. Reads from stdin when omitted.
 .PARAMETER Restart
-    Перезапустить игру.
+    Restart the game.
 .PARAMETER Kill
-    Принудительно завершить игру.
+    Forcefully terminate the game.
 .PARAMETER Port
-    Порт TCP сервера (по умолчанию 18700).
+    TCP server port (default: 18700).
 #>
 param(
     [string]$Code,
@@ -78,7 +78,7 @@ function Kill-Game {
 if ($Kill) { Kill-Game; exit 0 }
 if ($Restart) { Restart-Game; exit 0 }
 
-# Если Code не указан через параметр, читаем из stdin
+# Read from stdin when Code was not supplied as a parameter.
 if (-not $Code) {
     $Code = $input | ForEach-Object { $_ }
 }
