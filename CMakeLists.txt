@@ -13,6 +13,14 @@ endif()
 option(ATRI_BUILD_PROTOTYPE "Build the legacy integration prototype" OFF)
 option(ATRI_CONFIGURE_ALL_TARGETS "Configure clean and prototype targets together" OFF)
 
+function(atri_add_version_resource target original_filename file_description)
+    set(ATRI_ORIGINAL_FILENAME "${original_filename}")
+    set(ATRI_FILE_DESCRIPTION "${file_description}")
+    set(resource_file "${CMAKE_CURRENT_BINARY_DIR}/resources/${target}.rc")
+    configure_file(resources/windows-version.rc.in "${resource_file}" @ONLY)
+    target_sources(${target} PRIVATE "${resource_file}")
+endfunction()
+
 set(NEURO_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(NEURO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(NEURO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -58,6 +66,11 @@ if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
     target_link_options(atri_neuro_integration PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/integration/neuro.def"
     )
+    atri_add_version_resource(
+        atri_neuro_integration
+        "Neuro-Integration.dll"
+        "ATRI Neuro Integration"
+    )
 endif()
 
 if(ATRI_BUILD_PROTOTYPE)
@@ -97,5 +110,10 @@ if(ATRI_BUILD_PROTOTYPE)
     target_link_options(atri_neuro_prototype PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/integration-test/neuro.def"
         /NODEFAULTLIB:LIBCMT
+    )
+    atri_add_version_resource(
+        atri_neuro_prototype
+        "Neuro-Integration.dll"
+        "ATRI Neuro Integration Prototype"
     )
 endif()

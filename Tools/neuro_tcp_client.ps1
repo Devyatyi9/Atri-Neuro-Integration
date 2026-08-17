@@ -21,7 +21,7 @@ param(
 $GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
 $GameProcessName = "ATRI-MyDearMoments-"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$PluginDll = Join-Path $RepoRoot "out\build\win32-prototype-debug\Debug\Neuro-Integration.dll"
+$PluginDll = Join-Path $RepoRoot "build\prototype\Debug\Neuro-Integration.dll"
 $GameDir = "D:\Games\ATRI-TestVersion"
 
 function Restart-Game {

@@ -2,12 +2,36 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Configure: clangd Database",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S",
+        "${workspaceFolder}",
+        "-B",
+        "${workspaceFolder}\\build\\clangd",
+        "-G",
+        "Ninja",
+        "-DATRI_BUILD_PROTOTYPE=ON",
+        "-DATRI_CONFIGURE_ALL_TARGETS=ON",
+        "-DCMAKE_C_COMPILER=clang-cl",
+        "-DCMAKE_CXX_COMPILER=clang-cl",
+        "-DCMAKE_C_COMPILER_TARGET=i686-pc-windows-msvc",
+        "-DCMAKE_CXX_COMPILER_TARGET=i686-pc-windows-msvc",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+      ],
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Configure: Prototype Debug",
       "type": "shell",
       "command": "cmake",
       "args": [
         "--preset",
-        "win32-prototype-debug"
+        "win32-prototype"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -34,7 +58,7 @@
       "command": "cmake",
       "args": [
         "--preset",
-        "win32-prototype-release"
+        "win32-prototype"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -58,7 +82,7 @@
       "command": "cmake",
       "args": [
         "--preset",
-        "win32-debug"
+        "win32-clean"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -82,7 +106,7 @@
       "command": "cmake",
       "args": [
         "--preset",
-        "win32-release"
+        "win32-clean"
       ],
       "problemMatcher": "$msCompile"
     },
@@ -118,7 +142,7 @@
       "command": "Copy-Item",
       "args": [
         "-LiteralPath",
-        "${workspaceFolder}\\out\\build\\win32-prototype-debug\\Debug\\Neuro-Integration.dll",
+        "${workspaceFolder}\\build\\prototype\\Debug\\Neuro-Integration.dll",
         "-Destination",
         "D:\\Games\\ATRI-TestVersion\\Neuro-Integration.dll",
         "-Force"

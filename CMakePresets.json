@@ -11,63 +11,38 @@
       "hidden": true,
       "generator": "Visual Studio 17 2022",
       "architecture": "Win32",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
         "ATRI_BUILD_PROTOTYPE": "OFF"
       }
     },
     {
-      "name": "win32-debug",
-      "inherits": "win32-base"
-    },
-    {
-      "name": "win32-release",
-      "inherits": "win32-base"
-    },
-    {
-      "name": "win32-prototype-debug",
+      "name": "win32-clean",
       "inherits": "win32-base",
+      "binaryDir": "${sourceDir}/build/clean"
+    },
+    {
+      "name": "win32-prototype",
+      "inherits": "win32-base",
+      "binaryDir": "${sourceDir}/build/prototype",
       "cacheVariables": {
         "ATRI_BUILD_PROTOTYPE": "ON"
-      }
-    },
-    {
-      "name": "win32-prototype-release",
-      "inherits": "win32-base",
-      "cacheVariables": {
-        "ATRI_BUILD_PROTOTYPE": "ON"
-      }
-    },
-    {
-      "name": "win32-clangd",
-      "displayName": "Win32 clangd database",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "cacheVariables": {
-        "ATRI_BUILD_PROTOTYPE": "ON",
-        "ATRI_CONFIGURE_ALL_TARGETS": "ON",
-        "CMAKE_C_COMPILER": "clang-cl",
-        "CMAKE_CXX_COMPILER": "clang-cl",
-        "CMAKE_C_COMPILER_TARGET": "i686-pc-windows-msvc",
-        "CMAKE_CXX_COMPILER_TARGET": "i686-pc-windows-msvc",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     }
   ],
   "buildPresets": [
     {
       "name": "win32-debug",
-      "configurePreset": "win32-debug",
+      "configurePreset": "win32-clean",
       "configuration": "Debug"
     },
     {
       "name": "win32-release",
-      "configurePreset": "win32-release",
+      "configurePreset": "win32-clean",
       "configuration": "Release"
     },
     {
       "name": "win32-prototype-debug",
-      "configurePreset": "win32-prototype-debug",
+      "configurePreset": "win32-prototype",
       "configuration": "Debug",
       "targets": [
         "atri_version_proxy",
@@ -76,7 +51,7 @@
     },
     {
       "name": "win32-prototype-release",
-      "configurePreset": "win32-prototype-release",
+      "configurePreset": "win32-prototype",
       "configuration": "Release",
       "targets": [
         "atri_version_proxy",

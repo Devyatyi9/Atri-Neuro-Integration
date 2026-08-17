@@ -1,8 +1,9 @@
 {
   "cmake.useCMakePresets": "always",
   "cmake.configureOnOpen": true,
-  "cmake.configurePreset": "win32-clangd",
+  "cmake.configurePreset": "win32-clean",
+  "cmake.buildPreset": "win32-debug",
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/out/build/win32-clangd"
+    "--compile-commands-dir=${workspaceFolder}/build/clangd"
   ]
 }

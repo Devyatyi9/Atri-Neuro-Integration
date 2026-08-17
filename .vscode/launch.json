@@ -9,7 +9,7 @@
       "args": [
         "/d",
         "/c",
-        "cmake --preset win32-prototype-debug && cmake --build --preset win32-prototype-debug"
+        "cmake --preset win32-prototype && cmake --build --preset win32-prototype-debug"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
@@ -22,7 +22,7 @@
       "args": [
         "/d",
         "/c",
-        "cmake --preset win32-prototype-release && cmake --build --preset win32-prototype-release"
+        "cmake --preset win32-prototype && cmake --build --preset win32-prototype-release"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
@@ -35,7 +35,7 @@
       "args": [
         "/d",
         "/c",
-        "cmake --preset win32-debug && cmake --build --preset win32-debug"
+        "cmake --preset win32-clean && cmake --build --preset win32-debug"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
@@ -48,7 +48,7 @@
       "args": [
         "/d",
         "/c",
-        "cmake --preset win32-release && cmake --build --preset win32-release"
+        "cmake --preset win32-clean && cmake --build --preset win32-release"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
