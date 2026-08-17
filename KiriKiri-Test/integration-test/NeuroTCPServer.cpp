@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <vector>
 #include "Logging.h"
@@ -30,6 +31,14 @@ static SOCKET g_ListenSocket = INVALID_SOCKET;
 // Список активных клиентских сокетов (для закрытия при остановке)
 static std::mutex g_ClientsMutex;
 static std::list<SOCKET> g_ActiveClients;
+static std::mutex g_ClientThreadsMutex;
+
+struct ClientThread {
+	std::thread thread;
+	std::shared_ptr<std::atomic<bool>> finished;
+};
+
+static std::vector<ClientThread> g_ClientThreads;
 
 // ============================================================================
 // Утилиты
@@ -39,6 +48,44 @@ static void LogTCP(char const *msg) {
 	char buf[512];
 	sprintf_s(buf, "[TCP] %s\n", msg);
 	LogToFile(buf);
+}
+
+static void ShutdownActiveClients() {
+	std::lock_guard<std::mutex> lock(g_ClientsMutex);
+	for (SOCKET socket : g_ActiveClients) {
+		shutdown(socket, SD_BOTH);
+	}
+}
+
+static void JoinClientThreads() {
+	std::vector<ClientThread> threads;
+	{
+		std::lock_guard<std::mutex> lock(g_ClientThreadsMutex);
+		threads.swap(g_ClientThreads);
+	}
+
+	for (ClientThread &clientThread : threads) {
+		clientThread.thread.join();
+	}
+}
+
+static void ReapFinishedClientThreads() {
+	std::vector<ClientThread> finishedThreads;
+	{
+		std::lock_guard<std::mutex> lock(g_ClientThreadsMutex);
+		for (auto it = g_ClientThreads.begin(); it != g_ClientThreads.end();) {
+			if (it->finished->load()) {
+				finishedThreads.push_back(std::move(*it));
+				it = g_ClientThreads.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
+	for (ClientThread &clientThread : finishedThreads) {
+		clientThread.thread.join();
+	}
 }
 
 // Отправить строку клиенту: [4-byte LE length][data]
@@ -79,7 +126,8 @@ static bool RecvFromClient(SOCKET sock, std::string &out) {
 // Обработка одного клиента
 // ============================================================================
 
-static void HandleClient(SOCKET clientSock) {
+static void HandleClient(SOCKET clientSock,
+                         std::shared_ptr<std::atomic<bool>> finished) {
 	char buf[128];
 	sprintf_s(buf, "[TCP] Client connected (sock=%d)\n", (int)clientSock);
 	LogToFile(buf);
@@ -139,6 +187,7 @@ static void HandleClient(SOCKET clientSock) {
 
 	sprintf_s(buf, "[TCP] Client disconnected (sock=%d)\n", (int)clientSock);
 	LogToFile(buf);
+	finished->store(true);
 }
 
 // ============================================================================
@@ -151,6 +200,7 @@ static void TCPServerThread() {
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 		LogTCP("WSAStartup failed");
+		g_TCPServerRunning.store(false);
 		return;
 	}
 
@@ -158,6 +208,7 @@ static void TCPServerThread() {
 	if (g_ListenSocket == INVALID_SOCKET) {
 		LogTCP("Failed to create socket");
 		WSACleanup();
+		g_TCPServerRunning.store(false);
 		return;
 	}
 
@@ -177,6 +228,7 @@ static void TCPServerThread() {
 		closesocket(g_ListenSocket);
 		g_ListenSocket = INVALID_SOCKET;
 		WSACleanup();
+		g_TCPServerRunning.store(false);
 		return;
 	}
 
@@ -185,6 +237,7 @@ static void TCPServerThread() {
 		closesocket(g_ListenSocket);
 		g_ListenSocket = INVALID_SOCKET;
 		WSACleanup();
+		g_TCPServerRunning.store(false);
 		return;
 	}
 
@@ -192,9 +245,24 @@ static void TCPServerThread() {
 	sprintf_s(buf, "[TCP] Listening on 127.0.0.1:%d\n", NEURO_TCP_PORT);
 	LogToFile(buf);
 
-	g_TCPServerRunning.store(true);
-
 	while (g_TCPServerRunning.load()) {
+		ReapFinishedClientThreads();
+
+		fd_set readSet;
+		FD_ZERO(&readSet);
+		FD_SET(g_ListenSocket, &readSet);
+		timeval timeout = {0, 200000};
+		int selectResult = select(0, &readSet, nullptr, nullptr, &timeout);
+		if (selectResult == SOCKET_ERROR) {
+			if (g_TCPServerRunning.load()) {
+				LogTCP("select failed");
+			}
+			break;
+		}
+		if (selectResult == 0) {
+			continue;
+		}
+
 		SOCKET clientSock = accept(g_ListenSocket, NULL, NULL);
 		if (clientSock == INVALID_SOCKET) {
 			if (g_TCPServerRunning.load()) {
@@ -208,16 +276,16 @@ static void TCPServerThread() {
 			g_ActiveClients.push_back(clientSock);
 		}
 
-		std::thread(HandleClient, clientSock).detach();
+		{
+			std::lock_guard<std::mutex> lock(g_ClientThreadsMutex);
+			auto finished = std::make_shared<std::atomic<bool>>(false);
+			g_ClientThreads.push_back(
+			    {std::thread(HandleClient, clientSock, finished), finished});
+		}
 	}
 
-	{
-		std::lock_guard<std::mutex> lock(g_ClientsMutex);
-		for (SOCKET s : g_ActiveClients) {
-			closesocket(s);
-		}
-		g_ActiveClients.clear();
-	}
+	ShutdownActiveClients();
+	JoinClientThreads();
 
 	closesocket(g_ListenSocket);
 	g_ListenSocket = INVALID_SOCKET;
@@ -238,19 +306,20 @@ bool StartTCPServer() {
 	if (g_TCPServerThread.joinable()) {
 		g_TCPServerThread.join();
 	}
+	g_TCPServerRunning.store(true);
 	g_TCPServerThread = std::thread(TCPServerThread);
 	return true;
 }
 
 void StopTCPServer() {
-	if (!g_TCPServerRunning.load())
-		return;
 	g_TCPServerRunning.store(false);
 
 	if (g_ListenSocket != INVALID_SOCKET) {
+		shutdown(g_ListenSocket, SD_BOTH);
 		closesocket(g_ListenSocket);
 		g_ListenSocket = INVALID_SOCKET;
 	}
+	ShutdownActiveClients();
 
 	if (g_TCPServerThread.joinable()) {
 		g_TCPServerThread.join();

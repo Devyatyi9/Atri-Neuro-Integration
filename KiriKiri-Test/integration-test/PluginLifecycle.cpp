@@ -19,6 +19,8 @@
 #pragma warning(pop)
 
 static std::atomic<bool> g_InitThreadRunning(false);
+static std::atomic<bool> g_InitThreadStopRequested(false);
+static std::thread g_InitThread;
 static std::atomic<bool> g_HotkeyThreadRunning(false);
 static std::thread g_HotkeyThread;
 
@@ -32,6 +34,9 @@ static void DeferredTJSInitThread() {
 
 	for (int i = 0; i < maxAttempts; i++) {
 		Sleep(intervalMs);
+		if (g_InitThreadStopRequested.load()) {
+			break;
+		}
 		TryInitTJS();
 
 		if ((i + 1) % 10 == 0) {
@@ -45,7 +50,7 @@ static void DeferredTJSInitThread() {
 			break;
 	}
 
-	if (IsTJSReady()) {
+	if (!g_InitThreadStopRequested.load() && IsTJSReady()) {
 		LogToFile("Deferred TJS init: SUCCESS\n");
 
 		// Subclass the game window for thread-safe TJS calls.
@@ -92,7 +97,18 @@ static void StartDeferredTJSInit() {
 	if (g_InitThreadRunning.exchange(true)) {
 		return;
 	}
-	std::thread(DeferredTJSInitThread).detach();
+	if (g_InitThread.joinable()) {
+		g_InitThread.join();
+	}
+	g_InitThreadStopRequested.store(false);
+	g_InitThread = std::thread(DeferredTJSInitThread);
+}
+
+static void StopDeferredTJSInit() {
+	g_InitThreadStopRequested.store(true);
+	if (g_InitThread.joinable()) {
+		g_InitThread.join();
+	}
 }
 
 static void HotkeyThread() {
@@ -171,6 +187,7 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
 	LogToFile("V2Unlink called - cleaning up\n");
 
+	StopDeferredTJSInit();
 	StopHotkeyThread();
 	StopContextMonitor();
 	StopTCPServer();
