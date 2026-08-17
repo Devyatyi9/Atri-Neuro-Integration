@@ -9,19 +9,19 @@
 // ============================================================================
 
 void LoadPlugin() {
-	OutputDebugStringW(L"[Version.dll] Loading Neuro-integration.dll...\n");
+	OutputDebugStringW(L"[Version.dll] Loading Neuro-Integration.dll...\n");
 
-	HMODULE hPlugin = LoadLibraryW(L"Neuro-integration.dll");
+	HMODULE hPlugin = LoadLibraryW(L"Neuro-Integration.dll");
 	if (!hPlugin) {
 		wchar_t msg[512];
-		swprintf_s(msg, L"Failed to load Neuro-integration.dll\nError code: %d",
+		swprintf_s(msg, L"Failed to load Neuro-Integration.dll\nError code: %d",
 		           GetLastError());
 		MessageBoxW(nullptr, msg, L"Plugin Loader Error", MB_OK | MB_ICONERROR);
-		OutputDebugStringW(L"[Version.dll] Failed to load Neuro-integration.dll\n");
+		OutputDebugStringW(L"[Version.dll] Failed to load Neuro-Integration.dll\n");
 		return;
 	}
 
-	OutputDebugStringW(L"[Version.dll] Neuro-integration.dll loaded\n");
+	OutputDebugStringW(L"[Version.dll] Neuro-Integration.dll loaded\n");
 
 	// Call InitPlugin; it finds the exporter and calls V2Link itself.
 	typedef bool (*InitPluginFunc)();
@@ -30,7 +30,7 @@ void LoadPlugin() {
 
 	if (!initPlugin) {
 		MessageBoxW(nullptr,
-		            L"InitPlugin not found in Neuro-integration.dll\n"
+		            L"InitPlugin not found in Neuro-Integration.dll\n"
 		            L"Make sure your plugin exports InitPlugin function.",
 		            L"Plugin Loader Error", MB_OK | MB_ICONERROR);
 		OutputDebugStringW(L"[Version.dll] InitPlugin not found in plugin\n");

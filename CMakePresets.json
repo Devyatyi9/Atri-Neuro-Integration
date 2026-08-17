@@ -55,6 +55,7 @@
       "configurePreset": "win32-prototype-debug",
       "configuration": "Debug",
       "targets": [
+        "atri_version_proxy",
         "atri_neuro_prototype"
       ]
     },
@@ -63,6 +64,7 @@
       "configurePreset": "win32-prototype-release",
       "configuration": "Release",
       "targets": [
+        "atri_version_proxy",
         "atri_neuro_prototype"
       ]
     }

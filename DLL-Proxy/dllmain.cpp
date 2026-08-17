@@ -1,13 +1,13 @@
 #include <Windows.h>
 
 static void Payload() {
-	HMODULE hModule = LoadLibraryW(L"Neuro-integration.dll");
+	HMODULE hModule = LoadLibraryW(L"Neuro-Integration.dll");
 	if (hModule != NULL) {
 		OutputDebugStringW(
-		    L"[Version.dll] Neuro-integration.dll loaded successfully.\n");
+		    L"[Version.dll] Neuro-Integration.dll loaded successfully.\n");
 	} else {
 		OutputDebugStringW(
-		    L"[Version.dll] Failed to load Neuro-integration.dll.\n");
+		    L"[Version.dll] Failed to load Neuro-Integration.dll.\n");
 	}
 }
 
