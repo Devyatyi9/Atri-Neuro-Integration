@@ -57,6 +57,7 @@ if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
         OUTPUT_NAME Neuro-Integration
     )
     target_compile_definitions(atri_neuro_integration PRIVATE
+        WIN32_LEAN_AND_MEAN
         UNICODE
         _UNICODE
     )
@@ -96,6 +97,7 @@ if(ATRI_BUILD_PROTOTYPE)
     )
     target_compile_definitions(atri_neuro_prototype PRIVATE
         WIN32
+        WIN32_LEAN_AND_MEAN
         INTEGRATIONTEST_EXPORTS
         UNICODE
         _UNICODE

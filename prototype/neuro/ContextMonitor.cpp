@@ -1,13 +1,12 @@
 #include "ContextMonitor.h"
-#include "Logging.h"
-#include "TJSExecutor.h"
-#include "UtfConversion.h"
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <atomic>
 #include <cstdio>
 #include <string>
 #include <thread>
+#include "Logging.h"
+#include "TJSExecutor.h"
+#include "UtfConversion.h"
 
 #pragma warning(push)
 #pragma warning(disable : 26495)
