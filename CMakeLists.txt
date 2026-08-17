@@ -37,6 +37,12 @@ target_link_options(atri_version_proxy PRIVATE
 if(NOT ATRI_BUILD_PROTOTYPE)
     add_library(atri_neuro_integration SHARED
         Neuro-Integration/dllmain.cpp
+        Neuro-Integration/PluginLifecycle.cpp
+        Neuro-Integration/PluginLifecycle.h
+        Neuro-Integration/SelfLink.cpp
+        Neuro-Integration/SelfLink.h
+        Neuro-Integration/neuro.def
+        KiriKiri-Test/krkr-sdk/tp_stub.cpp
     )
     set_target_properties(atri_neuro_integration PROPERTIES
         OUTPUT_NAME Neuro-Integration
@@ -45,7 +51,12 @@ if(NOT ATRI_BUILD_PROTOTYPE)
         UNICODE
         _UNICODE
     )
-    target_link_libraries(atri_neuro_integration PRIVATE neurosdk)
+    target_include_directories(atri_neuro_integration PRIVATE
+        KiriKiri-Test/krkr-sdk
+    )
+    target_link_options(atri_neuro_integration PRIVATE
+        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/Neuro-Integration/neuro.def"
+    )
 endif()
 
 if(ATRI_BUILD_PROTOTYPE)

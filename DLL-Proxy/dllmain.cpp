@@ -1,14 +1,71 @@
 #include <Windows.h>
 
+#include <cwchar>
+
+namespace {
+HMODULE gProxyModule = nullptr;
+HMODULE gPluginModule = nullptr;
+
+void ReportLastError(wchar_t const *operation) {
+	DWORD const error = GetLastError();
+	wchar_t message[256];
+	swprintf_s(message, L"[Version.dll] %s failed (GetLastError=%lu).\n",
+	           operation, error);
+	OutputDebugStringW(message);
+}
+}  // namespace
+
 static void Payload() {
-	HMODULE hModule = LoadLibraryW(L"Neuro-Integration.dll");
-	if (hModule != NULL) {
-		OutputDebugStringW(
-		    L"[Version.dll] Neuro-Integration.dll loaded successfully.\n");
-	} else {
-		OutputDebugStringW(
-		    L"[Version.dll] Failed to load Neuro-Integration.dll.\n");
+	wchar_t path[32768];
+	DWORD const pathLength =
+	    GetModuleFileNameW(gProxyModule, path, ARRAYSIZE(path));
+	if (pathLength == 0) {
+		ReportLastError(L"GetModuleFileNameW");
+		return;
 	}
+	if (pathLength >= ARRAYSIZE(path)) {
+		OutputDebugStringW(L"[Version.dll] Proxy module path is truncated.\n");
+		return;
+	}
+
+	wchar_t *const finalSlash = wcsrchr(path, L'\\');
+	if (!finalSlash) {
+		OutputDebugStringW(L"[Version.dll] Proxy module path has no directory.\n");
+		return;
+	}
+
+	constexpr wchar_t kPluginName[] = L"Neuro-Integration.dll";
+	size_t const directoryLength = finalSlash - path + 1;
+	if (directoryLength + ARRAYSIZE(kPluginName) > ARRAYSIZE(path)) {
+		OutputDebugStringW(L"[Version.dll] Plugin path is too long.\n");
+		return;
+	}
+	wcscpy_s(path + directoryLength, ARRAYSIZE(path) - directoryLength,
+	         kPluginName);
+
+	HMODULE const plugin = LoadLibraryW(path);
+	if (!plugin) {
+		ReportLastError(L"LoadLibraryW(Neuro-Integration.dll)");
+		return;
+	}
+
+	using InitPluginProc = bool(__cdecl *)();
+	auto const initPlugin =
+	    reinterpret_cast<InitPluginProc>(GetProcAddress(plugin, "InitPlugin"));
+	if (!initPlugin) {
+		ReportLastError(L"GetProcAddress(InitPlugin)");
+		FreeLibrary(plugin);
+		return;
+	}
+
+	if (!initPlugin()) {
+		OutputDebugStringW(L"[Version.dll] InitPlugin returned false.\n");
+		FreeLibrary(plugin);
+		return;
+	}
+
+	gPluginModule = plugin;
+	OutputDebugStringW(L"[Version.dll] Neuro-Integration.dll initialized.\n");
 }
 
 static DWORD WINAPI PayloadThreadProc(LPVOID) {
@@ -72,10 +129,13 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID) {
 	if (r == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls(hModule);
 		VersionDllInit();
+		gProxyModule = hModule;
 		HANDLE thread =
 		    CreateThread(nullptr, 0, PayloadThreadProc, nullptr, 0, nullptr);
 		if (thread) {
 			CloseHandle(thread);
+		} else {
+			ReportLastError(L"CreateThread");
 		}
 	}
 	return TRUE;
