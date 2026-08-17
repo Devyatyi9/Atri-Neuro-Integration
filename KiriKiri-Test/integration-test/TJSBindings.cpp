@@ -19,8 +19,6 @@
 
 namespace {
 
-std::wstring g_TagLogFileName = L"neuro_tag_log.txt";
-
 static tjs_error TJS_INTF_METHOD NeuroTestFunction(tTJSVariant *result,
                                                    tjs_int numparams,
                                                    tTJSVariant **param,
@@ -458,131 +456,6 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-static tjs_error TJS_INTF_METHOD NeuroStartTagLogger(tTJSVariant *result,
-                                                     tjs_int numparams,
-                                                     tTJSVariant **param,
-                                                     iTJSDispatch2 *objthis) {
-	if (!IsTJSReady()) {
-		if (result)
-			*result = TJS_W("error: TJS not ready");
-		return TJS_S_OK;
-	}
-
-	g_TagLogFileName = L"neuro_tag_log.txt";
-	if (numparams >= 1 && param[0]->Type() != tvtVoid) {
-		ttstr fn(*param[0]);
-		g_TagLogFileName = fn.c_str();
-	}
-
-	wchar_t const *scriptPath = L"neuro_scripts\\tag_logger_start.tjs";
-	FILE *f = _wfopen(scriptPath, L"rb");
-	if (!f) {
-		if (result)
-			*result = ttstr(L"error: cannot open ") + scriptPath;
-		return TJS_S_OK;
-	}
-
-	fseek(f, 0, SEEK_END);
-	long size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	std::vector<char> buf(size + 1);
-	fread(buf.data(), 1, size, f);
-	buf[size] = 0;
-	fclose(f);
-
-	int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
-	std::vector<wchar_t> wideBuf(wideLen);
-	MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
-
-	tTJSVariant execResult;
-	TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
-	if (result)
-		*result = execResult;
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroStopTagLogger(tTJSVariant *result,
-                                                    tjs_int numparams,
-                                                    tTJSVariant **param,
-                                                    iTJSDispatch2 *objthis) {
-	if (!IsTJSReady()) {
-		if (result)
-			*result = TJS_W("error: TJS not ready");
-		return TJS_S_OK;
-	}
-
-	wchar_t const *scriptPath = L"neuro_scripts\\tag_logger_stop.tjs";
-	FILE *f = _wfopen(scriptPath, L"rb");
-	if (!f) {
-		if (result)
-			*result = ttstr(L"error: cannot open ") + scriptPath;
-		return TJS_S_OK;
-	}
-
-	fseek(f, 0, SEEK_END);
-	long size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	std::vector<char> buf(size + 1);
-	fread(buf.data(), 1, size, f);
-	buf[size] = 0;
-	fclose(f);
-
-	int wideLen = MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, NULL, 0);
-	std::vector<wchar_t> wideBuf(wideLen);
-	MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wideBuf.data(), wideLen);
-
-	tTJSVariant execResult;
-	TVPExecuteExpression(ttstr(wideBuf.data()), &execResult);
-
-	FILE *lf = _wfopen(g_TagLogFileName.c_str(), L"a, ccs=UTF-8");
-	if (lf) {
-		fwprintf(lf, L"%s\n", execResult.GetString());
-		fclose(lf);
-	}
-
-	if (result)
-		*result = execResult;
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroFlushTagLog(tTJSVariant *result,
-                                                  tjs_int numparams,
-                                                  tTJSVariant **param,
-                                                  iTJSDispatch2 *objthis) {
-	if (!IsTJSReady()) {
-		if (result)
-			*result = TJS_W("error: TJS not ready");
-		return TJS_S_OK;
-	}
-
-	tTJSVariant entriesJson;
-	TVPExecuteExpression(
-	    TJS_W("(function(){"
-	          "  if (typeof global._neuroTagLoggerEntries == 'undefined') return "
-	          "'[]';"
-	          "  var e = System.toJSONString(global._neuroTagLoggerEntries);"
-	          "  global._neuroTagLoggerEntries = [];"
-	          "  return e;"
-	          "})()"),
-	    &entriesJson);
-
-	ttstr entries = entriesJson;
-
-	if (entries.c_str()[0]) {
-		FILE *f = _wfopen(g_TagLogFileName.c_str(), L"a+, ccs=UTF-8");
-		if (f) {
-			fwprintf(f, L"%s\n", entries.c_str());
-			fclose(f);
-		}
-	}
-
-	if (result)
-		*result = TJS_W("flushed");
-	return TJS_S_OK;
-}
-
 static tjs_error TJS_INTF_METHOD NeuroBuildVoiceMap(tTJSVariant *result,
                                                     tjs_int numparams,
                                                     tTJSVariant **param,
@@ -744,9 +617,6 @@ NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
 NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);
 NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
-NCB_REGISTER_FUNCTION(neuroStartTagLogger, NeuroStartTagLogger);
-NCB_REGISTER_FUNCTION(neuroStopTagLogger, NeuroStopTagLogger);
-NCB_REGISTER_FUNCTION(neuroFlushTagLog, NeuroFlushTagLog);
 
 void RegisterTJSBindings() {
 	ncbAutoRegister::AllRegist();
