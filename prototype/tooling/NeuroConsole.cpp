@@ -20,6 +20,7 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
+#include "GameDebugLog.h"
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
 
@@ -595,6 +596,12 @@ class NeuroConsole {
 		AppendOutput(
 		    L"  typeof kag.selectLayer != 'undefined' - Check if selecting\n\n",
 		    RGB(0, 150, 0));
+
+		std::wstring const debugLog = GetGameDebugLog(0, 1000, false);
+		if (!debugLog.empty()) {
+			AppendOutput(L"\n=== Game Debug Output ===\n", RGB(100, 100, 100));
+			AppendOutput(debugLog.c_str(), RGB(100, 100, 100));
+		}
 
 		return true;
 	}

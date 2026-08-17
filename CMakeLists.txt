@@ -81,6 +81,7 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/neuro/ContextMonitor.cpp
         prototype/Logging.cpp
         prototype/neuro/NeuroClient.cpp
+        prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
         prototype/tooling/NeuroTCPServer.cpp
         prototype/plugin/SelfLink.cpp
