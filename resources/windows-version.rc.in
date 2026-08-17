@@ -5,7 +5,7 @@
 #define ATRI_FILE_VERSION_STRING "0.1.0.0"
 #define ATRI_PRODUCT_VERSION 0, 1, 0, 0
 #define ATRI_PRODUCT_VERSION_STRING "0.1.0.0"
-#define ATRI_COMPANY_NAME ""
+#define ATRI_COMPANY_NAME "Devyatyi9"
 #define ATRI_PRODUCT_NAME "ATRI Neuro Integration"
 #define ATRI_LEGAL_COPYRIGHT ""
 
