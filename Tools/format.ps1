@@ -52,7 +52,10 @@ try {
         if (-not $excluded -and
             $normalizedPath -notmatch $generatedDirectoryPattern -and
             $sourceExtensions -contains [System.IO.Path]::GetExtension($normalizedPath).ToLowerInvariant()) {
-            Join-Path $repoRoot $relativeFile
+            $fullPath = Join-Path $repoRoot $relativeFile
+            if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                $fullPath
+            }
         }
     }
 

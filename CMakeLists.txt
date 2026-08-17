@@ -19,8 +19,8 @@ set(ENABLE_PERMESSAGE_DEFLATE OFF CACHE BOOL "" FORCE)
 add_subdirectory(libneurosdk EXCLUDE_FROM_ALL)
 
 add_library(atri_version_proxy SHARED
-    DLL-Proxy/dllmain.cpp
-    DLL-Proxy/Source.def
+    src/proxy/dllmain.cpp
+    src/proxy/Source.def
 )
 set_target_properties(atri_version_proxy PROPERTIES
     OUTPUT_NAME version
@@ -31,7 +31,7 @@ target_compile_definitions(atri_version_proxy PRIVATE
     _UNICODE
 )
 target_link_options(atri_version_proxy PRIVATE
-    "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/DLL-Proxy/Source.def"
+    "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/proxy/Source.def"
 )
 
 if(NOT ATRI_BUILD_PROTOTYPE)

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.14.36811.4 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Neuro-Integration", "Neuro-Integration\Neuro-Integration.vcxproj", "{4099D3DA-2D1A-455D-BCDD-28B09B2B9165}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DLL-Proxy", "DLL-Proxy\DLL-Proxy.vcxproj", "{413C6F90-8928-466C-AD44-7A2994F2FCFF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DLL-Proxy", "src\proxy\DLL-Proxy.vcxproj", "{413C6F90-8928-466C-AD44-7A2994F2FCFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
