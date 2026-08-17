@@ -76,16 +76,16 @@ endif()
 if(ATRI_BUILD_PROTOTYPE)
     add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
-        prototype/PluginLifecycle.cpp
-        prototype/ContextMonitor.cpp
+        prototype/plugin/PluginLifecycle.cpp
+        prototype/neuro/ContextMonitor.cpp
         prototype/Logging.cpp
-        prototype/NeuroClient.cpp
-        prototype/NeuroConsole.cpp
-        prototype/NeuroTCPServer.cpp
-        prototype/SelfLink.cpp
-        prototype/ScriptingWindow.cpp
-        prototype/TJSBindings.cpp
-        prototype/TJSExecutor.cpp
+        prototype/neuro/NeuroClient.cpp
+        prototype/tooling/NeuroConsole.cpp
+        prototype/tooling/NeuroTCPServer.cpp
+        prototype/plugin/SelfLink.cpp
+        prototype/tooling/ScriptingWindow.cpp
+        prototype/plugin/TJSBindings.cpp
+        prototype/plugin/TJSExecutor.cpp
         prototype/UtfConversion.cpp
         prototype/neuro.def
         lib/krkr-sdk/tp_stub.cpp
@@ -101,6 +101,10 @@ if(ATRI_BUILD_PROTOTYPE)
         _UNICODE
     )
     target_include_directories(atri_neuro_prototype PRIVATE
+        prototype
+        prototype/plugin
+        prototype/neuro
+        prototype/tooling
         lib/krkr-sdk
         lib/ncbind
     )

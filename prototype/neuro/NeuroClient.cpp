@@ -12,7 +12,7 @@
 #include <thread>
 #include <vector>
 
-#include "../include/neurosdk.h"
+#include <neurosdk.h>
 #include "Logging.h"
 
 namespace {
