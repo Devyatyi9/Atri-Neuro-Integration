@@ -22,3 +22,4 @@ constexpr size_t NEURO_TCP_MAX_MSG_SIZE = 65536;
 bool StartTCPServer();
 void StopTCPServer();
 bool IsTCPServerRunning();
+void ScheduleExitAfterTCPResponse();

@@ -25,6 +25,7 @@
 // Server state.
 // ============================================================================
 static std::atomic<bool> g_TCPServerRunning(false);
+static std::atomic<bool> g_ExitAfterTCPResponse(false);
 static std::thread g_TCPServerThread;
 static SOCKET g_ListenSocket = INVALID_SOCKET;
 
@@ -36,6 +37,7 @@ static std::mutex g_ClientThreadsMutex;
 struct ClientThread {
 	std::thread thread;
 	std::shared_ptr<std::atomic<bool>> finished;
+	std::shared_ptr<std::atomic<bool>> exitAfterResponse;
 };
 
 static std::vector<ClientThread> g_ClientThreads;
@@ -71,6 +73,7 @@ static void JoinClientThreads() {
 
 static void ReapFinishedClientThreads() {
 	std::vector<ClientThread> finishedThreads;
+	bool scheduleExit = false;
 	{
 		std::lock_guard<std::mutex> lock(g_ClientThreadsMutex);
 		for (auto it = g_ClientThreads.begin(); it != g_ClientThreads.end();) {
@@ -85,6 +88,15 @@ static void ReapFinishedClientThreads() {
 
 	for (ClientThread &clientThread : finishedThreads) {
 		clientThread.thread.join();
+		scheduleExit = scheduleExit || clientThread.exitAfterResponse->load(
+		                                   std::memory_order_acquire);
+	}
+	if (scheduleExit) {
+		ExecuteTJSAsync(
+		    L"(function(){ if (MyYesNoDialog.currentTextPart == 'AskExit' && "
+		    L"kag.currentDialog && kag.currentDialog.names.yes) { "
+		    L"kag.currentDialog.processLink(kag.currentDialog.names.yes.linkNum); "
+		    L"} })()");
 	}
 }
 
@@ -127,7 +139,8 @@ static bool RecvFromClient(SOCKET sock, std::string &out) {
 // ============================================================================
 
 static void HandleClient(SOCKET clientSock,
-                         std::shared_ptr<std::atomic<bool>> finished) {
+                         std::shared_ptr<std::atomic<bool>> finished,
+                         std::shared_ptr<std::atomic<bool>> exitAfterResponse) {
 	char buf[128];
 	sprintf_s(buf, "[TCP] Client connected (sock=%d)\n", (int)clientSock);
 	LogToFile(buf);
@@ -164,7 +177,13 @@ static void HandleClient(SOCKET clientSock,
 			response = "error: execution timeout or failed";
 		}
 
+		bool const scheduleExitAfterResponse =
+		    g_ExitAfterTCPResponse.exchange(false, std::memory_order_acq_rel);
 		if (!SendToClient(clientSock, response)) {
+			break;
+		}
+		if (scheduleExitAfterResponse) {
+			exitAfterResponse->store(true, std::memory_order_release);
 			break;
 		}
 	}
@@ -270,8 +289,10 @@ static void TCPServerThread() {
 		{
 			std::lock_guard<std::mutex> lock(g_ClientThreadsMutex);
 			auto finished = std::make_shared<std::atomic<bool>>(false);
+			auto exitAfterResponse = std::make_shared<std::atomic<bool>>(false);
 			g_ClientThreads.push_back(
-			    {std::thread(HandleClient, clientSock, finished), finished});
+			    {std::thread(HandleClient, clientSock, finished, exitAfterResponse),
+			     finished, exitAfterResponse});
 		}
 	}
 
@@ -319,4 +340,8 @@ void StopTCPServer() {
 
 bool IsTCPServerRunning() {
 	return g_TCPServerRunning.load();
+}
+
+void ScheduleExitAfterTCPResponse() {
+	g_ExitAfterTCPResponse.store(true, std::memory_order_release);
 }

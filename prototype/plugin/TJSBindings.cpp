@@ -15,6 +15,7 @@
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroConsole.h"
+#include "NeuroTCPServer.h"
 #include "PluginLifecycle.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
@@ -74,12 +75,8 @@ static tjs_error TJS_INTF_METHOD NeuroConfirmExit(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
                                                   iTJSDispatch2 *objthis) {
-	// Queue the click so the TCP worker can return before exit teardown joins it.
-	ExecuteTJSAsync(
-	    L"(function(){ if (MyYesNoDialog.currentTextPart == 'AskExit' && "
-	    L"kag.currentDialog && kag.currentDialog.names.yes) { "
-	    L"kag.currentDialog.processLink(kag.currentDialog.names.yes.linkNum); "
-	    L"return 1; } return 0; })()");
+	// TCP queues the final main-thread callback only after it sends this result.
+	ScheduleExitAfterTCPResponse();
 	if (result) {
 		*result = (tTVInteger)1;
 	}
@@ -694,10 +691,13 @@ NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
 void RegisterTJSBindings() {
 	ncbAutoRegister::AllRegist();
 	ExecuteTJSAsync(
-	    L"kag.onExitMenuItemClick = (function(originalExit) { "
-	    L"return function() { neuroBeginExitShutdown(); return originalExit(); "
-	    L"}; "
-	    L"})(kag.onExitMenuItemClick);");
+	    L"MyYesNoDialogLayer.onItemClick = function(itemName) { "
+	    L"var result = itemName == 'yes' || itemName.indexOf('はい') >= 0; "
+	    L"if (result && MyYesNoDialog.currentTextPart == 'AskExit') { "
+	    L"neuroBeginExitShutdown(); "
+	    L"} "
+	    L"return result; "
+	    L"};");
 }
 
 void UnregisterTJSBindings() {
