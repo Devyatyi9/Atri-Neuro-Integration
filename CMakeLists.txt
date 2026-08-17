@@ -75,19 +75,19 @@ endif()
 
 if(ATRI_BUILD_PROTOTYPE)
     add_library(atri_neuro_prototype SHARED
-        prototype/integration-test/dllmain.cpp
-        prototype/integration-test/PluginLifecycle.cpp
-        prototype/integration-test/ContextMonitor.cpp
-        prototype/integration-test/Logging.cpp
-        prototype/integration-test/NeuroClient.cpp
-        prototype/integration-test/NeuroConsole.cpp
-        prototype/integration-test/NeuroTCPServer.cpp
-        prototype/integration-test/SelfLink.cpp
-        prototype/integration-test/ScriptingWindow.cpp
-        prototype/integration-test/TJSBindings.cpp
-        prototype/integration-test/TJSExecutor.cpp
-        prototype/integration-test/UtfConversion.cpp
-        prototype/integration-test/neuro.def
+        prototype/dllmain.cpp
+        prototype/PluginLifecycle.cpp
+        prototype/ContextMonitor.cpp
+        prototype/Logging.cpp
+        prototype/NeuroClient.cpp
+        prototype/NeuroConsole.cpp
+        prototype/NeuroTCPServer.cpp
+        prototype/SelfLink.cpp
+        prototype/ScriptingWindow.cpp
+        prototype/TJSBindings.cpp
+        prototype/TJSExecutor.cpp
+        prototype/UtfConversion.cpp
+        prototype/neuro.def
         lib/krkr-sdk/tp_stub.cpp
         lib/ncbind/ncbind_auto.cpp
     )
@@ -108,7 +108,7 @@ if(ATRI_BUILD_PROTOTYPE)
         neurosdk
     )
     target_link_options(atri_neuro_prototype PRIVATE
-        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/integration-test/neuro.def"
+        "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/neuro.def"
         /NODEFAULTLIB:LIBCMT
     )
     atri_add_version_resource(
