@@ -1,7 +1,6 @@
 #include "PluginLifecycle.h"
 
 #include <atomic>
-#include <cstdio>
 #include <thread>
 
 #include "ContextMonitor.h"
@@ -190,9 +189,11 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	StopDeferredTJSInit();
 	StopHotkeyThread();
 	StopContextMonitor();
-	StopTCPServer();
 	NeuroDisconnect();
 	ShutdownNeuroConsole();
+	// Cancel pending synchronous calls before joining their TCP worker threads.
+	StopAcceptingTJSCalls();
+	StopTCPServer();
 
 	tTJSVariant dummy;
 	TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"),

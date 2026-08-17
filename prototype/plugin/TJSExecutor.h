@@ -6,6 +6,8 @@ class tTJSVariant;
 
 bool InitializeTJSExecutor();
 void ShutdownTJSExecutor();
+void StopAcceptingTJSCalls();
+void BlockNextTJSSyncCallForStressTest();
 void TryInitTJS();
 bool IsTJSReady();
 bool IsMainThread();

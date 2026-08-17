@@ -54,6 +54,19 @@ static tjs_error TJS_INTF_METHOD NeuroGetVersion(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
+static tjs_error TJS_INTF_METHOD
+NeuroStressBlockNextSyncCall(tTJSVariant *result,
+                             tjs_int numparams,
+                             tTJSVariant **param,
+                             iTJSDispatch2 *objthis) {
+	BlockNextTJSSyncCallForStressTest();
+	LogToFile(">>> Next TJS sync call armed for stress blocking\n");
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
 static tjs_error TJS_INTF_METHOD NeuroEcho(tTJSVariant *result,
                                            tjs_int numparams,
                                            tTJSVariant **param,
@@ -591,6 +604,8 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 
 NCB_REGISTER_FUNCTION(neuroTest, NeuroTestFunction);
 NCB_REGISTER_FUNCTION(neuroGetVersion, NeuroGetVersion);
+NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
+                      NeuroStressBlockNextSyncCall);
 NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
 NCB_REGISTER_FUNCTION(neuroSendData, NeuroSendData);
 NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);

@@ -202,6 +202,9 @@ class NeuroConsole {
 
 			case WM_DESTROY:
 				return 0;
+
+			default:
+				break;
 		}
 
 		return DefWindowProc(hwnd, msg, wParam, lParam);

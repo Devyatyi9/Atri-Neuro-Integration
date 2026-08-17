@@ -23,6 +23,7 @@ static WNDPROC g_OriginalWndProc = nullptr;
 static const UINT WM_TJS_EXECUTE = WM_USER + 100;
 static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 static std::atomic<bool> g_AcceptTJSCalls(false);
+static std::atomic<bool> g_BlockNextTJSSyncCall(false);
 
 struct TJSSyncCallData {
 	std::wstring code;
@@ -119,6 +120,13 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 		}
 
 		case WM_TJS_EXECUTE_SYNC: {
+			if (g_BlockNextTJSSyncCall.exchange(false, std::memory_order_acq_rel)) {
+				LogToFile("[Stress] Blocking next TJS sync dispatch\n");
+				while (g_AcceptTJSCalls.load(std::memory_order_acquire)) {
+					Sleep(10);
+				}
+				LogToFile("[Stress] TJS sync dispatch unblocked by shutdown\n");
+			}
 			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
 			if (data) {
 				try {
@@ -153,7 +161,8 @@ static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
 			wchar_t className[256] = {0};
 			GetClassNameW(hwnd, className, 256);
 
-			EnumWindowsData *data = (EnumWindowsData *)lParam;
+			// NOLINTNEXTLINE(performance-no-int-to-ptr): EnumWindows API payload.
+			auto *data = reinterpret_cast<EnumWindowsData *>(lParam);
 			if (wcscmp(className, L"#32770") == 0) {
 				return TRUE;
 			}
@@ -217,8 +226,12 @@ static bool SubclassGameWindow() {
 	          g_MainThreadId, currentThreadId);
 	LogToFile(diagBuf);
 
-	g_OriginalWndProc = (WNDPROC)SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC,
-	                                              (LONG_PTR)SubclassedWndProc);
+	LONG_PTR originalWndProc =
+	    SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC,
+	                     reinterpret_cast<LONG_PTR>(SubclassedWndProc));
+	g_OriginalWndProc = reinterpret_cast<WNDPROC>(
+	    originalWndProc);  // NOLINT(performance-no-int-to-ptr): SetWindowLongPtr
+	                       // stores WNDPROC as LONG_PTR.
 
 	if (!g_OriginalWndProc) {
 		DWORD err = GetLastError();
@@ -234,15 +247,23 @@ static bool SubclassGameWindow() {
 }
 
 static void UnsubclassGameWindow() {
-	g_AcceptTJSCalls.store(false, std::memory_order_release);
-	CancelTJSAsyncCalls();
-	CancelTJSSyncCalls();
+	StopAcceptingTJSCalls();
 	if (g_GameWindow && g_OriginalWndProc) {
 		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
 		LogToFile("Game window unsubclassed\n");
 	}
 	g_GameWindow = nullptr;
 	g_OriginalWndProc = nullptr;
+}
+
+void StopAcceptingTJSCalls() {
+	g_AcceptTJSCalls.store(false, std::memory_order_release);
+	CancelTJSAsyncCalls();
+	CancelTJSSyncCalls();
+}
+
+void BlockNextTJSSyncCallForStressTest() {
+	g_BlockNextTJSSyncCall.store(true, std::memory_order_release);
 }
 
 bool InitializeTJSExecutor() {

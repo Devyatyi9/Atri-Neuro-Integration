@@ -36,7 +36,8 @@ iTVPFunctionExporter *WaitForExporterInit(int maxWaitMs) {
 
 		if (!IsBadReadPtr(exporter, sizeof(void *))) {
 			void **vtable = *reinterpret_cast<void ***>(exporter);
-			void *expectedVtable = baseAddress + kVtableRva;
+			void **expectedVtable =
+			    reinterpret_cast<void **>(baseAddress + kVtableRva);
 
 			if (vtable == expectedVtable) {
 				sprintf_s(logBuf, "Exporter found after %d ms at 0x%08X\n", elapsed,
