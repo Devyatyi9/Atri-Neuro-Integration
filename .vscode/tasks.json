@@ -123,8 +123,25 @@
         "D:\\Games\\ATRI-TestVersion\\Neuro-Integration.dll",
         "-Force"
       ],
-      "dependsOn": "Build: Prototype Debug",
+      "dependsOn": [
+        "Build: Prototype Debug",
+        "Deploy: Prototype Assets"
+      ],
       "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy: Prototype Assets",
+      "type": "shell",
+      "command": "Copy-Item",
+      "args": [
+        "-Path",
+        "${workspaceFolder}\\integration-assets\\neuro_scripts\\*",
+        "-Destination",
+        "D:\\Games\\ATRI-TestVersion\\neuro_scripts",
+        "-Recurse",
+        "-Force"
+      ],
       "problemMatcher": []
     }
   ]
