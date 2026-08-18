@@ -11,6 +11,7 @@ using NeuroActionHandler = void (*)(std::string const &id,
 void NeuroSetActionHandler(NeuroActionHandler handler);
 
 bool NeuroConnect(char const *url, char const *gameName);
+void NeuroAutoConnect();
 void NeuroDisconnect();
 bool NeuroIsConnected();
 bool NeuroIsReady();

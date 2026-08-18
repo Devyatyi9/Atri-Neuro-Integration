@@ -102,6 +102,7 @@ static void DeferredTJSInitThread() {
 		}
 		StartContextMonitor();
 		StartHotkeyThread();
+		NeuroAutoConnect();
 	} else {
 		Log("Deferred TJS init: TIMEOUT (TJS not ready after 10s)\n");
 	}

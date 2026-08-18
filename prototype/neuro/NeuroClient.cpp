@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -295,6 +296,23 @@ bool NeuroConnect(char const *url, char const *gameName) {
 	}
 	g_NeuroPollThread = std::thread(NeuroPollThread);
 	return true;
+}
+
+void NeuroAutoConnect() {
+	if (NeuroIsConnected() || g_NeuroPollThreadRunning.load()) {
+		return;
+	}
+
+	char const *env = std::getenv("NEURO_AUTOCONNECT");
+	if (env && env[0] == '0') {
+		Log("[Neuro] Autoconnect disabled (NEURO_AUTOCONNECT=0)\n");
+		return;
+	}
+
+	char const *wsUrl = std::getenv("NEURO_WS_URL");
+	std::string url = (wsUrl && *wsUrl) ? wsUrl : "ws://localhost:8000";
+	Log(("[Neuro] Autoconnecting to " + url + "\n").c_str());
+	NeuroConnect(url.c_str(), nullptr);
 }
 
 void NeuroDisconnect() {
