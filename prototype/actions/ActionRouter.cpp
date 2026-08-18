@@ -16,6 +16,7 @@
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "TJSExecutor.h"
+#include "TJSQuery.h"
 #include "UtfConversion.h"
 
 namespace {
@@ -74,47 +75,61 @@ void HandleContinueAction(std::string const &id, std::string const &data) {
 	}
 	g_ContinueActionStartedAt.store(GetTickCount64(), std::memory_order_release);
 
-	// This expression is fixed native code. Incoming action data is never
-	// interpolated into TJS source.
-	wchar_t const *expression =
-	    L"(function(){"
-	    L"try {"
-	    L"if (typeof SystemHook == 'undefined' || SystemHook.currentState != "
-	    L"'title') return 'not at title';"
-	    L"if (typeof SystemAction == 'undefined' || !SystemAction.canContinue) "
-	    L"return 'continue unavailable';"
-	    L"if (typeof Current == 'undefined' || !Current.valid) return 'title not "
-	    L"ready';"
-	    L"if (typeof kag == 'undefined' || typeof kag.current == 'undefined' || "
-	    L"typeof kag.current.names == 'undefined') return 'title UI unavailable';"
-	    L"var button = kag.current.names['cont'];"
-	    L"if (typeof button == 'undefined' || !isvalid button || !button.visible "
-	    L"|| !button.enabled) return 'continue button unavailable';"
-	    L"if (typeof button.controlOwner == 'undefined' || typeof "
-	    L"button.controlOwner.onButtonClick != 'Object') return 'continue "
-	    L"dispatch unavailable';"
-	    L"button.controlOwner.onButtonClick(button.linkNum);"
-	    L"return 'started';"
-	    L"} catch(e) { return 'dispatch failed'; }"
-	    L"})()";
-	tTJSVariant result;
-	bool const executed = ExecuteTJSSync(expression, &result, 5000);
-	if (!executed) {
-		g_ContinueActionInFlight.store(false, std::memory_order_release);
-		NeuroSendActionResult(id.c_str(), false, "Game thread did not respond.");
-		return;
+	bool ok = true;
+	bool ready = false;
+
+	// 1. Current state must be title.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "continue state")) {
+		ok = false;
+	} else if (state != "title") {
+		ok = false;
 	}
 
-	ttstr value(result);
-	std::string message;
-	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), message);
-	bool const success = converted && message == "started";
-	if (!success) {
-		g_ContinueActionInFlight.store(false, std::memory_order_release);
+	// 2. A suspend-save with tag "continue" must exist.
+	if (ok && !QueryBool(L"typeof SystemAction != 'undefined' && "
+	                     L"SystemAction.canContinue ? 1 : 0",
+	                     ready, "continue canContinue")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
 	}
-	NeuroSendActionResult(
-	    id.c_str(), success,
-	    success ? "Continue started." : "Continue is unavailable.");
+
+	// 3. The Continue button must be visible, enabled, and dispatchable.
+	if (ok &&
+	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	               L"kag.current == 'undefined' || typeof kag.current.names == "
+	               L"'undefined') return 0;"
+	               L"var button = kag.current.names['cont'];"
+	               L"if (typeof button == 'undefined' || !isvalid button || "
+	               L"!button.visible || !button.enabled) return 0;"
+	               L"if (typeof button.controlOwner == 'undefined' || typeof "
+	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
+	               L"return 1; })()",
+	               ready, "continue button")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	// 4. Dispatch the button click.
+	bool dispatched = false;
+	if (ok) {
+		dispatched = QueryBool(
+		    L"(function(){ var button = kag.current.names['cont'];"
+		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
+		    dispatched, "continue dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		g_ContinueActionInFlight.store(false, std::memory_order_release);
+		NeuroSendActionResult(id.c_str(), false, "Continue is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Continue started.");
 }
 
 void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
@@ -124,35 +139,44 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	// This expression is fixed native code. Incoming action data is never
-	// interpolated into TJS source.
-	wchar_t const *expression =
-	    L"(function(){"
-	    L"try {"
-	    L"if (typeof SystemHook == 'undefined' || SystemHook.currentState != "
-	    L"'game') return 'not in game';"
-	    L"if (typeof kag == 'undefined' || typeof kag.onPrimaryClick != "
-	    L"'Object') return 'click dispatch unavailable';"
-	    L"if (typeof kag.clickWaiting == 'undefined' || !kag.clickWaiting) "
-	    L"return 'not waiting for click';"
-	    L"kag.onPrimaryClick();"
-	    L"return 'advanced';"
-	    L"} catch(e) { return 'dispatch failed'; }"
-	    L"})()";
-	tTJSVariant result;
-	bool const executed = ExecuteTJSSync(expression, &result, 5000);
-	if (!executed) {
-		NeuroSendActionResult(id.c_str(), false, "Game thread did not respond.");
-		return;
+	bool ok = true;
+	bool ready = false;
+
+	// 1. Current state must be game.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "advance state")) {
+		ok = false;
+	} else if (state != "game") {
+		ok = false;
 	}
 
-	ttstr value(result);
-	std::string message;
-	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), message);
-	bool const success = converted && message == "advanced";
-	NeuroSendActionResult(
-	    id.c_str(), success,
-	    success ? "Text advanced." : "Text advance is unavailable.");
+	// 2. The dialogue must be waiting for a click.
+	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                     L"kag.onPrimaryClick != 'Object') return 0;"
+	                     L"if (typeof kag.clickWaiting == 'undefined' || "
+	                     L"!kag.clickWaiting) return 0;"
+	                     L"return 1; })()",
+	                     ready, "advance click")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	// 3. Dispatch the click.
+	bool dispatched = false;
+	if (ok) {
+		dispatched = QueryBool(L"(function(){ kag.onPrimaryClick(); return 1; })()",
+		                       dispatched, "advance dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false, "Text advance is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Text advanced.");
 }
 
 void HandleNeuroAction(std::string const &id,

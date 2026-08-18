@@ -95,6 +95,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/dllmain.cpp
         prototype/actions/ActionRouter.cpp
         prototype/actions/ActionRouter.h
+        prototype/actions/TJSQuery.cpp
+        prototype/actions/TJSQuery.h
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextMonitor.cpp
         prototype/Logging.cpp
