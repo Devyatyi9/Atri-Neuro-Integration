@@ -27,6 +27,18 @@ std::deque<std::string> g_ActionIds;
 std::unordered_set<std::string> g_ActionIdSet;
 constexpr size_t kMaxRememberedActionIds = 256;
 
+std::atomic<int> g_SyncedCapabilityState(-1);
+constexpr int kCapabilityStateUnknown = -1;
+constexpr int kCapabilityStateTitle = 0;
+constexpr int kCapabilityStateGame = 1;
+
+char const *kContinueGameSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+char const *kAdvanceTextSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	if (!g_ActionIdSet.insert(id).second) {
@@ -163,47 +175,72 @@ void HandleNeuroAction(std::string const &id,
 	}
 }
 
+void SyncCapabilities(int state) {
+	if (state == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
+		return;
+	}
+	if (state == kCapabilityStateTitle) {
+		NeuroRegisterAction("continue_game", "Continue the current game.",
+		                    kContinueGameSchema);
+		NeuroUnregisterAction("advance_text");
+		Log("[Action] Capabilities: title (continue_game)\n");
+	} else if (state == kCapabilityStateGame) {
+		NeuroUnregisterAction("continue_game");
+		NeuroRegisterAction("advance_text", "Advance the current dialogue.",
+		                    kAdvanceTextSchema);
+		Log("[Action] Capabilities: game (advance_text)\n");
+	}
+	g_SyncedCapabilityState.store(state, std::memory_order_release);
+}
+
 }  // namespace
 
 void InitializePrototypeActionRouter() {
 	NeuroSetActionHandler(HandleNeuroAction);
-	if (NeuroRegisterAction("continue_game", "Continue the current game.",
-	                        "{\"type\":\"object\",\"properties\":{},"
-	                        "\"additionalProperties\":false}")) {
-		Log("[Action] Registered continue_game capability\n");
-	} else {
-		Log("[Action] Failed to register continue_game capability\n");
-	}
-	if (NeuroRegisterAction("advance_text", "Advance the current dialogue.",
-	                        "{\"type\":\"object\",\"properties\":{},"
-	                        "\"additionalProperties\":false}")) {
-		Log("[Action] Registered advance_text capability\n");
-	} else {
-		Log("[Action] Failed to register advance_text capability\n");
-	}
+	SyncCapabilities(kCapabilityStateTitle);
 }
 
 void ShutdownPrototypeActionRouter() {
 	NeuroSetActionHandler(nullptr);
 	g_ContinueActionInFlight.store(false, std::memory_order_release);
+	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
+	                              std::memory_order_release);
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	g_ActionIds.clear();
 	g_ActionIdSet.clear();
 }
 
 void RefreshPrototypeActionState() {
+	tTJSVariant result;
+	bool const executed = ExecuteTJSSync(
+	    L"(function(){ return typeof SystemHook != 'undefined' ? "
+	    L"SystemHook.currentState : ''; })()",
+	    &result, 5000);
+	if (!executed) {
+		Log("[Action] Refresh state probe failed\n");
+		return;
+	}
+
+	ttstr value(result);
+	std::string state;
+	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), state);
+	if (!converted) {
+		Log("[Action] Refresh state conversion failed\n");
+		return;
+	}
+
+	if (state == "title") {
+		SyncCapabilities(kCapabilityStateTitle);
+	} else if (state == "game") {
+		SyncCapabilities(kCapabilityStateGame);
+	}
+
 	if (!g_ContinueActionInFlight.load(std::memory_order_acquire)) {
 		return;
 	}
-	tTJSVariant result;
-	bool const executed = ExecuteTJSSync(
-	    L"(function(){ return typeof SystemHook != 'undefined' && "
-	    L"SystemHook.currentState != 'title'; })()",
-	    &result, 5000);
-	if ((executed && (tTVInteger)result) ||
-	    GetTickCount64() -
-	            g_ContinueActionStartedAt.load(std::memory_order_acquire) >=
-	        5000) {
+	if (state != "title" || GetTickCount64() - g_ContinueActionStartedAt.load(
+	                                               std::memory_order_acquire) >=
+	                            5000) {
 		g_ContinueActionInFlight.store(false, std::memory_order_release);
 		Log("[Action] Continue transition completed or timed out\n");
 	}

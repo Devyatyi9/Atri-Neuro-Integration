@@ -2,6 +2,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -366,6 +367,42 @@ bool NeuroRegisterAction(char const *name,
 	neurosdk_error_e const error = SendRegisteredActions();
 	if (error != NeuroSDK_None) {
 		LogError("Register action failed", error);
+		return false;
+	}
+	return true;
+}
+
+bool NeuroUnregisterAction(char const *name) {
+	if (!name || !*name) {
+		return false;
+	}
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		auto &actions = g_RegisteredActions;
+		actions.erase(std::remove_if(actions.begin(), actions.end(),
+		                             [&](RegisteredAction const &action) {
+			                             return action.name == name;
+		                             }),
+		              actions.end());
+	}
+	if (!NeuroIsConnected()) {
+		return true;
+	}
+	neurosdk_error_e const error = SendRegisteredActions();
+	if (error != NeuroSDK_None) {
+		LogError("Unregister action failed", error);
+		return false;
+	}
+	return true;
+}
+
+bool NeuroReregisterActions() {
+	if (!NeuroIsConnected()) {
+		return true;
+	}
+	neurosdk_error_e const error = SendRegisteredActions();
+	if (error != NeuroSDK_None) {
+		LogError("Re-register actions failed", error);
 		return false;
 	}
 	return true;

@@ -20,6 +20,8 @@ bool NeuroSendContext(char const *message, bool silent);
 bool NeuroRegisterAction(char const *name,
                          char const *description,
                          char const *jsonSchema);
+bool NeuroUnregisterAction(char const *name);
+bool NeuroReregisterActions();
 bool NeuroSendActionResult(char const *id, bool success, char const *message);
 bool NeuroForceAction(char const *state,
                       char const *query,
