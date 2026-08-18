@@ -8,6 +8,7 @@ bool InitializeTJSExecutor();
 void ShutdownTJSExecutor();
 void StopAcceptingTJSCalls();
 void BlockNextTJSSyncCallForStressTest();
+void HoldTJSSyncCallsForStressTest();
 void TryInitTJS();
 bool IsTJSReady();
 bool IsMainThread();

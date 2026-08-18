@@ -13,9 +13,12 @@ endif()
 option(ATRI_BUILD_PROTOTYPE "Build the legacy integration prototype" OFF)
 option(ATRI_CONFIGURE_ALL_TARGETS "Configure clean and prototype targets together" OFF)
 
-function(atri_add_version_resource target original_filename file_description)
-    set(ATRI_ORIGINAL_FILENAME "${original_filename}")
-    set(ATRI_FILE_DESCRIPTION "${file_description}")
+function(atri_add_version_resource target original_filename file_description product_name version)
+	set(ATRI_ORIGINAL_FILENAME "${original_filename}")
+	set(ATRI_FILE_DESCRIPTION "${file_description}")
+	set(ATRI_PRODUCT_NAME "${product_name}")
+	string(REPLACE "." "," ATRI_FILE_VERSION "${version}")
+	set(ATRI_FILE_VERSION_STRING "${version}")
     set(resource_file "${CMAKE_CURRENT_BINARY_DIR}/resources/${target}.rc")
     configure_file(resources/windows-version.rc.in "${resource_file}" @ONLY)
     target_sources(${target} PRIVATE "${resource_file}")
@@ -46,6 +49,13 @@ target_include_directories(atri_version_proxy PRIVATE
 target_link_options(atri_version_proxy PRIVATE
     "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/proxy/Source.def"
 )
+atri_add_version_resource(
+    atri_version_proxy
+    "version.dll"
+    "ATRI Neuro Bootstrap"
+    "ATRI Neuro Bootstrap"
+    "1.0.0.0"
+)
 
 if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
     add_library(atri_neuro_integration SHARED
@@ -75,6 +85,8 @@ if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
         atri_neuro_integration
         "Neuro-Integration.dll"
         "ATRI Neuro Integration"
+        "ATRI Neuro Integration"
+        "0.1.0.0"
     )
 endif()
 
@@ -125,5 +137,7 @@ if(ATRI_BUILD_PROTOTYPE)
         atri_neuro_prototype
         "Neuro-Integration.dll"
         "ATRI Neuro Integration Prototype"
+        "ATRI Neuro Integration Prototype"
+        "0.1.0.0"
     )
 endif()

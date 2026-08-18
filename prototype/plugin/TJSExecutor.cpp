@@ -26,6 +26,7 @@ static const UINT WM_TJS_EXECUTE = WM_USER + 100;
 static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
+static std::atomic<bool> g_HoldTJSSyncCallsForStressTest(false);
 
 struct TJSSyncCallData {
 	std::wstring code;
@@ -134,6 +135,10 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 		}
 
 		case WM_TJS_EXECUTE_SYNC: {
+			if (g_HoldTJSSyncCallsForStressTest.load(std::memory_order_acquire)) {
+				LogToFile("[Stress] Holding TJS sync dispatch pending unload\n");
+				return 0;
+			}
 			if (g_BlockNextTJSSyncCall.exchange(false, std::memory_order_acq_rel)) {
 				LogToFile("[Stress] Blocking next TJS sync dispatch\n");
 				while (g_AcceptTJSCalls.load(std::memory_order_acquire)) {
@@ -273,12 +278,17 @@ static void UnsubclassGameWindow() {
 
 void StopAcceptingTJSCalls() {
 	g_AcceptTJSCalls.store(false, std::memory_order_release);
+	g_HoldTJSSyncCallsForStressTest.store(false, std::memory_order_release);
 	CancelTJSAsyncCalls();
 	CancelTJSSyncCalls();
 }
 
 void BlockNextTJSSyncCallForStressTest() {
 	g_BlockNextTJSSyncCall.store(true, std::memory_order_release);
+}
+
+void HoldTJSSyncCallsForStressTest() {
+	g_HoldTJSSyncCallsForStressTest.store(true, std::memory_order_release);
 }
 
 bool InitializeTJSExecutor() {
