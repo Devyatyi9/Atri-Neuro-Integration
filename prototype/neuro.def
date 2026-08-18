@@ -1,5 +1,4 @@
 LIBRARY "Neuro-Integration"
 EXPORTS
-    InitPlugin
     V2Link
     V2Unlink

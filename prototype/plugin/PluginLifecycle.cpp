@@ -9,7 +9,6 @@
 #include "NeuroClient.h"
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
-#include "SelfLink.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 
@@ -143,27 +142,6 @@ static void StopHotkeyThread() {
 	if (g_HotkeyThread.joinable()) {
 		g_HotkeyThread.join();
 	}
-}
-
-extern "C" __declspec(dllexport) bool InitPlugin() {
-	LogToFile("\n\n=== InitPlugin called (self-linking) ===\n");
-	OutputDebugStringW(L"[NEURO PLUGIN] === InitPlugin called ===\n");
-
-	iTVPFunctionExporter *exporter = WaitForExporterInit(10000);
-
-	if (!exporter) {
-		LogToFile("ERROR: Failed to find iTVPFunctionExporter!\n");
-		return false;
-	}
-
-	HRESULT hr = V2Link(exporter);
-	if (FAILED(hr)) {
-		LogToFile("ERROR: V2Link failed!\n");
-		return false;
-	}
-
-	LogToFile("InitPlugin completed successfully\n");
-	return true;
 }
 
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(

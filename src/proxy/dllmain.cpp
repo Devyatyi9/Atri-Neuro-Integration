@@ -2,9 +2,19 @@
 
 #include <cwchar>
 
+#pragma warning(push)
+#pragma warning(disable : 26495)
+#include "tp_stub.h"
+#pragma warning(pop)
+
 namespace {
 HMODULE gProxyModule = nullptr;
-HMODULE gPluginModule = nullptr;
+HWND gGameWindow = nullptr;
+WNDPROC gOriginalWndProc = nullptr;
+
+constexpr DWORD kExporterRva = 0x003B4538;
+constexpr DWORD kVtableRva = 0x00374A50;
+constexpr UINT kBootstrapMessage = WM_APP + 0x4E;
 
 void ReportLastError(wchar_t const *operation) {
 	DWORD const error = GetLastError();
@@ -13,60 +23,110 @@ void ReportLastError(wchar_t const *operation) {
 	           operation, error);
 	OutputDebugStringW(message);
 }
-}  // namespace
 
-static void Payload() {
-	wchar_t path[32768];
-	DWORD const pathLength =
-	    GetModuleFileNameW(gProxyModule, path, ARRAYSIZE(path));
-	if (pathLength == 0) {
-		ReportLastError(L"GetModuleFileNameW");
-		return;
-	}
-	if (pathLength >= ARRAYSIZE(path)) {
-		OutputDebugStringW(L"[Version.dll] Proxy module path is truncated.\n");
-		return;
+iTVPFunctionExporter *WaitForExporter(DWORD timeoutMs) {
+	auto *const imageBase = reinterpret_cast<BYTE *>(GetModuleHandleW(nullptr));
+	if (!imageBase) {
+		return nullptr;
 	}
 
-	wchar_t *const finalSlash = wcsrchr(path, L'\\');
-	if (!finalSlash) {
-		OutputDebugStringW(L"[Version.dll] Proxy module path has no directory.\n");
-		return;
+	auto *const exporter =
+	    reinterpret_cast<iTVPFunctionExporter *>(imageBase + kExporterRva);
+	void *const expectedVtable = imageBase + kVtableRva;
+	DWORD const startedAt = GetTickCount();
+	while (GetTickCount() - startedAt < timeoutMs) {
+		if (!IsBadReadPtr(exporter, sizeof(void *)) &&
+		    *reinterpret_cast<void **>(exporter) == expectedVtable) {
+			return exporter;
+		}
+		Sleep(100);
 	}
-
-	constexpr wchar_t kPluginName[] = L"Neuro-Integration.dll";
-	size_t const directoryLength = finalSlash - path + 1;
-	if (directoryLength + ARRAYSIZE(kPluginName) > ARRAYSIZE(path)) {
-		OutputDebugStringW(L"[Version.dll] Plugin path is too long.\n");
-		return;
-	}
-	wcscpy_s(path + directoryLength, ARRAYSIZE(path) - directoryLength,
-	         kPluginName);
-
-	HMODULE const plugin = LoadLibraryW(path);
-	if (!plugin) {
-		ReportLastError(L"LoadLibraryW(Neuro-Integration.dll)");
-		return;
-	}
-
-	using InitPluginProc = bool(__cdecl *)();
-	auto const initPlugin =
-	    reinterpret_cast<InitPluginProc>(GetProcAddress(plugin, "InitPlugin"));
-	if (!initPlugin) {
-		ReportLastError(L"GetProcAddress(InitPlugin)");
-		FreeLibrary(plugin);
-		return;
-	}
-
-	if (!initPlugin()) {
-		OutputDebugStringW(L"[Version.dll] InitPlugin returned false.\n");
-		FreeLibrary(plugin);
-		return;
-	}
-
-	gPluginModule = plugin;
-	OutputDebugStringW(L"[Version.dll] Neuro-Integration.dll initialized.\n");
+	return nullptr;
 }
+
+BOOL CALLBACK FindGameWindow(HWND window, LPARAM) {
+	DWORD processId = 0;
+	GetWindowThreadProcessId(window, &processId);
+	if (processId != GetCurrentProcessId() || !IsWindowVisible(window) ||
+	    GetParent(window) != nullptr) {
+		return TRUE;
+	}
+
+	wchar_t className[256] = {};
+	GetClassNameW(window, className, ARRAYSIZE(className));
+	if (wcsstr(className, L"TTVPWindowForm") ||
+	    wcsstr(className, L"TVPMainWindow")) {
+		gGameWindow = window;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+LRESULT CALLBACK BootstrapWndProc(HWND window,
+                                  UINT message,
+                                  WPARAM wParam,
+                                  LPARAM lParam) {
+	if (message != kBootstrapMessage) {
+		return CallWindowProcW(gOriginalWndProc, window, message, wParam, lParam);
+	}
+
+	try {
+		tTJSVariant ignored;
+		TVPExecuteExpression(TJS_W("Plugins.link(\"Neuro-Integration.dll\")"),
+		                     &ignored);
+		OutputDebugStringW(
+		    L"[Version.dll] Manager linked Neuro-Integration.dll.\n");
+	} catch (...) {
+		OutputDebugStringW(L"[Version.dll] Plugins.link failed.\n");
+	}
+	SetWindowLongPtrW(window, GWLP_WNDPROC,
+	                  reinterpret_cast<LONG_PTR>(gOriginalWndProc));
+	gGameWindow = nullptr;
+	gOriginalWndProc = nullptr;
+	TVPUninitImportStub();
+	return 0;
+}
+
+void Payload() {
+	iTVPFunctionExporter *const exporter = WaitForExporter(10000);
+	if (!exporter || !TVPInitImportStub(exporter)) {
+		OutputDebugStringW(
+		    L"[Version.dll] Bootstrap exporter initialization failed.\n");
+		return;
+	}
+
+	for (int attempt = 0; attempt < 300 && !gGameWindow; ++attempt) {
+		EnumWindows(FindGameWindow, 0);
+		if (!gGameWindow) {
+			Sleep(100);
+		}
+	}
+	if (!gGameWindow) {
+		OutputDebugStringW(
+		    L"[Version.dll] Bootstrap game window wait timed out.\n");
+		TVPUninitImportStub();
+		return;
+	}
+
+	// SetWindowLongPtrW stores a WNDPROC as LONG_PTR by Win32 API contract.
+	// NOLINTNEXTLINE(performance-no-int-to-ptr)
+	gOriginalWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(
+	    gGameWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(BootstrapWndProc)));
+	if (!gOriginalWndProc) {
+		ReportLastError(L"SetWindowLongPtrW");
+		TVPUninitImportStub();
+		return;
+	}
+	if (!PostMessageW(gGameWindow, kBootstrapMessage, 0, 0)) {
+		ReportLastError(L"PostMessageW");
+		SetWindowLongPtrW(gGameWindow, GWLP_WNDPROC,
+		                  reinterpret_cast<LONG_PTR>(gOriginalWndProc));
+		gGameWindow = nullptr;
+		gOriginalWndProc = nullptr;
+		TVPUninitImportStub();
+	}
+}
+}  // namespace
 
 static DWORD WINAPI PayloadThreadProc(LPVOID) {
 	Payload();
@@ -125,8 +185,8 @@ void VersionDllInit() {
 	WRAPPER_FUNC(VerQueryValueW);
 }
 
-BOOL WINAPI DllMain(HMODULE hModule, DWORD r, LPVOID) {
-	if (r == DLL_PROCESS_ATTACH) {
+BOOL WINAPI DllMain(HMODULE hModule, DWORD reason, LPVOID) {
+	if (reason == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls(hModule);
 		VersionDllInit();
 		gProxyModule = hModule;

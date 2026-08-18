@@ -30,6 +30,7 @@ add_subdirectory(lib/neurosdk EXCLUDE_FROM_ALL)
 add_library(atri_version_proxy SHARED
     src/proxy/dllmain.cpp
     src/proxy/Source.def
+    lib/krkr-sdk/tp_stub.cpp
 )
 set_target_properties(atri_version_proxy PROPERTIES
     OUTPUT_NAME version
@@ -38,6 +39,9 @@ target_compile_definitions(atri_version_proxy PRIVATE
     WIN32_LEAN_AND_MEAN
     UNICODE
     _UNICODE
+)
+target_include_directories(atri_version_proxy PRIVATE
+    lib/krkr-sdk
 )
 target_link_options(atri_version_proxy PRIVATE
     "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/src/proxy/Source.def"
@@ -75,7 +79,7 @@ if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
 endif()
 
 if(ATRI_BUILD_PROTOTYPE)
-    add_library(atri_neuro_prototype SHARED
+	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextMonitor.cpp
@@ -84,7 +88,6 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
         prototype/tooling/NeuroTCPServer.cpp
-        prototype/plugin/SelfLink.cpp
         prototype/tooling/ScriptingWindow.cpp
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
