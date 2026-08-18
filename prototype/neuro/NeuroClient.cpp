@@ -43,7 +43,7 @@ void LogError(char const *operation, neurosdk_error_e error) {
 	char message[256];
 	sprintf_s(message, "[Neuro] %s: %s\n", operation,
 	          neurosdk_error_string(error));
-	LogToFile(message);
+	Log(message);
 }
 
 void NeuroLogCallback(neurosdk_severity_e severity,
@@ -68,7 +68,7 @@ void NeuroLogCallback(neurosdk_severity_e severity,
 	char log[1024];
 	sprintf_s(log, "[NeuroSDK %s] %s\n", severityName,
 	          message ? message : "(null)");
-	LogToFile(log);
+	Log(log);
 }
 
 bool SleepUntilRetry(unsigned int milliseconds) {
@@ -135,7 +135,7 @@ void DispatchAction(std::string const &id,
 	if (handler) {
 		handler(id, name, data);
 	} else {
-		LogToFile("[Neuro] Ignoring action: no handler installed\n");
+		Log("[Neuro] Ignoring action: no handler installed\n");
 	}
 }
 
@@ -156,7 +156,7 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 					break;
 				}
 				case NeuroSDK_MessageKind_ActionsReregisterAll:
-					LogToFile("[Neuro] Re-registering current actions\n");
+					Log("[Neuro] Re-registering current actions\n");
 					result = SendRegisteredActions();
 					if (result != NeuroSDK_None) {
 						LogError("Re-register actions failed", result);
@@ -164,7 +164,7 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 					break;
 				case NeuroSDK_MessageKind_StartupAcknowledgement:
 					g_NeuroReady.store(true, std::memory_order_release);
-					LogToFile("[Neuro] Startup acknowledged\n");
+					Log("[Neuro] Startup acknowledged\n");
 					break;
 				default:
 					break;
@@ -218,13 +218,13 @@ bool CreateSession() {
 	}
 
 	g_NeuroConnected.store(true, std::memory_order_release);
-	LogToFile("[Neuro] Connected; awaiting startup acknowledgement\n");
+	Log("[Neuro] Connected; awaiting startup acknowledgement\n");
 	return true;
 }
 
 void NeuroPollThread() {
 	unsigned int backoffMs = kReconnectInitialMs;
-	LogToFile("[Neuro] Poll thread started\n");
+	Log("[Neuro] Poll thread started\n");
 	while (g_NeuroPollThreadRunning.load(std::memory_order_acquire)) {
 		g_NeuroReady.store(false, std::memory_order_release);
 		if (!CreateSession()) {
@@ -268,7 +268,7 @@ void NeuroPollThread() {
 	DestroyContext();
 	g_NeuroConnected.store(false, std::memory_order_release);
 	g_NeuroReady.store(false, std::memory_order_release);
-	LogToFile("[Neuro] Poll thread stopped\n");
+	Log("[Neuro] Poll thread stopped\n");
 }
 }  // namespace
 

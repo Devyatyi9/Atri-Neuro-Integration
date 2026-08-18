@@ -29,7 +29,7 @@ static tjs_error TJS_INTF_METHOD NeuroTestFunction(tTJSVariant *result,
                                                    tTJSVariant **param,
                                                    iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroTestFunction called from TJS!\n");
-	LogToFile(">>> NeuroTestFunction CALLED FROM TJS SCRIPT!\n");
+	Log(">>> NeuroTestFunction CALLED FROM TJS SCRIPT!\n");
 
 	MessageBoxW(NULL,
 	            L"SUCCESS!\n\n"
@@ -49,7 +49,7 @@ static tjs_error TJS_INTF_METHOD NeuroGetVersion(tTJSVariant *result,
                                                  tTJSVariant **param,
                                                  iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroGetVersion called!\n");
-	LogToFile(">>> NeuroGetVersion called\n");
+	Log(">>> NeuroGetVersion called\n");
 
 	if (result) {
 		*result = (tTVInteger)100;  // Version 1.0.0
@@ -90,7 +90,7 @@ NeuroStressBlockNextSyncCall(tTJSVariant *result,
                              tTJSVariant **param,
                              iTJSDispatch2 *objthis) {
 	BlockNextTJSSyncCallForStressTest();
-	LogToFile(">>> Next TJS sync call armed for stress blocking\n");
+	Log(">>> Next TJS sync call armed for stress blocking\n");
 	if (result) {
 		*result = (tTVInteger)1;
 	}
@@ -103,7 +103,7 @@ NeuroStressHoldSyncCalls(tTJSVariant *result,
                          tTJSVariant **param,
                          iTJSDispatch2 *objthis) {
 	HoldTJSSyncCallsForStressTest();
-	LogToFile(">>> TJS sync calls armed for pending-unload stress\n");
+	Log(">>> TJS sync calls armed for pending-unload stress\n");
 	if (result) {
 		*result = (tTVInteger)1;
 	}
@@ -175,7 +175,7 @@ static tjs_error TJS_INTF_METHOD NeuroEcho(tTJSVariant *result,
                                            tTJSVariant **param,
                                            iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroEcho called!\n");
-	LogToFile(">>> NeuroEcho called\n");
+	Log(">>> NeuroEcho called\n");
 
 	if (numparams > 0 && param && param[0]) {
 		tTJSVariant *firstParam = param[0];
@@ -205,11 +205,11 @@ static tjs_error TJS_INTF_METHOD NeuroSendData(tTJSVariant *result,
                                                tjs_int numparams,
                                                tTJSVariant **param,
                                                iTJSDispatch2 *objthis) {
-	LogToFile(">>> NeuroSendData called with ");
+	Log(">>> NeuroSendData called with ");
 
 	char logMsg[128];
 	sprintf_s(logMsg, sizeof(logMsg), "%d parameters\n", numparams);
-	LogToFile(logMsg);
+	Log(logMsg);
 
 	// TODO: Integrate with libneurosdk.
 	if (result) {
@@ -223,7 +223,7 @@ static tjs_error TJS_INTF_METHOD NeuroShowConsole(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
                                                   iTJSDispatch2 *objthis) {
-	LogToFile(">>> NeuroShowConsole called\n");
+	Log(">>> NeuroShowConsole called\n");
 
 	tTJSVariant checkResult;
 	TVPExecuteExpression(
@@ -234,11 +234,11 @@ static tjs_error TJS_INTF_METHOD NeuroShowConsole(tTJSVariant *result,
 	if ((tTVInteger)checkResult != 0) {
 		tTJSVariant dummy;
 		TVPExecuteExpression(TJS_W("Debug.console.visible = true"), &dummy);
-		LogToFile("  Debug.console.visible = true\n");
+		Log("  Debug.console.visible = true\n");
 		if (result)
 			*result = (tTVInteger)1;
 	} else {
-		LogToFile("  Debug.console not available\n");
+		Log("  Debug.console not available\n");
 		if (result)
 			*result = (tTVInteger)0;
 	}
@@ -254,7 +254,7 @@ static tjs_error TJS_INTF_METHOD NeuroIsKAGReady(tTJSVariant *result,
 	TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &checkResult);
 	bool ready = (tTVInteger)checkResult != 0;
 
-	LogToFile(ready ? ">>> NeuroIsKAGReady: YES\n" : ">>> NeuroIsKAGReady: NO\n");
+	Log(ready ? ">>> NeuroIsKAGReady: YES\n" : ">>> NeuroIsKAGReady: NO\n");
 
 	if (result)
 		*result = (tTVInteger)(ready ? 1 : 0);
@@ -266,7 +266,7 @@ static tjs_error TJS_INTF_METHOD NeuroIsTJSReady(tTJSVariant *result,
                                                  tTJSVariant **param,
                                                  iTJSDispatch2 *objthis) {
 	bool ready = IsTJSReady();
-	LogToFile(ready ? ">>> NeuroIsTJSReady: YES\n" : ">>> NeuroIsTJSReady: NO\n");
+	Log(ready ? ">>> NeuroIsTJSReady: YES\n" : ">>> NeuroIsTJSReady: NO\n");
 
 	if (result) {
 		*result = (tTVInteger)(ready ? 1 : 0);
@@ -325,6 +325,31 @@ static tjs_error TJS_INTF_METHOD NeuroClearDebugLog(tTJSVariant *result,
 	ClearGameDebugLog();
 	if (result) {
 		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroGetPluginLog(tTJSVariant *result,
+                                                   tjs_int numparams,
+                                                   tTJSVariant **param,
+                                                   iTJSDispatch2 *objthis) {
+	std::size_t offset = 0;
+	std::size_t count = 100;
+	bool fromEnd = true;
+	if (numparams > 0 && param && param[0]) {
+		tTVInteger value = *param[0];
+		count = value > 0 ? static_cast<std::size_t>(value) : 0;
+	}
+	if (numparams > 1 && param && param[1]) {
+		fromEnd = static_cast<tTVInteger>(*param[1]) != 0;
+	}
+	if (numparams > 2 && param && param[2]) {
+		tTVInteger value = *param[2];
+		offset = value > 0 ? static_cast<std::size_t>(value) : 0;
+	}
+	if (result) {
+		std::wstring const log = GetPluginLogFile(offset, count, fromEnd);
+		*result = ttstr(log.c_str());
 	}
 	return TJS_S_OK;
 }
@@ -574,7 +599,7 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 			utf8Filename = "<invalid UTF-16 filename>";
 		std::string entry = "\n=== EXEC FILE: " + utf8Filename + " ===\n" + code +
 		                    "\n--- RESULT ---\n";
-		LogToFile(entry.c_str());
+		Log(entry.c_str());
 	}
 
 	tTJSVariant execResult;
@@ -586,7 +611,7 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 		if (!Utf16ToUtf8(resultString.c_str(), resultString.GetLen(), utf8Result))
 			utf8Result = "<invalid UTF-16 result>";
 		std::string entry = utf8Result + "\n=== END ===\n";
-		LogToFile(entry.c_str());
+		Log(entry.c_str());
 	}
 
 	if (result)
@@ -718,7 +743,7 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 	}
 
 	if (!IsTJSReady()) {
-		LogToFile(">>> NeuroExec: TJS not ready!\n");
+		Log(">>> NeuroExec: TJS not ready!\n");
 		if (result) {
 			*result = TJS_W("Error: TJS not initialized yet");
 		}
@@ -727,7 +752,7 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 
 	if (param[0]->Type() == tvtString) {
 		ttstr code = *param[0];
-		LogToFile(">>> NeuroExec: executing TJS code\n");
+		Log(">>> NeuroExec: executing TJS code\n");
 
 		tTJSVariant execResult;
 		TVPExecuteExpression(code, &execResult);
@@ -762,14 +787,33 @@ NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
+NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
 NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);
 NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
 
-void RegisterTJSBindings() {
-	ncbAutoRegister::AllRegist();
+static bool g_ExitHookInstalled = false;
+
+void RetryInstallExitHookIfReady() {
+	if (g_ExitHookInstalled)
+		return;
+	tTJSVariant ready;
+	bool const executed = ExecuteTJSSync(
+	    L"(function(){ return typeof MyYesNoDialogLayer == 'Object' && "
+	    L"typeof MyYesNoDialog != 'undefined'; })()",
+	    &ready, 5000);
+	{
+		char msg[128];
+		_snprintf_s(msg, sizeof(msg), "[ExitHook] retry executed=%d ready=%lld\n",
+		            executed ? 1 : 0, (long long)(tTVInteger)ready);
+		Log(msg);
+	}
+	if (!executed || !(tTVInteger)ready)
+		return;
+	Log("[ExitHook] installing hook\n");
 	ExecuteTJSAsync(
+	    L"global.__neuroExitHookInstalled = true; "
 	    L"MyYesNoDialogLayer.onItemClick = function(itemName) { "
 	    L"var result = itemName == 'yes' || itemName.indexOf('はい') >= 0; "
 	    L"if (result && MyYesNoDialog.currentTextPart == 'AskExit') { "
@@ -777,8 +821,16 @@ void RegisterTJSBindings() {
 	    L"} "
 	    L"return result; "
 	    L"};");
+	Log("[ExitHook] hook dispatched\n");
+	g_ExitHookInstalled = true;
+}
+
+void RegisterTJSBindings() {
+	ncbAutoRegister::AllRegist();
+	RetryInstallExitHookIfReady();
 }
 
 void UnregisterTJSBindings() {
 	ncbAutoRegister::AllUnregist();
+	g_ExitHookInstalled = false;
 }

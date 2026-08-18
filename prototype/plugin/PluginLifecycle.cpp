@@ -29,7 +29,7 @@ static std::atomic<bool> g_ShutdownStarted(false);
 static void StartHotkeyThread();
 
 static void DeferredTJSInitThread() {
-	LogToFile("Deferred TJS init thread started...\n");
+	Log("Deferred TJS init thread started...\n");
 
 	int const maxAttempts = 100;
 	int const intervalMs = 100;
@@ -45,7 +45,7 @@ static void DeferredTJSInitThread() {
 			char buf[64];
 			sprintf_s(buf, "  Waiting for TJS... attempt %d/%d\n", i + 1,
 			          maxAttempts);
-			LogToFile(buf);
+			Log(buf);
 		}
 
 		if (IsTJSReady())
@@ -53,20 +53,20 @@ static void DeferredTJSInitThread() {
 	}
 
 	if (!g_InitThreadStopRequested.load() && IsTJSReady()) {
-		LogToFile("Deferred TJS init: SUCCESS\n");
+		Log("Deferred TJS init: SUCCESS\n");
 
 		// The TCP console depends on this main-thread dispatcher.
 		bool const tjsDispatcherReady = InitializeTJSExecutor();
 		if (!tjsDispatcherReady) {
-			LogToFile("ERROR: Window subclass failed; TCP console disabled\n");
+			Log("ERROR: Window subclass failed; TCP console disabled\n");
 		}
 
-		LogToFile("Registering TJS functions via ncbind...\n");
+		Log("Registering TJS functions via ncbind...\n");
 		RegisterTJSBindings();
-		LogToFile("Functions registered via ncbind\n");
+		Log("Functions registered via ncbind\n");
 		InitializePrototypeActionRouter();
 
-		LogToFile("Setting up Debug.addLoggingHandler...\n");
+		Log("Setting up Debug.addLoggingHandler...\n");
 		// Keep the registered callback in TJS so it cannot reference an unloaded
 		// DLL.
 		ExecuteTJSAsync(
@@ -78,9 +78,9 @@ static void DeferredTJSInitThread() {
 		    L"try { neuroConsoleLog(msg); } catch(e) {} }; "
 		    L"Debug.addLoggingHandler(Debug.__neuroLoggingHandler); "
 		    L"Debug.__neuroLoggingHandlerInstalled = true; } })()");
-		LogToFile("Debug logging handler registered!\n");
+		Log("Debug logging handler registered!\n");
 
-		LogToFile("Testing registered functions from C++...\n");
+		Log("Testing registered functions from C++...\n");
 
 		tTJSVariant result;
 		char buf[256];
@@ -88,14 +88,14 @@ static void DeferredTJSInitThread() {
 		TVPExecuteExpression(TJS_W("neuroGetVersion()"), &result);
 		sprintf_s(buf, "  neuroGetVersion() returned: %d\n",
 		          (int)(tTVInteger)result);
-		LogToFile(buf);
+		Log(buf);
 
 		TVPExecuteExpression(TJS_W("neuroIsTJSReady()"), &result);
 		sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n",
 		          (int)(tTVInteger)result);
-		LogToFile(buf);
+		Log(buf);
 
-		LogToFile("Basic tests completed!\n");
+		Log("Basic tests completed!\n");
 
 		if (tjsDispatcherReady) {
 			StartTCPServer();
@@ -103,7 +103,7 @@ static void DeferredTJSInitThread() {
 		StartContextMonitor();
 		StartHotkeyThread();
 	} else {
-		LogToFile("Deferred TJS init: TIMEOUT (TJS not ready after 10s)\n");
+		Log("Deferred TJS init: TIMEOUT (TJS not ready after 10s)\n");
 	}
 
 	g_InitThreadRunning.store(false);
@@ -128,7 +128,7 @@ static void StopDeferredTJSInit() {
 }
 
 static void HotkeyThread() {
-	LogToFile("Hotkey thread started (F12 = console)\n");
+	Log("Hotkey thread started (F12 = console)\n");
 
 	while (g_HotkeyThreadRunning.load()) {
 		if (GetAsyncKeyState(VK_F12) & 0x8000) {
@@ -139,7 +139,7 @@ static void HotkeyThread() {
 		Sleep(50);
 	}
 
-	LogToFile("Hotkey thread stopped\n");
+	Log("Hotkey thread stopped\n");
 }
 
 static void StartHotkeyThread() {
@@ -159,20 +159,20 @@ static void StopHotkeyThread() {
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
     iTVPFunctionExporter *exporter) {
 	OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
-	LogToFile("\n\n=== V2Link called ===\n");
+	Log("\n\n=== V2Link called ===\n");
 
 	if (!exporter) {
-		LogToFile("ERROR: exporter is NULL!\n");
+		Log("ERROR: exporter is NULL!\n");
 		return E_FAIL;
 	}
 
 	if (!TVPInitImportStub(exporter)) {
-		LogToFile("ERROR: TVPInitImportStub failed!\n");
+		Log("ERROR: TVPInitImportStub failed!\n");
 		return E_FAIL;
 	}
-	LogToFile("TVPInitImportStub OK\n");
+	Log("TVPInitImportStub OK\n");
 
-	LogToFile("Starting deferred TJS initialization...\n");
+	Log("Starting deferred TJS initialization...\n");
 	StartDeferredTJSInit();
 
 	return S_OK;
@@ -183,7 +183,7 @@ void ShutdownPluginWorkers() {
 		return;
 	}
 
-	LogToFile("Plugin worker shutdown started\n");
+	Log("Plugin worker shutdown started\n");
 
 	ShutdownPrototypeActionRouter();
 
@@ -203,21 +203,21 @@ void ShutdownPluginLifecycle() {
 		return;
 	}
 
-	LogToFile("Plugin lifecycle shutdown started\n");
+	Log("Plugin lifecycle shutdown started\n");
 	ShutdownPluginWorkers();
 
 	UnregisterTJSBindings();
 	ShutdownTJSExecutor();
 	TVPUninitImportStub();
 
-	LogToFile("Cleanup complete\n");
+	Log("Cleanup complete\n");
 	CloseTagLogFile();
 	CloseLogFile();
 }
 
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {
 	OutputDebugStringW(L"[NEURO PLUGIN] V2Unlink called - plugin unloading\n");
-	LogToFile("V2Unlink called - cleaning up\n");
+	Log("V2Unlink called - cleaning up\n");
 	ShutdownPluginLifecycle();
 
 	return S_OK;

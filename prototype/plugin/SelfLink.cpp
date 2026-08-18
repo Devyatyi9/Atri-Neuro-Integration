@@ -20,7 +20,7 @@ iTVPFunctionExporter *WaitForExporterInit(int maxWaitMs) {
 	char logBuf[256];
 	sprintf_s(logBuf, "Waiting for exporter (RVA=0x%08X, vtable RVA=0x%08X)...\n",
 	          kExporterRva, kVtableRva);
-	LogToFile(logBuf);
+	Log(logBuf);
 
 	while (elapsed < maxWaitMs) {
 		HMODULE mainModule = GetModuleHandle(nullptr);
@@ -42,7 +42,7 @@ iTVPFunctionExporter *WaitForExporterInit(int maxWaitMs) {
 			if (vtable == expectedVtable) {
 				sprintf_s(logBuf, "Exporter found after %d ms at 0x%08X\n", elapsed,
 				          reinterpret_cast<DWORD>(exporter));
-				LogToFile(logBuf);
+				Log(logBuf);
 				return exporter;
 			}
 
@@ -55,7 +55,7 @@ iTVPFunctionExporter *WaitForExporterInit(int maxWaitMs) {
 				    logBuf,
 				    "ERROR: VTable mismatch! Expected RVA=0x%08X, Actual RVA=0x%08X\n",
 				    kVtableRva, actualRva);
-				LogToFile(logBuf);
+				Log(logBuf);
 
 				wchar_t message[512];
 				swprintf_s(message,
@@ -78,10 +78,10 @@ iTVPFunctionExporter *WaitForExporterInit(int maxWaitMs) {
 
 		if (elapsed % 1000 == 0) {
 			sprintf_s(logBuf, "Still waiting... %d/%d ms\n", elapsed, maxWaitMs);
-			LogToFile(logBuf);
+			Log(logBuf);
 		}
 	}
 
-	LogToFile("ERROR: Exporter init timeout!\n");
+	Log("ERROR: Exporter init timeout!\n");
 	return nullptr;
 }

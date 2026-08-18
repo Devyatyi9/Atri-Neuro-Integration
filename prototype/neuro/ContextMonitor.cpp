@@ -6,6 +6,7 @@
 #include <thread>
 #include "ActionRouter.h"
 #include "Logging.h"
+#include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
 
@@ -18,8 +19,7 @@ static std::atomic<bool> g_MonitorRunning(false);
 static std::thread g_MonitorThread;
 
 static void ContextMonitorThread() {
-	LogToFile(
-	    "[Monitor] Context monitor started (poll interval 200ms, via "
+	Log("[Monitor] Context monitor started (poll interval 200ms, via "
 	    "context_monitor.tjs)\n");
 
 	while (g_MonitorRunning.load()) {
@@ -39,6 +39,7 @@ static void ContextMonitorThread() {
 			continue;
 
 		RefreshPrototypeActionState();
+		RetryInstallExitHookIfReady();
 
 		ttstr resultStr(result);
 		if (resultStr.IsEmpty())
@@ -52,7 +53,7 @@ static void ContextMonitorThread() {
 		}
 	}
 
-	LogToFile("[Monitor] Context monitor stopped\n");
+	Log("[Monitor] Context monitor stopped\n");
 }
 
 bool StartContextMonitor() {

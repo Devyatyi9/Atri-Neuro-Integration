@@ -2,3 +2,4 @@
 
 void RegisterTJSBindings();
 void UnregisterTJSBindings();
+void RetryInstallExitHookIfReady();

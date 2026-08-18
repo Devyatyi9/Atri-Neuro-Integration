@@ -53,11 +53,11 @@ void HandleContinueAction(std::string const &id,
                           std::string const &name,
                           std::string const &data) {
 	if (id.empty()) {
-		LogToFile("[Action] Ignoring action without an ID\n");
+		Log("[Action] Ignoring action without an ID\n");
 		return;
 	}
 	if (!ClaimActionId(id)) {
-		LogToFile("[Action] Ignoring duplicate action ID\n");
+		Log("[Action] Ignoring duplicate action ID\n");
 		return;
 	}
 	if (name != "continue_game") {
@@ -126,9 +126,9 @@ void InitializePrototypeActionRouter() {
 	if (NeuroRegisterAction("continue_game", "Continue the current game.",
 	                        "{\"type\":\"object\",\"properties\":{},"
 	                        "\"additionalProperties\":false}")) {
-		LogToFile("[Action] Registered continue_game capability\n");
+		Log("[Action] Registered continue_game capability\n");
 	} else {
-		LogToFile("[Action] Failed to register continue_game capability\n");
+		Log("[Action] Failed to register continue_game capability\n");
 	}
 }
 
@@ -154,6 +154,6 @@ void RefreshPrototypeActionState() {
 	            g_ContinueActionStartedAt.load(std::memory_order_acquire) >=
 	        5000) {
 		g_ContinueActionInFlight.store(false, std::memory_order_release);
-		LogToFile("[Action] Continue transition completed or timed out\n");
+		Log("[Action] Continue transition completed or timed out\n");
 	}
 }

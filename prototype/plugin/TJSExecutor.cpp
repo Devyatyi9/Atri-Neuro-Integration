@@ -115,20 +115,20 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 		}
 
 		case WM_TJS_EXECUTE: {
-			LogToFile("  [Subclass] WM_TJS_EXECUTE received!\n");
+			Log("  [Subclass] WM_TJS_EXECUTE received!\n");
 			auto code = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
 			if (!code.empty() && g_TJSReady.load()) {
-				LogToFile("  [Subclass] Executing TJS async\n");
+				Log("  [Subclass] Executing TJS async\n");
 				tTJSVariant dummy;
 				try {
 					TVPExecuteExpression(ttstr(code.c_str()), &dummy);
 				} catch (...) {
-					LogToFile("  [ExecuteTJSAsync] TJS execution threw an exception: ");
+					Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
 					std::string utf8Code;
 					if (Utf16ToUtf8(code.c_str(), code.size(), utf8Code)) {
-						LogToFile(utf8Code.c_str());
+						Log(utf8Code.c_str());
 					}
-					LogToFile("\n");
+					Log("\n");
 				}
 			}
 			return 0;
@@ -136,15 +136,15 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 
 		case WM_TJS_EXECUTE_SYNC: {
 			if (g_HoldTJSSyncCallsForStressTest.load(std::memory_order_acquire)) {
-				LogToFile("[Stress] Holding TJS sync dispatch pending unload\n");
+				Log("[Stress] Holding TJS sync dispatch pending unload\n");
 				return 0;
 			}
 			if (g_BlockNextTJSSyncCall.exchange(false, std::memory_order_acq_rel)) {
-				LogToFile("[Stress] Blocking next TJS sync dispatch\n");
+				Log("[Stress] Blocking next TJS sync dispatch\n");
 				while (g_AcceptTJSCalls.load(std::memory_order_acquire)) {
 					Sleep(10);
 				}
-				LogToFile("[Stress] TJS sync dispatch unblocked by shutdown\n");
+				Log("[Stress] TJS sync dispatch unblocked by shutdown\n");
 			}
 			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
 			if (data) {
@@ -155,7 +155,7 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 						data->executed = true;
 					}
 				} catch (...) {
-					LogToFile("  [ExecuteTJSSync] TJS execution threw an exception\n");
+					Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
 				}
 				SetEvent(data->completedEvent);
 			}
@@ -201,7 +201,7 @@ static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
 }
 
 static bool SubclassGameWindow() {
-	LogToFile("Waiting for game window...\n");
+	Log("Waiting for game window...\n");
 
 	// The script engine can be ready before the visible game window exists.
 	for (int attempt = 0; attempt < 300; attempt++) {
@@ -214,7 +214,7 @@ static bool SubclassGameWindow() {
 		if (g_GameWindow) {
 			char buf[128];
 			sprintf_s(buf, "  Found window on attempt %d\n", attempt + 1);
-			LogToFile(buf);
+			Log(buf);
 			break;
 		}
 
@@ -222,13 +222,13 @@ static bool SubclassGameWindow() {
 	}
 
 	if (!g_GameWindow) {
-		LogToFile("ERROR: Could not find game window after 30 seconds\n");
+		Log("ERROR: Could not find game window after 30 seconds\n");
 		return false;
 	}
 
 	char buf[512];
 	sprintf_s(buf, "Found game window: HWND=%p\n", g_GameWindow);
-	LogToFile(buf);
+	Log(buf);
 
 	wchar_t className[256] = {0};
 	wchar_t windowTitle[256] = {0};
@@ -238,13 +238,13 @@ static bool SubclassGameWindow() {
 	char diagBuf[1024];
 	sprintf_s(diagBuf, "  Window class: %ls\n  Window title: %ls\n", className,
 	          windowTitle);
-	LogToFile(diagBuf);
+	Log(diagBuf);
 
 	g_MainThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
 	DWORD currentThreadId = GetCurrentThreadId();
 	sprintf_s(diagBuf, "  Window thread (main): %lu, Current thread: %lu\n",
 	          g_MainThreadId, currentThreadId);
-	LogToFile(diagBuf);
+	Log(diagBuf);
 
 	LONG_PTR originalWndProc =
 	    SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC,
@@ -256,12 +256,12 @@ static bool SubclassGameWindow() {
 	if (!g_OriginalWndProc) {
 		DWORD err = GetLastError();
 		sprintf_s(diagBuf, "ERROR: SetWindowLongPtr failed, error=%lu\n", err);
-		LogToFile(diagBuf);
+		Log(diagBuf);
 		g_GameWindow = nullptr;
 		return false;
 	}
 
-	LogToFile("Game window subclassed successfully\n");
+	Log("Game window subclassed successfully\n");
 	g_AcceptTJSCalls.store(true, std::memory_order_release);
 	return true;
 }
@@ -270,7 +270,7 @@ static void UnsubclassGameWindow() {
 	StopAcceptingTJSCalls();
 	if (g_GameWindow && g_OriginalWndProc) {
 		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
-		LogToFile("Game window unsubclassed\n");
+		Log("Game window unsubclassed\n");
 	}
 	g_GameWindow = nullptr;
 	g_OriginalWndProc = nullptr;
@@ -326,7 +326,7 @@ void ExecuteTJSAsync(wchar_t const *code) {
 	if (!PostMessage(g_GameWindow, WM_TJS_EXECUTE, static_cast<WPARAM>(callId),
 	                 0)) {
 		TakeTJSAsyncCall(callId);
-		LogToFile("  [ExecuteTJSAsync] Failed to post to the game window\n");
+		Log("  [ExecuteTJSAsync] Failed to post to the game window\n");
 	}
 }
 
@@ -340,17 +340,17 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	    L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + e.message; } })()";
 
 	if (IsMainThread()) {
-		LogToFile("[ExecuteTJSSync] Running on main thread\n");
+		Log("[ExecuteTJSSync] Running on main thread\n");
 		if (g_TJSReady.load()) {
 			try {
 				TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
 				return true;
 			} catch (...) {
-				LogToFile("[ExecuteTJSSync] TJS execution threw an exception\n");
+				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
 				return false;
 			}
 		}
-		LogToFile("[ExecuteTJSSync] TJS not ready on main thread\n");
+		Log("[ExecuteTJSSync] TJS not ready on main thread\n");
 		return false;
 	}
 
@@ -391,7 +391,7 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);
 		TakeTJSSyncCall(callId);
-		LogToFile("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
+		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
 	}
 	return executed;
 }
@@ -405,11 +405,11 @@ void TryInitTJS() {
 		if (dispatch) {
 			g_ScriptDispatch = dispatch;
 			g_TJSReady.store(true);
-			LogToFile("TJS initialized successfully!\n");
+			Log("TJS initialized successfully!\n");
 			OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized!\n");
 		}
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
-		LogToFile("TryInitTJS: EXCEPTION caught!\n");
+		Log("TryInitTJS: EXCEPTION caught!\n");
 	}
 }
 

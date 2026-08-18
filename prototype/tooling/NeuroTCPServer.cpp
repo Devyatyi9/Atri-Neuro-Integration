@@ -49,7 +49,7 @@ static std::vector<ClientThread> g_ClientThreads;
 static void LogTCP(char const *msg) {
 	char buf[512];
 	sprintf_s(buf, "[TCP] %s\n", msg);
-	LogToFile(buf);
+	Log(buf);
 }
 
 static void ShutdownActiveClients() {
@@ -143,7 +143,7 @@ static void HandleClient(SOCKET clientSock,
                          std::shared_ptr<std::atomic<bool>> exitAfterResponse) {
 	char buf[128];
 	sprintf_s(buf, "[TCP] Client connected (sock=%d)\n", (int)clientSock);
-	LogToFile(buf);
+	Log(buf);
 
 	while (g_TCPServerRunning.load()) {
 		std::string code;
@@ -196,7 +196,7 @@ static void HandleClient(SOCKET clientSock,
 	}
 
 	sprintf_s(buf, "[TCP] Client disconnected (sock=%d)\n", (int)clientSock);
-	LogToFile(buf);
+	Log(buf);
 	finished->store(true);
 }
 
@@ -234,7 +234,7 @@ static void TCPServerThread() {
 	if (bind(g_ListenSocket, (sockaddr *)&addr, sizeof(addr)) != 0) {
 		char buf[128];
 		sprintf_s(buf, "[TCP] Bind failed on port %d\n", NEURO_TCP_PORT);
-		LogToFile(buf);
+		Log(buf);
 		closesocket(g_ListenSocket);
 		g_ListenSocket = INVALID_SOCKET;
 		WSACleanup();
@@ -253,7 +253,7 @@ static void TCPServerThread() {
 
 	char buf[128];
 	sprintf_s(buf, "[TCP] Listening on 127.0.0.1:%d\n", NEURO_TCP_PORT);
-	LogToFile(buf);
+	Log(buf);
 
 	while (g_TCPServerRunning.load()) {
 		ReapFinishedClientThreads();
