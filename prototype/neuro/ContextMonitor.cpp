@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <string>
 #include <thread>
+#include "ActionRouter.h"
 #include "Logging.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
@@ -36,6 +37,8 @@ static void ContextMonitorThread() {
 		    5000);
 		if (!ok)
 			continue;
+
+		RefreshPrototypeActionState();
 
 		ttstr resultStr(result);
 		if (resultStr.IsEmpty())

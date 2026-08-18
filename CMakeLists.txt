@@ -93,6 +93,8 @@ endif()
 if(ATRI_BUILD_PROTOTYPE)
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
+        prototype/actions/ActionRouter.cpp
+        prototype/actions/ActionRouter.h
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextMonitor.cpp
         prototype/Logging.cpp
@@ -120,6 +122,7 @@ if(ATRI_BUILD_PROTOTYPE)
     )
     target_include_directories(atri_neuro_prototype PRIVATE
         prototype
+        prototype/actions
         prototype/plugin
         prototype/neuro
         prototype/tooling

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <thread>
 
+#include "ActionRouter.h"
 #include "ContextMonitor.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
@@ -63,6 +64,7 @@ static void DeferredTJSInitThread() {
 		LogToFile("Registering TJS functions via ncbind...\n");
 		RegisterTJSBindings();
 		LogToFile("Functions registered via ncbind\n");
+		InitializePrototypeActionRouter();
 
 		LogToFile("Setting up Debug.addLoggingHandler...\n");
 		// Keep the registered callback in TJS so it cannot reference an unloaded
@@ -182,6 +184,8 @@ void ShutdownPluginWorkers() {
 	}
 
 	LogToFile("Plugin worker shutdown started\n");
+
+	ShutdownPrototypeActionRouter();
 
 	// Release workers blocked on main-thread TJS calls before joining them.
 	StopAcceptingTJSCalls();
