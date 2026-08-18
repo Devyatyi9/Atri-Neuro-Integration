@@ -65,7 +65,17 @@ static void DeferredTJSInitThread() {
 		LogToFile("Functions registered via ncbind\n");
 
 		LogToFile("Setting up Debug.addLoggingHandler...\n");
-		ExecuteTJSAsync(L"Debug.addLoggingHandler(neuroConsoleLog)");
+		// Keep the registered callback in TJS so it cannot reference an unloaded
+		// DLL.
+		ExecuteTJSAsync(
+		    L"(function(){ var installed = false; "
+		    L"try { installed = Debug.__neuroLoggingHandlerInstalled; } catch(e) "
+		    L"{} "
+		    L"if (!installed) { "
+		    L"Debug.__neuroLoggingHandler = function(msg) { "
+		    L"try { neuroConsoleLog(msg); } catch(e) {} }; "
+		    L"Debug.addLoggingHandler(Debug.__neuroLoggingHandler); "
+		    L"Debug.__neuroLoggingHandlerInstalled = true; } })()");
 		LogToFile("Debug logging handler registered!\n");
 
 		LogToFile("Testing registered functions from C++...\n");
@@ -191,10 +201,6 @@ void ShutdownPluginLifecycle() {
 
 	LogToFile("Plugin lifecycle shutdown started\n");
 	ShutdownPluginWorkers();
-
-	tTJSVariant dummy;
-	TVPExecuteExpression(TJS_W("Debug.removeLoggingHandler(neuroConsoleLog)"),
-	                     &dummy);
 
 	UnregisterTJSBindings();
 	ShutdownTJSExecutor();

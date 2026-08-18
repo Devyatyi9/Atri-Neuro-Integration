@@ -15,6 +15,7 @@
 
 #include "Logging.h"
 #include "PluginLifecycle.h"
+#include "UtfConversion.h"
 
 static std::atomic<bool> g_TJSReady(false);
 static iTJSDispatch2 *g_ScriptDispatch = nullptr;
@@ -121,7 +122,12 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 				try {
 					TVPExecuteExpression(ttstr(code.c_str()), &dummy);
 				} catch (...) {
-					LogToFile("  [ExecuteTJSAsync] TJS execution threw an exception\n");
+					LogToFile("  [ExecuteTJSAsync] TJS execution threw an exception: ");
+					std::string utf8Code;
+					if (Utf16ToUtf8(code.c_str(), code.size(), utf8Code)) {
+						LogToFile(utf8Code.c_str());
+					}
+					LogToFile("\n");
 				}
 			}
 			return 0;
