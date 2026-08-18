@@ -23,7 +23,7 @@ from mcp.server.fastmcp import FastMCP
 
 
 HOST = "127.0.0.1"
-PORT = int(os.environ.get("NEURO_HARNESS_PORT", "8001"))
+PORT = int(os.environ.get("NEURO_HARNESS_PORT", "8000"))
 MAX_EVENTS = 256
 
 

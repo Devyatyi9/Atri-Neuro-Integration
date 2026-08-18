@@ -15,7 +15,8 @@ param(
     [string]$Code,
     [switch]$Restart,
     [switch]$Kill,
-    [int]$Port = 18700
+    [int]$Port = 18700,
+    [string]$WsUrl = "ws://127.0.0.1:8000"
 )
 
 $GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
@@ -45,6 +46,7 @@ function Restart-Game {
     }
 
     Write-Host "Starting game..."
+    $env:NEURO_WS_URL = $WsUrl
     Start-Process -FilePath $GameExe -WorkingDirectory $GameDir
     Write-Host "Game started. Waiting for TCP server..."
 
