@@ -14,6 +14,7 @@
 
 #include "GameDebugLog.h"
 #include "Logging.h"
+#include "NeuroClient.h"
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
 #include "PluginLifecycle.h"
@@ -105,6 +106,66 @@ NeuroStressHoldSyncCalls(tTJSVariant *result,
 	LogToFile(">>> TJS sync calls armed for pending-unload stress\n");
 	if (result) {
 		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroConnectClient(tTJSVariant *result,
+                                                    tjs_int numparams,
+                                                    tTJSVariant **param,
+                                                    iTJSDispatch2 *objthis) {
+	std::string url;
+	if (numparams > 0 && param && param[0]) {
+		if (param[0]->Type() != tvtString) {
+			if (result) {
+				*result = (tTVInteger)0;
+			}
+			return TJS_S_OK;
+		}
+		ttstr value = *param[0];
+		if (!Utf16ToUtf8(value.c_str(), value.GetLen(), url) ||
+		    url.find('\0') != std::string::npos) {
+			if (result) {
+				*result = (tTVInteger)0;
+			}
+			return TJS_S_OK;
+		}
+	}
+	bool const started =
+	    NeuroConnect(url.empty() ? nullptr : url.c_str(), nullptr);
+	if (result) {
+		*result = (tTVInteger)(started ? 1 : 0);
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroDisconnectClient(tTJSVariant *result,
+                                                       tjs_int numparams,
+                                                       tTJSVariant **param,
+                                                       iTJSDispatch2 *objthis) {
+	NeuroDisconnect();
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroClientConnected(tTJSVariant *result,
+                                                      tjs_int numparams,
+                                                      tTJSVariant **param,
+                                                      iTJSDispatch2 *objthis) {
+	if (result) {
+		*result = (tTVInteger)(NeuroIsConnected() ? 1 : 0);
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroClientReady(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	if (result) {
+		*result = (tTVInteger)(NeuroIsReady() ? 1 : 0);
 	}
 	return TJS_S_OK;
 }
@@ -688,6 +749,10 @@ NCB_REGISTER_FUNCTION(neuroConfirmExit, NeuroConfirmExit);
 NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
                       NeuroStressBlockNextSyncCall);
 NCB_REGISTER_FUNCTION(neuroStressHoldSyncCalls, NeuroStressHoldSyncCalls);
+NCB_REGISTER_FUNCTION(neuroConnect, NeuroConnectClient);
+NCB_REGISTER_FUNCTION(neuroDisconnect, NeuroDisconnectClient);
+NCB_REGISTER_FUNCTION(neuroIsConnected, NeuroClientConnected);
+NCB_REGISTER_FUNCTION(neuroIsReady, NeuroClientReady);
 NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
 NCB_REGISTER_FUNCTION(neuroSendData, NeuroSendData);
 NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);

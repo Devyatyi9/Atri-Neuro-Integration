@@ -13,6 +13,7 @@ void NeuroSetActionHandler(NeuroActionHandler handler);
 bool NeuroConnect(char const *url, char const *gameName);
 void NeuroDisconnect();
 bool NeuroIsConnected();
+bool NeuroIsReady();
 
 bool NeuroSendContext(char const *message, bool silent);
 bool NeuroRegisterAction(char const *name,

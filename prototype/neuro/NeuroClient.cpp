@@ -1,7 +1,6 @@
-#define _CRT_SECURE_NO_WARNINGS
-#include <windows.h>
-
 #include "NeuroClient.h"
+
+#include <windows.h>
 
 #include <atomic>
 #include <cstdio>
@@ -12,46 +11,117 @@
 #include <vector>
 
 #include <neurosdk.h>
+
 #include "Logging.h"
 
 namespace {
+constexpr unsigned int kReconnectInitialMs = 500;
+constexpr unsigned int kReconnectMaxMs = 30000;
+
+struct RegisteredAction {
+	std::string name;
+	std::string description;
+	std::string jsonSchema;
+};
+
 neurosdk_context_t g_NeuroContext = nullptr;
+std::mutex g_ContextMutex;
 std::atomic<bool> g_NeuroConnected(false);
+std::atomic<bool> g_NeuroReady(false);
 std::atomic<bool> g_NeuroPollThreadRunning(false);
 std::thread g_NeuroPollThread;
+std::mutex g_ConfigurationMutex;
 std::string g_NeuroGameName = "ATRI-MyDearMoments";
 std::string g_NeuroURL = "ws://localhost:8000";
 
-std::vector<std::string> g_RegisteredActions;
+std::vector<RegisteredAction> g_RegisteredActions;
 std::mutex g_ActionsMutex;
-
 NeuroActionHandler g_ActionHandler = nullptr;
 std::mutex g_ActionHandlerMutex;
+
+void LogError(char const *operation, neurosdk_error_e error) {
+	char message[256];
+	sprintf_s(message, "[Neuro] %s: %s\n", operation,
+	          neurosdk_error_string(error));
+	LogToFile(message);
+}
 
 void NeuroLogCallback(neurosdk_severity_e severity,
                       char *message,
                       void *userData) {
 	(void)userData;
-	char const *severityStr = "???";
+	char const *severityName = "unknown";
 	switch (severity) {
 		case NeuroSDK_Severity_Debug:
-			severityStr = "DEBUG";
+			severityName = "debug";
 			break;
 		case NeuroSDK_Severity_Info:
-			severityStr = "INFO";
+			severityName = "info";
 			break;
 		case NeuroSDK_Severity_Warn:
-			severityStr = "WARN";
+			severityName = "warn";
 			break;
 		case NeuroSDK_Severity_Error:
-			severityStr = "ERROR";
+			severityName = "error";
 			break;
 	}
-
-	char buf[1024];
-	sprintf_s(buf, "[NeuroSDK %s] %s\n", severityStr,
+	char log[1024];
+	sprintf_s(log, "[NeuroSDK %s] %s\n", severityName,
 	          message ? message : "(null)");
-	LogToFile(buf);
+	LogToFile(log);
+}
+
+bool SleepUntilRetry(unsigned int milliseconds) {
+	while (g_NeuroPollThreadRunning.load(std::memory_order_acquire) &&
+	       milliseconds > 0) {
+		unsigned int const interval = milliseconds > 100 ? 100 : milliseconds;
+		Sleep(interval);
+		milliseconds -= interval;
+	}
+	return g_NeuroPollThreadRunning.load(std::memory_order_acquire);
+}
+
+unsigned int NextBackoff(unsigned int current) {
+	return current >= kReconnectMaxMs / 2 ? kReconnectMaxMs : current * 2;
+}
+
+neurosdk_error_e SendMessage(neurosdk_message_t *message) {
+	std::lock_guard<std::mutex> lock(g_ContextMutex);
+	if (!g_NeuroContext) {
+		return NeuroSDK_Uninitialized;
+	}
+	return neurosdk_context_send(&g_NeuroContext, message);
+}
+
+neurosdk_error_e SendStartup() {
+	neurosdk_message_t startup = {};
+	startup.kind = NeuroSDK_MessageKind_Startup;
+	return SendMessage(&startup);
+}
+
+neurosdk_error_e SendRegisteredActions() {
+	std::vector<RegisteredAction> actions;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		actions = g_RegisteredActions;
+	}
+	if (actions.empty()) {
+		return NeuroSDK_None;
+	}
+
+	std::vector<neurosdk_action_t> sdkActions;
+	sdkActions.reserve(actions.size());
+	for (RegisteredAction &action : actions) {
+		sdkActions.push_back({const_cast<char *>(action.name.c_str()),
+		                      const_cast<char *>(action.description.c_str()),
+		                      const_cast<char *>(action.jsonSchema.c_str())});
+	}
+	neurosdk_message_t message = {};
+	message.kind = NeuroSDK_MessageKind_ActionsRegister;
+	message.value.actions_register.actions = sdkActions.data();
+	message.value.actions_register.actions_len =
+	    static_cast<int>(sdkActions.size());
+	return SendMessage(&message);
 }
 
 void DispatchAction(std::string const &id,
@@ -62,63 +132,142 @@ void DispatchAction(std::string const &id,
 		std::lock_guard<std::mutex> lock(g_ActionHandlerMutex);
 		handler = g_ActionHandler;
 	}
-
 	if (handler) {
 		handler(id, name, data);
 	} else {
-		char buf[512];
-		sprintf_s(buf, "[Neuro] Action ignored (no handler): id=%s, name=%s\n",
-		          id.c_str(), name.c_str());
-		LogToFile(buf);
+		LogToFile("[Neuro] Ignoring action: no handler installed\n");
 	}
 }
 
-void NeuroPollThread() {
-	LogToFile("[Neuro] Poll thread started\n");
-
-	while (g_NeuroPollThreadRunning.load() && g_NeuroConnected.load()) {
-		if (!neurosdk_context_connected(&g_NeuroContext)) {
-			LogToFile("[Neuro] Connection lost!\n");
-			g_NeuroConnected.store(false);
-			break;
-		}
-
-		neurosdk_message_t *messages = nullptr;
-		int count = 0;
-		neurosdk_error_e err =
-		    neurosdk_context_poll(&g_NeuroContext, &messages, &count);
-
-		if (err != NeuroSDK_None) {
-			char buf[256];
-			sprintf_s(buf, "[Neuro] Poll error: %s\n", neurosdk_error_string(err));
-			LogToFile(buf);
-
-			// Unknown commands do not terminate polling.
-			if (err == NeuroSDK_UnknownCommand) {
-				Sleep(100);
-				continue;
-			}
-			break;
-		}
-
-		for (int i = 0; i < count; i++) {
-			neurosdk_message_t *msg = &messages[i];
-			if (msg->kind == NeuroSDK_MessageKind_Action) {
-				std::string const id = msg->value.action.id ? msg->value.action.id : "";
-				std::string const name =
-				    msg->value.action.name ? msg->value.action.name : "";
-				std::string const data =
-				    msg->value.action.data ? msg->value.action.data : "";
-				neurosdk_message_destroy(msg);
-				DispatchAction(id, name, data);
-			} else {
-				neurosdk_message_destroy(msg);
+neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
+	neurosdk_error_e result = NeuroSDK_None;
+	for (int index = 0; index < count; ++index) {
+		neurosdk_message_t *message = &messages[index];
+		if (result == NeuroSDK_None) {
+			switch (message->kind) {
+				case NeuroSDK_MessageKind_Action: {
+					std::string const id =
+					    message->value.action.id ? message->value.action.id : "";
+					std::string const name =
+					    message->value.action.name ? message->value.action.name : "";
+					std::string const data =
+					    message->value.action.data ? message->value.action.data : "";
+					DispatchAction(id, name, data);
+					break;
+				}
+				case NeuroSDK_MessageKind_ActionsReregisterAll:
+					LogToFile("[Neuro] Re-registering current actions\n");
+					result = SendRegisteredActions();
+					if (result != NeuroSDK_None) {
+						LogError("Re-register actions failed", result);
+					}
+					break;
+				case NeuroSDK_MessageKind_StartupAcknowledgement:
+					g_NeuroReady.store(true, std::memory_order_release);
+					LogToFile("[Neuro] Startup acknowledged\n");
+					break;
+				default:
+					break;
 			}
 		}
+		neurosdk_message_destroy(message);
+	}
+	return result;
+}
 
-		Sleep(50);
+void DestroyContext() {
+	std::lock_guard<std::mutex> lock(g_ContextMutex);
+	if (g_NeuroContext) {
+		neurosdk_context_destroy(&g_NeuroContext);
+	}
+}
+
+bool CreateSession() {
+	std::string url;
+	std::string gameName;
+	{
+		std::lock_guard<std::mutex> lock(g_ConfigurationMutex);
+		url = g_NeuroURL;
+		gameName = g_NeuroGameName;
 	}
 
+	neurosdk_context_create_desc_t description = {};
+	description.url = url.c_str();
+	description.game_name = gameName.c_str();
+	description.poll_ms = 100;
+	description.callback_log = NeuroLogCallback;
+	description.flags = NeuroSDK_ContextCreateFlags_None;
+	{
+		std::lock_guard<std::mutex> lock(g_ContextMutex);
+		neurosdk_error_e const error =
+		    neurosdk_context_create(&g_NeuroContext, &description);
+		if (error != NeuroSDK_None) {
+			LogError("Connection failed", error);
+			return false;
+		}
+	}
+
+	neurosdk_error_e error = SendStartup();
+	if (error == NeuroSDK_None) {
+		error = SendRegisteredActions();
+	}
+	if (error != NeuroSDK_None) {
+		LogError("Session initialization failed", error);
+		DestroyContext();
+		return false;
+	}
+
+	g_NeuroConnected.store(true, std::memory_order_release);
+	LogToFile("[Neuro] Connected; awaiting startup acknowledgement\n");
+	return true;
+}
+
+void NeuroPollThread() {
+	unsigned int backoffMs = kReconnectInitialMs;
+	LogToFile("[Neuro] Poll thread started\n");
+	while (g_NeuroPollThreadRunning.load(std::memory_order_acquire)) {
+		g_NeuroReady.store(false, std::memory_order_release);
+		if (!CreateSession()) {
+			if (!SleepUntilRetry(backoffMs)) {
+				break;
+			}
+			backoffMs = NextBackoff(backoffMs);
+			continue;
+		}
+		backoffMs = kReconnectInitialMs;
+
+		neurosdk_error_e error = NeuroSDK_None;
+		while (g_NeuroPollThreadRunning.load(std::memory_order_acquire) &&
+		       error == NeuroSDK_None) {
+			neurosdk_message_t *messages = nullptr;
+			int count = 0;
+			{
+				std::lock_guard<std::mutex> lock(g_ContextMutex);
+				if (!g_NeuroContext || !neurosdk_context_connected(&g_NeuroContext)) {
+					error = NeuroSDK_ConnectionError;
+				} else {
+					error = neurosdk_context_poll(&g_NeuroContext, &messages, &count);
+				}
+			}
+			if (error == NeuroSDK_None) {
+				error = ProcessMessages(messages, count);
+			}
+		}
+
+		DestroyContext();
+		g_NeuroConnected.store(false, std::memory_order_release);
+		g_NeuroReady.store(false, std::memory_order_release);
+		if (g_NeuroPollThreadRunning.load(std::memory_order_acquire)) {
+			LogError("Disconnected", error);
+			if (!SleepUntilRetry(backoffMs)) {
+				break;
+			}
+			backoffMs = NextBackoff(backoffMs);
+		}
+	}
+	DestroyContext();
+	g_NeuroConnected.store(false, std::memory_order_release);
+	g_NeuroReady.store(false, std::memory_order_release);
 	LogToFile("[Neuro] Poll thread stopped\n");
 }
 }  // namespace
@@ -129,178 +278,96 @@ void NeuroSetActionHandler(NeuroActionHandler handler) {
 }
 
 bool NeuroConnect(char const *url, char const *gameName) {
-	if (g_NeuroConnected.load()) {
-		LogToFile("[Neuro] Already connected\n");
+	if (g_NeuroPollThreadRunning.exchange(true, std::memory_order_acq_rel)) {
 		return true;
 	}
-	if (g_NeuroPollThread.joinable() || g_NeuroContext) {
-		LogToFile("[Neuro] Disconnect the previous session before reconnecting\n");
-		return false;
+	if (g_NeuroPollThread.joinable()) {
+		g_NeuroPollThread.join();
 	}
-
-	if (url)
-		g_NeuroURL = url;
-	if (gameName)
-		g_NeuroGameName = gameName;
-
-	char buf[512];
-	sprintf_s(buf, "[Neuro] Connecting to %s as '%s'...\n", g_NeuroURL.c_str(),
-	          g_NeuroGameName.c_str());
-	LogToFile(buf);
-
-	neurosdk_context_create_desc_t desc;
-	memset(&desc, 0, sizeof(desc));
-	desc.url = g_NeuroURL.c_str();
-	desc.game_name = g_NeuroGameName.c_str();
-	desc.poll_ms = 100;
-	desc.user_data = nullptr;
-	desc.callback_log = NeuroLogCallback;
-	desc.flags = NeuroSDK_ContextCreateFlags_None;
-
-	neurosdk_error_e err = neurosdk_context_create(&g_NeuroContext, &desc);
-	if (err != NeuroSDK_None) {
-		sprintf_s(buf, "[Neuro] Connection failed: %s\n",
-		          neurosdk_error_string(err));
-		LogToFile(buf);
-		return false;
+	{
+		std::lock_guard<std::mutex> lock(g_ConfigurationMutex);
+		if (url && *url) {
+			g_NeuroURL = url;
+		}
+		if (gameName && *gameName) {
+			g_NeuroGameName = gameName;
+		}
 	}
-
-	g_NeuroConnected.store(true);
-	LogToFile("[Neuro] Connected successfully!\n");
-
-	g_NeuroPollThreadRunning.store(true);
 	g_NeuroPollThread = std::thread(NeuroPollThread);
 	return true;
 }
 
 void NeuroDisconnect() {
-	bool const hadResources =
-	    g_NeuroConnected.load() || g_NeuroPollThread.joinable() || g_NeuroContext;
-	if (hadResources) {
-		LogToFile("[Neuro] Disconnecting...\n");
-	}
-
-	g_NeuroPollThreadRunning.store(false);
-	g_NeuroConnected.store(false);
+	g_NeuroPollThreadRunning.store(false, std::memory_order_release);
 	if (g_NeuroPollThread.joinable()) {
 		g_NeuroPollThread.join();
 	}
-
-	if (g_NeuroContext) {
-		neurosdk_context_destroy(&g_NeuroContext);
-		g_NeuroContext = nullptr;
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		g_RegisteredActions.clear();
-	}
-	{
-		std::lock_guard<std::mutex> lock(g_ActionHandlerMutex);
-		g_ActionHandler = nullptr;
-	}
-
-	if (hadResources) {
-		LogToFile("[Neuro] Disconnected\n");
-	}
+	DestroyContext();
+	g_NeuroConnected.store(false, std::memory_order_release);
+	g_NeuroReady.store(false, std::memory_order_release);
 }
 
 bool NeuroIsConnected() {
-	return g_NeuroConnected.load();
+	return g_NeuroConnected.load(std::memory_order_acquire);
+}
+
+bool NeuroIsReady() {
+	return g_NeuroReady.load(std::memory_order_acquire);
 }
 
 bool NeuroSendContext(char const *message, bool silent) {
-	if (!g_NeuroConnected.load() || !g_NeuroContext) {
-		LogToFile("[Neuro] Cannot send context: not connected\n");
+	if (!message || !NeuroIsReady()) {
 		return false;
 	}
-
-	neurosdk_message_t msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.kind = NeuroSDK_MessageKind_Context;
-	msg.value.context.message = const_cast<char *>(message);
-	msg.value.context.silent = silent;
-
-	neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
-	if (err != NeuroSDK_None) {
-		char buf[256];
-		sprintf_s(buf, "[Neuro] Send context failed: %s\n",
-		          neurosdk_error_string(err));
-		LogToFile(buf);
+	neurosdk_message_t request = {};
+	request.kind = NeuroSDK_MessageKind_Context;
+	request.value.context.message = const_cast<char *>(message);
+	request.value.context.silent = silent;
+	neurosdk_error_e const error = SendMessage(&request);
+	if (error != NeuroSDK_None) {
+		LogError("Send context failed", error);
 		return false;
 	}
-
-	char buf[512];
-	sprintf_s(buf, "[Neuro] Context sent: %s\n", message);
-	LogToFile(buf);
 	return true;
 }
 
 bool NeuroRegisterAction(char const *name,
                          char const *description,
                          char const *jsonSchema) {
-	if (!g_NeuroConnected.load() || !g_NeuroContext) {
-		LogToFile("[Neuro] Cannot register action: not connected\n");
+	if (!name || !*name || !description) {
 		return false;
 	}
-
-	neurosdk_action_t action;
-	action.name = const_cast<char *>(name);
-	action.description = const_cast<char *>(description);
-	action.json_schema = const_cast<char *>(jsonSchema ? jsonSchema : "{}");
-
-	neurosdk_message_t msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.kind = NeuroSDK_MessageKind_ActionsRegister;
-	msg.value.actions_register.actions = &action;
-	msg.value.actions_register.actions_len = 1;
-
-	neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
-	if (err != NeuroSDK_None) {
-		char buf[256];
-		sprintf_s(buf, "[Neuro] Register action failed: %s\n",
-		          neurosdk_error_string(err));
-		LogToFile(buf);
-		return false;
-	}
-
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		g_RegisteredActions.push_back(name);
+		g_RegisteredActions.push_back(
+		    {name, description, jsonSchema ? jsonSchema : "{}"});
 	}
-
-	char buf[256];
-	sprintf_s(buf, "[Neuro] Action registered: %s\n", name);
-	LogToFile(buf);
+	if (!NeuroIsConnected()) {
+		return true;
+	}
+	neurosdk_error_e const error = SendRegisteredActions();
+	if (error != NeuroSDK_None) {
+		LogError("Register action failed", error);
+		return false;
+	}
 	return true;
 }
 
 bool NeuroSendActionResult(char const *id, bool success, char const *message) {
-	if (!g_NeuroConnected.load() || !g_NeuroContext) {
-		LogToFile("[Neuro] Cannot send result: not connected\n");
+	if (!id || !NeuroIsReady()) {
 		return false;
 	}
-
-	neurosdk_message_t msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.kind = NeuroSDK_MessageKind_ActionResult;
-	msg.value.action_result.id = const_cast<char *>(id);
-	msg.value.action_result.success = success;
-	msg.value.action_result.message = const_cast<char *>(message ? message : "");
-
-	neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
-	if (err != NeuroSDK_None) {
-		char buf[256];
-		sprintf_s(buf, "[Neuro] Send result failed: %s\n",
-		          neurosdk_error_string(err));
-		LogToFile(buf);
+	neurosdk_message_t result = {};
+	result.kind = NeuroSDK_MessageKind_ActionResult;
+	result.value.action_result.id = const_cast<char *>(id);
+	result.value.action_result.success = success;
+	result.value.action_result.message =
+	    const_cast<char *>(message ? message : "");
+	neurosdk_error_e const error = SendMessage(&result);
+	if (error != NeuroSDK_None) {
+		LogError("Send action result failed", error);
 		return false;
 	}
-
-	char buf[256];
-	sprintf_s(buf, "[Neuro] Result sent for %s: %s\n", id,
-	          success ? "success" : "failure");
-	LogToFile(buf);
 	return true;
 }
 
@@ -309,30 +376,21 @@ bool NeuroForceAction(char const *state,
                       char const **actionNames,
                       int actionCount,
                       bool ephemeral) {
-	if (!g_NeuroConnected.load() || !g_NeuroContext) {
-		LogToFile("[Neuro] Cannot force action: not connected\n");
+	if (!NeuroIsReady()) {
 		return false;
 	}
-
-	neurosdk_message_t msg;
-	memset(&msg, 0, sizeof(msg));
-	msg.kind = NeuroSDK_MessageKind_ActionsForce;
-	msg.value.actions_force.state = const_cast<char *>(state ? state : "");
-	msg.value.actions_force.query = const_cast<char *>(query ? query : "");
-	msg.value.actions_force.ephemeral_context = ephemeral;
-	msg.value.actions_force.action_names = const_cast<char **>(actionNames);
-	msg.value.actions_force.action_names_len = actionCount;
-	msg.value.actions_force.priority = NeuroSDK_Priority_Medium;
-
-	neurosdk_error_e err = neurosdk_context_send(&g_NeuroContext, &msg);
-	if (err != NeuroSDK_None) {
-		char buf[256];
-		sprintf_s(buf, "[Neuro] Force action failed: %s\n",
-		          neurosdk_error_string(err));
-		LogToFile(buf);
+	neurosdk_message_t request = {};
+	request.kind = NeuroSDK_MessageKind_ActionsForce;
+	request.value.actions_force.state = const_cast<char *>(state ? state : "");
+	request.value.actions_force.query = const_cast<char *>(query ? query : "");
+	request.value.actions_force.ephemeral_context = ephemeral;
+	request.value.actions_force.action_names = const_cast<char **>(actionNames);
+	request.value.actions_force.action_names_len = actionCount;
+	request.value.actions_force.priority = NeuroSDK_Priority_Medium;
+	neurosdk_error_e const error = SendMessage(&request);
+	if (error != NeuroSDK_None) {
+		LogError("Force action failed", error);
 		return false;
 	}
-
-	LogToFile("[Neuro] Force action sent\n");
 	return true;
 }
