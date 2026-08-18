@@ -55,9 +55,10 @@ static void DeferredTJSInitThread() {
 	if (!g_InitThreadStopRequested.load() && IsTJSReady()) {
 		LogToFile("Deferred TJS init: SUCCESS\n");
 
-		// Subclass the game window for thread-safe TJS calls.
-		if (!InitializeTJSExecutor()) {
-			LogToFile("WARNING: Window subclass failed, TJS calls may be unsafe\n");
+		// The TCP console depends on this main-thread dispatcher.
+		bool const tjsDispatcherReady = InitializeTJSExecutor();
+		if (!tjsDispatcherReady) {
+			LogToFile("ERROR: Window subclass failed; TCP console disabled\n");
 		}
 
 		LogToFile("Registering TJS functions via ncbind...\n");
@@ -85,7 +86,9 @@ static void DeferredTJSInitThread() {
 
 		LogToFile("Basic tests completed!\n");
 
-		StartTCPServer();
+		if (tjsDispatcherReady) {
+			StartTCPServer();
+		}
 		StartContextMonitor();
 		StartHotkeyThread();
 	} else {

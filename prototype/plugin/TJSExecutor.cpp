@@ -192,7 +192,8 @@ static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
 static bool SubclassGameWindow() {
 	LogToFile("Waiting for game window...\n");
 
-	for (int attempt = 0; attempt < 50; attempt++) {
+	// The script engine can be ready before the visible game window exists.
+	for (int attempt = 0; attempt < 300; attempt++) {
 		EnumWindowsData enumData = {nullptr, nullptr};
 		EnumWindows(EnumWindowsCallback, (LPARAM)&enumData);
 
@@ -210,7 +211,7 @@ static bool SubclassGameWindow() {
 	}
 
 	if (!g_GameWindow) {
-		LogToFile("ERROR: Could not find game window after 5 seconds\n");
+		LogToFile("ERROR: Could not find game window after 30 seconds\n");
 		return false;
 	}
 
