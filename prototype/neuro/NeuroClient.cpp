@@ -350,6 +350,29 @@ bool NeuroSendContext(char const *message, bool silent) {
 	return true;
 }
 
+bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
+                               int actionCount) {
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		g_RegisteredActions.clear();
+		for (int index = 0; index < actionCount; ++index) {
+			g_RegisteredActions.push_back(
+			    {actions[index].name ? actions[index].name : "",
+			     actions[index].description ? actions[index].description : "",
+			     actions[index].jsonSchema ? actions[index].jsonSchema : "{}"});
+		}
+	}
+	if (!NeuroIsConnected()) {
+		return true;
+	}
+	neurosdk_error_e const error = SendRegisteredActions();
+	if (error != NeuroSDK_None) {
+		LogError("Set actions failed", error);
+		return false;
+	}
+	return true;
+}
+
 bool NeuroRegisterAction(char const *name,
                          char const *description,
                          char const *jsonSchema) {

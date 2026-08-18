@@ -204,14 +204,18 @@ void SyncCapabilities(int state) {
 		return;
 	}
 	if (state == kCapabilityStateTitle) {
-		NeuroRegisterAction("continue_game", "Continue the current game.",
-		                    kContinueGameSchema);
-		NeuroUnregisterAction("advance_text");
+		NeuroRegisteredAction const actions[] = {
+		    {"continue_game", "Continue the current game.", kContinueGameSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: title (continue_game)\n");
 	} else if (state == kCapabilityStateGame) {
-		NeuroUnregisterAction("continue_game");
-		NeuroRegisterAction("advance_text", "Advance the current dialogue.",
-		                    kAdvanceTextSchema);
+		NeuroRegisteredAction const actions[] = {
+		    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: game (advance_text)\n");
 	}
 	g_SyncedCapabilityState.store(state, std::memory_order_release);
