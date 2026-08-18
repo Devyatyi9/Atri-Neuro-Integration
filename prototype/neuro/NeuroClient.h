@@ -19,8 +19,9 @@ bool NeuroIsReady();
 bool NeuroSendContext(char const *message, bool silent);
 
 // Replaces the entire registered action set atomically and sends one
-// ActionsRegister with the full snapshot. ActionsUnregister is intentionally not used for
-// state switches because it would leave an intermediate register in between.
+// ActionsRegister with the full snapshot. ActionsUnregister is intentionally
+// not used for state switches because it would leave an intermediate register
+// in between.
 struct NeuroRegisteredAction {
 	char const *name;
 	char const *description;

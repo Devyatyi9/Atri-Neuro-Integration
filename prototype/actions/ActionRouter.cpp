@@ -3,6 +3,9 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -39,6 +42,36 @@ char const *kContinueGameSchema =
 char const *kAdvanceTextSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+char const *kSelectChoiceSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"index\":{\"type\":\"integer\",\"minimum\":0}},"
+    "\"required\":[\"index\"],"
+    "\"additionalProperties\":false}";
+
+bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
+	size_t const keyPos = json.find(key);
+	if (keyPos == std::string::npos) {
+		return false;
+	}
+	size_t colon = json.find(':', keyPos + strlen(key));
+	if (colon == std::string::npos) {
+		return false;
+	}
+	size_t start = json.find_first_not_of(" \t\r\n", colon + 1);
+	if (start == std::string::npos) {
+		return false;
+	}
+	size_t end = start;
+	while (end < json.size() &&
+	       (isdigit(static_cast<unsigned char>(json[end])) || json[end] == '-')) {
+		++end;
+	}
+	if (end == start) {
+		return false;
+	}
+	out = atoi(json.substr(start, end - start).c_str());
+	return true;
+}
 
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
@@ -179,6 +212,85 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Text advanced.");
 }
 
+void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
+	int index = -1;
+	if (!ParseJsonInteger(data, "\"index\"", index) || index < 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "select_choice requires a non-negative integer "
+		                      "\"index\".");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	// 1. Current state must be game.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "select state")) {
+		ok = false;
+	} else if (state != "game") {
+		ok = false;
+	}
+
+	// 2. The choice layer must be present, enabled, and non-empty.
+	if (ok &&
+	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	               L"kag.selectLayer == 'undefined') return 0;"
+	               L"var layer = kag.selectLayer;"
+	               L"if (layer.selects == void || layer.selects.count < 1) "
+	               L"return 0;"
+	               L"if (typeof layer.enabled != 'undefined' && !layer.enabled) "
+	               L"return 0;"
+	               L"return 1; })()",
+	               ready, "select layer")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	// 3. The requested index must exist and be clickable.
+	if (ok) {
+		wchar_t probe[512];
+		swprintf_s(probe,
+		           L"(function(){ if (typeof kag == 'undefined' || "
+		           L"typeof kag.selectLayer == 'undefined') return 0;"
+		           L"var layer = kag.selectLayer;"
+		           L"if (layer.selects == void || layer.selects.count < "
+		           L"%d) return 0;"
+		           L"var button = layer.selects[%d];"
+		           L"if (!isvalid button || (typeof button.enabled != "
+		           L"'undefined' && !button.enabled)) return 0;"
+		           L"return 1; })()",
+		           index, index);
+		if (!QueryBool(probe, ready, "select button")) {
+			ok = false;
+		} else if (!ready) {
+			ok = false;
+		}
+	}
+
+	// 4. Dispatch the button click.
+	bool dispatched = false;
+	if (ok) {
+		wchar_t probe[512];
+		swprintf_s(probe,
+		           L"(function(){ var layer = kag.selectLayer;"
+		           L"var button = layer.selects[%d];"
+		           L"layer.onButtonClick(button); return 1; })()",
+		           index);
+		dispatched = QueryBool(probe, dispatched, "select dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false, "Choice is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
+}
+
 void HandleNeuroAction(std::string const &id,
                        std::string const &name,
                        std::string const &data) {
@@ -194,6 +306,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleContinueAction(id, data);
 	} else if (name == "advance_text") {
 		HandleAdvanceTextAction(id, data);
+	} else if (name == "select_choice") {
+		HandleSelectChoiceAction(id, data);
 	} else {
 		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
 	}
@@ -213,10 +327,12 @@ void SyncCapabilities(int state) {
 	} else if (state == kCapabilityStateGame) {
 		NeuroRegisteredAction const actions[] = {
 		    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema},
+		    {"select_choice", "Choose a dialogue option by index.",
+		     kSelectChoiceSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: game (advance_text)\n");
+		Log("[Action] Capabilities: game (advance_text, select_choice)\n");
 	}
 	g_SyncedCapabilityState.store(state, std::memory_order_release);
 }
