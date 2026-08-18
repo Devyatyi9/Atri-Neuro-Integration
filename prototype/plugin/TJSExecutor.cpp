@@ -330,14 +330,111 @@ void ExecuteTJSAsync(wchar_t const *code) {
 	}
 }
 
+// Returns true when the code contains a top-level statement separator, i.e. a
+// ';' or newline that is not inside a string literal, comment, or balanced
+// bracket pair. Statements must then run in a function body; the expression
+// wrapper `return (CODE)` is a syntax error for them.
+static bool HasTopLevelSeparator(std::wstring const &code) {
+	int depth = 0;
+	bool inSingle = false;
+	bool inDouble = false;
+	bool inLineComment = false;
+	bool inBlockComment = false;
+	for (size_t i = 0; i < code.size(); ++i) {
+		wchar_t const c = code[i];
+		if (inLineComment) {
+			if (c == L'\n') {
+				inLineComment = false;
+			}
+			continue;
+		}
+		if (inBlockComment) {
+			if (c == L'*' && i + 1 < code.size() && code[i + 1] == L'/') {
+				inBlockComment = false;
+				++i;
+			}
+			continue;
+		}
+		if (inSingle) {
+			if (c == L'\\' && i + 1 < code.size()) {
+				++i;
+			} else if (c == L'\'') {
+				inSingle = false;
+			}
+			continue;
+		}
+		if (inDouble) {
+			if (c == L'\\' && i + 1 < code.size()) {
+				++i;
+			} else if (c == L'"') {
+				inDouble = false;
+			}
+			continue;
+		}
+		if (c == L'\'' && (i == 0 || code[i - 1] != L'\\')) {
+			inSingle = true;
+			continue;
+		}
+		if (c == L'"' && (i == 0 || code[i - 1] != L'\\')) {
+			inDouble = true;
+			continue;
+		}
+		if (c == L'/' && i + 1 < code.size() && code[i + 1] == L'/') {
+			inLineComment = true;
+			++i;
+			continue;
+		}
+		if (c == L'/' && i + 1 < code.size() && code[i + 1] == L'*') {
+			inBlockComment = true;
+			++i;
+			continue;
+		}
+		switch (c) {
+			case L'(':
+			case L'[':
+			case L'{':
+				++depth;
+				break;
+			case L')':
+			case L']':
+			case L'}':
+				--depth;
+				break;
+			case L';':
+			case L'\n':
+				if (depth == 0) {
+					return true;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	return false;
+}
+
+static std::wstring WrapTJSProbe(std::wstring const &code) {
+	// Real TJS exceptions are objects carrying `.message`; a `throw` of a
+	// primitive lands in `catch` as a string. `typeof e == 'Object'` selects
+	// the readable form for each case.
+	if (HasTopLevelSeparator(code)) {
+		// Trailing ';' guards against a missing final statement separator
+		// (TJS has no automatic semicolon insertion).
+		return L"(function(){ try { " + code +
+		       L"\n; } catch(e) { return '!!!TJS_EXCEPTION!!! ' + "
+		       L"(typeof e == 'Object' ? e.message : e); } })()";
+	}
+	return L"(function(){ try { return (" + code +
+	       L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + "
+	       L"(typeof e == 'Object' ? e.message : e); } })()";
+}
+
 bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
 	    !IsWindow(g_GameWindow) || !code)
 		return false;
 
-	std::wstring wrappedCode =
-	    L"(function(){ try { return (" + std::wstring(code) +
-	    L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + e.message; } })()";
+	std::wstring wrappedCode = WrapTJSProbe(code);
 
 	if (IsMainThread()) {
 		Log("[ExecuteTJSSync] Running on main thread\n");
