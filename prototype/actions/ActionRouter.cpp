@@ -49,21 +49,7 @@ bool IsEmptyJsonObject(std::string const &data) {
 	return last != std::string::npos && last == first + 1 && data[last] == '}';
 }
 
-void HandleContinueAction(std::string const &id,
-                          std::string const &name,
-                          std::string const &data) {
-	if (id.empty()) {
-		Log("[Action] Ignoring action without an ID\n");
-		return;
-	}
-	if (!ClaimActionId(id)) {
-		Log("[Action] Ignoring duplicate action ID\n");
-		return;
-	}
-	if (name != "continue_game") {
-		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
-		return;
-	}
+void HandleContinueAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "continue_game does not accept arguments.");
@@ -119,16 +105,81 @@ void HandleContinueAction(std::string const &id,
 	    success ? "Continue started." : "Continue is unavailable.");
 }
 
+void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "advance_text does not accept arguments.");
+		return;
+	}
+
+	// This expression is fixed native code. Incoming action data is never
+	// interpolated into TJS source.
+	wchar_t const *expression =
+	    L"(function(){"
+	    L"try {"
+	    L"if (typeof SystemHook == 'undefined' || SystemHook.currentState != "
+	    L"'game') return 'not in game';"
+	    L"if (typeof kag == 'undefined' || typeof kag.onPrimaryClick != "
+	    L"'Object') return 'click dispatch unavailable';"
+	    L"if (typeof kag.clickWaiting == 'undefined' || !kag.clickWaiting) "
+	    L"return 'not waiting for click';"
+	    L"kag.onPrimaryClick();"
+	    L"return 'advanced';"
+	    L"} catch(e) { return 'dispatch failed'; }"
+	    L"})()";
+	tTJSVariant result;
+	bool const executed = ExecuteTJSSync(expression, &result, 5000);
+	if (!executed) {
+		NeuroSendActionResult(id.c_str(), false, "Game thread did not respond.");
+		return;
+	}
+
+	ttstr value(result);
+	std::string message;
+	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), message);
+	bool const success = converted && message == "advanced";
+	NeuroSendActionResult(
+	    id.c_str(), success,
+	    success ? "Text advanced." : "Text advance is unavailable.");
+}
+
+void HandleNeuroAction(std::string const &id,
+                       std::string const &name,
+                       std::string const &data) {
+	if (id.empty()) {
+		Log("[Action] Ignoring action without an ID\n");
+		return;
+	}
+	if (!ClaimActionId(id)) {
+		Log("[Action] Ignoring duplicate action ID\n");
+		return;
+	}
+	if (name == "continue_game") {
+		HandleContinueAction(id, data);
+	} else if (name == "advance_text") {
+		HandleAdvanceTextAction(id, data);
+	} else {
+		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
+	}
+}
+
 }  // namespace
 
 void InitializePrototypeActionRouter() {
-	NeuroSetActionHandler(HandleContinueAction);
+	NeuroSetActionHandler(HandleNeuroAction);
 	if (NeuroRegisterAction("continue_game", "Continue the current game.",
 	                        "{\"type\":\"object\",\"properties\":{},"
 	                        "\"additionalProperties\":false}")) {
 		Log("[Action] Registered continue_game capability\n");
 	} else {
 		Log("[Action] Failed to register continue_game capability\n");
+	}
+	if (NeuroRegisterAction("advance_text", "Advance the current dialogue.",
+	                        "{\"type\":\"object\",\"properties\":{},"
+	                        "\"additionalProperties\":false}")) {
+		Log("[Action] Registered advance_text capability\n");
+	} else {
+		Log("[Action] Failed to register advance_text capability\n");
 	}
 }
 
