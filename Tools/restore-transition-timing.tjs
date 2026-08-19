@@ -1,0 +1,7 @@
+// Restore transition functions after Tools/capture-transition-timing.tjs.
+if (typeof kag.__neuroTransitionCaptureBegin != "undefined") {
+    kag.beginTransition = kag.__neuroTransitionCaptureBegin;
+    kag.stopTransition = kag.__neuroTransitionCaptureStop;
+    kag.__neuroTransitionCaptureBegin = void;
+    kag.__neuroTransitionCaptureStop = void;
+}

@@ -1,0 +1,18 @@
+// Temporary runtime probe. Run setup before a transition and restore after capture.
+if (typeof kag.__neuroTransitionCaptureBegin == "undefined") {
+    kag.__neuroTransitionCaptureBegin = kag.beginTransition;
+    kag.__neuroTransitionCaptureStop = kag.stopTransition;
+}
+kag.__neuroTransitionCaptureEvents = [];
+kag.beginTransition = function(params) {
+    var event = "transition-begin tick=" + System.getTickCount() + ";method=" + params.method + ";time=" + params.time + ";rule=" + params.rule + ";before=" + kag.inTransition;
+    kag.__neuroTransitionCaptureEvents.push(event);
+    Debug.message(event);
+    kag.__neuroTransitionCaptureBegin(params);
+};
+kag.stopTransition = function() {
+    var event = "transition-stop tick=" + System.getTickCount() + ";before=" + kag.inTransition;
+    kag.__neuroTransitionCaptureEvents.push(event);
+    Debug.message(event);
+    kag.__neuroTransitionCaptureStop();
+};
