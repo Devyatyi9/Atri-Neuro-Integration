@@ -1,26 +1,16 @@
-// Restore transition functions after Tools/tjs/capture-transition-timing.tjs.
-// The IIFE returns 1 when it restored something and 0 otherwise, but a file
-// ending in a semicolon runs as a function body under ExecuteTJSSync, which
-// discards that value. Confirm instead with the guard member below: it reads
-// "void" once the restore has run.
-//
-// Wrapped in an IIFE on purpose: ExecuteTJSSync only runs code as a function
-// body when it finds a top-level statement separator. A bare `if (...) { ... }`
-// keeps every `;` inside the braces, so it is treated as a single expression
-// and wrapped as `return (...)` -- which is a syntax error for a statement.
+// Restore the transition functions after Tools/tjs/capture-transition-timing.tjs.
+// Returns 1 if something was restored, 0 if there was nothing to restore.
 //
 // The guard tests for "Object" (a live function), not for "undefined": once a
 // member has been assigned void, typeof reports "void", so an "undefined" test
-// would pass again on a second run and assign void over the transition
-// functions.
-(function() {
-    if (typeof kag.__neuroTransitionCaptureBegin != "Object") {
-        return 0;
-    }
-    kag.beginTransition = kag.__neuroTransitionCaptureBegin;
-    kag.stopTransition = kag.__neuroTransitionCaptureStop;
-    kag.__neuroTransitionCaptureBegin = void;
-    kag.__neuroTransitionCaptureStop = void;
-    kag.__neuroTransitionCaptureEvents = void;
-    return 1;
-})();
+// would pass again on a second run and assign void over the very function this
+// just restored. Running this twice must be a no-op.
+if (typeof kag.__neuroTransitionCaptureBegin != "Object") {
+    return 0;
+}
+kag.beginTransition = kag.__neuroTransitionCaptureBegin;
+kag.stopTransition = kag.__neuroTransitionCaptureStop;
+kag.__neuroTransitionCaptureBegin = void;
+kag.__neuroTransitionCaptureStop = void;
+kag.__neuroTransitionCaptureEvents = void;
+return 1;

@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cwctype>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -34,11 +35,14 @@ struct TJSSyncCallData {
 	HANDLE completedEvent;
 	std::atomic<bool> cancelled;
 	bool executed;
+	// Resolved on the caller's thread so the game thread does not re-derive it.
+	bool useScriptApi;
 
 	TJSSyncCallData()
 	    : completedEvent(CreateEvent(nullptr, FALSE, FALSE, nullptr)),
 	      cancelled(false),
-	      executed(false) { }
+	      executed(false),
+	      useScriptApi(false) { }
 
 	~TJSSyncCallData() {
 		if (completedEvent) {
@@ -51,19 +55,24 @@ static std::mutex g_TJSSyncCallsMutex;
 static std::unordered_map<UINT_PTR, std::shared_ptr<TJSSyncCallData>>
     g_TJSSyncCalls;
 static std::atomic<UINT_PTR> g_NextTJSSyncCallId(1);
+struct TJSAsyncCall {
+	std::wstring code;
+	bool useScriptApi;
+};
+
 static std::mutex g_TJSAsyncCallsMutex;
-static std::unordered_map<UINT_PTR, std::wstring> g_TJSAsyncCalls;
+static std::unordered_map<UINT_PTR, TJSAsyncCall> g_TJSAsyncCalls;
 static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
 
-static std::wstring TakeTJSAsyncCall(UINT_PTR id) {
+static TJSAsyncCall TakeTJSAsyncCall(UINT_PTR id) {
 	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
 	auto it = g_TJSAsyncCalls.find(id);
 	if (it == g_TJSAsyncCalls.end()) {
 		return {};
 	}
-	auto code = std::move(it->second);
+	auto call = std::move(it->second);
 	g_TJSAsyncCalls.erase(it);
-	return code;
+	return call;
 }
 
 static void CancelTJSAsyncCalls() {
@@ -98,6 +107,23 @@ bool IsMainThread() {
 	return GetCurrentThreadId() == g_MainThreadId;
 }
 
+// The single place that hands code to the engine. TJS exposes two entry points
+// with different grammars, and picking the wrong one is a syntax error rather
+// than a soft failure, so the choice is resolved once by the caller and simply
+// applied here. Must run on the game main thread.
+static void RunThroughEngine(std::wstring const &code,
+                             tTJSVariant *result,
+                             bool useScriptApi) {
+	if (useScriptApi) {
+		TVPExecuteScript(ttstr(code.c_str()), result);
+	} else {
+		TVPExecuteExpression(ttstr(code.c_str()), result);
+	}
+}
+
+// Defined below, next to the top-level separator scan it builds on.
+static bool ResolveUseScriptApi(std::wstring const &code, TJSExecMode mode);
+
 static std::atomic<int> g_SubclassCallCount(0);
 
 static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
@@ -116,16 +142,16 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 
 		case WM_TJS_EXECUTE: {
 			Log("  [Subclass] WM_TJS_EXECUTE received!\n");
-			auto code = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
-			if (!code.empty() && g_TJSReady.load()) {
+			auto call = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
+			if (!call.code.empty() && g_TJSReady.load()) {
 				Log("  [Subclass] Executing TJS async\n");
 				tTJSVariant dummy;
 				try {
-					TVPExecuteExpression(ttstr(code.c_str()), &dummy);
+					RunThroughEngine(call.code, &dummy, call.useScriptApi);
 				} catch (...) {
 					Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
 					std::string utf8Code;
-					if (Utf16ToUtf8(code.c_str(), code.size(), utf8Code)) {
+					if (Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
 						Log(utf8Code.c_str());
 					}
 					Log("\n");
@@ -151,7 +177,7 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 				try {
 					if (!data->cancelled.load(std::memory_order_acquire) &&
 					    !data->code.empty() && g_TJSReady.load()) {
-						TVPExecuteExpression(ttstr(data->code.c_str()), &data->result);
+						RunThroughEngine(data->code, &data->result, data->useScriptApi);
 						data->executed = true;
 					}
 				} catch (...) {
@@ -304,11 +330,15 @@ void ShutdownTJSExecutor() {
 	g_TJSReady.store(false);
 }
 
-void ExecuteTJSAsync(wchar_t const *code) {
+void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
 	    !IsWindow(g_GameWindow) || !code || !*code) {
 		return;
 	}
+
+	TJSAsyncCall call;
+	call.useScriptApi = ResolveUseScriptApi(code, mode);
+	call.code = code;
 
 	UINT_PTR callId;
 	{
@@ -320,7 +350,7 @@ void ExecuteTJSAsync(wchar_t const *code) {
 			callId = g_NextTJSAsyncCallId.fetch_add(1, std::memory_order_relaxed);
 		} while (callId == 0 ||
 		         g_TJSAsyncCalls.find(callId) != g_TJSAsyncCalls.end());
-		g_TJSAsyncCalls.emplace(callId, code);
+		g_TJSAsyncCalls.emplace(callId, std::move(call));
 	}
 
 	if (!PostMessage(g_GameWindow, WM_TJS_EXECUTE, static_cast<WPARAM>(callId),
@@ -413,34 +443,103 @@ static bool HasTopLevelSeparator(std::wstring const &code) {
 	return false;
 }
 
-static std::wstring WrapTJSProbe(std::wstring const &code) {
-	// Real TJS exceptions are objects carrying `.message`; a `throw` of a
-	// primitive lands in `catch` as a string. `typeof e == 'Object'` selects
-	// the readable form for each case.
-	if (HasTopLevelSeparator(code)) {
-		// Trailing ';' guards against a missing final statement separator
-		// (TJS has no automatic semicolon insertion).
-		return L"(function(){ try { " + code +
-		       L"\n; } catch(e) { return '!!!TJS_EXCEPTION!!! ' + "
-		       L"(typeof e == 'Object' ? e.message : e); } })()";
+// Returns true when the first real token is a keyword that can only begin a
+// statement. This closes the blind spot in the separator scan: a snippet that
+// is one `if (...) { ... }` block keeps every ';' and newline inside the
+// braces, so the scan sees no top-level separator and would pick the expression
+// branch, where a statement is a syntax error.
+static bool StartsWithStatementKeyword(std::wstring const &code) {
+	size_t i = 0;
+	while (i < code.size()) {
+		wchar_t const c = code[i];
+		if (iswspace(c)) {
+			++i;
+			continue;
+		}
+		if (c == L'/' && i + 1 < code.size() && code[i + 1] == L'/') {
+			i += 2;
+			while (i < code.size() && code[i] != L'\n') {
+				++i;
+			}
+			continue;
+		}
+		if (c == L'/' && i + 1 < code.size() && code[i + 1] == L'*') {
+			i += 2;
+			while (i + 1 < code.size() && !(code[i] == L'*' && code[i + 1] == L'/')) {
+				++i;
+			}
+			i += 2;
+			continue;
+		}
+		break;
 	}
+
+	static wchar_t const *const kStatementKeywords[] = {
+	    L"if",    L"while",  L"for",      L"do",    L"switch", L"try",
+	    L"var",   L"return", L"function", L"with",  L"break",  L"continue",
+	    L"throw", L"class",  L"property", L"delete"};
+	for (auto const *keyword : kStatementKeywords) {
+		size_t const length = wcslen(keyword);
+		if (code.compare(i, length, keyword) != 0) {
+			continue;
+		}
+		// Reject a longer identifier that merely starts with the keyword.
+		size_t const next = i + length;
+		if (next >= code.size() || (!iswalnum(code[next]) && code[next] != L'_')) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Resolves Auto and reports whether the snippet must go through the script
+// entry point. Explicit modes are honoured as given.
+static bool ResolveUseScriptApi(std::wstring const &code, TJSExecMode mode) {
+	if (mode == TJSExecMode::Script)
+		return true;
+	if (mode == TJSExecMode::Expression)
+		return false;
+	return HasTopLevelSeparator(code) || StartsWithStatementKeyword(code);
+}
+
+// Wraps a snippet so a thrown error comes back as a readable string instead of
+// only a false return. Real TJS exceptions are objects carrying `.message`; a
+// `throw` of a primitive lands in `catch` as a string, so `typeof e ==
+// 'Object'` selects the readable form for each case.
+static std::wstring WrapTJSProbe(std::wstring const &code, bool useScriptApi) {
+	if (useScriptApi) {
+		// TVPExecuteScript parses statements natively, so no IIFE is needed: a
+		// top-level `try`/`catch` is legal here and a top-level `return` inside
+		// the caller's code still sets the result. The trailing ';' guards
+		// against a missing final separator (TJS has no automatic semicolon
+		// insertion).
+		return L"try { " + code +
+		       L"\n; } catch(e) { return '!!!TJS_EXCEPTION!!! ' + "
+		       L"(typeof e == 'Object' ? e.message : e); }";
+	}
+	// TVPExecuteExpression needs a single expression; the IIFE is what makes a
+	// try/catch expressible here.
 	return L"(function(){ try { return (" + code +
 	       L"); } catch(e) { return '!!!TJS_EXCEPTION!!! ' + "
 	       L"(typeof e == 'Object' ? e.message : e); } })()";
 }
 
-bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
+bool ExecuteTJSSync(wchar_t const *code,
+                    tTJSVariant *result,
+                    DWORD timeoutMs,
+                    TJSExecMode mode) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
 	    !IsWindow(g_GameWindow) || !code)
 		return false;
 
-	std::wstring wrappedCode = WrapTJSProbe(code);
+	bool const useScriptApi = ResolveUseScriptApi(code, mode);
+	std::wstring wrappedCode = WrapTJSProbe(code, useScriptApi);
 
 	if (IsMainThread()) {
 		Log("[ExecuteTJSSync] Running on main thread\n");
 		if (g_TJSReady.load()) {
 			try {
-				TVPExecuteExpression(ttstr(wrappedCode.c_str()), result);
+				RunThroughEngine(wrappedCode, result, useScriptApi);
 				return true;
 			} catch (...) {
 				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
@@ -455,6 +554,7 @@ bool ExecuteTJSSync(wchar_t const *code, tTJSVariant *result, DWORD timeoutMs) {
 	// cannot leave a dangling pointer in the window queue.
 	auto data = std::make_shared<TJSSyncCallData>();
 	data->code = wrappedCode;
+	data->useScriptApi = useScriptApi;
 
 	if (!data->completedEvent) {
 		return false;
