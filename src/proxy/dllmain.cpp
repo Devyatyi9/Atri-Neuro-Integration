@@ -62,6 +62,18 @@ BOOL CALLBACK FindGameWindow(HWND window, LPARAM) {
 	return TRUE;
 }
 
+void LoadOptionalPatchLoader() {
+	constexpr wchar_t kPatchLoaderName[] = L"++version.dll";
+	if (GetFileAttributesW(kPatchLoaderName) == INVALID_FILE_ATTRIBUTES) {
+		return;
+	}
+	if (LoadLibraryW(kPatchLoaderName)) {
+		OutputDebugStringW(L"[Version.dll] Loaded ++version.dll.\n");
+	} else {
+		ReportLastError(L"LoadLibraryW(++version.dll)");
+	}
+}
+
 LRESULT CALLBACK BootstrapWndProc(HWND window,
                                   UINT message,
                                   WPARAM wParam,
@@ -88,6 +100,8 @@ LRESULT CALLBACK BootstrapWndProc(HWND window,
 }
 
 void Payload() {
+	LoadOptionalPatchLoader();
+
 	iTVPFunctionExporter *const exporter = WaitForExporter(10000);
 	if (!exporter || !TVPInitImportStub(exporter)) {
 		OutputDebugStringW(
