@@ -1,0 +1,30 @@
+// Temporary runtime probe: log every dispatched tag name.
+// Live example of interception mechanism #2 -- kag.onConductorBeforeTag, a
+// direct method override that is catch-all but observe-only. Unlike the
+// hook-list registries (addKagHookCallback / window.addHook), a direct
+// assignment works even when made mid-session from a plugin or the console.
+// See docs-local/research/runtime/events-and-interception.md.
+//
+// Read results with:  kag.__neuroRawTagsEvents.count  /  kag.__neuroRawTagsEvents[i]
+// Restore with:       Tools/restore-raw-tags.tjs
+// Save the original only when one is not already held. The test is "not a live
+// function" rather than "undefined" because a previous restore leaves the slot
+// as void (typeof "void", not "undefined"), and re-capturing after a restore
+// must save the real current handler again.
+if (typeof kag.__neuroRawTagsOriginal != "Object") {
+    kag.__neuroRawTagsOriginal = kag.onConductorBeforeTag;
+}
+kag.__neuroRawTagsEvents = [];
+kag.onConductorBeforeTag = function(tagname, tag) {
+    // This runs on the native tag-dispatch path, outside any protective
+    // try/catch of the caller -- an uncaught exception here reaches the engine
+    // directly and can produce a fatal error dialog (observed 2026-08-19).
+    try {
+        kag.__neuroRawTagsEvents.add(tagname);
+        Debug.message("raw-tag " + tagname);
+    } catch (e) {}
+    try {
+        if (typeof kag.__neuroRawTagsOriginal == "Object")
+            kag.__neuroRawTagsOriginal(tagname, tag);
+    } catch (e) {}
+};

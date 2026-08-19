@@ -1,0 +1,30 @@
+// Temporary runtime probe: capture the dialogue line at the exact moment the
+// [p] tag fires, instead of at the next poll tick.
+// Live example of interception mechanism #3 -- replacing kag.tagHandlers[name]
+// and calling through to the saved original. Unlike onConductorBeforeTag
+// (catch-all, observe-only), this needs the tag name known in advance but gives
+// full control: arguments can be modified or the tag suppressed entirely.
+// See docs-local/research/runtime/events-and-interception.md.
+//
+// Read results with:  kag.__neuroPSnapshotEvents.count  /  kag.__neuroPSnapshotEvents[i]
+// Restore with:       Tools/restore-p-snapshot.tjs
+// Save the original only when one is not already held. The test is "not a live
+// function" rather than "undefined" because a previous restore leaves the slot
+// as void (typeof "void", not "undefined"), and re-capturing after a restore
+// must save the real current handler again.
+if (typeof kag.__neuroPSnapshotOriginal != "Object") {
+    kag.__neuroPSnapshotOriginal = kag.tagHandlers["p"];
+}
+kag.__neuroPSnapshotEvents = [];
+kag.tagHandlers["p"] = function(p) {
+    // This IS the [p] handler now, not just an observer. If the snapshot line
+    // throws (e.g. kag.historyLayer unavailable while the engine tears down),
+    // the call-through below must still run unconditionally so [p] keeps
+    // working exactly as it did before this override existed.
+    try {
+        var event = kag.historyLayer.currentName + "|" + kag.historyLayer.currentText;
+        kag.__neuroPSnapshotEvents.add(event);
+        Debug.message("p-snapshot " + event);
+    } catch (e) {}
+    return kag.__neuroPSnapshotOriginal(p);
+};

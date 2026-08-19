@@ -1,5 +1,8 @@
 // Temporary runtime probe. Run setup before a movie and restore after capture.
-if (typeof kag.__neuroMovieCaptureOriginal == "undefined") {
+// Save the original only when one is not already held. The test is "not a live
+// function" rather than "undefined": a previous restore leaves the slot as void
+// (typeof "void", not "undefined").
+if (typeof kag.__neuroMovieCaptureOriginal != "Object") {
     kag.__neuroMovieCaptureOriginal = kag.onMovieStatusChanged;
 }
 kag.__neuroMovieCaptureEvents = [];

@@ -1,5 +1,8 @@
 // Temporary runtime probe. Run setup before a transition and restore after capture.
-if (typeof kag.__neuroTransitionCaptureBegin == "undefined") {
+// Save the originals only when they are not already held. The test is "not a
+// live function" rather than "undefined": a previous restore leaves the slots
+// as void (typeof "void", not "undefined").
+if (typeof kag.__neuroTransitionCaptureBegin != "Object") {
     kag.__neuroTransitionCaptureBegin = kag.beginTransition;
     kag.__neuroTransitionCaptureStop = kag.stopTransition;
 }

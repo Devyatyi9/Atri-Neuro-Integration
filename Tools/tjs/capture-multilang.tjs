@@ -1,0 +1,46 @@
+// Temporary runtime probe: read the same line in all languages at once.
+// Live example of hooking kag.getLangInfo -- the single function the whole
+// render pipeline (rendermsgwin drawName/drawHistory, SelectLayer) goes through
+// to resolve arg0.language[langType][field]. Its langType argument is a plain
+// explicit parameter, so JP(0)/EN(1)/CN(2) can all be pulled for the same tag
+// object without changing what the player actually sees.
+// See docs-local/research/tjs/hooks/HistoryLayer.tjs.md.
+//
+// Note: on a build patched by the third-party RU localization, langType 0 and 1
+// return the identical Russian string (the patch overwrites the shared base
+// field instead of adding a per-language slot). Use a clean build for real
+// multi-language reads.
+//
+// Read results with:  kag.__neuroMultiLangEvents.count  /  kag.__neuroMultiLangEvents[i]
+// Restore with:       Tools/restore-multilang.tjs
+// Save the original only when one is not already held. The test is "not a live
+// function" rather than "undefined" because a previous restore leaves the slot
+// as void (typeof "void", not "undefined"), and re-capturing after a restore
+// must save the real current getter again.
+if (typeof kag.__neuroMultiLangOriginal != "Object") {
+    kag.__neuroMultiLangOriginal = kag.getLangInfo;
+}
+kag.__neuroMultiLangEvents = [];
+kag.getLangInfo = function(arg0, arg1, arg2) {
+    // The original declares `arg2 = languageType` as a default parameter. A
+    // plain wrapper does NOT inherit that default: an ordinary 2-argument call
+    // (kag.getLangInfo(arg0, "text"), which is what the engine actually makes)
+    // leaves arg2 undefined here, and forwarding that explicit void does not
+    // trigger the original's default either -- arg0.language[void] then indexes
+    // a native array out of bounds and crashes the process outright
+    // ("Hardware exception raised", not a catchable TJS error). Restoring the
+    // default here is mandatory, not defensive style.
+    if (arg2 === void) arg2 = kag.languageType;
+    var result = kag.__neuroMultiLangOriginal(arg0, arg1, arg2);
+    try {
+        if (arg1 == "text") {
+            var event = "jp=" + kag.__neuroMultiLangOriginal(arg0, arg1, 0)
+                      + " || active=" + result
+                      + " || en=" + kag.__neuroMultiLangOriginal(arg0, arg1, 1)
+                      + " || cn=" + kag.__neuroMultiLangOriginal(arg0, arg1, 2);
+            kag.__neuroMultiLangEvents.add(event);
+            Debug.message("multilang " + event);
+        }
+    } catch (e) {}
+    return result;
+};
