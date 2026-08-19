@@ -54,6 +54,37 @@
       };
     }
 
+    // --- Mechanism #3, second demo: kag.getLangInfo replacement (call-through).
+    //     kag.historyLayer.currentText/currentName and kag.selectLayer.selects[i].text
+    //     are native properties that read the raw (JP-authored) tag argument directly,
+    //     bypassing this function -- unreliable for the active display language
+    //     (confirmed 2026-08-19, see docs-local/research/tjs/hooks/HistoryLayer.tjs.md).
+    //     getLangInfo(arg0, field) is the single choke point the engine's own renderer
+    //     (drawName/drawHistory/SelectLayer) calls to resolve arg0.language[kag.languageType][field],
+    //     so intercepting it gives the actual localized value.
+    if (typeof global.__cm_origGetLangInfo == "undefined") {
+      global.__cm_langText = "";
+      global.__cm_langName = "";
+      global.__cm_origGetLangInfo = kag.getLangInfo;
+      kag.getLangInfo = function(arg0, arg1, arg2) {
+        // The original declares `arg2 = languageType` as a default parameter.
+        // A plain call-through wrapper does NOT get that default for free: an
+        // ordinary 2-arg call (kag.getLangInfo(arg0, "text"), used everywhere)
+        // leaves arg2 undefined here, and forwarding that explicit void to the
+        // original does not trigger ITS default either -- arg0.language[void]
+        // inside the original then indexes a native array out of bounds, which
+        // is a real engine crash (Hardware exception raised), not a catchable
+        // TJS error. This default MUST be preserved before calling through.
+        if (arg2 === void) arg2 = kag.languageType;
+        var r = global.__cm_origGetLangInfo(arg0, arg1, arg2);
+        try {
+          if (arg1 == "text") global.__cm_langText = "" + r;
+          else if (arg1 == "disp") global.__cm_langName = "" + r;
+        } catch (e) {}
+        return r;
+      };
+    }
+
     // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
     var state = "";
     if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
@@ -99,6 +130,8 @@
     if (typeof global.__cm_chara == "undefined") global.__cm_chara = "";
     if (typeof global.__cm_text == "undefined") global.__cm_text = "";
     if (typeof global.__cm_lastPSnapshot == "undefined") global.__cm_lastPSnapshot = "";
+    if (typeof global.__cm_lastLangText == "undefined") global.__cm_lastLangText = "";
+    if (typeof global.__cm_lastLangName == "undefined") global.__cm_lastLangName = "";
     if (typeof global.__cm_state == "undefined") global.__cm_state = "";
     if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
     if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
@@ -246,6 +279,19 @@
     if (global.__cm_pSnapshot != global.__cm_lastPSnapshot) {
       changes += "[p_snapshot] \"" + global.__cm_pSnapshot + "\"\n";
       global.__cm_lastPSnapshot = global.__cm_pSnapshot;
+    }
+
+    // Mechanism #3, second demo: correctly-localized text/speaker-name in the
+    // active kag.languageType (see kag.getLangInfo replacement above). Unlike
+    // [text]/[name] above (raw, effectively JP-authored), this reflects what
+    // actually renders on screen.
+    if (global.__cm_langText != global.__cm_lastLangText) {
+      changes += "[lang_text] \"" + global.__cm_langText + "\"\n";
+      global.__cm_lastLangText = global.__cm_langText;
+    }
+    if (global.__cm_langName != global.__cm_lastLangName) {
+      changes += "[lang_name] \"" + global.__cm_langName + "\"\n";
+      global.__cm_lastLangName = global.__cm_langName;
     }
 
     return changes;
