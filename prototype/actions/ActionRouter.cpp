@@ -35,6 +35,7 @@ std::atomic<int> g_SyncedCapabilityState(-1);
 constexpr int kCapabilityStateUnknown = -1;
 constexpr int kCapabilityStateTitle = 0;
 constexpr int kCapabilityStateGame = 1;
+constexpr int kCapabilityStateMenu = 2;
 
 char const *kContinueGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
@@ -46,6 +47,9 @@ char const *kSelectChoiceSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"index\":{\"type\":\"integer\",\"minimum\":0}},"
     "\"required\":[\"index\"],"
+    "\"additionalProperties\":false}";
+char const *kGoBackSchema =
+    "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 
 bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
@@ -297,6 +301,64 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
 }
 
+void HandleGoBackAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "go_back does not accept arguments.");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	// 1. Current state must be one of the menu screens that have a plain
+	//    "back" control (option, load, save, voice). Confirmed 2026-08-19:
+	//    kag.current.names["back"] returns to the screen's origin without
+	//    the "Back To Title" confirmation dialog documented separately.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "go_back state")) {
+		ok = false;
+	} else if (state != "option" && state != "load" && state != "save" &&
+	           state != "voice") {
+		ok = false;
+	}
+
+	// 2. The back button must be visible, enabled, and dispatchable.
+	if (ok &&
+	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	               L"kag.current == 'undefined' || typeof kag.current.names == "
+	               L"'undefined') return 0;"
+	               L"var button = kag.current.names['back'];"
+	               L"if (typeof button == 'undefined' || !isvalid button || "
+	               L"!button.visible || !button.enabled) return 0;"
+	               L"if (typeof button.controlOwner == 'undefined' || typeof "
+	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
+	               L"return 1; })()",
+	               ready, "go_back button")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	// 3. Dispatch the button click.
+	bool dispatched = false;
+	if (ok) {
+		dispatched = QueryBool(
+		    L"(function(){ var button = kag.current.names['back'];"
+		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
+		    dispatched, "go_back dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false, "Going back is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Returned to the previous screen.");
+}
+
 void HandleNeuroAction(std::string const &id,
                        std::string const &name,
                        std::string const &data) {
@@ -314,6 +376,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleAdvanceTextAction(id, data);
 	} else if (name == "select_choice") {
 		HandleSelectChoiceAction(id, data);
+	} else if (name == "go_back") {
+		HandleGoBackAction(id, data);
 	} else {
 		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
 	}
@@ -339,6 +403,16 @@ void SyncCapabilities(int state) {
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: game (advance_text, select_choice)\n");
+	} else if (state == kCapabilityStateMenu) {
+		NeuroRegisteredAction const actions[] = {
+		    {"go_back",
+		     "Return to the previous screen from the current menu (options, "
+		     "save, load, or voice).",
+		     kGoBackSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		Log("[Action] Capabilities: menu (go_back)\n");
 	}
 	g_SyncedCapabilityState.store(state, std::memory_order_release);
 }
@@ -383,6 +457,9 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(kCapabilityStateTitle);
 	} else if (state == "game") {
 		SyncCapabilities(kCapabilityStateGame);
+	} else if (state == "option" || state == "load" || state == "save" ||
+	           state == "voice") {
+		SyncCapabilities(kCapabilityStateMenu);
 	}
 
 	if (!g_ContinueActionInFlight.load(std::memory_order_acquire)) {
