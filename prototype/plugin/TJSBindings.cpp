@@ -812,16 +812,30 @@ void RetryInstallExitHookIfReady() {
 	if (!executed || !(tTVInteger)ready)
 		return;
 	Log("[ExitHook] installing hook\n");
-	ExecuteTJSAsync(
-	    L"global.__neuroExitHookInstalled = true; "
+	// Use the synchronous form and confirm the assignment actually landed
+	// before flipping g_ExitHookInstalled. The previous ExecuteTJSAsync call
+	// posts the TJS code and returns immediately -- the flag was being set
+	// true as soon as the message was queued, not once the game thread had
+	// actually run it, leaving a window where callers trusted an exit hook
+	// that was not live on the TJS side yet.
+	tTJSVariant installed;
+	bool const installExecuted = ExecuteTJSSync(
+	    L"(function(){ "
 	    L"MyYesNoDialogLayer.onItemClick = function(itemName) { "
 	    L"var result = itemName == 'yes' || itemName.indexOf('はい') >= 0; "
 	    L"if (result && MyYesNoDialog.currentTextPart == 'AskExit') { "
 	    L"neuroBeginExitShutdown(); "
 	    L"} "
 	    L"return result; "
-	    L"};");
-	Log("[ExitHook] hook dispatched\n");
+	    L"}; "
+	    L"return typeof MyYesNoDialogLayer.onItemClick == 'Object'; "
+	    L"})()",
+	    &installed, 5000);
+	if (!installExecuted || !(tTVInteger)installed) {
+		Log("[ExitHook] installation failed or unconfirmed, will retry\n");
+		return;
+	}
+	Log("[ExitHook] hook installed and confirmed\n");
 	g_ExitHookInstalled = true;
 }
 
