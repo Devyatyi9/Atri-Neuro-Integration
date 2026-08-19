@@ -20,6 +20,18 @@
       if (typeof h.currentChara != "undefined") chara = h.currentChara;
     }
 
+    // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
+    var state = "";
+    if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
+
+    // --- Narrative flags ---
+    var moviePlaying = -1;
+    if (typeof kag.isMoviePlaying != "undefined") moviePlaying = kag.isMoviePlaying();
+    var bgChange = -1;
+    if (typeof tf != "undefined" && typeof tf.bgchange != "undefined") bgChange = tf.bgchange;
+    var recollect = -1;
+    if (typeof tf != "undefined" && typeof tf.recollect != "undefined") recollect = tf.recollect;
+
     // --- Audio ---
     var bgm = "";
     if (typeof kag.bgm != "undefined") bgm = kag.bgm.playingStorage;
@@ -52,6 +64,10 @@
     if (typeof global.__cm_name == "undefined") global.__cm_name = "";
     if (typeof global.__cm_chara == "undefined") global.__cm_chara = "";
     if (typeof global.__cm_text == "undefined") global.__cm_text = "";
+    if (typeof global.__cm_state == "undefined") global.__cm_state = "";
+    if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
+    if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
+    if (typeof global.__cm_recollect == "undefined") global.__cm_recollect = -1;
     if (typeof global.__cm_bgm == "undefined") global.__cm_bgm = "";
     if (typeof global.__cm_bgmPlaying == "undefined") global.__cm_bgmPlaying = -1;
     if (typeof global.__cm_voiceRatio == "undefined") global.__cm_voiceRatio = -1;
@@ -94,6 +110,23 @@
     if (text != global.__cm_text && text != "") {
       changes += "[text] \"" + text + "\"\n";
       global.__cm_text = text;
+    }
+
+    if (state != global.__cm_state) {
+      changes += "[state] " + state + "\n";
+      global.__cm_state = state;
+    }
+    if (moviePlaying != global.__cm_moviePlaying) {
+      changes += "[movie] " + moviePlaying + "\n";
+      global.__cm_moviePlaying = moviePlaying;
+    }
+    if (bgChange != global.__cm_bgChange) {
+      changes += "[bgchange] " + bgChange + "\n";
+      global.__cm_bgChange = bgChange;
+    }
+    if (recollect != global.__cm_recollect) {
+      changes += "[recollect] " + recollect + "\n";
+      global.__cm_recollect = recollect;
     }
 
     // Audio
