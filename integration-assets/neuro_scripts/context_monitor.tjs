@@ -29,6 +29,20 @@
       };
     }
 
+    // --- Mechanism #3 demo: kag.tagHandlers["p"] replacement (call-through).
+    //     Captures the dialogue snapshot at the exact moment [p] fires, instead
+    //     of at the next 200ms poll tick. Distinct from the onConductorBeforeTag
+    //     queue above (#2, catch-all/observe-only): this is per-tag interception
+    //     with full call-through control, demonstrated here on one known tag.
+    if (typeof global.__cm_origP == "undefined") {
+      global.__cm_pSnapshot = "";
+      global.__cm_origP = kag.tagHandlers["p"];
+      kag.tagHandlers["p"] = function(p) {
+        global.__cm_pSnapshot = kag.historyLayer.currentName + "|" + kag.historyLayer.currentText;
+        return global.__cm_origP(p);
+      };
+    }
+
     // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
     var state = "";
     if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
@@ -73,6 +87,7 @@
     if (typeof global.__cm_name == "undefined") global.__cm_name = "";
     if (typeof global.__cm_chara == "undefined") global.__cm_chara = "";
     if (typeof global.__cm_text == "undefined") global.__cm_text = "";
+    if (typeof global.__cm_lastPSnapshot == "undefined") global.__cm_lastPSnapshot = "";
     if (typeof global.__cm_state == "undefined") global.__cm_state = "";
     if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
     if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
@@ -214,6 +229,12 @@
     // one entry per tick, unlike the single-value fields above.
     while (global.__cm_tagQueue.count > 0) {
       changes += "[tag] " + global.__cm_tagQueue.shift() + "\n";
+    }
+
+    // Mechanism #3 demo output (see kag.tagHandlers["p"] replacement above).
+    if (global.__cm_pSnapshot != global.__cm_lastPSnapshot) {
+      changes += "[p_snapshot] \"" + global.__cm_pSnapshot + "\"\n";
+      global.__cm_lastPSnapshot = global.__cm_pSnapshot;
     }
 
     return changes;
