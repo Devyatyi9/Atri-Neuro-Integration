@@ -67,7 +67,7 @@
     // --- Visual ---
     var bgVis = kag.back.base.visible;
     var foreVis = kag.fore.base.visible;
-    var quake = kag.quakePhase;
+    var quake = kag.quaking;
     var msgHide = kag.messageLayerHiding;
     var selectShow = kag.selectShowing;
     var noeffect = kag.noeffect;
