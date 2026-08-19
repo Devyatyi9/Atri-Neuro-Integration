@@ -88,7 +88,13 @@ bool ClaimActionId(std::string const &id) {
 
 bool IsEmptyJsonObject(std::string const &data) {
 	size_t const first = data.find_first_not_of(" \t\r\n");
-	if (first == std::string::npos || data[first] != '{') {
+	if (first == std::string::npos) {
+		// No data field, or an empty/all-whitespace string: the real Neuro
+		// client omits `data` entirely for actions with an empty-properties
+		// schema, which reaches the plugin as "".
+		return true;
+	}
+	if (data[first] != '{') {
 		return false;
 	}
 	size_t const last = data.find_last_not_of(" \t\r\n");
