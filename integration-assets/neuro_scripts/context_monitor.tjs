@@ -25,7 +25,12 @@
     if (typeof global.__cm_tagQueue == "undefined") {
       global.__cm_tagQueue = [];
       kag.onConductorBeforeTag = function(tagname, tag) {
-        global.__cm_tagQueue.add(tagname);
+        // This runs on the native tag-dispatch path, outside the poll's own
+        // try/catch below -- an uncaught exception here reaches the engine
+        // directly and can produce a fatal "Not a function or invalid
+        // method/property type" error dialog (observed 2026-08-19 during
+        // shutdown, when engine objects may already be tearing down).
+        try { global.__cm_tagQueue.add(tagname); } catch (e) {}
       };
     }
 
@@ -38,7 +43,13 @@
       global.__cm_pSnapshot = "";
       global.__cm_origP = kag.tagHandlers["p"];
       kag.tagHandlers["p"] = function(p) {
-        global.__cm_pSnapshot = kag.historyLayer.currentName + "|" + kag.historyLayer.currentText;
+        // This IS the [p] tag handler now, not just an observer -- if the
+        // snapshot line throws (e.g. kag.historyLayer unavailable during
+        // shutdown), the call-through below must still run unconditionally
+        // so [p] keeps working exactly as before this override existed.
+        try {
+          global.__cm_pSnapshot = kag.historyLayer.currentName + "|" + kag.historyLayer.currentText;
+        } catch (e) {}
         return global.__cm_origP(p);
       };
     }
