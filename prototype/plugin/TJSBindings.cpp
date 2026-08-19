@@ -802,7 +802,7 @@ void RetryInstallExitHookIfReady() {
 	bool const executed = ExecuteTJSSync(
 	    L"(function(){ return typeof MyYesNoDialogLayer == 'Object' && "
 	    L"typeof MyYesNoDialog != 'undefined'; })()",
-	    &ready, 5000);
+	    &ready, 5000, TJSExecMode::Expression);
 	{
 		char msg[128];
 		_snprintf_s(msg, sizeof(msg), "[ExitHook] retry executed=%d ready=%lld\n",
@@ -830,7 +830,7 @@ void RetryInstallExitHookIfReady() {
 	    L"}; "
 	    L"return typeof MyYesNoDialogLayer.onItemClick == 'Object'; "
 	    L"})()",
-	    &installed, 5000);
+	    &installed, 5000, TJSExecMode::Expression);
 	if (!installExecuted || !(tTVInteger)installed) {
 		Log("[ExitHook] installation failed or unconfirmed, will retry\n");
 		return;

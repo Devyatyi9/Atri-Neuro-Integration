@@ -77,7 +77,8 @@ static void DeferredTJSInitThread() {
 		    L"Debug.__neuroLoggingHandler = function(msg) { "
 		    L"try { neuroConsoleLog(msg); } catch(e) {} }; "
 		    L"Debug.addLoggingHandler(Debug.__neuroLoggingHandler); "
-		    L"Debug.__neuroLoggingHandlerInstalled = true; } })()");
+		    L"Debug.__neuroLoggingHandlerInstalled = true; } })()",
+		    TJSExecMode::Expression);
 		Log("Debug logging handler registered!\n");
 
 		Log("Testing registered functions from C++...\n");

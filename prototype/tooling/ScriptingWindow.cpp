@@ -196,9 +196,11 @@ void ScriptingWindow::ExecuteScript() {
 	if (script.empty())
 		return;
 
-	// Execute the multi-line script through TVPExecuteScript.
+	// This window is for multi-line scripts, so ask for the script entry point
+	// (TVPExecuteScript) explicitly instead of letting Auto guess: statements
+	// then run natively and a top-level `return` still yields a value.
 	tTJSVariant result;
-	if (ExecuteTJSSync(script.c_str(), &result)) {
+	if (ExecuteTJSSync(script.c_str(), &result, 5000, TJSExecMode::Script)) {
 		// Check for an exception.
 		if (result.Type() == tvtString) {
 			std::wstring strVal = result.GetString();

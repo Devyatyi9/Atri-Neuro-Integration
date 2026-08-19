@@ -34,7 +34,7 @@ static void ContextMonitorThread() {
 		// silent=true: do not log to plugin_log.txt.
 		bool ok = ExecuteTJSSync(
 		    L"neuroExecFile(\"neuro_scripts/context_monitor.tjs\", 1)", &result,
-		    5000);
+		    5000, TJSExecMode::Expression);
 		if (!ok)
 			continue;
 

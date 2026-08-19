@@ -352,24 +352,23 @@ class NeuroConsole {
 		if (cleanCode.empty())
 			return;
 
-		// Check the No Wrapper checkbox state.
-		BOOL noWrapperChecked =
+		// No local wrapper: TJSExecutor owns the try/catch and emits the same
+		// !!!TJS_EXCEPTION!!! marker read below. Wrapping here too meant the
+		// snippet was wrapped twice, and this copy used `e.message` directly,
+		// which yields void when a primitive is thrown rather than an object.
+		//
+		// The checkbox now selects the entry point instead of suppressing the
+		// wrapper: unchecked keeps the previous behaviour (a single expression,
+		// value returned), checked runs the input as a script so pasted
+		// statements work -- which is what it was really being used for.
+		BOOL const scriptModeChecked =
 		    (SendMessage(m_hNoWrapper, BM_GETCHECK, 0, 0) == BST_CHECKED);
-
-		std::wstring finalCode;
-		if (noWrapperChecked) {
-			// Execute code without a wrapper.
-			finalCode = cleanCode;
-		} else {
-			// Wrap in try-catch for safety.
-			finalCode = L"(function(){ try { return (" + cleanCode +
-			            L"); } catch(e) { return \"!!!TJS_EXCEPTION!!! \" + "
-			            L"e.message; } })()";
-		}
+		TJSExecMode const mode =
+		    scriptModeChecked ? TJSExecMode::Script : TJSExecMode::Expression;
 
 		tTJSVariant result;
 		// Call the synchronous function from dllmain.
-		if (ExecuteTJSSync(finalCode.c_str(), &result)) {
+		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode)) {
 			// 1. Check for an exception from our !!!TJS_EXCEPTION!!! wrapper.
 			if (result.Type() == tvtString) {
 				// Use .GetString() to access the internal string.

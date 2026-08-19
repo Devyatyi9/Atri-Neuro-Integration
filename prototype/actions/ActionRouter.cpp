@@ -439,7 +439,7 @@ void RefreshPrototypeActionState() {
 	bool const executed = ExecuteTJSSync(
 	    L"(function(){ return typeof SystemHook != 'undefined' ? "
 	    L"SystemHook.currentState : ''; })()",
-	    &result, 5000);
+	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
 		return;
