@@ -187,6 +187,18 @@ class Harness:
                 self._connection.close()
                 self._connection = None
 
+    def prepare_restart(self) -> None:
+        """Close the listener and any active game connection ahead of a self re-exec."""
+        with self._lock:
+            if self._connection:
+                try:
+                    _send_frame(self._connection, 8)
+                except OSError:
+                    pass
+                self._connection.close()
+                self._connection = None
+            self._listener.close()
+
 
 HARNESS = Harness()
 MCP = FastMCP("atri-neuro-harness", log_level="ERROR")
@@ -225,6 +237,27 @@ def harness_disconnect_game() -> str:
     """Close the current game WebSocket to test the client's reconnect behavior."""
     HARNESS.disconnect()
     return json.dumps({"disconnected": True})
+
+
+def _delayed_restart() -> None:
+    # Give the MCP transport time to flush this tool's response before the
+    # process image is replaced; os.execv never returns on success.
+    time.sleep(0.3)
+    HARNESS.prepare_restart()
+    sys.stdout.flush()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+@MCP.tool()
+def harness_restart() -> str:
+    """Restart this harness process (re-exec), reloading the script from disk
+    and resetting all in-memory state (events, sequence, game connection).
+    The listener rebinds to the same port. On Windows, os.execv reuses the
+    calling process's inherited stdio handles but does not keep the same
+    PID, so the MCP stdio session stays connected without a manual
+    reconnect even though the reported PID changes after this call."""
+    threading.Thread(target=_delayed_restart, daemon=True).start()
+    return json.dumps({"restarting": True, "pid": os.getpid()})
 
 
 if __name__ == "__main__":
