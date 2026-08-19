@@ -20,6 +20,15 @@
       if (typeof h.currentChara != "undefined") chara = h.currentChara;
     }
 
+    // --- Tag queue (event-driven via onConductorBeforeTag; catches every tag
+    //     between polls, unlike lastTagName which can only show the latest one) ---
+    if (typeof global.__cm_tagQueue == "undefined") {
+      global.__cm_tagQueue = [];
+      kag.onConductorBeforeTag = function(tagname, tag) {
+        global.__cm_tagQueue.add(tagname);
+      };
+    }
+
     // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
     var state = "";
     if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
@@ -199,6 +208,12 @@
     if (lastTag != global.__cm_lastTag) {
       changes += "[lastTag] " + lastTag + "\n";
       global.__cm_lastTag = lastTag;
+    }
+
+    // Drain every tag queued since the last poll (in order); can be more than
+    // one entry per tick, unlike the single-value fields above.
+    while (global.__cm_tagQueue.count > 0) {
+      changes += "[tag] " + global.__cm_tagQueue.shift() + "\n";
     }
 
     return changes;
