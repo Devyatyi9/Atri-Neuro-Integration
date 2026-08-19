@@ -1,0 +1,14 @@
+// Temporary runtime probe. Run setup before a movie and restore after capture.
+if (typeof kag.__neuroMovieCaptureOriginal == "undefined") {
+    kag.__neuroMovieCaptureOriginal = kag.onMovieStatusChanged;
+}
+kag.__neuroMovieCaptureEvents = [];
+kag.onMovieStatusChanged = function(status, movieId) {
+    var movie = kag.movies[movieId];
+    var movieKeys = movie === void ? "" : Scripts.getObjectKeys(movie).join(",");
+    var layerKeys = kag._sysMovieLayer === void ? "" : Scripts.getObjectKeys(kag._sysMovieLayer).join(",");
+    var snapshot = "movie-callback status=" + status + ";id=" + movieId + ";playing=" + kag.isMoviePlaying() + ";movieKeys=" + movieKeys + ";layerKeys=" + layerKeys;
+    kag.__neuroMovieCaptureEvents.push(snapshot);
+    Debug.message(snapshot);
+    kag.__neuroMovieCaptureOriginal(status, movieId);
+};

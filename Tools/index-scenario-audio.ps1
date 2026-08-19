@@ -1,0 +1,133 @@
+param(
+    [string]$SceneRoot = 'D:\Games\ATRI-TestVersion\ks-scn-decompiled',
+    [string]$InventoryPath = "$PSScriptRoot\..\docs-local\archive\inventory\dataxp3-structure.txt",
+    [string]$OutputDirectory = "$PSScriptRoot\..\docs-local\research\audio"
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Find-AudioReferences {
+    param(
+        [object]$Value,
+        [string]$Scene,
+        [string]$Label,
+        [string]$TitleJapanese,
+        [string]$TitleEnglish,
+        [string]$TitleChineseSimplified,
+        [string]$TitleChineseTraditional,
+        [int]$Line,
+        [string]$Path,
+        [System.Collections.Generic.List[object]]$Results
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+
+    if ($Value -is [System.Collections.IDictionary] -or $Value -is [pscustomobject]) {
+        $properties = if ($Value -is [System.Collections.IDictionary]) {
+            $Value.GetEnumerator() | ForEach-Object { [pscustomobject]@{ Name = $_.Key; Value = $_.Value } }
+        } else {
+            $Value.PSObject.Properties
+        }
+
+        foreach ($property in $properties) {
+            $nextPath = if ($Path) { "$Path.$($property.Name)" } else { $property.Name }
+            if ($property.Name -eq 'filename' -and $property.Value -is [string] -and $property.Value -match '^(?i)(se|bgm)[0-9]') {
+                $Results.Add([pscustomobject]@{
+                    Type = if ($property.Value -match '^(?i)se[0-9]') { 'SE' } else { 'BGM' }
+                    Name = $property.Value.ToLowerInvariant()
+                    Scene = $Scene
+                    Label = $Label
+                    TitleJapanese = $TitleJapanese
+                    TitleEnglish = $TitleEnglish
+                    TitleChineseSimplified = $TitleChineseSimplified
+                    TitleChineseTraditional = $TitleChineseTraditional
+                    Line = $Line
+                    Path = $nextPath
+                })
+            }
+            Find-AudioReferences -Value $property.Value -Scene $Scene -Label $Label -TitleJapanese $TitleJapanese -TitleEnglish $TitleEnglish -TitleChineseSimplified $TitleChineseSimplified -TitleChineseTraditional $TitleChineseTraditional -Line $Line -Path $nextPath -Results $Results
+        }
+        return
+    }
+
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+        $index = 0
+        foreach ($item in $Value) {
+            Find-AudioReferences -Value $item -Scene $Scene -Label $Label -TitleJapanese $TitleJapanese -TitleEnglish $TitleEnglish -TitleChineseSimplified $TitleChineseSimplified -TitleChineseTraditional $TitleChineseTraditional -Line $Line -Path "$Path[$index]" -Results $Results
+            $index++
+        }
+    }
+}
+
+$inventoryNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+rg -o '(?i)(se|bgm)[0-9]+[a-z]*\.ogg' $InventoryPath | ForEach-Object {
+    [void]$inventoryNames.Add(($_ -replace '\.ogg$', '').ToLowerInvariant())
+}
+
+$references = [System.Collections.Generic.List[object]]::new()
+Get-ChildItem -LiteralPath $SceneRoot -Recurse -Filter '*.ks.json' -File | ForEach-Object {
+    $document = Get-Content -Raw -LiteralPath $_.FullName | ConvertFrom-Json -Depth 100
+    $sceneName = $_.BaseName -replace '\.ks$', ''
+    foreach ($scenarioScene in $document.scenes) {
+        $title = @($scenarioScene.title)
+        for ($line = 0; $line -lt $scenarioScene.lines.Count; $line++) {
+            Find-AudioReferences -Value $scenarioScene.lines[$line] -Scene $sceneName -Label $scenarioScene.label -TitleJapanese $title[0] -TitleEnglish $title[1] -TitleChineseSimplified $title[2] -TitleChineseTraditional $title[3] -Line $line -Path 'lines' -Results $references
+        }
+    }
+}
+
+New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+$references | Sort-Object Type, Name, Scene, Label, Line, Path |
+    Export-Csv -NoTypeInformation -Encoding utf8BOM -LiteralPath (Join-Path $OutputDirectory 'scenario-audio-occurrences.csv')
+
+$usage = $references | Group-Object Type, Name | ForEach-Object {
+    $first = $_.Group[0]
+    [pscustomobject]@{
+        Type = $first.Type
+        Name = $first.Name
+        Asset = "$($first.Name).ogg"
+        InInventory = $inventoryNames.Contains($first.Name)
+        Occurrences = $_.Count
+        Scenes = ($_.Group.Scene | Sort-Object -Unique) -join ', '
+        SceneTitlesEnglish = ($_.Group | Group-Object Scene | Sort-Object Name | ForEach-Object {
+                "$($_.Name) ($($_.Group[0].TitleEnglish))"
+            }) -join ', '
+    }
+}
+$usage | Sort-Object Type, Name |
+    Export-Csv -NoTypeInformation -Encoding utf8BOM -LiteralPath (Join-Path $OutputDirectory 'scenario-audio-usage.csv')
+
+$se = @($usage | Where-Object Type -eq 'SE')
+$bgm = @($usage | Where-Object Type -eq 'BGM')
+$missing = @($usage | Where-Object { -not $_.InInventory })
+$markdown = @(
+    '# Scenario Audio Index',
+    '',
+    "Generated by `Tools/index-scenario-audio.ps1` from `$SceneRoot`.",
+    '',
+    "- Scene files: $(@($references.Scene | Sort-Object -Unique).Count)",
+    "- Audio occurrences: $($references.Count)",
+    "- Unique SE: $($se.Count)",
+    "- Unique BGM: $($bgm.Count)",
+    "- Inventory matches: $($usage.Count - $missing.Count)/$($usage.Count)",
+    '',
+    '## Unmatched References',
+    ''
+)
+if ($missing.Count) {
+    $markdown += $missing | Sort-Object Type, Name | ForEach-Object { "- ``$($_.Type)`` ``$($_.Name)`` in $($_.Scenes)" }
+} else {
+    $markdown += '- None.'
+}
+$markdown += @(
+    '',
+    '## Files',
+    '',
+    '- `scenario-audio-usage.csv`: one row per audio name with all scenes using it, including English scene titles.',
+    '- `scenario-audio-occurrences.csv`: every reference with scene, localized title fields, KAG label, source line index, and JSON path.',
+    '',
+    'The inventory is a filename list, not a semantic sound catalog. A match verifies that an asset exists; it does not identify its audible content.'
+)
+$markdown | Set-Content -Encoding utf8BOM -LiteralPath (Join-Path $OutputDirectory 'scenario-audio-index.md')

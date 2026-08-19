@@ -1,0 +1,5 @@
+// Restore the callback after Tools/capture-movie-callback.tjs has collected events.
+if (typeof kag.__neuroMovieCaptureOriginal != "undefined") {
+    kag.onMovieStatusChanged = kag.__neuroMovieCaptureOriginal;
+    kag.__neuroMovieCaptureOriginal = void;
+}
