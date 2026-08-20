@@ -19,7 +19,7 @@ constexpr char const *const kAdvanceTextSchema =
 constexpr char const *const kGoBackSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
-constexpr char const *const kOpenMenuSchema =
+constexpr char const *const kOpenSettingsSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 constexpr char const *const kOpenQuickMenuSchema =
@@ -31,10 +31,10 @@ constexpr char const *const kCloseQuickMenuSchema =
 constexpr char const *const kReturnToTitleSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
-constexpr char const *const kHideTextWindowSchema =
+constexpr char const *const kHideUiSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
-constexpr char const *const kShowTextWindowSchema =
+constexpr char const *const kShowUiSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 constexpr char const *const kOpenLoadSchema =
@@ -57,6 +57,7 @@ constexpr char const *const kReadBacklogSchema =
     "\"language\":{\"type\":\"string\","
     "\"enum\":[\"displayed\",\"japanese\"]}},"
     "\"additionalProperties\":false}";
+// settings_tab is built the same way, from the tab count of the screen.
 // The Extra screen and the backlog rows have no constant schemas: their
 // maximums are what is on screen at that moment -- squares on this page,
 // pages in this gallery, tracks in this list, rows in this window -- so the
@@ -65,6 +66,15 @@ constexpr char const *const kGalleryViewSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 constexpr char const *const kMusicScrollSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kStartNewGameSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kStartTrueEndSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kExitGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 constexpr char const *const kOpenExtraSchema =

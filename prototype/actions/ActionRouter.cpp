@@ -37,7 +37,19 @@ constexpr DWORD kDialogSettleMs = 150;
 // would open over a preview that never rendered.
 constexpr DWORD kHoverPreviewMs = 400;
 
-std::atomic<int> g_SyncedCapabilityState(-1);
+// Kind in the high half, payload in the low half. They were packed into one
+// int before, and the payloads collided with the kind constants: the
+// backlog's voice mask reached the gallery's base bit, so a backlog with a
+// voiced line registered the Extra actions instead (2026-08-20). Splitting
+// the halves makes that impossible rather than merely unlikely.
+std::atomic<long long> g_SyncedCapabilityState(-1);
+// The kind alone, for the places that ask "am I already on this screen" without
+// caring about the payload.
+int SyncedCapabilityKind();
+long long CapabilityKey(int kind, int payload) {
+	return (static_cast<long long>(kind) << 32) |
+	       static_cast<unsigned int>(payload);
+}
 // Whether the "still starting up" notice reached the server. It cannot simply
 // be sent once on entering the loading state, because that happens before the
 // SDK connects.
@@ -67,7 +79,7 @@ constexpr int kCapabilityStateDialog = 4;
 // nothing, and select_choice stops being answerable the moment the layer
 // closes. The bar and the two modes are toggles -- only one direction of each
 // can apply at a time, and the bar's own buttons only exist while it is out.
-constexpr int kCapabilityStatePlayBase = 0x100;
+constexpr int kCapabilityStatePlay = 17;
 constexpr int kPlayFlagChoice = 1 << 0;
 constexpr int kPlayFlagPanelOut = 1 << 1;
 constexpr int kPlayFlagAuto = 1 << 2;
@@ -107,7 +119,7 @@ constexpr int kCapabilityStateVoice = 14;
 // base sits above the play range and the play test is bounded by it: without
 // that, a backlog value passed the play check and registered play actions with
 // the scroll flags read as choice/auto (observed 2026-08-20).
-constexpr int kCapabilityStateBacklogBase = 0x200;
+constexpr int kCapabilityStateBacklog = 15;
 constexpr int kBacklogFlagPageUp = 1 << 0;
 constexpr int kBacklogFlagPageDown = 1 << 1;
 constexpr int kBacklogFlagTop = 1 << 2;
@@ -123,7 +135,7 @@ constexpr int kBacklogVoiceShift = 10;
 constexpr int kBacklogSlotMask = 0x1f;
 // The Extra screen. Its nine squares come and go with what has been unlocked,
 // so the mask rides in the capability value the same way the backlog rows do.
-constexpr int kCapabilityStateGalleryBase = 0x400;
+constexpr int kCapabilityStateGallery = 16;
 constexpr int kGallerySeenMask = 0x1ff;
 constexpr int kGallerySquares = 9;
 constexpr int kGalleryPages = 4;
@@ -274,10 +286,105 @@ void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
 }
 
-void HandleOpenMenuAction(std::string const &id, std::string const &data) {
+// Quitting always asks first: losing an unsaved session to one call would be
+// the worst possible outcome of a misfired action.
+void HandleSettingsTabAction(std::string const &id, std::string const &data) {
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"tab\"", number) || number < 1) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "settings_tab requires a \"tab\" of 1 or more.");
+		return;
+	}
+	if (!ProbeStateIsMenuScreen("settings_tab state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on a settings screen.");
+		return;
+	}
+	char button[16];
+	sprintf_s(button, "page%d", number - 1);
+	if (!ProbeScreenButtonReady(button, "settings_tab button") ||
+	    !DispatchScreenButton(button, "settings_tab dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "There is no such tab.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Switched to that tab.");
+}
+
+void HandleExitGameAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "open_menu does not accept arguments.");
+		                      "exit_game does not accept arguments.");
+		return;
+	}
+	if (!ProbeStateIs("title", "exit_game state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Quitting is only offered from the title screen.");
+		return;
+	}
+	if (!DispatchExitRequest("exit_game dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "Quitting is unavailable.");
+		return;
+	}
+	Sleep(kDialogSettleMs);
+	if (!ProbeDialogVisible("exit_game asked")) {
+		NeuroSendActionResult(id.c_str(), false, "The game did not ask to quit.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Asked to quit; confirm or cancel the dialog.");
+}
+
+void HandleStartNewGameAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "start_new_game does not accept arguments.");
+		return;
+	}
+	bool const ok = ProbeStateIs("title", "start_new_game state") &&
+	                ProbeScreenButtonReady("start", "start_new_game button") &&
+	                DispatchScreenButton("start", "start_new_game dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Starting a new game is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Started a new game.");
+}
+
+void HandleStartTrueEndAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "start_true_end does not accept arguments.");
+		return;
+	}
+	bool const ok = ProbeStateIs("title", "start_true_end state") &&
+	                ProbeScreenButtonReady("tend", "start_true_end button") &&
+	                DispatchScreenButton("tend", "start_true_end dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Starting the true end is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Started the true end route.");
+}
+
+void HandleOpenSettingsAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_settings does not accept arguments.");
+		return;
+	}
+
+	// From the title the settings screen has its own button; during play it is
+	// reached through the quick menu bar. Same destination, different control.
+	if (ProbeStateIs("title", "open_settings title state")) {
+		bool const viaTitle =
+		    ProbeScreenButtonReady("option", "open_settings title button") &&
+		    DispatchScreenButton("option", "open_settings title dispatch");
+		NeuroSendActionResult(id.c_str(), viaTitle,
+		                      viaTitle ? "Opened the settings screen."
+		                               : "Opening the settings screen is "
+		                                 "unavailable.");
 		return;
 	}
 
@@ -286,10 +393,10 @@ void HandleOpenMenuAction(std::string const &id, std::string const &data) {
 	// settings screen could open with nothing on screen having been pressed.
 	// Pressing the bar's own control rather than calling SystemAction.option()
 	// is what keeps the action visible; same destination either way.
-	bool const ok = ProbeStateIs("game", "open_menu state") &&
-	                ProbeQuickMenuIsOut("open_menu dropdown") &&
-	                ProbeQuickMenuButtonReady("option", "open_menu button") &&
-	                DispatchQuickMenuButton("option", "open_menu dispatch");
+	bool const ok = ProbeStateIs("game", "open_settings state") &&
+	                ProbeQuickMenuIsOut("open_settings dropdown") &&
+	                ProbeQuickMenuButtonReady("option", "open_settings button") &&
+	                DispatchQuickMenuButton("option", "open_settings dispatch");
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Opening the settings menu is unavailable.");
@@ -309,7 +416,7 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	// .title() straight from game made the confirmation dialog appear out of
 	// nowhere -- mid-choice, with nothing on screen explaining it. The settings
 	// screen is where a player finds this button, so the route is
-	// open_quick_menu -> open_menu -> return_to_title and every step is visible.
+	// open_quick_menu -> open_settings -> return_to_title and every step is visible.
 	//
 	// The control's handler is SystemAction.title() -> _title(), which guards on
 	// kag.startAnchorEnabled and raises the AskTitle dialog; see
@@ -350,17 +457,17 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	                              : "Cancelled the dialog.");
 }
 
-void HandleHideTextWindowAction(std::string const &id, std::string const &data) {
+void HandleHideUiAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "hide_text_window does not accept arguments.");
+		                      "hide_ui does not accept arguments.");
 		return;
 	}
 
-	bool const ok = ProbeStateIs("game", "hide_text_window state") &&
-	                ProbeQuickMenuIsOut("hide_text_window dropdown") &&
-	                ProbeQuickMenuButtonReady("hide", "hide_text_window button") &&
-	                DispatchQuickMenuButton("hide", "hide_text_window dispatch");
+	bool const ok = ProbeStateIs("game", "hide_ui state") &&
+	                ProbeQuickMenuIsOut("hide_ui dropdown") &&
+	                ProbeQuickMenuButtonReady("hide", "hide_ui button") &&
+	                DispatchQuickMenuButton("hide", "hide_ui dispatch");
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Hiding the text window is unavailable.");
@@ -372,15 +479,15 @@ void HandleHideTextWindowAction(std::string const &id, std::string const &data) 
 	    "show it again to keep reading.");
 }
 
-void HandleShowTextWindowAction(std::string const &id, std::string const &data) {
+void HandleShowUiAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "show_text_window does not accept arguments.");
+		                      "show_ui does not accept arguments.");
 		return;
 	}
 
-	bool const ok = ProbeStateIs("game", "show_text_window state") &&
-	                DispatchShowTextWindow("show_text_window dispatch");
+	bool const ok = ProbeStateIs("game", "show_ui state") &&
+	                DispatchShowTextWindow("show_ui dispatch");
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "The text window is not hidden.");
@@ -1077,8 +1184,16 @@ void HandleNeuroAction(std::string const &id,
 		HandleAdvanceTextAction(id, data);
 	} else if (name == "select_choice") {
 		HandleSelectChoiceAction(id, data);
-	} else if (name == "open_menu") {
-		HandleOpenMenuAction(id, data);
+	} else if (name == "settings_tab") {
+		HandleSettingsTabAction(id, data);
+	} else if (name == "exit_game") {
+		HandleExitGameAction(id, data);
+	} else if (name == "start_new_game") {
+		HandleStartNewGameAction(id, data);
+	} else if (name == "start_true_end") {
+		HandleStartTrueEndAction(id, data);
+	} else if (name == "open_settings") {
+		HandleOpenSettingsAction(id, data);
 	} else if (name == "open_quick_menu") {
 		HandleOpenQuickMenuAction(id, data);
 	} else if (name == "close_quick_menu") {
@@ -1089,10 +1204,10 @@ void HandleNeuroAction(std::string const &id,
 		HandleAnswerDialogAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
-	} else if (name == "hide_text_window") {
-		HandleHideTextWindowAction(id, data);
-	} else if (name == "show_text_window") {
-		HandleShowTextWindowAction(id, data);
+	} else if (name == "hide_ui") {
+		HandleHideUiAction(id, data);
+	} else if (name == "show_ui") {
+		HandleShowUiAction(id, data);
 	} else if (name == "open_load") {
 		HandleOpenLoadAction(id, data);
 	} else if (name == "load_save") {
@@ -1306,25 +1421,40 @@ void SendSaveListContext() {
 	NeuroSendContext(message.c_str(), false);
 }
 
-void SyncCapabilities(int state) {
-	if (state == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
+int SyncedCapabilityKind() {
+	long long const key = g_SyncedCapabilityState.load(std::memory_order_acquire);
+	return key < 0 ? kCapabilityStateUnknown : static_cast<int>(key >> 32);
+}
+
+void SyncCapabilities(int kind, int payload = 0) {
+	long long const key = CapabilityKey(kind, payload);
+	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
-	if (state == kCapabilityStateTitleLoading) {
+	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
 		// is not sent here: this state is entered during plugin init, before the
 		// SDK connects, and NeuroSendContext drops anything sent while not ready.
 		// RefreshPrototypeActionState retries it until it lands.
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: title-loading (none)\n");
-	} else if (state == kCapabilityStateTitle) {
+	} else if (kind == kCapabilityStateTitle) {
 		NeuroRegisteredAction const actions[] = {
+		    // Listed in the order the buttons sit on screen, so the set reads
+		    // like the menu it mirrors.
+		    {"start_true_end", "Start the True End route from the beginning.",
+		     kStartTrueEndSchema},
 		    {"continue_game", "Continue the current game.", kContinueGameSchema},
+		    {"start_new_game", "Start a new game from the beginning.",
+		     kStartNewGameSchema},
 		    {"open_load", "Open the load screen to pick a saved game.",
 		     kOpenLoadSchema},
+		    {"open_settings", "Open the settings screen.", kOpenSettingsSchema},
 		    {"open_extra",
 		     "Open the Extra screen: the picture gallery and the music list.",
 		     kOpenExtraSchema},
+		    {"exit_game", "Quit the game. Asks for confirmation first.",
+		     kExitGameSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
@@ -1332,13 +1462,20 @@ void SyncCapabilities(int state) {
 		// something to do.
 		NeuroSendContext("The main menu is ready.", false);
 		Log("[Action] Capabilities: title (continue_game, open_load)\n");
-	} else if (state == kCapabilityStateTitleNoSave) {
+	} else if (kind == kCapabilityStateTitleNoSave) {
 		NeuroRegisteredAction const actions[] = {
+		    {"start_true_end", "Start the True End route from the beginning.",
+		     kStartTrueEndSchema},
+		    {"start_new_game", "Start a new game from the beginning.",
+		     kStartNewGameSchema},
 		    {"open_load", "Open the load screen to pick a saved game.",
 		     kOpenLoadSchema},
+		    {"open_settings", "Open the settings screen.", kOpenSettingsSchema},
 		    {"open_extra",
 		     "Open the Extra screen: the picture gallery and the music list.",
 		     kOpenExtraSchema},
+		    {"exit_game", "Quit the game. Asks for confirmation first.",
+		     kExitGameSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
@@ -1346,16 +1483,22 @@ void SyncCapabilities(int state) {
 		                 "continue, so a save has to be loaded.",
 		                 false);
 		Log("[Action] Capabilities: title-no-save (open_load)\n");
-	} else if (state >= kCapabilityStatePlayBase &&
-	           state < kCapabilityStateBacklogBase) {
-		bool const choice = (state & kPlayFlagChoice) != 0;
-		bool const panelOut = (state & kPlayFlagPanelOut) != 0;
-		bool const autoMode = (state & kPlayFlagAuto) != 0;
-		bool const skipMode = (state & kPlayFlagSkip) != 0;
-		bool const canReplayVoice = (state & kPlayFlagVoice) != 0;
-		bool const canGoPrevious = (state & kPlayFlagPrevious) != 0;
-		bool const canGoNext = (state & kPlayFlagNext) != 0;
+	} else if (kind == kCapabilityStatePlay) {
+		bool const choice = (payload & kPlayFlagChoice) != 0;
+		bool const panelOut = (payload & kPlayFlagPanelOut) != 0;
+		bool const autoMode = (payload & kPlayFlagAuto) != 0;
+		bool const skipMode = (payload & kPlayFlagSkip) != 0;
+		bool const canReplayVoice = (payload & kPlayFlagVoice) != 0;
+		bool const canGoPrevious = (payload & kPlayFlagPrevious) != 0;
+		bool const canGoNext = (payload & kPlayFlagNext) != 0;
 		std::vector<NeuroRegisteredAction> actions;
+		// Reading the line on screen is not a quick menu affair -- it is about the
+		// dialogue itself, and it is the only way to get the original Japanese,
+		// which the context feed never carries.
+		actions.push_back({"read_current_line",
+		                   "Read the line currently on screen. Pass language "
+		                   "\"japanese\" for the original wording.",
+		                   kReadLineSchema});
 		if (choice) {
 			actions.push_back({"select_choice",
 			                   "Choose a dialogue option by its number in the "
@@ -1367,24 +1510,21 @@ void SyncCapabilities(int state) {
 		}
 		// The quick menu is reachable during a choice too, so it is offered in
 		// every play state -- only its direction follows the bar's position.
-		// open_menu rides with it: the settings screen is reached by the bar's
+		// open_settings rides with it: the settings screen is reached by the bar's
 		// own option button, so offering it while the bar is retracted meant an
 		// action with nothing on screen behind it.
 		if (panelOut) {
 			actions.push_back({"close_quick_menu", "Retract the quick menu bar.",
 			                   kCloseQuickMenuSchema});
 			actions.push_back(
-			    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
+			    {"open_settings", "Open the settings screen.", kOpenSettingsSchema});
 		// Always available while a line is on screen: it is how the same line is
 		// re-read in the original Japanese, which the context feed never carries.
-		actions.push_back({"read_current_line",
-		                   "Read the line currently on screen. Pass language "
-		                   "\"japanese\" for the original wording.",
-		                   kReadLineSchema});
-			actions.push_back({"hide_text_window",
+
+			actions.push_back({"hide_ui",
 			                   "Hide the text window so only the artwork is on "
 			                   "screen.",
-			                   kHideTextWindowSchema});
+			                   kHideUiSchema});
 			actions.push_back({"open_load",
 			                   "Open the load screen to pick a saved game.",
 			                   kOpenLoadSchema});
@@ -1453,16 +1593,16 @@ void SyncCapabilities(int state) {
 		}
 		summary += ")\n";
 		Log(summary.c_str());
-	} else if (state == kCapabilityStateTextHidden) {
+	} else if (kind == kCapabilityStateTextHidden) {
 		NeuroRegisteredAction const actions[] = {
-		    {"show_text_window",
-		     "Bring the text window back so reading can continue.",
-		     kShowTextWindowSchema},
+		    {"show_ui",
+		     "Bring the dialogue interface back so reading can continue.",
+		     kShowUiSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: text-hidden (show_text_window)\n");
-	} else if (state == kCapabilityStateDialog) {
+		Log("[Action] Capabilities: ui-hidden (show_ui)\n");
+	} else if (kind == kCapabilityStateDialog) {
 		NeuroRegisteredAction const actions[] = {
 		    {"answer_dialog",
 		     "Answer the confirmation dialog that is currently on screen: "
@@ -1472,25 +1612,49 @@ void SyncCapabilities(int state) {
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: dialog (answer_dialog)\n");
-	} else if (state == kCapabilityStateMenu ||
-	           state == kCapabilityStateMenuBackOnly) {
+	} else if (kind == kCapabilityStateMenu ||
+	           kind == kCapabilityStateMenuBackOnly) {
 		std::vector<NeuroRegisteredAction> actions;
 		actions.push_back({"go_back",
 		                   "Leave the current screen and return to the one it was "
 		                   "opened from.",
 		                   kGoBackSchema});
-		if (state == kCapabilityStateMenu) {
+		if (kind == kCapabilityStateMenu) {
 			actions.push_back({"return_to_title",
 			                   "Leave the game and go back to the title screen. Asks "
 			                   "for confirmation first.",
 			                   kReturnToTitleSchema});
 		}
+		// The settings screen carries tabs; the other menu screens do not, and
+		// their count comes back as zero.
+		std::string tabText;
+		std::string tabSchema;
+		if (payload > 0) {
+			// The controls carry no readable captions, so the names are spelled
+			// out here in screen order. A seventh tab (the shortcut list) is
+			// visible in the game but has no pageN control -- it is reached
+			// some other way and is not covered.
+			static char const *const kTabNames[] = {
+			    "display", "program", "text", "sound", "dialogue", "touch"};
+			tabText = "Switch the settings screen to one of its " +
+			          std::to_string(payload) + " tabs:";
+			for (int tab = 0; tab < payload &&
+			                  tab < static_cast<int>(sizeof(kTabNames) /
+			                                         sizeof(kTabNames[0]));
+			     ++tab) {
+				tabText += " " + std::to_string(tab + 1) + ") " + kTabNames[tab];
+			}
+			tabText += ".";
+			tabSchema = BoundedIntSchema("tab", payload);
+			actions.push_back(
+			    {"settings_tab", tabText.c_str(), tabSchema.c_str()});
+		}
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));
-		Log(state == kCapabilityStateMenu
+		Log(kind == kCapabilityStateMenu
 		        ? "[Action] Capabilities: menu (go_back, return_to_title)\n"
 		        : "[Action] Capabilities: menu-back-only (go_back)\n");
-	} else if (state == kCapabilityStateLoad) {
+	} else if (kind == kCapabilityStateLoad) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
 		     "Leave the current screen and return to the one it was opened from.",
@@ -1508,7 +1672,7 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendSaveListContext();
 		Log("[Action] Capabilities: load (go_back, return_to_title, load_save)\n");
-	} else if (state == kCapabilityStateSave) {
+	} else if (kind == kCapabilityStateSave) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
 		     "Leave the current screen and return to the one it was opened from.",
@@ -1526,9 +1690,9 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendFreeSlotContext();
 		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
-	} else if (state >= kCapabilityStateGalleryBase) {
-		int const scrollMask = state & kGalleryScrollMask;
-		bool const viewOpen = (state & kGalleryViewOpenFlag) != 0;
+	} else if (kind == kCapabilityStateGallery) {
+		int const scrollMask = payload & kGalleryScrollMask;
+		bool const viewOpen = (payload & kGalleryViewOpenFlag) != 0;
 		std::vector<NeuroRegisteredAction> actions;
 		// Both outlive the register call below, which copies what it is given.
 		std::string viewText;
@@ -1544,7 +1708,7 @@ void SyncCapabilities(int state) {
 			                   kGalleryViewSchema});
 			// Offered only while that picture still has further views; on the
 			// last one the game itself returns to the grid.
-			if ((state & kGalleryMoreViewsFlag) != 0) {
+			if ((payload & kGalleryMoreViewsFlag) != 0) {
 				actions.push_back({"next_cg_view",
 				                   "Show the next view of the open picture.",
 				                   kGalleryViewSchema});
@@ -1557,7 +1721,7 @@ void SyncCapabilities(int state) {
 			// and the schema's maximum follow the page rather than assuming
 			// nine everywhere.
 			int const squares =
-			    (state >> kGallerySquareShift) & kGallerySquareMask;
+			    (payload >> kGallerySquareShift) & kGallerySquareMask;
 			if (squares > 0) {
 				viewText = "Open one of the " + std::to_string(squares) +
 				           " squares of the picture grid on this page, numbered "
@@ -1566,8 +1730,8 @@ void SyncCapabilities(int state) {
 				actions.push_back(
 				    {"view_cg", viewText.c_str(), viewSchema.c_str()});
 			}
-			int const pages = (state >> kGalleryPageShift) & kGalleryPageMask;
-			int const tracks = (state >> kGalleryTrackShift) & kGalleryTrackMask;
+			int const pages = (payload >> kGalleryPageShift) & kGalleryPageMask;
+			int const tracks = (payload >> kGalleryTrackShift) & kGalleryTrackMask;
 			if (pages > 0) {
 				pageText = "Switch the picture grid to one of its " +
 				           std::to_string(pages) + " pages.";
@@ -1606,11 +1770,10 @@ void SyncCapabilities(int state) {
 		}
 		summary += ")\n";
 		Log(summary.c_str());
-	} else if (state >= kCapabilityStateBacklogBase) {
+	} else if (kind == kCapabilityStateBacklog) {
 		// Only on the way in, not on every scroll: the flags change constantly
 		// while paging, and the total does not.
-		if (g_SyncedCapabilityState.load(std::memory_order_acquire) <
-		    kCapabilityStateBacklogBase) {
+		if (SyncedCapabilityKind() != kCapabilityStateBacklog) {
 			int total = 0;
 			if (ProbeHistoryCount(total) && total > 0) {
 				NeuroSendContext(("The backlog is open. It holds " +
@@ -1621,36 +1784,53 @@ void SyncCapabilities(int state) {
 			}
 		}
 		std::vector<NeuroRegisteredAction> actions;
+		std::string readText;
+		std::string readSchema;
 		actions.push_back({"go_back", "Close the backlog and return to the game.",
 		                   kGoBackSchema});
-		actions.push_back({"read_backlog",
-		                   "Read four lines of the conversation history. Give "
-		                   "\"from\" to start at a line number, or leave it out "
-		                   "for the four most recent.",
-		                   kReadBacklogSchema});
-		if ((state & kBacklogFlagPageUp) != 0) {
+		// The history length is the real bound on "from", and the schema is the
+		// only place the server can learn it -- otherwise a randomised value
+		// gets refused by the handler instead of never being sent.
+		int historyTotal = 0;
+		if (ProbeHistoryCount(historyTotal) && historyTotal > 0) {
+			readText = "Read four lines of the conversation history, out of " +
+			           std::to_string(historyTotal) +
+			           ". Give \"from\" to start at a line number, or leave it "
+			           "out for the four most recent.";
+			readSchema = std::string(
+			                 "{\"type\":\"object\",\"properties\":{\"from\":"
+			                 "{\"type\":\"integer\",\"minimum\":1,"
+			                 "\"maximum\":") +
+			             std::to_string(historyTotal) +
+			             "},\"language\":{\"type\":\"string\","
+			             "\"enum\":[\"displayed\",\"japanese\"]}},"
+			             "\"additionalProperties\":false}";
+			actions.push_back(
+			    {"read_backlog", readText.c_str(), readSchema.c_str()});
+		}
+		if ((payload & kBacklogFlagPageUp) != 0) {
 			actions.push_back({"backlog_page_up",
 			                   "Scroll the backlog up one page.",
 			                   kBacklogPageUpSchema});
 		}
-		if ((state & kBacklogFlagPageDown) != 0) {
+		if ((payload & kBacklogFlagPageDown) != 0) {
 			actions.push_back({"backlog_page_down",
 			                   "Scroll the backlog down one page.",
 			                   kBacklogPageDownSchema});
 		}
-		if ((state & kBacklogFlagTop) != 0) {
+		if ((payload & kBacklogFlagTop) != 0) {
 			actions.push_back({"backlog_top",
 			                   "Jump back to the previous scene break in the "
 			                   "backlog, or to its start.",
 			                   kBacklogTopSchema});
 		}
-		if ((state & kBacklogFlagEnd) != 0) {
+		if ((payload & kBacklogFlagEnd) != 0) {
 			actions.push_back({"backlog_end",
 			                   "Jump forward to the next scene break in the "
 			                   "backlog, or to its end.",
 			                   kBacklogEndSchema});
 		}
-		if ((state & kBacklogFlagSceneList) != 0) {
+		if ((payload & kBacklogFlagSceneList) != 0) {
 			actions.push_back({"show_backlog_lines",
 			                   "Switch the backlog back to the list of lines.",
 			                   kShowBacklogLinesSchema});
@@ -1662,8 +1842,8 @@ void SyncCapabilities(int state) {
 		// The numbering is window-relative, so it is spelled out in the
 		// description each time rather than left for Neuro to infer: after a
 		// scroll the same number is a different line.
-		int const jumpMask = (state >> kBacklogJumpShift) & kBacklogSlotMask;
-		int const voiceMask = (state >> kBacklogVoiceShift) & kBacklogSlotMask;
+		int const jumpMask = (payload >> kBacklogJumpShift) & kBacklogSlotMask;
+		int const voiceMask = (payload >> kBacklogVoiceShift) & kBacklogSlotMask;
 		std::string jumpList;
 		std::string voiceList;
 		for (int slot = 0; slot < 5; ++slot) {
@@ -1690,7 +1870,7 @@ void SyncCapabilities(int state) {
 			// In scene mode the same control jumps to whole scenes, so the
 			// wording follows the list that is actually showing.
 			jumpText = std::string("Go back to one of the ") +
-			           ((state & kBacklogFlagSceneList) != 0 ? "scenes"
+			           ((payload & kBacklogFlagSceneList) != 0 ? "scenes"
 			                                                 : "lines") +
 			           " on screen, numbered from the top. Available now: " +
 			           jumpList + ". Asks for confirmation first.";
@@ -1714,7 +1894,7 @@ void SyncCapabilities(int state) {
 		}
 		summary += ")\n";
 		Log(summary.c_str());
-	} else if (state == kCapabilityStateVoice) {
+	} else if (kind == kCapabilityStateVoice) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
 		     "Leave the current screen and return to the one it was opened from.",
@@ -1728,11 +1908,11 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendVoiceListContext();
 		Log("[Action] Capabilities: voice (go_back, play_voice)\n");
-	} else if (state == kCapabilityStateBare) {
+	} else if (kind == kCapabilityStateBare) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: bare (none)\n");
 	}
-	g_SyncedCapabilityState.store(state, std::memory_order_release);
+	g_SyncedCapabilityState.store(key, std::memory_order_release);
 }
 
 }  // namespace
@@ -1782,18 +1962,18 @@ void SyncScreenByControls(bool stateChanged) {
 	//
 	// Re-probed only when the state string changes, so sitting on a screen
 	// costs nothing beyond the one snapshot.
-	int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+	int const synced = SyncedCapabilityKind();
 	bool const settled = synced == kCapabilityStateMenu ||
 	                     synced == kCapabilityStateMenuBackOnly ||
 	                     synced == kCapabilityStateBare;
 	if (settled && !stateChanged) {
-		SyncCapabilities(synced);
+		return;
 	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
 		SyncCapabilities(kCapabilityStateBare);
 	} else if (ProbeScreenButtonReady("title", "screen title button")) {
-		SyncCapabilities(kCapabilityStateMenu);
+		SyncCapabilities(kCapabilityStateMenu, ProbeTabCount());
 	} else {
-		SyncCapabilities(kCapabilityStateMenuBackOnly);
+		SyncCapabilities(kCapabilityStateMenuBackOnly, ProbeTabCount());
 	}
 }
 
@@ -1829,7 +2009,7 @@ void RefreshPrototypeActionState() {
 		// a fresh install stuck in title-loading with nothing registered.
 		// Re-probed only until a title set is registered; the steady state costs
 		// nothing, and coming back from play re-enters through another state.
-		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+		int const synced = SyncedCapabilityKind();
 		if (synced == kCapabilityStateTitle ||
 		    synced == kCapabilityStateTitleNoSave) {
 			SyncCapabilities(synced);
@@ -1854,7 +2034,7 @@ void RefreshPrototypeActionState() {
 		// values mid-session (e.g. "bgmPlaying" while the option screen was up),
 		// so treating a stray empty reading as "back to loading" would revoke the
 		// live action set for no reason.
-		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+		int const synced = SyncedCapabilityKind();
 		if (synced == kCapabilityStateUnknown ||
 		    synced == kCapabilityStateTitleLoading) {
 			SyncCapabilities(kCapabilityStateTitleLoading);
@@ -1867,7 +2047,7 @@ void RefreshPrototypeActionState() {
 			SyncCapabilities(kCapabilityStateTextHidden);
 			return;
 		}
-		int play = kCapabilityStatePlayBase;
+		int play = 0;
 		if (screen.choiceVisible) play |= kPlayFlagChoice;
 		if (screen.quickMenuOut) {
 			play |= kPlayFlagPanelOut;
@@ -1880,7 +2060,7 @@ void RefreshPrototypeActionState() {
 			if (screen.canGoPrevious) play |= kPlayFlagPrevious;
 			if (screen.canGoNext) play |= kPlayFlagNext;
 		}
-		SyncCapabilities(play);
+		SyncCapabilities(kCapabilityStatePlay, play);
 	} else if (screen.state == "load") {
 		SyncCapabilities(kCapabilityStateLoad);
 	} else if (screen.state == "save") {
@@ -1889,7 +2069,8 @@ void RefreshPrototypeActionState() {
 		int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 		bool open = false;
 		if (ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
-			SyncCapabilities(kCapabilityStateGalleryBase | scroll |
+			SyncCapabilities(kCapabilityStateGallery,
+			                 scroll |
 			                 (open ? kGalleryViewOpenFlag : 0) |
 			                 (variants > 0 ? kGalleryMoreViewsFlag : 0) |
 			                 (squares << kGallerySquareShift) |
@@ -1904,7 +2085,8 @@ void RefreshPrototypeActionState() {
 		int voiceMask = 0;
 		if (ProbeBacklogButtons(flags) &&
 		    ProbeBacklogLineButtons(jumpMask, voiceMask)) {
-			SyncCapabilities(kCapabilityStateBacklogBase | flags |
+			SyncCapabilities(kCapabilityStateBacklog,
+			                 flags |
 			                 (jumpMask << kBacklogJumpShift) |
 			                 (voiceMask << kBacklogVoiceShift));
 		} else {

@@ -180,6 +180,15 @@ bool DispatchGalleryNextView(char const *tag);
 bool DispatchGalleryExit(char const *tag);
 bool HoverGalleryItem(char const *prefix, int index, char const *tag);
 
+// Asks to quit. Goes through SystemAction.exit(), which raises the AskExit
+// confirmation, rather than the title button: that button's own expression
+// is a bare kag.close() and would end the process with nothing asked.
+bool DispatchExitRequest(char const *tag);
+
+// How many tab buttons the current screen carries, counted by visibility.
+// The settings screen has six; other menu screens have none.
+int ProbeTabCount();
+
 // Whether a modal confirmation is on screen right now.
 bool ProbeDialogVisible(char const *tag);
 

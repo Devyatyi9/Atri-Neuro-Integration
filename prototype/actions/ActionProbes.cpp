@@ -689,6 +689,29 @@ bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
 	    tag, prefix, index);
 }
 
+bool DispatchExitRequest(char const *tag) {
+	return Ask(L"(function(){ if (typeof SystemAction != 'Object' || typeof "
+	           L"SystemAction.exit != 'Object') return 0;"
+	           L"SystemAction.exit(); return 1; })()",
+	           tag);
+}
+
+int ProbeTabCount() {
+	std::string raw;
+	if (!QueryString(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                 L"kag.current != 'Object' || typeof kag.current.names == "
+	                 L"'undefined') return '0';"
+	                 L"var n = 0;"
+	                 L"for (var i = 0; i < 16; i++) {"
+	                 L"var b = kag.current.names['page' + i];"
+	                 L"if (typeof b == 'Object' && b.visible) n = i + 1; }"
+	                 L"return '' + n; })()",
+	                 raw, "tab count")) {
+		return 0;
+	}
+	return atoi(raw.c_str());
+}
+
 bool ProbeDialogVisible(char const *tag) {
 	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
 	           L"kag.currentDialog != 'Object') return 0;"
