@@ -16,6 +16,7 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
+#include "ActionJson.h"
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "TJSExecutor.h"
@@ -47,6 +48,9 @@ constexpr int kCapabilityStateMenu = 2;
 // in Gary: randy dispatched continue_game on its own). This state carries no
 // actions and explains the wait through context instead.
 constexpr int kCapabilityStateTitleLoading = 3;
+// A confirmation dialog is modal: nothing else can succeed while it is up, so
+// it gets its own state carrying only the answer action.
+constexpr int kCapabilityStateDialog = 4;
 
 char const *kContinueGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
@@ -68,31 +72,17 @@ char const *kOpenMenuSchema =
 char const *kOpenQuickMenuSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
-
-bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
-	size_t const keyPos = json.find(key);
-	if (keyPos == std::string::npos) {
-		return false;
-	}
-	size_t colon = json.find(':', keyPos + strlen(key));
-	if (colon == std::string::npos) {
-		return false;
-	}
-	size_t start = json.find_first_not_of(" \t\r\n", colon + 1);
-	if (start == std::string::npos) {
-		return false;
-	}
-	size_t end = start;
-	while (end < json.size() &&
-	       (isdigit(static_cast<unsigned char>(json[end])) || json[end] == '-')) {
-		++end;
-	}
-	if (end == start) {
-		return false;
-	}
-	out = atoi(json.substr(start, end - start).c_str());
-	return true;
-}
+char const *kCloseQuickMenuSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+char const *kReturnToTitleSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+char const *kAnswerDialogSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"confirm\":{\"type\":\"boolean\"}},"
+    "\"required\":[\"confirm\"],"
+    "\"additionalProperties\":false}";
 
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
@@ -105,21 +95,6 @@ bool ClaimActionId(std::string const &id) {
 		g_ActionIds.pop_front();
 	}
 	return true;
-}
-
-bool IsEmptyJsonObject(std::string const &data) {
-	size_t const first = data.find_first_not_of(" \t\r\n");
-	if (first == std::string::npos) {
-		// No data field, or an empty/all-whitespace string: the real Neuro
-		// client omits `data` entirely for actions with an empty-properties
-		// schema, which reaches the plugin as "".
-		return true;
-	}
-	if (data[first] != '{') {
-		return false;
-	}
-	size_t const last = data.find_last_not_of(" \t\r\n");
-	return last != std::string::npos && last == first + 1 && data[last] == '}';
 }
 
 void HandleContinueAction(std::string const &id, std::string const &data) {
@@ -318,6 +293,176 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
 }
 
+void HandleCloseQuickMenuAction(std::string const &id,
+                                std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "close_quick_menu does not accept arguments.");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "close_quick_menu state")) {
+		ok = false;
+	} else if (state != "game") {
+		ok = false;
+	}
+
+	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                     L"kag.QuickMenu == 'undefined') return 0;"
+	                     L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
+	                     L"return 1; })()",
+	                     ready, "close_quick_menu dispatchable")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	bool dispatched = false;
+	if (ok) {
+		// Retracting is not symmetric with opening: updown(0) only takes effect
+		// while canDropDown holds, and the panel re-drops on its own whenever the
+		// cursor is over it (_dropdown = locked || inMouseCursor).
+		dispatched = QueryBool(
+		    L"(function(){ kag.QuickMenu.updown(0); return kag.QuickMenu._dropdown "
+		    L"? 0 : 1; })()",
+		    dispatched, "close_quick_menu dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Closing the quick menu is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Closed the quick menu.");
+}
+
+void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "return_to_title does not accept arguments.");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	// Offered on the settings screen, not during play. Calling SystemAction
+	// .title() straight from game made the confirmation dialog appear out of
+	// nowhere -- mid-choice, with nothing on screen explaining it. The settings
+	// screen is where a player finds this button, so the route is
+	// open_quick_menu -> open_menu -> return_to_title and every step is visible.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "return_to_title state")) {
+		ok = false;
+	} else if (state != "option" && state != "load" && state != "save" &&
+	           state != "voice") {
+		ok = false;
+	}
+
+	// The screen's own "Back To Title" control; its handler is SystemAction
+	// .title() -> _title(), which guards on kag.startAnchorEnabled and raises
+	// the AskTitle dialog. See menu-navigation.md.
+	if (ok &&
+	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	               L"kag.current == 'undefined' || typeof kag.current.names == "
+	               L"'undefined') return 0;"
+	               L"var button = kag.current.names['title'];"
+	               L"if (typeof button != 'Object' || !button.visible || "
+	               L"!button.enabled) return 0;"
+	               L"if (typeof button.controlOwner == 'undefined' || typeof "
+	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
+	               L"return 1; })()",
+	               ready, "return_to_title button")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	bool dispatched = false;
+	if (ok) {
+		dispatched = QueryBool(
+		    L"(function(){ var button = kag.current.names['title'];"
+		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
+		    dispatched, "return_to_title dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Returning to the title screen is unavailable.");
+		return;
+	}
+	// The game asks for confirmation when SystemConfig.askTitle is set, so this
+	// action deliberately stops at the question rather than answering it: losing
+	// unsaved progress should not happen from one call. answer_dialog becomes
+	// available as soon as the dialog is up.
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    "Asked to return to the title screen; confirm or cancel the dialog.");
+}
+
+void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
+	int confirmValue = 0;
+	bool const hasConfirm = ParseJsonBoolean(data, "\"confirm\"", confirmValue);
+	if (!hasConfirm) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "answer_dialog requires a boolean \"confirm\".");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	// The chosen link must exist on the live dialog; names are "yes"/"no".
+	// 'Object', not 'undefined': kag.currentDialog holds void when no dialog is
+	// up, and typeof reports "void" for that, so an "undefined" test would pass
+	// and the property access below would throw.
+	wchar_t const *const readinessProbe =
+	    confirmValue
+	        ? L"(function(){ if (typeof kag == 'undefined' || typeof "
+	          L"kag.currentDialog != 'Object' || !kag.currentDialog.visible) "
+	          L"return 0;"
+	          L"var link = kag.currentDialog.names['yes'];"
+	          L"return typeof link == 'Object' ? 1 : 0; })()"
+	        : L"(function(){ if (typeof kag == 'undefined' || typeof "
+	          L"kag.currentDialog != 'Object' || !kag.currentDialog.visible) "
+	          L"return 0;"
+	          L"var link = kag.currentDialog.names['no'];"
+	          L"return typeof link == 'Object' ? 1 : 0; })()";
+	if (!QueryBool(readinessProbe, ready, "answer_dialog ready")) {
+		ok = false;
+	} else if (!ready) {
+		ok = false;
+	}
+
+	bool dispatched = false;
+	if (ok) {
+		wchar_t const *const dispatchProbe =
+		    confirmValue ? L"(function(){ var d = kag.currentDialog;"
+		                   L"d.processLink(d.names['yes'].linkNum); return 1; })()"
+		                 : L"(function(){ var d = kag.currentDialog;"
+		                   L"d.processLink(d.names['no'].linkNum); return 1; })()";
+		dispatched = QueryBool(dispatchProbe, dispatched, "answer_dialog dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false, "No dialog is waiting.");
+		return;
+	}
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    confirmValue ? "Confirmed the dialog." : "Cancelled the dialog.");
+}
+
 void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -504,6 +649,12 @@ void HandleNeuroAction(std::string const &id,
 		HandleOpenMenuAction(id, data);
 	} else if (name == "open_quick_menu") {
 		HandleOpenQuickMenuAction(id, data);
+	} else if (name == "close_quick_menu") {
+		HandleCloseQuickMenuAction(id, data);
+	} else if (name == "return_to_title") {
+		HandleReturnToTitleAction(id, data);
+	} else if (name == "answer_dialog") {
+		HandleAnswerDialogAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
 	} else {
@@ -541,21 +692,37 @@ void SyncCapabilities(int state) {
 		    {"open_quick_menu",
 		     "Slide out the quick menu bar so its buttons are visible.",
 		     kOpenQuickMenuSchema},
+		    {"close_quick_menu", "Retract the quick menu bar.",
+		     kCloseQuickMenuSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: game (advance_text, select_choice, "
-		    "open_menu, open_quick_menu)\n");
+		    "open_menu, open_quick_menu, close_quick_menu, return_to_title)\n");
+	} else if (state == kCapabilityStateDialog) {
+		NeuroRegisteredAction const actions[] = {
+		    {"answer_dialog",
+		     "Answer the confirmation dialog that is currently on screen: "
+		     "confirm true to accept, false to cancel.",
+		     kAnswerDialogSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		Log("[Action] Capabilities: dialog (answer_dialog)\n");
 	} else if (state == kCapabilityStateMenu) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
 		     "Return to the previous screen from the current menu (options, "
 		     "save, load, or voice).",
 		     kGoBackSchema},
+		    {"return_to_title",
+		     "Leave the game and go back to the title screen. Asks for "
+		     "confirmation first.",
+		     kReturnToTitleSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: menu (go_back)\n");
+		Log("[Action] Capabilities: menu (go_back, return_to_title)\n");
 	}
 	g_SyncedCapabilityState.store(state, std::memory_order_release);
 }
@@ -595,10 +762,22 @@ void TrySendTitleLoadingNotice() {
 }
 
 void RefreshPrototypeActionState() {
+	// Screen state and modal-dialog presence come back from one probe as
+	// "<state>|<0|1>". They are needed together on every poll, and this runs at
+	// 5 Hz against the game main thread, so a second round trip here would be
+	// pure contention for no new information.
 	tTJSVariant result;
 	bool const executed = ExecuteTJSSync(
-	    L"(function(){ return typeof SystemHook != 'undefined' ? "
-	    L"SystemHook.currentState : ''; })()",
+	    L"(function(){ var s = typeof SystemHook != 'undefined' ? "
+	    L"SystemHook.currentState : '';"
+	    // Test for 'Object', not for 'undefined': kag.currentDialog exists as a
+	    // member and simply holds void when no dialog is up, and typeof reports
+	    // "void" for that -- an "undefined" test passes and the following
+	    // isvalid/property access then throws on the void value.
+	    L"var d = 0;"
+	    L"if (typeof kag != 'undefined' && typeof kag.currentDialog == 'Object' "
+	    L"&& kag.currentDialog.visible) d = 1;"
+	    L"return s + '|' + d; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -606,10 +785,26 @@ void RefreshPrototypeActionState() {
 	}
 
 	ttstr value(result);
-	std::string state;
-	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), state);
+	std::string probe;
+	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), probe);
 	if (!converted) {
 		Log("[Action] Refresh state conversion failed\n");
+		return;
+	}
+
+	size_t const separator = probe.rfind('|');
+	if (separator == std::string::npos) {
+		Log("[Action] Refresh state probe returned an unexpected shape\n");
+		return;
+	}
+	std::string const state = probe.substr(0, separator);
+	bool const dialogVisible = probe.compare(separator + 1, 1, "1") == 0;
+
+	// A modal dialog owns the screen: answering it is the only thing that can
+	// succeed, and leaving the other actions registered would invite calls that
+	// are certain to fail. Checked before the state branches for that reason.
+	if (dialogVisible) {
+		SyncCapabilities(kCapabilityStateDialog);
 		return;
 	}
 
