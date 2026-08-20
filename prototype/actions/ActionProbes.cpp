@@ -89,8 +89,15 @@ bool ProbeStateIsMenuScreen(char const *tag) {
 	                 state, tag)) {
 		return false;
 	}
+	// Every value the system scenarios jump to, minus title and game. Collected
+	// from the sysjump/syscurrent tags in new-extract-data/sysscn/*.ks so the
+	// list is not built one screen at a time as they are discovered. "voice" is
+	// kept alongside "voicemode" because the older note recorded it that way and
+	// the screen has not been reached yet to settle which the engine reports.
 	return state == "option" || state == "load" || state == "save" ||
-	       state == "voice";
+	       state == "backlog" || state == "cgmode" || state == "scenemode" ||
+	       state == "soundmode" || state == "voicemode" || state == "voice" ||
+	       state == "search";
 }
 
 bool ProbeScreen(ScreenSnapshot &out) {

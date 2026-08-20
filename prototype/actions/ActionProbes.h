@@ -17,7 +17,9 @@
 
 // Screen state, as reported by SystemHook.currentState.
 bool ProbeStateIs(char const *expected, char const *tag);
-// The screens that share the plain "back" control: option, load, save, voice.
+// The screens that share the plain "back" control: option, load, save, voice
+// and backlog. Only some of them also carry a "title" control, so
+// return_to_title still stands on its own button probe.
 bool ProbeStateIsMenuScreen(char const *tag);
 
 // One poll of everything the capability refresh needs. Runs at 5 Hz on the game

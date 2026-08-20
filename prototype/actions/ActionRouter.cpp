@@ -70,6 +70,15 @@ constexpr int kCapabilityStateTextHidden = 8;
 // The title screen with no suspend-save to continue from. Loading a save is
 // still possible there, so it cannot be folded into title-loading.
 constexpr int kCapabilityStateTitleNoSave = 9;
+// Any screen that is not the title and not play. Which actions apply is
+// decided by the controls the screen actually carries rather than by a list of
+// state names: the backlog has a "back" control but no "title" one, and states
+// nobody has visited yet (cgmode, scenemode, soundmode, search) would
+// otherwise fall through every branch and leave the previous set registered.
+constexpr int kCapabilityStateMenuBackOnly = 10;
+// A recognised screen carrying none of the controls we drive. Registering
+// nothing is the honest answer; the alternative was stale actions.
+constexpr int kCapabilityStateBare = 11;
 
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
@@ -335,6 +344,29 @@ void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Opened the load screen.");
 }
 
+void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_backlog does not accept arguments.");
+		return;
+	}
+
+	// The screen opens a frame or two later: the click returns while the state
+	// is still "game", and the poll picks up "backlog" on a later tick. Nothing
+	// here waits for it -- the result says what was pressed, not what arrived.
+	bool const ok = ProbeStateIs("game", "open_backlog state") &&
+	                ProbeQuickMenuIsOut("open_backlog dropdown") &&
+	                ProbeQuickMenuButtonReady("log", "open_backlog button") &&
+	                DispatchQuickMenuButton("log", "open_backlog dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the backlog is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Opened the backlog of earlier lines.");
+}
+
 void HandleGoBackAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -390,6 +422,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleShowTextWindowAction(id, data);
 	} else if (name == "open_load") {
 		HandleOpenLoadAction(id, data);
+	} else if (name == "open_backlog") {
+		HandleOpenBacklogAction(id, data);
 	} else {
 		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
 	}
@@ -464,6 +498,9 @@ void SyncCapabilities(int state) {
 			actions.push_back({"open_load",
 			                   "Open the load screen to pick a saved game.",
 			                   kOpenLoadSchema});
+			actions.push_back({"open_backlog",
+			                   "Open the backlog to re-read earlier lines.",
+			                   kOpenBacklogSchema});
 		} else {
 			actions.push_back(
 			    {"open_quick_menu",
@@ -501,20 +538,27 @@ void SyncCapabilities(int state) {
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: dialog (answer_dialog)\n");
-	} else if (state == kCapabilityStateMenu) {
-		NeuroRegisteredAction const actions[] = {
-		    {"go_back",
-		     "Return to the previous screen from the current menu (options, "
-		     "save, load, or voice).",
-		     kGoBackSchema},
-		    {"return_to_title",
-		     "Leave the game and go back to the title screen. Asks for "
-		     "confirmation first.",
-		     kReturnToTitleSchema},
-		};
-		NeuroSetRegisteredActions(
-		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: menu (go_back, return_to_title)\n");
+	} else if (state == kCapabilityStateMenu ||
+	           state == kCapabilityStateMenuBackOnly) {
+		std::vector<NeuroRegisteredAction> actions;
+		actions.push_back({"go_back",
+		                   "Leave the current screen and return to the one it was "
+		                   "opened from.",
+		                   kGoBackSchema});
+		if (state == kCapabilityStateMenu) {
+			actions.push_back({"return_to_title",
+			                   "Leave the game and go back to the title screen. Asks "
+			                   "for confirmation first.",
+			                   kReturnToTitleSchema});
+		}
+		NeuroSetRegisteredActions(actions.data(),
+		                          static_cast<int>(actions.size()));
+		Log(state == kCapabilityStateMenu
+		        ? "[Action] Capabilities: menu (go_back, return_to_title)\n"
+		        : "[Action] Capabilities: menu-back-only (go_back)\n");
+	} else if (state == kCapabilityStateBare) {
+		NeuroSetRegisteredActions(nullptr, 0);
+		Log("[Action] Capabilities: bare (none)\n");
 	}
 	g_SyncedCapabilityState.store(state, std::memory_order_release);
 }
@@ -569,16 +613,14 @@ void RefreshPrototypeActionState() {
 		return;
 	}
 
-	// A state this function does not recognise falls through every branch below
-	// and returns without a trace, which is indistinguishable from "capabilities
-	// are simply unchanged". Log each distinct value once so an unexpected or
-	// empty state is visible instead of silent.
-	{
-		static std::string lastObservedState;
-		if (screen.state != lastObservedState) {
-			lastObservedState = screen.state;
-			Log(("[Action] Observed state: '" + screen.state + "'\n").c_str());
-		}
+	// Every distinct state value is logged once. A screen this code has never
+	// seen used to fall through every branch and return without a trace, which
+	// was indistinguishable from "capabilities are simply unchanged".
+	static std::string lastObservedState;
+	bool const stateChanged = screen.state != lastObservedState;
+	if (stateChanged) {
+		lastObservedState = screen.state;
+		Log(("[Action] Observed state: '" + screen.state + "'\n").c_str());
 	}
 
 	if (screen.state == "title") {
@@ -632,9 +674,29 @@ void RefreshPrototypeActionState() {
 			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateGamePanel
 			                                     : kCapabilityStateGame);
 		}
-	} else if (screen.state == "option" || screen.state == "load" ||
-	           screen.state == "save" || screen.state == "voice") {
-		SyncCapabilities(kCapabilityStateMenu);
+	} else {
+		// Anything that is neither the title nor play. Rather than matching a
+		// list of screen names -- which kept missing ones, and left the previous
+		// actions registered when it did -- ask the screen which controls it
+		// carries. The backlog has "back" but no "title"; option/load/save carry
+		// both; cgmode, scenemode, soundmode, voicemode and search have not been
+		// visited yet and resolve themselves the same way.
+		//
+		// Re-probed only when the state string changes, so sitting on a screen
+		// costs nothing beyond the one snapshot.
+		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+		bool const settled = synced == kCapabilityStateMenu ||
+		                     synced == kCapabilityStateMenuBackOnly ||
+		                     synced == kCapabilityStateBare;
+		if (settled && !stateChanged) {
+			SyncCapabilities(synced);
+		} else if (!ProbeScreenButtonReady("back", "screen back button")) {
+			SyncCapabilities(kCapabilityStateBare);
+		} else if (ProbeScreenButtonReady("title", "screen title button")) {
+			SyncCapabilities(kCapabilityStateMenu);
+		} else {
+			SyncCapabilities(kCapabilityStateMenuBackOnly);
+		}
 	}
 
 	if (!g_ContinueActionInFlight.load(std::memory_order_acquire)) {
