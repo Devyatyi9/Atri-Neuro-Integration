@@ -102,14 +102,15 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // member and simply holds void when no dialog is up, and typeof reports
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
-	    L"var d = 0, c = 0, p = 0;"
+	    L"var d = 0, c = 0, p = 0, h = 0;"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
 	    L"if (kag.selectShowing) c = 1;"
 	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
+	    L"if (kag.messageLayerHiding) h = 1;"
 	    L"}"
-	    L"return s + '|' + d + '|' + c + '|' + p; })()",
+	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -123,10 +124,10 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>|<d>|<c>|<p>": the state can be empty but never contains a bar, so
-	// the three flags are read off the tail by fixed offset from the first one.
+	// "<state>|<d>|<c>|<p>|<h>": the state can be empty but never contains a
+	// bar, so the flags are read off the tail by offset from the first one.
 	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 6) {
+	if (separator == std::string::npos || probe.size() != separator + 8) {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return false;
 	}
@@ -134,6 +135,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.dialogVisible = probe[separator + 1] == '1';
 	out.choiceVisible = probe[separator + 3] == '1';
 	out.quickMenuOut = probe[separator + 5] == '1';
+	out.textWindowHidden = probe[separator + 7] == '1';
 	return true;
 }
 
@@ -237,6 +239,19 @@ bool ProbeQuickMenuButtonReady(char const *button, char const *tag) {
 
 bool DispatchQuickMenuButton(char const *button, char const *tag) {
 	return AskFormatted(kQuickMenuButtonDispatch, tag, button);
+}
+
+bool DispatchShowTextWindow(char const *tag) {
+	// showMessageLayerByUser() is what the engine reaches when the player clicks
+	// or presses Escape while the window is away; it clears messageLayerHiding
+	// and re-triggers the conductor. Confirmed live 2026-08-20: 1 -> 0. There is
+	// no control to route through here -- the bar's own hide button reports
+	// enabled = 0 once the window is gone.
+	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	           L"kag.showMessageLayerByUser != 'Object') return 0;"
+	           L"kag.showMessageLayerByUser();"
+	           L"return kag.messageLayerHiding ? 0 : 1; })()",
+	           tag);
 }
 
 bool ProbeDialogLinkReady(bool confirm, char const *tag) {

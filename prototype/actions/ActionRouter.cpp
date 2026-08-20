@@ -63,6 +63,13 @@ constexpr int kCapabilityStateDialog = 4;
 constexpr int kCapabilityStateChoice = 5;
 constexpr int kCapabilityStateGamePanel = 6;
 constexpr int kCapabilityStateChoicePanel = 7;
+// The text window hidden away by the bar's hide button: the artwork is all
+// that is left on screen, the hide button itself goes enabled = 0, and a click
+// brings the window back instead of advancing. Only one action can apply.
+constexpr int kCapabilityStateTextHidden = 8;
+// The title screen with no suspend-save to continue from. Loading a save is
+// still possible there, so it cannot be folded into title-loading.
+constexpr int kCapabilityStateTitleNoSave = 9;
 
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
@@ -261,6 +268,73 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	                              : "Cancelled the dialog.");
 }
 
+void HandleHideTextWindowAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "hide_text_window does not accept arguments.");
+		return;
+	}
+
+	bool const ok = ProbeStateIs("game", "hide_text_window state") &&
+	                ProbeQuickMenuIsOut("hide_text_window dropdown") &&
+	                ProbeQuickMenuButtonReady("hide", "hide_text_window button") &&
+	                DispatchQuickMenuButton("hide", "hide_text_window dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Hiding the text window is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    "Hid the text window. Nothing is on screen now except the artwork; "
+	    "show it again to keep reading.");
+}
+
+void HandleShowTextWindowAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "show_text_window does not accept arguments.");
+		return;
+	}
+
+	bool const ok = ProbeStateIs("game", "show_text_window state") &&
+	                DispatchShowTextWindow("show_text_window dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The text window is not hidden.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Brought the text window back.");
+}
+
+void HandleOpenLoadAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_load does not accept arguments.");
+		return;
+	}
+
+	// Two routes to the same screen, each through the control the player would
+	// use: the title screen carries its own Load button, and during play it is
+	// the one on the quick menu bar. Which one applies is decided by the state,
+	// not by trying both.
+	bool ok = false;
+	if (ProbeStateIs("title", "open_load state")) {
+		ok = ProbeScreenButtonReady("load", "open_load title button") &&
+		     DispatchScreenButton("load", "open_load title dispatch");
+	} else if (ProbeStateIs("game", "open_load state")) {
+		ok = ProbeQuickMenuIsOut("open_load dropdown") &&
+		     ProbeQuickMenuButtonReady("load", "open_load bar button") &&
+		     DispatchQuickMenuButton("load", "open_load bar dispatch");
+	}
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the load screen is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the load screen.");
+}
+
 void HandleGoBackAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -310,6 +384,12 @@ void HandleNeuroAction(std::string const &id,
 		HandleAnswerDialogAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
+	} else if (name == "hide_text_window") {
+		HandleHideTextWindowAction(id, data);
+	} else if (name == "show_text_window") {
+		HandleShowTextWindowAction(id, data);
+	} else if (name == "open_load") {
+		HandleOpenLoadAction(id, data);
 	} else {
 		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
 	}
@@ -329,13 +409,26 @@ void SyncCapabilities(int state) {
 	} else if (state == kCapabilityStateTitle) {
 		NeuroRegisteredAction const actions[] = {
 		    {"continue_game", "Continue the current game.", kContinueGameSchema},
+		    {"open_load", "Open the load screen to pick a saved game.",
+		     kOpenLoadSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		// Not silent: the menu becoming usable is the moment there is finally
 		// something to do.
 		NeuroSendContext("The main menu is ready.", false);
-		Log("[Action] Capabilities: title (continue_game)\n");
+		Log("[Action] Capabilities: title (continue_game, open_load)\n");
+	} else if (state == kCapabilityStateTitleNoSave) {
+		NeuroRegisteredAction const actions[] = {
+		    {"open_load", "Open the load screen to pick a saved game.",
+		     kOpenLoadSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		NeuroSendContext("The main menu is ready. There is no game in progress to "
+		                 "continue, so a save has to be loaded.",
+		                 false);
+		Log("[Action] Capabilities: title-no-save (open_load)\n");
 	} else if (state == kCapabilityStateGame ||
 	           state == kCapabilityStateGamePanel ||
 	           state == kCapabilityStateChoice ||
@@ -364,6 +457,13 @@ void SyncCapabilities(int state) {
 			                   kCloseQuickMenuSchema});
 			actions.push_back(
 			    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
+			actions.push_back({"hide_text_window",
+			                   "Hide the text window so only the artwork is on "
+			                   "screen.",
+			                   kHideTextWindowSchema});
+			actions.push_back({"open_load",
+			                   "Open the load screen to pick a saved game.",
+			                   kOpenLoadSchema});
 		} else {
 			actions.push_back(
 			    {"open_quick_menu",
@@ -382,6 +482,15 @@ void SyncCapabilities(int state) {
 		}
 		summary += ")\n";
 		Log(summary.c_str());
+	} else if (state == kCapabilityStateTextHidden) {
+		NeuroRegisteredAction const actions[] = {
+		    {"show_text_window",
+		     "Bring the text window back so reading can continue.",
+		     kShowTextWindowSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		Log("[Action] Capabilities: text-hidden (show_text_window)\n");
 	} else if (state == kCapabilityStateDialog) {
 		NeuroRegisteredAction const actions[] = {
 		    {"answer_dialog",
@@ -473,18 +582,23 @@ void RefreshPrototypeActionState() {
 	}
 
 	if (screen.state == "title") {
-		// Register continue_game only once the control it dispatches is actually
-		// usable, running the same guards the action itself does. Probed only
-		// while it is not yet registered, so the steady state costs nothing extra.
-		if (g_SyncedCapabilityState.load(std::memory_order_acquire) ==
-		    kCapabilityStateTitle) {
-			SyncCapabilities(kCapabilityStateTitle);
+		// Readiness is the Load button, not Continue: it is on the title screen
+		// whether or not a suspend-save exists, so gating on Continue alone left
+		// a fresh install stuck in title-loading with nothing registered.
+		// Re-probed only until a title set is registered; the steady state costs
+		// nothing, and coming back from play re-enters through another state.
+		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+		if (synced == kCapabilityStateTitle ||
+		    synced == kCapabilityStateTitleNoSave) {
+			SyncCapabilities(synced);
+		} else if (!ProbeScreenButtonReady("load", "title load button")) {
+			SyncCapabilities(kCapabilityStateTitleLoading);
+			TrySendTitleLoadingNotice();
 		} else if (ProbeCanContinue("title canContinue") &&
 		           ProbeScreenButtonReady("cont", "title button")) {
 			SyncCapabilities(kCapabilityStateTitle);
 		} else {
-			SyncCapabilities(kCapabilityStateTitleLoading);
-			TrySendTitleLoadingNotice();
+			SyncCapabilities(kCapabilityStateTitleNoSave);
 		}
 	} else if (screen.state.empty()) {
 		// Still in the startup splashes: SystemHook.currentState is genuinely an
@@ -505,6 +619,12 @@ void RefreshPrototypeActionState() {
 			TrySendTitleLoadingNotice();
 		}
 	} else if (screen.state == "game") {
+		// Nothing else can succeed while the window is away: the bar's buttons
+		// are gone with it, and a click restores the window instead of advancing.
+		if (screen.textWindowHidden) {
+			SyncCapabilities(kCapabilityStateTextHidden);
+			return;
+		}
 		if (screen.choiceVisible) {
 			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateChoicePanel
 			                                     : kCapabilityStateChoice);

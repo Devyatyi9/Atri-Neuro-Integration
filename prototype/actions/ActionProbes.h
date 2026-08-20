@@ -27,6 +27,7 @@ struct ScreenSnapshot {
 	bool dialogVisible = false;
 	bool choiceVisible = false;
 	bool quickMenuOut = false;
+	bool textWindowHidden = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -65,6 +66,12 @@ bool DispatchQuickMenuClose(char const *tag);
 // still unused (auto, hide, log, save, load, skip, ...).
 bool ProbeQuickMenuButtonReady(char const *button, char const *tag);
 bool DispatchQuickMenuButton(char const *button, char const *tag);
+
+// The text window hidden away by the bar's "hide" button (or Escape). Nothing
+// is on screen in that state -- the hide button itself reports enabled = 0 --
+// so bringing it back goes through the engine call the click would reach, which
+// is the one affordance a player has left.
+bool DispatchShowTextWindow(char const *tag);
 
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);

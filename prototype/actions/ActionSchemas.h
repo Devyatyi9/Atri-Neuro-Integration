@@ -31,6 +31,15 @@ constexpr char const *const kCloseQuickMenuSchema =
 constexpr char const *const kReturnToTitleSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kHideTextWindowSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kShowTextWindowSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kOpenLoadSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 
 // `index` counts from 1 so it matches the numbering of the choice list in the
 // context message ("1) ... 2) ..."); the handler converts to the engine's
