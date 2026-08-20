@@ -62,6 +62,9 @@ char const *kSelectChoiceSchema =
 char const *kGoBackSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+char const *kOpenMenuSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 
 bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
 	size_t const keyPos = json.find(key);
@@ -312,6 +315,53 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
 }
 
+void HandleOpenMenuAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_menu does not accept arguments.");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	// 1. Only from game: this is the quickmenu "Option" dispatch, and the
+	//    settings screen already has go_back for the way out.
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "open_menu state")) {
+		ok = false;
+	} else if (state != "game") {
+		ok = false;
+	}
+
+	// 2. SystemAction.option is the same entry point the quickmenu button uses
+	//    (global startOption); see research/runtime/menu-navigation.md.
+	if (ok && !QueryBool(L"typeof SystemAction != 'undefined' && typeof "
+	                     L"SystemAction.option == 'Object' ? 1 : 0",
+	                     ready, "open_menu dispatchable")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	bool dispatched = false;
+	if (ok) {
+		dispatched =
+		    QueryBool(L"(function(){ SystemAction.option(); return 1; })()",
+		              dispatched, "open_menu dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the settings menu is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the settings menu.");
+}
+
 void HandleGoBackAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -387,6 +437,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleAdvanceTextAction(id, data);
 	} else if (name == "select_choice") {
 		HandleSelectChoiceAction(id, data);
+	} else if (name == "open_menu") {
+		HandleOpenMenuAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
 	} else {
@@ -420,10 +472,12 @@ void SyncCapabilities(int state) {
 		    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema},
 		    {"select_choice", "Choose a dialogue option by index.",
 		     kSelectChoiceSchema},
+		    {"open_menu", "Open the settings menu.", kOpenMenuSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: game (advance_text, select_choice)\n");
+		Log("[Action] Capabilities: game (advance_text, select_choice, "
+		    "open_menu)\n");
 	} else if (state == kCapabilityStateMenu) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
