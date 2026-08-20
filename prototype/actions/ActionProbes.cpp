@@ -578,16 +578,23 @@ bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
 	        L"s += (typeof b == 'Object' && b.enabled) ? '1' : '0'; }"
 	        // Absent controller means nothing has been opened yet, which is the
 	        // same answer as "closed".
-	        // Neither signal covers both kinds of entry on its own, so both are
-	        // asked. A video replaces the screen, taking the grid's own controls
-	        // with it, but reports isQuitViewLoop as finished while it still
-	        // plays. A picture keeps the controls in place and is only visible
-	        // through isQuitViewLoop. The controller handle dies with each view,
-	        // so its half is guarded separately.
+	        // Whether something covers the grid, asked two ways because neither
+	        // covers both kinds of entry. A video replaces the screen outright,
+	        // taking the grid's own controls with it. A picture leaves them in
+	        // place and shows on its own layer, so that layer's visibility is
+	        // what says it is up.
+	        //
+	        // isQuitViewLoop must NOT be used for this: it turns true on the
+	        // last view, while that view is still on screen waiting for the
+	        // click that dismisses it. Trusting it registered the grid actions
+	        // over a picture that was still showing, and go_back then pressed a
+	        // control the picture was covering (found via Gary, 2026-08-20).
+	        // It is still the right source for how many views remain.
 	        L"var open = kag.current.names['back'] === void ? 1 : 0, left = 0;"
 	        L"try { if (typeof global.__cm_gallery == 'Object') {"
 	        L"var g = global.__cm_gallery;"
-	        L"if (!g.isQuitViewLoop) { open = 1;"
+	        L"if (typeof g.cglayer == 'Object' && g.cglayer.visible) open = 1;"
+	        L"if (!g.isQuitViewLoop) {"
 	        L"left = g.subItems.count - g.subItemPos; } } } catch (e) { }"
 	        L"return s + '|' + open + '|' + left; }"
 	        L"catch (e) { return ''; } })()",
