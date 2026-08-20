@@ -5,7 +5,9 @@
 #include <string>
 #include <thread>
 #include "ActionRouter.h"
+#include "ContextPayload.h"
 #include "Logging.h"
+#include "NeuroClient.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
@@ -81,6 +83,14 @@ static void ContextMonitorThread() {
 		if (Utf16ToUtf8(resultStr.c_str(), resultStr.GetLen(), utf8Result) &&
 		    !utf8Result.empty()) {
 			LogTagFile(utf8Result.c_str());
+
+			// Everything above stays research output; only the curated semantic
+			// events become context for Neuro, coalesced into one message per
+			// tick so a fast click-through is not a burst of messages.
+			ContextPayload const payload = BuildContextPayload(utf8Result);
+			if (!payload.Empty()) {
+				NeuroSendContext(payload.message.c_str(), payload.silent);
+			}
 		}
 	}
 

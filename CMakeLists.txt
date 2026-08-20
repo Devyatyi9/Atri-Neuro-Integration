@@ -99,6 +99,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/TJSQuery.h
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextMonitor.cpp
+        prototype/neuro/ContextPayload.cpp
+        prototype/neuro/ContextPayload.h
         prototype/Logging.cpp
         prototype/neuro/NeuroClient.cpp
         prototype/tooling/GameDebugLog.cpp

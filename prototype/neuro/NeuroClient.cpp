@@ -38,6 +38,19 @@ std::string g_NeuroURL = "ws://localhost:8000";
 
 std::vector<RegisteredAction> g_RegisteredActions;
 std::mutex g_ActionsMutex;
+
+// Context is queued here and flushed by the poll thread, never sent from the
+// caller's thread. The poll thread reacquires g_ContextMutex every poll_ms in a
+// tight loop, and std::mutex is not fair on Windows, so a caller that blocks on
+// it can starve indefinitely -- that is exactly what stalled the 200ms context
+// monitor loop when it called the send path directly (2026-08-19).
+struct OutboundContext {
+	std::string message;
+	bool silent;
+};
+constexpr size_t kMaxQueuedContext = 64;
+std::vector<OutboundContext> g_OutboundContext;
+std::mutex g_OutboundContextMutex;
 NeuroActionHandler g_ActionHandler = nullptr;
 std::mutex g_ActionHandlerMutex;
 
@@ -147,6 +160,26 @@ neurosdk_error_e SendUnregisterActions(std::vector<std::string> const &names) {
 	message.value.actions_unregister.action_names_len =
 	    static_cast<int>(sdkNames.size());
 	return SendMessage(&message);
+}
+
+// Runs on the poll thread, which owns the SDK context.
+void FlushOutboundContext() {
+	std::vector<OutboundContext> pending;
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
+		pending.swap(g_OutboundContext);
+	}
+	for (OutboundContext const &entry : pending) {
+		neurosdk_message_t message = {};
+		message.kind = NeuroSDK_MessageKind_Context;
+		message.value.context.message = const_cast<char *>(entry.message.c_str());
+		message.value.context.silent = entry.silent;
+		neurosdk_error_e const error = SendMessage(&message);
+		if (error != NeuroSDK_None) {
+			LogError("Send context failed", error);
+			return;
+		}
+	}
 }
 
 void DispatchAction(std::string const &id,
@@ -277,6 +310,9 @@ void NeuroPollThread() {
 			if (error == NeuroSDK_None) {
 				error = ProcessMessages(messages, count);
 			}
+			if (error == NeuroSDK_None) {
+				FlushOutboundContext();
+			}
 		}
 
 		DestroyContext();
@@ -361,15 +397,16 @@ bool NeuroSendContext(char const *message, bool silent) {
 	if (!message || !NeuroIsReady()) {
 		return false;
 	}
-	neurosdk_message_t request = {};
-	request.kind = NeuroSDK_MessageKind_Context;
-	request.value.context.message = const_cast<char *>(message);
-	request.value.context.silent = silent;
-	neurosdk_error_e const error = SendMessage(&request);
-	if (error != NeuroSDK_None) {
-		LogError("Send context failed", error);
-		return false;
+	// Queue only; the poll thread does the actual send. Callers are game-thread
+	// or polling-loop code that must never block on the SDK context mutex, so
+	// this returns immediately and reports "accepted", not "delivered".
+	std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
+	if (g_OutboundContext.size() >= kMaxQueuedContext) {
+		// Prefer the newest context: an unbounded backlog would only replay
+		// stale scene descriptions once the connection recovers.
+		g_OutboundContext.erase(g_OutboundContext.begin());
 	}
+	g_OutboundContext.push_back({message, silent});
 	return true;
 }
 

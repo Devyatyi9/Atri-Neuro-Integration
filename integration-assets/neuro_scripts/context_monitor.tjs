@@ -239,9 +239,13 @@
     }
     if (selectShow != global.__cm_selectShow) {
       changes += "[select] " + selectShow + "\n";
-      // choice_shown: only on the 0->1 edge, and read here rather than from a
-      // hook because the option list stays on screen until the player acts.
-      if (selectShow && !global.__cm_selectShow) {
+      // choice_shown: only on the edge into "showing", and read here rather than
+      // from a hook because the option list stays on screen until the player acts.
+      // Compare against 1 explicitly: the initial value is -1, which is truthy in
+      // TJS, so a `!previous` test would silently miss the very first choice of a
+      // session (observed 2026-08-19 -- a save loaded straight into a choice
+      // produced no event at all).
+      if (selectShow && global.__cm_selectShow != 1) {
         try {
           var opts = kag.selectLayer.selects;
           var optLine = "choice_shown";
