@@ -67,6 +67,9 @@ constexpr int kPlayFlagChoice = 1 << 0;
 constexpr int kPlayFlagPanelOut = 1 << 1;
 constexpr int kPlayFlagAuto = 1 << 2;
 constexpr int kPlayFlagSkip = 1 << 3;
+constexpr int kPlayFlagVoice = 1 << 4;
+constexpr int kPlayFlagPrevious = 1 << 5;
+constexpr int kPlayFlagNext = 1 << 6;
 // The text window hidden away by the bar's hide button: the artwork is all
 // that is left on screen, the hide button itself goes enabled = 0, and a click
 // brings the window back instead of advancing. Only one action can apply.
@@ -392,6 +395,40 @@ void HandleQuickMenuToggle(std::string const &id,
 	NeuroSendActionResult(id.c_str(), true, okMessage);
 }
 
+// Stepping between scene breaks asks first (asknextscn / askprevscn), the way
+// returning to the title does -- so the result says the question was raised,
+// not that the jump happened. The confirmation is configurable, so whether it
+// actually appeared is read back rather than assumed.
+void HandleSceneStepAction(std::string const &id,
+                           std::string const &data,
+                           char const *action,
+                           char const *button,
+                           char const *askedMessage,
+                           char const *doneMessage,
+                           char const *failMessage) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    (std::string(action) + " does not accept arguments.").c_str());
+		return;
+	}
+
+	std::string const tag(action);
+	bool const ok = ProbeStateIs("game", (tag + " state").c_str()) &&
+	                ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
+	                ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
+	                DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false, failMessage);
+		return;
+	}
+	Sleep(kDialogSettleMs);
+	NeuroSendActionResult(id.c_str(), true,
+	                      ProbeDialogVisible((tag + " asked").c_str())
+	                          ? askedMessage
+	                          : doneMessage);
+}
+
 void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -690,6 +727,22 @@ void HandleNeuroAction(std::string const &id,
 		HandlePlayVoiceAction(id, data);
 	} else if (name == "save_game") {
 		HandleSaveGameAction(id, data);
+	} else if (name == "replay_voice") {
+		HandleQuickMenuToggle(id, data, "replay_voice", "vreplay",
+		                      "Playing that line again.",
+		                      "There is no voice line to replay.");
+	} else if (name == "previous_scene") {
+		HandleSceneStepAction(id, data, "previous_scene", "xprev",
+		                      "Asked to go back to the previous scene break; "
+		                      "confirm or cancel the dialog.",
+		                      "Went back to the previous scene break.",
+		                      "There is nothing to go back to.");
+	} else if (name == "next_scene") {
+		HandleSceneStepAction(id, data, "next_scene", "next",
+		                      "Asked to jump ahead to the next scene break; "
+		                      "confirm or cancel the dialog.",
+		                      "Jumped ahead to the next scene break.",
+		                      "There is nothing to jump ahead to.");
 	} else if (name == "open_save") {
 		HandleQuickMenuToggle(id, data, "open_save", "save",
 		                      "Opened the save screen.",
@@ -851,6 +904,9 @@ void SyncCapabilities(int state) {
 		bool const panelOut = (state & kPlayFlagPanelOut) != 0;
 		bool const autoMode = (state & kPlayFlagAuto) != 0;
 		bool const skipMode = (state & kPlayFlagSkip) != 0;
+		bool const canReplayVoice = (state & kPlayFlagVoice) != 0;
+		bool const canGoPrevious = (state & kPlayFlagPrevious) != 0;
+		bool const canGoNext = (state & kPlayFlagNext) != 0;
 		std::vector<NeuroRegisteredAction> actions;
 		if (choice) {
 			actions.push_back({"select_choice",
@@ -905,6 +961,25 @@ void SyncCapabilities(int state) {
 				                   "Skip quickly through the text until it is turned "
 				                   "off or a choice appears.",
 				                   kStartSkipModeSchema});
+			// The game already decides when these apply -- a voice to replay, a scene
+			// history to step back into, a next stop to jump to -- and the bar shows
+			// it in the buttons. Offering them otherwise would advertise a dead press.
+			if (canReplayVoice) {
+				actions.push_back({"replay_voice",
+				                   "Play the current line's voice again.",
+				                   kReplayVoiceSchema});
+			}
+			if (canGoPrevious) {
+				actions.push_back({"previous_scene",
+				                   "Go back to the previous scene break.",
+				                   kPreviousSceneSchema});
+			}
+			if (canGoNext) {
+				actions.push_back({"next_scene",
+				                   "Jump ahead to the next scene break, the same place "
+				                   "skipping would stop at.",
+				                   kNextSceneSchema});
+			}
 			}
 		} else {
 			actions.push_back(
@@ -1131,6 +1206,9 @@ void RefreshPrototypeActionState() {
 			// identical set every time auto or skip flipped behind a retracted bar.
 			if (screen.autoMode) play |= kPlayFlagAuto;
 			if (screen.skipMode) play |= kPlayFlagSkip;
+			if (screen.canReplayVoice) play |= kPlayFlagVoice;
+			if (screen.canGoPrevious) play |= kPlayFlagPrevious;
+			if (screen.canGoNext) play |= kPlayFlagNext;
 		}
 		SyncCapabilities(play);
 	} else if (screen.state == "load") {

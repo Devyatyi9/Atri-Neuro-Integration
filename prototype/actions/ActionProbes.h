@@ -32,6 +32,13 @@ struct ScreenSnapshot {
 	bool textWindowHidden = false;
 	bool autoMode = false;
 	bool skipMode = false;
+	// The bar's own enabled flags for the three buttons whose availability the
+	// game computes from state we would otherwise have to mirror: a current
+	// voice to replay, a scene history to step back into, a next stop to jump
+	// to. Reading the buttons keeps that logic in one place -- the game's.
+	bool canReplayVoice = false;
+	bool canGoPrevious = false;
+	bool canGoNext = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -114,6 +121,9 @@ bool ProbeFreeSlots(int limit, std::string &out, int &total);
 bool ProbeVoiceExists(int index, char const *tag);
 // "<slot>	<speaker>	<scene title>" lines, slot numbered from 1.
 bool ProbeVoiceList(int limit, std::string &out, int &total);
+
+// Whether a modal confirmation is on screen right now.
+bool ProbeDialogVisible(char const *tag);
 
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);

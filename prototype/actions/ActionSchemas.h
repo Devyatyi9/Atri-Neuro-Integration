@@ -61,6 +61,15 @@ constexpr char const *const kStopSkipModeSchema =
 // 0-based array.
 // `slot` counts from 1 like the numbering on the load screen; the handler
 // converts to kag's 0-based bookmark index.
+constexpr char const *const kReplayVoiceSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kPreviousSceneSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kNextSceneSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kOpenSaveSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
