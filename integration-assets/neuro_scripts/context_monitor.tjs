@@ -71,6 +71,25 @@
       };
     }
 
+    // The save/load list has no readable "which page is showing" anywhere on the
+    // screen: curpage.caption is empty and kag.current carries no index. The
+    // store object does have it, but nothing exposes the instance -- so the
+    // class method is wrapped once and the instance is caught as it goes by.
+    //     onScrolled fires for both ways of paging, the page buttons and the
+    //     mouse wheel, so neither can desync the reading. The instance dies with
+    //     the screen ("The object is already invalidated"), which is why every
+    //     read has to be guarded rather than cached.
+    //     See docs-local/research/runtime/save-load-screen.md.
+    if (typeof global.EditableStoreScroll != "undefined" &&
+        typeof global.__cm_origScrolled == "undefined") {
+      global.__cm_saveStore = void;
+      global.__cm_origScrolled = global.EditableStoreScroll.onScrolled;
+      global.EditableStoreScroll.onScrolled = function(a0, a1) {
+        global.__cm_saveStore = this;
+        return global.__cm_origScrolled(a0, a1);
+      };
+    }
+
     // choice_made: the engine's own click dispatch, which is also what the
     // select_choice action calls. The button object carries the chosen option,
     // so its localized text comes from the same getLangInfo path as the render.

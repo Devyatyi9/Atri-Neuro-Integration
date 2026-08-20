@@ -269,6 +269,88 @@ bool DispatchShowTextWindow(char const *tag) {
 	           tag);
 }
 
+bool ProbeBookmarkExists(int number, char const *tag) {
+	return AskFormatted(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                    L"kag.isExistentBookMark != 'Object') return 0;"
+	                    L"if (%d < 0 || %d >= kag.numBookMarks) return 0;"
+	                    L"return kag.isExistentBookMark(%d) ? 1 : 0; })()",
+	                    tag, number, number, number);
+}
+
+bool ProbeLoadAccepted(char const *tag) {
+	return Ask(L"(function(){ if (typeof kag == 'undefined') return 0;"
+	           L"if (typeof kag.currentDialog == 'Object' && "
+	           L"kag.currentDialog.visible) return 1;"
+	           L"if (typeof SystemHook != 'undefined' && "
+	           L"SystemHook.currentState == 'game') return 1;"
+	           L"return 0; })()",
+	           tag);
+}
+
+bool ProbeSaveWindow(int &offset, int &page) {
+	// Every access is wrapped: the instance is invalidated the moment the screen
+	// closes, and touching it then throws rather than returning void.
+	std::string raw;
+	if (!QueryString(L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
+	                 L"return '';"
+	                 L"try { return global.__cm_saveStore.offset + '|' + "
+	                 L"global.__cm_saveStore.page; } catch (e) { return ''; } })()",
+	                 raw, "save window")) {
+		return false;
+	}
+	size_t const separator = raw.find('|');
+	if (separator == std::string::npos) {
+		return false;
+	}
+	offset = atoi(raw.substr(0, separator).c_str());
+	page = atoi(raw.substr(separator + 1).c_str());
+	return true;
+}
+
+bool ProbeSlotsShowBase(int base, char const *tag) {
+	return AskFormatted(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+	    L"'Object' || typeof kag.current.names == 'undefined') return 0;"
+	    L"for (var r = 0; r < 2; r++) { for (var c = 0; c < 5; c++) {"
+	    L"var b = kag.current.names['item' + r + c];"
+	    L"if (typeof b != 'Object') return 0;"
+	    L"var n = %d + r * 5 + c;"
+	    L"var want = (n < kag.numBookMarks && kag.isExistentBookMark(n)) ? 1 : 0;"
+	    L"if ((b.enabled ? 1 : 0) != want) return 0; } }"
+	    L"return 1; })()",
+	    tag, base);
+}
+
+bool ProbeBookmarkList(int limit, std::string &out, int &total) {
+	wchar_t probe[1024];
+	int const written = _snwprintf_s(
+	    probe, _TRUNCATE,
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.isExistentBookMark != 'Object') return '0';"
+	    L"var found = 0, listed = 0, s = '';"
+	    L"for (var i = 0; i < kag.numBookMarks; i++) {"
+	    L"if (!kag.isExistentBookMark(i)) continue;"
+	    L"found++;"
+	    L"if (listed < %d) { listed++;"
+	    L"s += '\n' + (i + 1) + '\t' + kag.getBookMarkPageName(i) + '\t' + "
+	    L"kag.getBookMarkDate(i); } }"
+	    L"return found + s; })()",
+	    limit);
+	if (written < 0) {
+		Log("[Action] bookmark list probe did not fit\n");
+		return false;
+	}
+
+	std::string raw;
+	if (!QueryString(probe, raw, "bookmark list")) {
+		return false;
+	}
+	size_t const firstLine = raw.find('\n');
+	total = atoi(raw.substr(0, firstLine).c_str());
+	out = firstLine == std::string::npos ? std::string() : raw.substr(firstLine + 1);
+	return true;
+}
+
 bool ProbeDialogLinkReady(bool confirm, char const *tag) {
 	// 'Object', not 'undefined': kag.currentDialog holds void when no dialog is
 	// up, and typeof reports "void" for that, so an "undefined" test would pass

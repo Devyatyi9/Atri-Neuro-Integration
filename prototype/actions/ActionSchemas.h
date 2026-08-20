@@ -59,6 +59,13 @@ constexpr char const *const kStopSkipModeSchema =
 // `index` counts from 1 so it matches the numbering of the choice list in the
 // context message ("1) ... 2) ..."); the handler converts to the engine's
 // 0-based array.
+// `slot` counts from 1 like the numbering on the load screen; the handler
+// converts to kag's 0-based bookmark index.
+constexpr char const *const kLoadSaveSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
+    "\"required\":[\"slot\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kSelectChoiceSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"index\":{\"type\":\"integer\",\"minimum\":1}},"

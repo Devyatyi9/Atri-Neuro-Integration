@@ -77,6 +77,33 @@ bool DispatchQuickMenuButton(char const *button, char const *tag);
 // is the one affordance a player has left.
 bool DispatchShowTextWindow(char const *tag);
 
+// Saved games. Slots are numbered from 0 here, matching kag's bookmark index;
+// the action numbers them from 1 the way the screen does. An empty slot reports
+// enabled = 0 on its button, so ProbeScreenButtonReady already rejects it --
+// this is for telling Neuro *why* rather than just refusing.
+bool ProbeBookmarkExists(int number, char const *tag);
+// Whether pressing a slot took: either the load confirmation is up, or the game
+// went straight back to play because SystemConfig.askload is off.
+bool ProbeLoadAccepted(char const *tag);
+// The base bookmark index of the ten slots currently on screen, from the store
+// instance the monitor catches (see context_monitor.tjs). This is the only
+// reliable reading: the screen shows nothing about which page it is on, and the
+// slots' enabled flags cannot tell two pages apart when saves run consecutively.
+// `page` comes back too -- 0 on the quick-save tab, 1..lastPage on load/save.
+bool ProbeSaveWindow(int &offset, int &page);
+
+// Whether the ten slots on screen are the ten bookmarks starting at `base`,
+// checked by comparing each slot's enabled flag against whether that bookmark
+// exists. There is no readable page indicator, and a page button press does not
+// always land, so this is what stands between "asked for page 3" and actually
+// being on it. Only meaningful once the page has settled.
+bool ProbeSlotsShowBase(int base, char const *tag);
+
+// The saves themselves, as "<slot>	<scene>	<date>" lines, slot numbered from
+// 1. Capped at `limit` entries; `total` receives how many exist in all. Neuro
+// cannot see the screen, so without this the slot numbers mean nothing to her.
+bool ProbeBookmarkList(int limit, std::string &out, int &total);
+
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);
 bool DispatchDialogLink(bool confirm, char const *tag);
