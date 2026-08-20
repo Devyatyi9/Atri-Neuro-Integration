@@ -12,17 +12,11 @@
 #include <unordered_set>
 #include <vector>
 
-#pragma warning(push)
-#pragma warning(disable : 26495)
-#include "tp_stub.h"
-#pragma warning(pop)
-
 #include "ActionJson.h"
+#include "ActionProbes.h"
+#include "ActionSchemas.h"
 #include "Logging.h"
 #include "NeuroClient.h"
-#include "TJSExecutor.h"
-#include "TJSQuery.h"
-#include "UtfConversion.h"
 
 namespace {
 
@@ -70,38 +64,6 @@ constexpr int kCapabilityStateChoice = 5;
 constexpr int kCapabilityStateGamePanel = 6;
 constexpr int kCapabilityStateChoicePanel = 7;
 
-char const *kContinueGameSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kAdvanceTextSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kSelectChoiceSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"index\":{\"type\":\"integer\",\"minimum\":1}},"
-    "\"required\":[\"index\"],"
-    "\"additionalProperties\":false}";
-char const *kGoBackSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kOpenMenuSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kOpenQuickMenuSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kCloseQuickMenuSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kReturnToTitleSchema =
-    "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-char const *kAnswerDialogSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"confirm\":{\"type\":\"boolean\"}},"
-    "\"required\":[\"confirm\"],"
-    "\"additionalProperties\":false}";
-
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	if (!g_ActionIdSet.insert(id).second) {
@@ -115,6 +77,8 @@ bool ClaimActionId(std::string const &id) {
 	return true;
 }
 
+// Result messages are what Neuro reads back, so each handler says which step
+// refused rather than only that the action failed.
 void HandleContinueAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -128,56 +92,13 @@ void HandleContinueAction(std::string const &id, std::string const &data) {
 	}
 	g_ContinueActionStartedAt.store(GetTickCount64(), std::memory_order_release);
 
-	bool ok = true;
-	bool ready = false;
-
-	// 1. Current state must be title.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "continue state")) {
-		ok = false;
-	} else if (state != "title") {
-		ok = false;
-	}
-
-	// 2. A suspend-save with tag "continue" must exist.
-	if (ok && !QueryBool(L"typeof SystemAction != 'undefined' && "
-	                     L"SystemAction.canContinue ? 1 : 0",
-	                     ready, "continue canContinue")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	// 3. The Continue button must be visible, enabled, and dispatchable.
-	if (ok &&
-	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	               L"kag.current == 'undefined' || typeof kag.current.names == "
-	               L"'undefined') return 0;"
-	               L"var button = kag.current.names['cont'];"
-	               L"if (typeof button == 'undefined' || !isvalid button || "
-	               L"!button.visible || !button.enabled) return 0;"
-	               L"if (typeof button.controlOwner == 'undefined' || typeof "
-	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
-	               L"return 1; })()",
-	               ready, "continue button")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	// 4. Dispatch the button click.
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(
-		    L"(function(){ var button = kag.current.names['cont'];"
-		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
-		    dispatched, "continue dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	// Title screen, a suspend-save tagged "continue", and the button itself
+	// visible and dispatchable.
+	bool const ok = ProbeStateIs("title", "continue state") &&
+	                ProbeCanContinue("continue canContinue") &&
+	                ProbeScreenButtonReady("cont", "continue button") &&
+	                DispatchScreenButton("cont", "continue dispatch");
+	if (!ok) {
 		g_ContinueActionInFlight.store(false, std::memory_order_release);
 		NeuroSendActionResult(id.c_str(), false, "Continue is unavailable.");
 		return;
@@ -192,40 +113,10 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	bool ok = true;
-	bool ready = false;
-
-	// 1. Current state must be game.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "advance state")) {
-		ok = false;
-	} else if (state != "game") {
-		ok = false;
-	}
-
-	// 2. The dialogue must be waiting for a click.
-	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                     L"kag.onPrimaryClick != 'Object') return 0;"
-	                     L"if (typeof kag.clickWaiting == 'undefined' || "
-	                     L"!kag.clickWaiting) return 0;"
-	                     L"return 1; })()",
-	                     ready, "advance click")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	// 3. Dispatch the click.
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(L"(function(){ kag.onPrimaryClick(); return 1; })()",
-		                       dispatched, "advance dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	bool const ok = ProbeStateIs("game", "advance state") &&
+	                ProbeClickWaiting("advance click") &&
+	                DispatchPrimaryClick("advance dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, "Text advance is unavailable.");
 		return;
 	}
@@ -245,70 +136,11 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	}
 	int const index = number - 1;
 
-	bool ok = true;
-	bool ready = false;
-
-	// 1. Current state must be game.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "select state")) {
-		ok = false;
-	} else if (state != "game") {
-		ok = false;
-	}
-
-	// 2. The choice layer must be present, enabled, and non-empty.
-	if (ok &&
-	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	               L"kag.selectLayer == 'undefined') return 0;"
-	               L"var layer = kag.selectLayer;"
-	               L"if (layer.selects == void || layer.selects.count < 1) "
-	               L"return 0;"
-	               L"if (typeof layer.enabled != 'undefined' && !layer.enabled) "
-	               L"return 0;"
-	               L"return 1; })()",
-	               ready, "select layer")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	// 3. The requested index must exist and be clickable.
-	if (ok) {
-		wchar_t probe[512];
-		swprintf_s(probe,
-		           L"(function(){ if (typeof kag == 'undefined' || "
-		           L"typeof kag.selectLayer == 'undefined') return 0;"
-		           L"var layer = kag.selectLayer;"
-		           L"if (layer.selects == void || layer.selects.count <= "
-		           L"%d) return 0;"
-		           L"var button = layer.selects[%d];"
-		           L"if (!isvalid button || (typeof button.enabled != "
-		           L"'undefined' && !button.enabled)) return 0;"
-		           L"return 1; })()",
-		           index, index);
-		if (!QueryBool(probe, ready, "select button")) {
-			ok = false;
-		} else if (!ready) {
-			ok = false;
-		}
-	}
-
-	// 4. Dispatch the button click.
-	bool dispatched = false;
-	if (ok) {
-		wchar_t probe[512];
-		swprintf_s(probe,
-		           L"(function(){ var layer = kag.selectLayer;"
-		           L"var button = layer.selects[%d];"
-		           L"layer.onButtonClick(button); return 1; })()",
-		           index);
-		dispatched = QueryBool(probe, dispatched, "select dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	bool const ok = ProbeStateIs("game", "select state") &&
+	                ProbeChoiceLayerReady("select layer") &&
+	                ProbeChoiceButtonReady(index, "select button") &&
+	                DispatchChoice(index, "select dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, "Choice is unavailable.");
 		return;
 	}
@@ -323,46 +155,57 @@ void HandleCloseQuickMenuAction(std::string const &id,
 		return;
 	}
 
-	bool ok = true;
-	bool ready = false;
-
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "close_quick_menu state")) {
-		ok = false;
-	} else if (state != "game") {
-		ok = false;
-	}
-
-	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                     L"kag.QuickMenu == 'undefined') return 0;"
-	                     L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
-	                     L"return 1; })()",
-	                     ready, "close_quick_menu dispatchable")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	bool dispatched = false;
-	if (ok) {
-		// Retracting is not symmetric with opening: updown(0) only takes effect
-		// while canDropDown holds, and the panel re-drops on its own whenever the
-		// cursor is over it (_dropdown = locked || inMouseCursor).
-		dispatched = QueryBool(
-		    L"(function(){ kag.QuickMenu.updown(0); return kag.QuickMenu._dropdown "
-		    L"? 0 : 1; })()",
-		    dispatched, "close_quick_menu dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	bool const ok = ProbeStateIs("game", "close_quick_menu state") &&
+	                ProbeQuickMenuHasUpdown("close_quick_menu dispatchable") &&
+	                DispatchQuickMenuClose("close_quick_menu dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Closing the quick menu is unavailable.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Closed the quick menu.");
+}
+
+void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_quick_menu does not accept arguments.");
+		return;
+	}
+
+	bool const ok = ProbeStateIs("game", "quick_menu state") &&
+	                ProbeQuickMenuCanDropDown("quick_menu dispatchable") &&
+	                DispatchQuickMenuOpen("quick_menu dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the quick menu is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
+}
+
+void HandleOpenMenuAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_menu does not accept arguments.");
+		return;
+	}
+
+	// The bar has to be out before its Option button is pressed: the button
+	// reports visible/enabled even while retracted, so without that check the
+	// settings screen could open with nothing on screen having been pressed.
+	// Pressing the bar's own control rather than calling SystemAction.option()
+	// is what keeps the action visible; same destination either way.
+	bool const ok = ProbeStateIs("game", "open_menu state") &&
+	                ProbeQuickMenuIsOut("open_menu dropdown") &&
+	                ProbeQuickMenuButtonReady("option", "open_menu button") &&
+	                DispatchQuickMenuButton("option", "open_menu dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the settings menu is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the settings menu.");
 }
 
 void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
@@ -372,53 +215,19 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	bool ok = true;
-	bool ready = false;
-
 	// Offered on the settings screen, not during play. Calling SystemAction
 	// .title() straight from game made the confirmation dialog appear out of
 	// nowhere -- mid-choice, with nothing on screen explaining it. The settings
 	// screen is where a player finds this button, so the route is
 	// open_quick_menu -> open_menu -> return_to_title and every step is visible.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "return_to_title state")) {
-		ok = false;
-	} else if (state != "option" && state != "load" && state != "save" &&
-	           state != "voice") {
-		ok = false;
-	}
-
-	// The screen's own "Back To Title" control; its handler is SystemAction
-	// .title() -> _title(), which guards on kag.startAnchorEnabled and raises
-	// the AskTitle dialog. See menu-navigation.md.
-	if (ok &&
-	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	               L"kag.current == 'undefined' || typeof kag.current.names == "
-	               L"'undefined') return 0;"
-	               L"var button = kag.current.names['title'];"
-	               L"if (typeof button != 'Object' || !button.visible || "
-	               L"!button.enabled) return 0;"
-	               L"if (typeof button.controlOwner == 'undefined' || typeof "
-	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
-	               L"return 1; })()",
-	               ready, "return_to_title button")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(
-		    L"(function(){ var button = kag.current.names['title'];"
-		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
-		    dispatched, "return_to_title dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	//
+	// The control's handler is SystemAction.title() -> _title(), which guards on
+	// kag.startAnchorEnabled and raises the AskTitle dialog; see
+	// menu-navigation.md.
+	bool const ok = ProbeStateIsMenuScreen("return_to_title state") &&
+	                ProbeScreenButtonReady("title", "return_to_title button") &&
+	                DispatchScreenButton("title", "return_to_title dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Returning to the title screen is unavailable.");
 		return;
@@ -434,174 +243,22 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 
 void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	int confirmValue = 0;
-	bool const hasConfirm = ParseJsonBoolean(data, "\"confirm\"", confirmValue);
-	if (!hasConfirm) {
+	if (!ParseJsonBoolean(data, "\"confirm\"", confirmValue)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "answer_dialog requires a boolean \"confirm\".");
 		return;
 	}
+	bool const confirm = confirmValue != 0;
 
-	bool ok = true;
-	bool ready = false;
-
-	// The chosen link must exist on the live dialog; names are "yes"/"no".
-	// 'Object', not 'undefined': kag.currentDialog holds void when no dialog is
-	// up, and typeof reports "void" for that, so an "undefined" test would pass
-	// and the property access below would throw.
-	wchar_t const *const readinessProbe =
-	    confirmValue
-	        ? L"(function(){ if (typeof kag == 'undefined' || typeof "
-	          L"kag.currentDialog != 'Object' || !kag.currentDialog.visible) "
-	          L"return 0;"
-	          L"var link = kag.currentDialog.names['yes'];"
-	          L"return typeof link == 'Object' ? 1 : 0; })()"
-	        : L"(function(){ if (typeof kag == 'undefined' || typeof "
-	          L"kag.currentDialog != 'Object' || !kag.currentDialog.visible) "
-	          L"return 0;"
-	          L"var link = kag.currentDialog.names['no'];"
-	          L"return typeof link == 'Object' ? 1 : 0; })()";
-	if (!QueryBool(readinessProbe, ready, "answer_dialog ready")) {
-		ok = false;
-	} else if (!ready) {
-		ok = false;
-	}
-
-	bool dispatched = false;
-	if (ok) {
-		wchar_t const *const dispatchProbe =
-		    confirmValue ? L"(function(){ var d = kag.currentDialog;"
-		                   L"d.processLink(d.names['yes'].linkNum); return 1; })()"
-		                 : L"(function(){ var d = kag.currentDialog;"
-		                   L"d.processLink(d.names['no'].linkNum); return 1; })()";
-		dispatched = QueryBool(dispatchProbe, dispatched, "answer_dialog dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	bool const ok = ProbeDialogLinkReady(confirm, "answer_dialog ready") &&
+	                DispatchDialogLink(confirm, "answer_dialog dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, "No dialog is waiting.");
 		return;
 	}
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    confirmValue ? "Confirmed the dialog." : "Cancelled the dialog.");
-}
-
-void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
-	if (!IsEmptyJsonObject(data)) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "open_quick_menu does not accept arguments.");
-		return;
-	}
-
-	bool ok = true;
-	bool ready = false;
-
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "quick_menu state")) {
-		ok = false;
-	} else if (state != "game") {
-		ok = false;
-	}
-
-	// updown(1) is the real slide-out. The panel's own open()/close() are empty
-	// stubs, and showing/visible read 1 even while it is retracted, so
-	// _dropdown is the only usable state flag; see menu-navigation.md.
-	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                     L"kag.QuickMenu == 'undefined') return 0;"
-	                     L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
-	                     L"if (!kag.QuickMenu.canDropDown) return 0;"
-	                     L"return 1; })()",
-	                     ready, "quick_menu dispatchable")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(
-		    L"(function(){ kag.QuickMenu.updown(1); return kag.QuickMenu._dropdown "
-		    L"? 1 : 0; })()",
-		    dispatched, "quick_menu dispatch");
-	}
-
-	if (!ok || !dispatched) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Opening the quick menu is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
-}
-
-void HandleOpenMenuAction(std::string const &id, std::string const &data) {
-	if (!IsEmptyJsonObject(data)) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "open_menu does not accept arguments.");
-		return;
-	}
-
-	bool ok = true;
-	bool ready = false;
-
-	// 1. Only from game: this is the quickmenu "Option" dispatch, and the
-	//    settings screen already has go_back for the way out.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "open_menu state")) {
-		ok = false;
-	} else if (state != "game") {
-		ok = false;
-	}
-
-	// 2. The bar has to be out. The option button reports visible/enabled even
-	//    while retracted, so without this the settings screen could still open
-	//    with nothing on screen having been pressed.
-	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                     L"kag.QuickMenu != 'Object') return 0;"
-	                     L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
-	                     ready, "open_menu dropdown")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-	
-	// 3. Press the quick menu's own Option button instead of calling
-	//    SystemAction.option() directly. Same destination, but it is the control
-	//    a player actually clicks, so the action is visible on screen rather
-	//    than the settings appearing from nowhere.
-	if (ok &&
-	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	               L"kag.QuickMenu == 'undefined') return 0;"
-	               L"var button = kag.QuickMenu.names['option'];"
-	               L"if (typeof button == 'undefined' || !isvalid button || "
-	               L"!button.visible || !button.enabled) return 0;"
-	               L"if (typeof button.controlOwner == 'undefined' || typeof "
-	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
-	               L"return 1; })()",
-	               ready, "open_menu button")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(
-		    L"(function(){ var button = kag.QuickMenu.names['option'];"
-		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
-		    dispatched, "open_menu dispatch");
-	}
-
-	if (!ok || !dispatched) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Opening the settings menu is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Opened the settings menu.");
+	NeuroSendActionResult(id.c_str(), true,
+	                      confirm ? "Confirmed the dialog."
+	                              : "Cancelled the dialog.");
 }
 
 void HandleGoBackAction(std::string const &id, std::string const &data) {
@@ -611,51 +268,13 @@ void HandleGoBackAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	bool ok = true;
-	bool ready = false;
-
-	// 1. Current state must be one of the menu screens that have a plain
-	//    "back" control (option, load, save, voice). Confirmed 2026-08-19:
-	//    kag.current.names["back"] returns to the screen's origin without
-	//    the "Back To Title" confirmation dialog documented separately.
-	std::string state;
-	if (ok && !QueryString(
-	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
-	              L": ''",
-	              state, "go_back state")) {
-		ok = false;
-	} else if (state != "option" && state != "load" && state != "save" &&
-	           state != "voice") {
-		ok = false;
-	}
-
-	// 2. The back button must be visible, enabled, and dispatchable.
-	if (ok &&
-	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	               L"kag.current == 'undefined' || typeof kag.current.names == "
-	               L"'undefined') return 0;"
-	               L"var button = kag.current.names['back'];"
-	               L"if (typeof button == 'undefined' || !isvalid button || "
-	               L"!button.visible || !button.enabled) return 0;"
-	               L"if (typeof button.controlOwner == 'undefined' || typeof "
-	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
-	               L"return 1; })()",
-	               ready, "go_back button")) {
-		ok = false;
-	} else if (ok && !ready) {
-		ok = false;
-	}
-
-	// 3. Dispatch the button click.
-	bool dispatched = false;
-	if (ok) {
-		dispatched = QueryBool(
-		    L"(function(){ var button = kag.current.names['back'];"
-		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
-		    dispatched, "go_back dispatch");
-	}
-
-	if (!ok || !dispatched) {
+	// The menu screens all carry a plain "back" control. Confirmed 2026-08-19:
+	// kag.current.names["back"] returns to the screen's origin without the
+	// "Back To Title" confirmation dialog documented separately.
+	bool const ok = ProbeStateIsMenuScreen("go_back state") &&
+	                ProbeScreenButtonReady("back", "go_back button") &&
+	                DispatchScreenButton("back", "go_back dispatch");
+	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, "Going back is unavailable.");
 		return;
 	}
@@ -826,58 +445,17 @@ void TrySendTitleLoadingNotice() {
 }
 
 void RefreshPrototypeActionState() {
-	// Screen state, modal-dialog presence, choice-layer presence and quick menu
-	// position come back from one probe as "<state>|<d>|<c>|<p>". They are needed
-	// together on every poll, and this runs at 5 Hz against the game main thread,
-	// so extra round trips here would be pure contention for no new information.
-	tTJSVariant result;
-	bool const executed = ExecuteTJSSync(
-	    L"(function(){ var s = typeof SystemHook != 'undefined' ? "
-	    L"SystemHook.currentState : '';"
-	    // Test for 'Object', not for 'undefined': kag.currentDialog exists as a
-	    // member and simply holds void when no dialog is up, and typeof reports
-	    // "void" for that -- an "undefined" test passes and the following
-	    // isvalid/property access then throws on the void value.
-	    L"var d = 0, c = 0, p = 0;"
-	    L"if (typeof kag != 'undefined') {"
-	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
-	    L"d = 1;"
-	    L"if (kag.selectShowing) c = 1;"
-	    // _dropdown is the only usable flag for the bar's position: showing and
-	    // visible both read 1 even while it is retracted (menu-navigation.md).
-	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
-	    L"}"
-	    L"return s + '|' + d + '|' + c + '|' + p; })()",
-	    &result, 5000, TJSExecMode::Expression);
-	if (!executed) {
-		Log("[Action] Refresh state probe failed\n");
+	// One probe per poll: this runs at 5 Hz against the game main thread, so
+	// extra round trips here would be pure contention for no new information.
+	ScreenSnapshot screen;
+	if (!ProbeScreen(screen)) {
 		return;
 	}
-
-	ttstr value(result);
-	std::string probe;
-	bool const converted = Utf16ToUtf8(value.c_str(), value.GetLen(), probe);
-	if (!converted) {
-		Log("[Action] Refresh state conversion failed\n");
-		return;
-	}
-
-	// "<state>|<d>|<c>|<p>": the state can be empty but never contains a bar, so
-	// the three flags are read off the tail by fixed offset from the first one.
-	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 6) {
-		Log("[Action] Refresh state probe returned an unexpected shape\n");
-		return;
-	}
-	std::string const state = probe.substr(0, separator);
-	bool const dialogVisible = probe[separator + 1] == '1';
-	bool const choiceVisible = probe[separator + 3] == '1';
-	bool const panelOut = probe[separator + 5] == '1';
 
 	// A modal dialog owns the screen: answering it is the only thing that can
 	// succeed, and leaving the other actions registered would invite calls that
 	// are certain to fail. Checked before the state branches for that reason.
-	if (dialogVisible) {
+	if (screen.dialogVisible) {
 		SyncCapabilities(kCapabilityStateDialog);
 		return;
 	}
@@ -888,45 +466,27 @@ void RefreshPrototypeActionState() {
 	// empty state is visible instead of silent.
 	{
 		static std::string lastObservedState;
-		if (state != lastObservedState) {
-			lastObservedState = state;
-			Log(("[Action] Observed state: '" + state + "'\n").c_str());
+		if (screen.state != lastObservedState) {
+			lastObservedState = screen.state;
+			Log(("[Action] Observed state: '" + screen.state + "'\n").c_str());
 		}
 	}
 
-	if (state == "title") {
+	if (screen.state == "title") {
 		// Register continue_game only once the control it dispatches is actually
-		// usable, matching the guards the action itself runs. Probed only while
-		// it is not yet registered, so the steady state costs nothing extra.
+		// usable, running the same guards the action itself does. Probed only
+		// while it is not yet registered, so the steady state costs nothing extra.
 		if (g_SyncedCapabilityState.load(std::memory_order_acquire) ==
 		    kCapabilityStateTitle) {
 			SyncCapabilities(kCapabilityStateTitle);
+		} else if (ProbeCanContinue("title canContinue") &&
+		           ProbeScreenButtonReady("cont", "title button")) {
+			SyncCapabilities(kCapabilityStateTitle);
 		} else {
-			bool canContinue = false;
-			bool buttonReady = false;
-			if (QueryBool(L"typeof SystemAction != 'undefined' && "
-			              L"SystemAction.canContinue ? 1 : 0",
-			              canContinue, "title canContinue") &&
-			    canContinue &&
-			    QueryBool(
-			        L"(function(){ if (typeof kag == 'undefined' || typeof "
-			        L"kag.current == 'undefined' || typeof kag.current.names == "
-			        L"'undefined') return 0;"
-			        L"var button = kag.current.names['cont'];"
-			        L"if (typeof button == 'undefined' || !isvalid button || "
-			        L"!button.visible || !button.enabled) return 0;"
-			        L"if (typeof button.controlOwner == 'undefined' || typeof "
-			        L"button.controlOwner.onButtonClick != 'Object') return 0;"
-			        L"return 1; })()",
-			        buttonReady, "title button") &&
-			    buttonReady) {
-				SyncCapabilities(kCapabilityStateTitle);
-			} else {
-				SyncCapabilities(kCapabilityStateTitleLoading);
-				TrySendTitleLoadingNotice();
-			}
+			SyncCapabilities(kCapabilityStateTitleLoading);
+			TrySendTitleLoadingNotice();
 		}
-	} else if (state.empty()) {
+	} else if (screen.state.empty()) {
 		// Still in the startup splashes: SystemHook.currentState is genuinely an
 		// empty string until the title exists. This is the bulk of the wait, so
 		// the notice has to cover it -- restricting it to the brief
@@ -944,28 +504,26 @@ void RefreshPrototypeActionState() {
 			SyncCapabilities(kCapabilityStateTitleLoading);
 			TrySendTitleLoadingNotice();
 		}
-	} else if (state == "game") {
-		// A choice is its own window: while the select layer is up, advancing the
-		// text does nothing, and once it closes select_choice has no target. The
-		// quick menu bar splits the same way -- only one of open/close applies.
-		if (choiceVisible) {
-			SyncCapabilities(panelOut ? kCapabilityStateChoicePanel
-			                          : kCapabilityStateChoice);
+	} else if (screen.state == "game") {
+		if (screen.choiceVisible) {
+			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateChoicePanel
+			                                     : kCapabilityStateChoice);
 		} else {
-			SyncCapabilities(panelOut ? kCapabilityStateGamePanel
-			                          : kCapabilityStateGame);
+			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateGamePanel
+			                                     : kCapabilityStateGame);
 		}
-	} else if (state == "option" || state == "load" || state == "save" ||
-	           state == "voice") {
+	} else if (screen.state == "option" || screen.state == "load" ||
+	           screen.state == "save" || screen.state == "voice") {
 		SyncCapabilities(kCapabilityStateMenu);
 	}
 
 	if (!g_ContinueActionInFlight.load(std::memory_order_acquire)) {
 		return;
 	}
-	if (state != "title" || GetTickCount64() - g_ContinueActionStartedAt.load(
-	                                               std::memory_order_acquire) >=
-	                            5000) {
+	if (screen.state != "title" ||
+	    GetTickCount64() -
+	            g_ContinueActionStartedAt.load(std::memory_order_acquire) >=
+	        5000) {
 		g_ContinueActionInFlight.store(false, std::memory_order_release);
 		Log("[Action] Continue transition completed or timed out\n");
 	}

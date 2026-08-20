@@ -95,6 +95,9 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/dllmain.cpp
         prototype/actions/ActionJson.cpp
         prototype/actions/ActionJson.h
+        prototype/actions/ActionProbes.cpp
+        prototype/actions/ActionProbes.h
+        prototype/actions/ActionSchemas.h
         prototype/actions/ActionRouter.cpp
         prototype/actions/ActionRouter.h
         prototype/actions/TJSQuery.cpp
