@@ -558,13 +558,20 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	                    tag, verb, index);
 }
 
-bool ProbeGallery(int &page, int &squareCount, int &trackCount,
-                  int &scrollMask, bool &viewOpen, int &variantsLeft) {
+bool ProbeGallery(int &page, int &pageCount, int &squareCount,
+                  int &trackCount, int &scrollMask, bool &viewOpen,
+                  int &variantsLeft) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof Current != 'Object' || typeof kag.current "
 	        L"!= 'Object') return '';"
 	        L"try { var s = '' + Current.page + '|';"
+	        // Page buttons past the last one exist but are invisible.
+	        L"var pg = 0;"
+	        L"for (var i = 0; i < 16; i++) {"
+	        L"var b = kag.current.names['page' + i];"
+	        L"if (typeof b == 'Object' && b.visible) pg = i + 1; }"
+	        L"s += pg + '|';"
 	        // The last page uses fewer than nine cells; the rest are invisible.
 	        L"var sq = 0;"
 	        L"for (var i = 0; i < 9; i++) {"
@@ -609,9 +616,9 @@ bool ProbeGallery(int &page, int &squareCount, int &trackCount,
 	}
 
 	// "<page>|<tracks>|<four arrow flags>|<open>|<variants left>"
-	int values[3] = {0, 0, 0};
+	int values[4] = {0, 0, 0, 0};
 	size_t cursor = 0;
-	for (int field = 0; field < 3; ++field) {
+	for (int field = 0; field < 4; ++field) {
 		size_t const bar = raw.find('|', cursor);
 		if (bar == std::string::npos) {
 			return false;
@@ -623,8 +630,9 @@ bool ProbeGallery(int &page, int &squareCount, int &trackCount,
 		return false;
 	}
 	page = values[0];
-	squareCount = values[1];
-	trackCount = values[2];
+	pageCount = values[1];
+	squareCount = values[2];
+	trackCount = values[3];
 	scrollMask = 0;
 	for (int i = 0; i < 4; ++i) {
 		if (raw[cursor + i] == '1') {

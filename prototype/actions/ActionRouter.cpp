@@ -139,6 +139,16 @@ constexpr int kGalleryMoreViewsFlag = 1 << 5;
 // re-registers and says the smaller maximum.
 constexpr int kGallerySquareShift = 6;
 constexpr int kGallerySquareMask = 0xf;
+// The page and track counts ride along for the same reason: their actions
+// advertise them as maximums, so a change has to re-register.
+//
+// Both sit ABOVE the base bit. kCapabilityStateGalleryBase is 0x400, i.e. bit
+// 10, so a field starting there reads one too high -- the page count came back
+// as 5 for a four-page gallery until this moved up (2026-08-20).
+constexpr int kGalleryPageShift = 11;
+constexpr int kGalleryPageMask = 0x1f;
+constexpr int kGalleryTrackShift = 16;
+constexpr int kGalleryTrackMask = 0x3f;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -563,6 +573,17 @@ int ParseReadLanguage(std::string const &data) {
 	return data.find("japanese") == std::string::npos ? -1 : 0;
 }
 
+// Builds the schema for a single integer field bounded to what is actually on
+// screen right now. The bound has to travel with the schema rather than being
+// baked in: the gallery's last page carries fewer squares, and the backlog shows
+// fewer rows near the ends of the log.
+std::string BoundedIntSchema(char const *field, int maximum) {
+	return std::string("{\"type\":\"object\",\"properties\":{\"") + field +
+	       "\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":" +
+	       std::to_string(maximum) + "}},\"required\":[\"" + field +
+	       "\"],\"additionalProperties\":false}";
+}
+
 // The Extra screen sits behind the title's own Extra button. Its squares go
 // through the screen's button dispatch -- Current.cmd, which drives the backlog
 // rows and the track list, does nothing for them.
@@ -582,9 +603,9 @@ void HandleViewCgAction(std::string const &id, std::string const &data) {
 	}
 	// The page decides how many squares there are, so the bound is read now
 	// rather than taken from the schema.
-	int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
+	int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 	bool open = false;
-	if (!ProbeGallery(page, squares, tracks, scroll, open, variants)) {
+	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Cannot tell what the gallery is showing.");
 		return;
@@ -681,9 +702,9 @@ void HandlePlayMusicAction(std::string const &id, std::string const &data) {
 		                      "That only works on the Extra screen.");
 		return;
 	}
-	int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
+	int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 	bool open = false;
-	if (!ProbeGallery(page, squares, tracks, scroll, open, variants) ||
+	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants) ||
 	    number > tracks) {
 		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
 		return;
@@ -1512,6 +1533,10 @@ void SyncCapabilities(int state) {
 		// Both outlive the register call below, which copies what it is given.
 		std::string viewText;
 		std::string viewSchema;
+		std::string pageText;
+		std::string pageSchema;
+		std::string trackText;
+		std::string trackSchema;
 		// While a picture is up it covers the grid, so nothing behind it applies.
 		if (viewOpen) {
 			actions.push_back({"close_cg",
@@ -1537,22 +1562,26 @@ void SyncCapabilities(int state) {
 				viewText = "Open one of the " + std::to_string(squares) +
 				           " squares of the picture grid on this page, numbered "
 				           "from the top left.";
-				viewSchema = std::string(
-				                 "{\"type\":\"object\",\"properties\":{"
-				                 "\"square\":{\"type\":\"integer\","
-				                 "\"minimum\":1,\"maximum\":") +
-				             std::to_string(squares) +
-				             "}},\"required\":[\"square\"],"
-				             "\"additionalProperties\":false}";
+				viewSchema = BoundedIntSchema("square", squares);
 				actions.push_back(
 				    {"view_cg", viewText.c_str(), viewSchema.c_str()});
 			}
-			actions.push_back({"gallery_page",
-			                   "Switch the picture grid to one of its four pages.",
-			                   kGalleryPageSchema});
-			actions.push_back({"play_music",
-			                   "Play a track from the music list beside the grid.",
-			                   kPlayMusicSchema});
+			int const pages = (state >> kGalleryPageShift) & kGalleryPageMask;
+			int const tracks = (state >> kGalleryTrackShift) & kGalleryTrackMask;
+			if (pages > 0) {
+				pageText = "Switch the picture grid to one of its " +
+				           std::to_string(pages) + " pages.";
+				pageSchema = BoundedIntSchema("page", pages);
+				actions.push_back(
+				    {"gallery_page", pageText.c_str(), pageSchema.c_str()});
+			}
+			if (tracks > 0) {
+				trackText = "Play one of the " + std::to_string(tracks) +
+				            " tracks in the music list beside the grid.";
+				trackSchema = BoundedIntSchema("track", tracks);
+				actions.push_back(
+				    {"play_music", trackText.c_str(), trackSchema.c_str()});
+			}
 			static char const *const kScrollNames[] = {
 			    "music_line_up", "music_line_down", "music_page_up",
 			    "music_page_down"};
@@ -1647,6 +1676,16 @@ void SyncCapabilities(int state) {
 		}
 		std::string jumpText;
 		std::string voiceText;
+		std::string jumpSchema;
+		std::string voiceSchema;
+		// The window shows four or five rows depending on where it sits, so the
+		// range stops at the highest row that is actually there.
+		int highest = 0;
+		for (int slot = 0; slot < 5; ++slot) {
+			if (((jumpMask | voiceMask) & (1 << slot)) != 0) {
+				highest = slot + 1;
+			}
+		}
 		if (!jumpList.empty()) {
 			// In scene mode the same control jumps to whole scenes, so the
 			// wording follows the list that is actually showing.
@@ -1655,13 +1694,16 @@ void SyncCapabilities(int state) {
 			                                                 : "lines") +
 			           " on screen, numbered from the top. Available now: " +
 			           jumpList + ". Asks for confirmation first.";
-			actions.push_back({"jump_to_line", jumpText.c_str(), kJumpToLineSchema});
+			jumpSchema = BoundedIntSchema("line", highest);
+			actions.push_back(
+			    {"jump_to_line", jumpText.c_str(), jumpSchema.c_str()});
 		}
 		if (!voiceList.empty()) {
 			voiceText = "Replay the voice of one of the lines on screen, numbered "
 			            "from the top. Available now: " + voiceList + ".";
+			voiceSchema = BoundedIntSchema("line", highest);
 			actions.push_back(
-			    {"replay_backlog_voice", voiceText.c_str(), kReplayBacklogVoiceSchema});
+			    {"replay_backlog_voice", voiceText.c_str(), voiceSchema.c_str()});
 		}
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));
@@ -1844,13 +1886,15 @@ void RefreshPrototypeActionState() {
 	} else if (screen.state == "save") {
 		SyncCapabilities(kCapabilityStateSave);
 	} else if (screen.state == "cgmode") {
-		int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
+		int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 		bool open = false;
-		if (ProbeGallery(page, squares, tracks, scroll, open, variants)) {
+		if (ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
 			SyncCapabilities(kCapabilityStateGalleryBase | scroll |
 			                 (open ? kGalleryViewOpenFlag : 0) |
 			                 (variants > 0 ? kGalleryMoreViewsFlag : 0) |
-			                 (squares << kGallerySquareShift));
+			                 (squares << kGallerySquareShift) |
+			                 (pages << kGalleryPageShift) |
+			                 (tracks << kGalleryTrackShift));
 		} else {
 			SyncScreenByControls(stateChanged);
 		}

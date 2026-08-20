@@ -164,8 +164,9 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 // true.
 // `squareCount` is how many of the nine cells the current page actually uses:
 // the last page carries fewer, and the unused ones are simply invisible.
-bool ProbeGallery(int &page, int &squareCount, int &trackCount,
-                  int &scrollMask, bool &viewOpen, int &variantsLeft);
+bool ProbeGallery(int &page, int &pageCount, int &squareCount,
+                  int &trackCount, int &scrollMask, bool &viewOpen,
+                  int &variantsLeft);
 // Presses a track in the music list. The picture squares go through the screen's
 // own button dispatch instead: Current.cmd does nothing for them.
 bool DispatchGalleryItem(char const *verb, int index, char const *tag);

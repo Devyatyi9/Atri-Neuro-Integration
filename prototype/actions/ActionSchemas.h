@@ -57,20 +57,10 @@ constexpr char const *const kReadBacklogSchema =
     "\"language\":{\"type\":\"string\","
     "\"enum\":[\"displayed\",\"japanese\"]}},"
     "\"additionalProperties\":false}";
-// The Extra screen: a square of the nine-picture grid, one of its four pages,
-// or a track of the music list beside it. All numbered from 1.
-// view_cg has no constant schema: its maximum is the number of squares the
-// current page uses, so the router builds it per registration.
-constexpr char const *const kGalleryPageSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":4}},"
-    "\"required\":[\"page\"],"
-    "\"additionalProperties\":false}";
-constexpr char const *const kPlayMusicSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"track\":{\"type\":\"integer\",\"minimum\":1}},"
-    "\"required\":[\"track\"],"
-    "\"additionalProperties\":false}";
+// The Extra screen and the backlog rows have no constant schemas: their
+// maximums are what is on screen at that moment -- squares on this page,
+// pages in this gallery, tracks in this list, rows in this window -- so the
+// router builds them per registration through BoundedIntSchema.
 constexpr char const *const kGalleryViewSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
@@ -79,16 +69,6 @@ constexpr char const *const kMusicScrollSchema =
     "\"additionalProperties\":false}";
 constexpr char const *const kOpenExtraSchema =
     "{\"type\":\"object\",\"properties\":{},"
-    "\"additionalProperties\":false}";
-constexpr char const *const kJumpToLineSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"line\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}},"
-    "\"required\":[\"line\"],"
-    "\"additionalProperties\":false}";
-constexpr char const *const kReplayBacklogVoiceSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"line\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}},"
-    "\"required\":[\"line\"],"
     "\"additionalProperties\":false}";
 constexpr char const *const kShowSceneListSchema =
     "{\"type\":\"object\",\"properties\":{},"
