@@ -87,7 +87,9 @@ def harness_force_action(query: str,
 @MCP.tool()
 def harness_clear_events() -> str:
     """Drop the recorded event log without restarting or dropping the game
-    connection. The action registry is kept."""
+    connection. This also clears what harness_context returns, which is a filtered
+    view over the same log rather than a separate store. The action registry is
+    kept, since it reflects live server state rather than history."""
     HARNESS.clear_events()
     return json.dumps({"cleared": True})
 

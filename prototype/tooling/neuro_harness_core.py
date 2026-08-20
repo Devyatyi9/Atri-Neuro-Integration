@@ -254,7 +254,11 @@ class Harness:
 
     def clear_events(self) -> None:
         """Drop recorded events without restarting; keeps the connection and the
-        action registry, so a test can start from a clean log mid-session."""
+        action registry, so a test can start from a clean log mid-session.
+
+        context_messages() is a filtered view over this same log, so it is
+        cleared by this call too -- there is no separate context store.
+        """
         with self._lock:
             self._events.clear()
 
