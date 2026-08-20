@@ -76,6 +76,29 @@
       };
     }
 
+    // The CG gallery keeps which pictures have been seen on its own controller,
+    // and the screen object reachable as Current exposes only the page number.
+    // isSeenOne runs while the thumbnails are drawn, so wrapping it once catches
+    // the instance without forcing anything.
+    if (typeof global.CgGalleryMode != "undefined" &&
+        typeof global.__cm_origSeenOne == "undefined") {
+      global.__cm_gallery = void;
+      global.__cm_origSeenOne = global.CgGalleryMode.isSeenOne;
+      global.CgGalleryMode.isSeenOne = function(a0, a1) {
+        global.__cm_gallery = this;
+        return global.__cm_origSeenOne(a0, a1);
+      };
+      // isSeenOne only runs while the grid is being built, so a handle taken
+      // there is stale the moment a picture opens over it -- and the opened view
+      // runs on a different controller instance. focusView is what that instance
+      // calls as it takes over, which is the one that can close it again.
+      global.__cm_origFocusView = global.CgGalleryMode.focusView;
+      global.CgGalleryMode.focusView = function() {
+        global.__cm_gallery = this;
+        return global.__cm_origFocusView();
+      };
+    }
+
     // The backlog is a view, not a store: its getBlockCount/getBlockInfo proxy
     // into playerObject.getHistoryCount/getHistoryData, which hold the whole
     // conversation. The controller instance is not exposed, so the class method

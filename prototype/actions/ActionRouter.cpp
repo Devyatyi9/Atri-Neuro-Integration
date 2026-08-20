@@ -121,6 +121,20 @@ constexpr int kBacklogFlagSceneList = 1 << 4;
 constexpr int kBacklogJumpShift = 5;
 constexpr int kBacklogVoiceShift = 10;
 constexpr int kBacklogSlotMask = 0x1f;
+// The Extra screen. Its nine squares come and go with what has been unlocked,
+// so the mask rides in the capability value the same way the backlog rows do.
+constexpr int kCapabilityStateGalleryBase = 0x400;
+constexpr int kGallerySeenMask = 0x1ff;
+constexpr int kGallerySquares = 9;
+constexpr int kGalleryPages = 4;
+constexpr int kGalleryScrollShift = 9;
+constexpr int kGalleryScrollMask = 0xf;
+constexpr int kGalleryViewOpenFlag = 1 << 4;
+// Set while the open picture still has further views. Nothing registers on
+// it yet -- stepping through them has no reachable entry point -- but it
+// keeps the capability value distinct as they are stepped through by hand,
+// so the set is re-registered rather than going stale.
+constexpr int kGalleryMoreViewsFlag = 1 << 5;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -543,6 +557,103 @@ constexpr int kHistoryWindow = 4;
 // language as its third argument, so no state has to be changed to read it.
 int ParseReadLanguage(std::string const &data) {
 	return data.find("japanese") == std::string::npos ? -1 : 0;
+}
+
+// The Extra screen sits behind the title's own Extra button. Its squares go
+// through the screen's button dispatch -- Current.cmd, which drives the backlog
+// rows and the track list, does nothing for them.
+void HandleViewCgAction(std::string const &id, std::string const &data) {
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"square\"", number) || number < 1 ||
+	    number > kGallerySquares) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "view_cg requires a \"square\" between 1 and 9.");
+		return;
+	}
+	int const slot = number - 1;
+	if (!ProbeStateIs("cgmode", "view_cg state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the Extra screen.");
+		return;
+	}
+
+	char button[16];
+	sprintf_s(button, "item%d", slot);
+	HoverGalleryItem("item", slot, "view_cg hover");
+	Sleep(kHoverPreviewMs);
+	if (!ProbeScreenButtonReady(button, "view_cg button") ||
+	    !DispatchScreenButton(button, "view_cg dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "That square did not respond.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened that picture.");
+}
+
+void HandleCloseCgAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "close_cg does not accept arguments.");
+		return;
+	}
+	if (!ProbeStateIs("cgmode", "close_cg state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the Extra screen.");
+		return;
+	}
+	if (!DispatchGalleryExit("close_cg dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "There is no picture open.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Closed the picture.");
+}
+
+void HandleGalleryPageAction(std::string const &id, std::string const &data) {
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"page\"", number) || number < 1 ||
+	    number > kGalleryPages) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "gallery_page requires a \"page\" between 1 and 4.");
+		return;
+	}
+	if (!ProbeStateIs("cgmode", "gallery_page state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the Extra screen.");
+		return;
+	}
+	char button[16];
+	sprintf_s(button, "page%d", number - 1);
+	if (!ProbeScreenButtonReady(button, "gallery_page button") ||
+	    !DispatchScreenButton(button, "gallery_page dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "Could not reach that page.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Switched the gallery page.");
+}
+
+void HandlePlayMusicAction(std::string const &id, std::string const &data) {
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"track\"", number) || number < 1) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "play_music requires a \"track\" of 1 or more.");
+		return;
+	}
+	if (!ProbeStateIs("cgmode", "play_music state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the Extra screen.");
+		return;
+	}
+	int page = 0, tracks = 0, scroll = 0, variants = 0;
+	bool open = false;
+	if (!ProbeGallery(page, tracks, scroll, open, variants) || number > tracks) {
+		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
+		return;
+	}
+	HoverGalleryItem("sitem", number - 1, "play_music hover");
+	if (!DispatchGalleryItem("mselect", number - 1, "play_music dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "That track did not respond.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Playing that track.");
 }
 
 void HandleReadCurrentLineAction(std::string const &id,
@@ -974,6 +1085,34 @@ void HandleNeuroAction(std::string const &id,
 	} else if (name == "replay_backlog_voice") {
 		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", false,
 		                        "Replaying that line.");
+	} else if (name == "music_line_up") {
+		HandleScreenButtonAction(id, data, "music_line_up", "cgmode", "up",
+		                         "Moved up the music list.",
+		                         "The music list is already at the top.");
+	} else if (name == "music_line_down") {
+		HandleScreenButtonAction(id, data, "music_line_down", "cgmode", "down",
+		                         "Moved down the music list.",
+		                         "The music list is already at the bottom.");
+	} else if (name == "music_page_up") {
+		HandleScreenButtonAction(id, data, "music_page_up", "cgmode", "pageup",
+		                         "Moved a page up the music list.",
+		                         "The music list is already at the top.");
+	} else if (name == "music_page_down") {
+		HandleScreenButtonAction(id, data, "music_page_down", "cgmode", "pagedown",
+		                         "Moved a page down the music list.",
+		                         "The music list is already at the bottom.");
+	} else if (name == "view_cg") {
+		HandleViewCgAction(id, data);
+	} else if (name == "close_cg") {
+		HandleCloseCgAction(id, data);
+	} else if (name == "gallery_page") {
+		HandleGalleryPageAction(id, data);
+	} else if (name == "play_music") {
+		HandlePlayMusicAction(id, data);
+	} else if (name == "open_extra") {
+		HandleScreenButtonAction(id, data, "open_extra", "title", "extra",
+		                         "Opened the Extra screen.",
+		                         "Opening Extra is unavailable.");
 	} else if (name == "read_current_line") {
 		HandleReadCurrentLineAction(id, data);
 	} else if (name == "read_backlog") {
@@ -1120,6 +1259,9 @@ void SyncCapabilities(int state) {
 		    {"continue_game", "Continue the current game.", kContinueGameSchema},
 		    {"open_load", "Open the load screen to pick a saved game.",
 		     kOpenLoadSchema},
+		    {"open_extra",
+		     "Open the Extra screen: the picture gallery and the music list.",
+		     kOpenExtraSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
@@ -1131,6 +1273,9 @@ void SyncCapabilities(int state) {
 		NeuroRegisteredAction const actions[] = {
 		    {"open_load", "Open the load screen to pick a saved game.",
 		     kOpenLoadSchema},
+		    {"open_extra",
+		     "Open the Extra screen: the picture gallery and the music list.",
+		     kOpenExtraSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
@@ -1318,6 +1463,56 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendFreeSlotContext();
 		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
+	} else if (state >= kCapabilityStateGalleryBase) {
+		int const scrollMask = state & kGalleryScrollMask;
+		bool const viewOpen = (state & kGalleryViewOpenFlag) != 0;
+		std::vector<NeuroRegisteredAction> actions;
+		// While a picture is up it covers the grid, so nothing behind it applies.
+		if (viewOpen) {
+			// Stepping between the views of one picture is left out: the scenario
+			// advances on a left click into the picture layer, which holds focus
+			// while it is up, and nothing reaches it from here yet.
+			actions.push_back({"close_cg",
+			                   "Close the picture and go back to the grid.",
+			                   kGalleryViewSchema});
+		} else {
+			actions.push_back({"go_back",
+			                   "Leave the Extra screen and return to the title.",
+			                   kGoBackSchema});
+			actions.push_back({"view_cg",
+			                   "Open one of the nine squares of the picture grid, "
+			                   "numbered from the top left.",
+			                   kViewCgSchema});
+			actions.push_back({"gallery_page",
+			                   "Switch the picture grid to one of its four pages.",
+			                   kGalleryPageSchema});
+			actions.push_back({"play_music",
+			                   "Play a track from the music list beside the grid.",
+			                   kPlayMusicSchema});
+			static char const *const kScrollNames[] = {
+			    "music_line_up", "music_line_down", "music_page_up",
+			    "music_page_down"};
+			static char const *const kScrollText[] = {
+			    "Move one entry up the music list.",
+			    "Move one entry down the music list.",
+			    "Move one page up the music list.",
+			    "Move one page down the music list."};
+			for (int i = 0; i < 4; ++i) {
+				if ((scrollMask & (1 << i)) != 0) {
+					actions.push_back(
+					    {kScrollNames[i], kScrollText[i], kMusicScrollSchema});
+				}
+			}
+		}
+		NeuroSetRegisteredActions(actions.data(),
+		                          static_cast<int>(actions.size()));
+		std::string summary = "[Action] Capabilities: extra (";
+		for (size_t i = 0; i < actions.size(); ++i) {
+			if (i) summary += ", ";
+			summary += actions[i].name;
+		}
+		summary += ")\n";
+		Log(summary.c_str());
 	} else if (state >= kCapabilityStateBacklogBase) {
 		// Only on the way in, not on every scroll: the flags change constantly
 		// while paging, and the total does not.
@@ -1468,6 +1663,34 @@ void TrySendTitleLoadingNotice() {
 	}
 }
 
+// Resolves any screen that is not the title, play, or one the refresh knows
+// by name. Also the fallback when a known screen cannot be read: leaving the
+// previous set registered would advertise actions from another screen.
+void SyncScreenByControls(bool stateChanged) {
+	// Anything that is neither the title nor play. Rather than matching a
+	// list of screen names -- which kept missing ones, and left the previous
+	// actions registered when it did -- ask the screen which controls it
+	// carries. The backlog has "back" but no "title"; option/load/save carry
+	// both; cgmode, scenemode, soundmode, voicemode and search have not been
+	// visited yet and resolve themselves the same way.
+	//
+	// Re-probed only when the state string changes, so sitting on a screen
+	// costs nothing beyond the one snapshot.
+	int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+	bool const settled = synced == kCapabilityStateMenu ||
+	                     synced == kCapabilityStateMenuBackOnly ||
+	                     synced == kCapabilityStateBare;
+	if (settled && !stateChanged) {
+		SyncCapabilities(synced);
+	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
+		SyncCapabilities(kCapabilityStateBare);
+	} else if (ProbeScreenButtonReady("title", "screen title button")) {
+		SyncCapabilities(kCapabilityStateMenu);
+	} else {
+		SyncCapabilities(kCapabilityStateMenuBackOnly);
+	}
+}
+
 void RefreshPrototypeActionState() {
 	// One probe per poll: this runs at 5 Hz against the game main thread, so
 	// extra round trips here would be pure contention for no new information.
@@ -1556,6 +1779,16 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(kCapabilityStateLoad);
 	} else if (screen.state == "save") {
 		SyncCapabilities(kCapabilityStateSave);
+	} else if (screen.state == "cgmode") {
+		int page = 0, tracks = 0, scroll = 0, variants = 0;
+		bool open = false;
+		if (ProbeGallery(page, tracks, scroll, open, variants)) {
+			SyncCapabilities(kCapabilityStateGalleryBase | scroll |
+			                 (open ? kGalleryViewOpenFlag : 0) |
+			                 (variants > 0 ? kGalleryMoreViewsFlag : 0));
+		} else {
+			SyncScreenByControls(stateChanged);
+		}
 	} else if (screen.state == "backlog") {
 		int flags = 0;
 		int jumpMask = 0;
@@ -1565,32 +1798,13 @@ void RefreshPrototypeActionState() {
 			SyncCapabilities(kCapabilityStateBacklogBase | flags |
 			                 (jumpMask << kBacklogJumpShift) |
 			                 (voiceMask << kBacklogVoiceShift));
+		} else {
+			SyncScreenByControls(stateChanged);
 		}
 	} else if (screen.state == "voice") {
 		SyncCapabilities(kCapabilityStateVoice);
 	} else {
-		// Anything that is neither the title nor play. Rather than matching a
-		// list of screen names -- which kept missing ones, and left the previous
-		// actions registered when it did -- ask the screen which controls it
-		// carries. The backlog has "back" but no "title"; option/load/save carry
-		// both; cgmode, scenemode, soundmode, voicemode and search have not been
-		// visited yet and resolve themselves the same way.
-		//
-		// Re-probed only when the state string changes, so sitting on a screen
-		// costs nothing beyond the one snapshot.
-		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
-		bool const settled = synced == kCapabilityStateMenu ||
-		                     synced == kCapabilityStateMenuBackOnly ||
-		                     synced == kCapabilityStateBare;
-		if (settled && !stateChanged) {
-			SyncCapabilities(synced);
-		} else if (!ProbeScreenButtonReady("back", "screen back button")) {
-			SyncCapabilities(kCapabilityStateBare);
-		} else if (ProbeScreenButtonReady("title", "screen title button")) {
-			SyncCapabilities(kCapabilityStateMenu);
-		} else {
-			SyncCapabilities(kCapabilityStateMenuBackOnly);
-		}
+		SyncScreenByControls(stateChanged);
 	}
 
 	if (!g_ContinueActionInFlight.load(std::memory_order_acquire)) {

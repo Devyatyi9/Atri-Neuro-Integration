@@ -153,6 +153,27 @@ bool ProbeCurrentLine(int langType, std::string &out);
 // "hideJumpView" as `verb` drives it the same way.
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 
+// The Extra screen: a nine-square picture grid over four pages, with the music
+// player's track list beside it. Every square is pressable -- there is no locked
+// state to test -- so what matters is the page, how many tracks the list offers,
+// which of its four arrows are live, and whether a picture is currently open
+// over the grid. `variantsLeft` is how many more views that picture holds.
+//
+// The open-picture part comes from the gallery controller, which is only in hand
+// after a square has been pressed once; before that it reports closed, which is
+// true.
+bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
+                  int &variantsLeft);
+// Presses a track in the music list. The picture squares go through the screen's
+// own button dispatch instead: Current.cmd does nothing for them.
+bool DispatchGalleryItem(char const *verb, int index, char const *tag);
+// Leaves the open picture, through the right click the gallery scenario itself
+// listens for (*view_rclick -> *view_quit). Not the controller's own onNext:
+// that reaches into an object the engine has already released once a video is
+// playing, and killed the game outright (cgmode.ks:27, 2026-08-20).
+bool DispatchGalleryExit(char const *tag);
+bool HoverGalleryItem(char const *prefix, int index, char const *tag);
+
 // Whether a modal confirmation is on screen right now.
 bool ProbeDialogVisible(char const *tag);
 

@@ -558,6 +558,100 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	                    tag, verb, index);
 }
 
+bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
+                  int &variantsLeft) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (typeof Current != 'Object' || typeof kag.current "
+	        L"!= 'Object') return '';"
+	        L"try { var s = '' + Current.page + '|';"
+	        // The list beside the grid is its own set of controls; how many it
+	        // offers is simply how many are on screen.
+	        L"var t = 0;"
+	        L"for (var i = 0; i < 32; i++) {"
+	        L"var b = kag.current.names['sitem' + i];"
+	        L"if (typeof b == 'Object' && b.visible) t = i + 1; }"
+	        L"s += t + '|';"
+	        L"var arrows = ['up', 'down', 'pageup', 'pagedown'];"
+	        L"for (var i = 0; i < arrows.count; i++) {"
+	        L"var b = kag.current.names[arrows[i]];"
+	        L"s += (typeof b == 'Object' && b.enabled) ? '1' : '0'; }"
+	        // Absent controller means nothing has been opened yet, which is the
+	        // same answer as "closed".
+	        // A view covering the grid is recognised by the grid's own controls
+	        // being gone, not by the controller's isQuitViewLoop: that reads
+	        // "finished" while a video is still playing, and the controller
+	        // handle itself dies with each view. The remaining-views count is
+	        // best effort and guarded on its own.
+	        L"var open = kag.current.names['back'] === void ? 1 : 0, left = 0;"
+	        L"try { if (typeof global.__cm_gallery == 'Object') {"
+	        L"var g = global.__cm_gallery;"
+	        L"if (!g.isQuitViewLoop) { open = 1;"
+	        L"left = g.subItems.count - g.subItemPos; } } } catch (e) { }"
+	        L"return s + '|' + open + '|' + left; }"
+	        L"catch (e) { return ''; } })()",
+	        raw, "gallery")) {
+		return false;
+	}
+
+	// "<page>|<tracks>|<four arrow flags>|<open>|<variants left>"
+	int values[3] = {0, 0, 0};
+	size_t cursor = 0;
+	for (int field = 0; field < 2; ++field) {
+		size_t const bar = raw.find('|', cursor);
+		if (bar == std::string::npos) {
+			return false;
+		}
+		values[field] = atoi(raw.substr(cursor, bar - cursor).c_str());
+		cursor = bar + 1;
+	}
+	if (raw.size() < cursor + 4) {
+		return false;
+	}
+	page = values[0];
+	trackCount = values[1];
+	scrollMask = 0;
+	for (int i = 0; i < 4; ++i) {
+		if (raw[cursor + i] == '1') {
+			scrollMask |= 1 << i;
+		}
+	}
+	cursor += 5;
+	if (cursor >= raw.size()) {
+		return false;
+	}
+	viewOpen = raw[cursor] == '1';
+	size_t const last = raw.find('|', cursor);
+	variantsLeft = last == std::string::npos ? 0 : atoi(raw.substr(last + 1).c_str());
+	return true;
+}
+
+bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
+	return AskFormatted(L"(function(){ if (typeof Current != 'Object') return 0;"
+	                    L"Current.cmd('%hs/%d'); return 1; })()",
+	                    tag, verb, index);
+}
+
+bool DispatchGalleryExit(char const *tag) {
+	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	           L"kag.onPrimaryRightClick != 'Object') return 0;"
+	           L"kag.onPrimaryRightClick(); return 1; })()",
+	           tag);
+}
+
+bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
+	// The control carries its hover as an expression rather than a command, so
+	// this evaluates that expression instead of calling a named entry point.
+	return AskFormatted(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+	    L"'Object') return 0;"
+	    L"var b = kag.current.names['%hs%d'];"
+	    L"if (typeof b != 'Object' || typeof b.onenter != 'String' || "
+	    L"b.onenter == '') return 0;"
+	    L"Scripts.eval(b.onenter); return 1; })()",
+	    tag, prefix, index);
+}
+
 bool ProbeDialogVisible(char const *tag) {
 	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
 	           L"kag.currentDialog != 'Object') return 0;"
