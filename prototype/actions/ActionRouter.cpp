@@ -304,7 +304,9 @@ void HandleSettingsTabAction(std::string const &id, std::string const &data) {
 	sprintf_s(button, "page%d", number - 1);
 	if (!ProbeScreenButtonReady(button, "settings_tab button") ||
 	    !DispatchScreenButton(button, "settings_tab dispatch")) {
-		NeuroSendActionResult(id.c_str(), false, "There is no such tab.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "That tab is already open, or there is no such tab.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Switched to that tab.");
@@ -1635,7 +1637,8 @@ void SyncCapabilities(int kind, int payload = 0) {
 			// visible in the game but has no pageN control -- it is reached
 			// some other way and is not covered.
 			static char const *const kTabNames[] = {
-			    "display", "program", "text", "sound", "dialogue", "touch"};
+			    "display", "program", "text",     "sound",
+			    "dialogue", "touch",  "shortcuts"};
 			tabText = "Switch the settings screen to one of its " +
 			          std::to_string(payload) + " tabs:";
 			for (int tab = 0; tab < payload &&
@@ -1966,7 +1969,14 @@ void SyncScreenByControls(bool stateChanged) {
 	bool const settled = synced == kCapabilityStateMenu ||
 	                     synced == kCapabilityStateMenuBackOnly ||
 	                     synced == kCapabilityStateBare;
+	// The tab count is re-read every poll, not once on the way in: the seventh
+	// settings tab is not there yet at the moment the screen is entered, and a
+	// single early sample fixed the maximum at six for as long as the screen
+	// stayed open (found via Tony with validation off, 2026-08-20). The button
+	// probes below stay behind the settled check -- only this one is cheap
+	// enough to repeat.
 	if (settled && !stateChanged) {
+		SyncCapabilities(synced, ProbeTabCount());
 		return;
 	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
 		SyncCapabilities(kCapabilityStateBare);

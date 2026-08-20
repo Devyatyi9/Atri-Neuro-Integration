@@ -701,11 +701,16 @@ int ProbeTabCount() {
 	if (!QueryString(L"(function(){ if (typeof kag == 'undefined' || typeof "
 	                 L"kag.current != 'Object' || typeof kag.current.names == "
 	                 L"'undefined') return '0';"
+	                 // The tab that is open has no button -- you do not press
+	                 // the one you are on -- so the controls always come one
+	                 // short of the real count, whichever tab that is. Counting
+	                 // what is there and adding the current one back gives the
+	                 // total; the missing index is exactly the open tab.
 	                 L"var n = 0;"
 	                 L"for (var i = 0; i < 16; i++) {"
 	                 L"var b = kag.current.names['page' + i];"
-	                 L"if (typeof b == 'Object' && b.visible) n = i + 1; }"
-	                 L"return '' + n; })()",
+	                 L"if (typeof b == 'Object') n++; }"
+	                 L"return '' + (n > 0 ? n + 1 : 0); })()",
 	                 raw, "tab count")) {
 		return 0;
 	}
