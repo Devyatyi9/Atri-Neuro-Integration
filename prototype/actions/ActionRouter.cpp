@@ -280,7 +280,6 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	//
 	// The control's handler is SystemAction.title() -> _title(), which guards on
 	// kag.startAnchorEnabled and raises the AskTitle dialog; see
-	// menu-navigation.md.
 	bool const ok = ProbeStateIsMenuScreen("return_to_title state") &&
 	                ProbeScreenButtonReady("title", "return_to_title button") &&
 	                DispatchScreenButton("title", "return_to_title dispatch");
@@ -640,7 +639,7 @@ void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 // Bookmarks are one flat range, and which tab shows a given one follows from
 // the index: 0..9 are the quick saves, on a tab with a single page, and the rest
 // live on load/save at ten to a page. Page N shows offset N * 10, so page 1
-// starts at bookmark 10, not 0 -- see save-load-screen.md.
+// starts at bookmark 10, not 0.
 constexpr int kQuickSaveCount = 10;
 constexpr int kVisibleSlots = 10;
 constexpr int kSlotColumns = 5;

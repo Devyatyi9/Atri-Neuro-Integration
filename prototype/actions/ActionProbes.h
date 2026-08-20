@@ -63,7 +63,7 @@ bool DispatchChoice(int index, char const *tag);
 
 // The quick menu bar. updown(1)/updown(0) is the real slide; the panel's own
 // open()/close() are empty stubs and showing/visible read 1 even while it is
-// retracted, so _dropdown is the only usable position flag (menu-navigation.md).
+// retracted, so _dropdown is the only usable position flag.
 bool ProbeQuickMenuCanDropDown(char const *tag);
 bool ProbeQuickMenuHasUpdown(char const *tag);
 bool ProbeQuickMenuIsOut(char const *tag);
@@ -131,13 +131,14 @@ bool ProbeBacklogButtons(int &flags);
 // replay, as bit masks over slots 0..4. The buttons live in the backlog's
 // blockBaseLayer child and report it through `visible`, not `enabled`; the slots
 // are window-relative, so the same number means a different line after
-// scrolling. See docs-local/research/tjs/hooks/Backlog.tjs.md.
+// scrolling.
 bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask);
 // How many lines the conversation history holds, and a window of it as
 // "<index>	<speaker>	<line>" rows with `index` numbered from 1. Both come from
 // the player object the backlog reads, so neither depends on what is on screen.
 // Speaker and line are localized: the displayed name is the "disp" key, not
-// "name" -- see Backlog.tjs.md.
+// "name": the Japanese column carries no "disp" at all, so the raw name is
+// used there instead.
 bool ProbeHistoryCount(int &total);
 // `langType` picks the language column: 0 is the Japanese original, -1 means
 // whatever the game is currently displaying (kag.languageType).

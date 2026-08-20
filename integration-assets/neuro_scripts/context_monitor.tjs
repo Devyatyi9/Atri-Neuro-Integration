@@ -99,7 +99,6 @@
     //     mouse wheel, so neither can desync the reading. The instance dies with
     //     the screen ("The object is already invalidated"), which is why every
     //     read has to be guarded rather than cached.
-    //     See docs-local/research/runtime/save-load-screen.md.
     if (typeof global.EditableStoreScroll != "undefined" &&
         typeof global.__cm_origScrolled == "undefined") {
       global.__cm_saveStore = void;
