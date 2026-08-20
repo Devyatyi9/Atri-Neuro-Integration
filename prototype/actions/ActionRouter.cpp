@@ -97,6 +97,16 @@ constexpr int kCapabilityStateSave = 13;
 // The voice tab: the same list again, holding recorded lines instead of saves.
 // Pressing one replays it, the way the backlog replays a line.
 constexpr int kCapabilityStateVoice = 14;
+// The backlog. Its four scroll controls come and go with the reading position,
+// so like play it is a base plus flags rather than one constant per case. The
+// base sits above the play range and the play test is bounded by it: without
+// that, a backlog value passed the play check and registered play actions with
+// the scroll flags read as choice/auto (observed 2026-08-20).
+constexpr int kCapabilityStateBacklogBase = 0x200;
+constexpr int kBacklogFlagPageUp = 1 << 0;
+constexpr int kBacklogFlagPageDown = 1 << 1;
+constexpr int kBacklogFlagTop = 1 << 2;
+constexpr int kBacklogFlagEnd = 1 << 3;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -429,6 +439,28 @@ void HandleSceneStepAction(std::string const &id,
 	                          : doneMessage);
 }
 
+// A plain press of a control on the current screen, for the ones that need no
+// argument and raise nothing: state, button, press.
+void HandleScreenButtonAction(std::string const &id,
+                              std::string const &data,
+                              char const *action,
+                              char const *state,
+                              char const *button,
+                              char const *okMessage,
+                              char const *failMessage) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    (std::string(action) + " does not accept arguments.").c_str());
+		return;
+	}
+	std::string const tag(action);
+	bool const ok = ProbeStateIs(state, (tag + " state").c_str()) &&
+	                ProbeScreenButtonReady(button, (tag + " button").c_str()) &&
+	                DispatchScreenButton(button, (tag + " dispatch").c_str());
+	NeuroSendActionResult(id.c_str(), ok, ok ? okMessage : failMessage);
+}
+
 void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -747,6 +779,22 @@ void HandleNeuroAction(std::string const &id,
 		HandleQuickMenuToggle(id, data, "open_save", "save",
 		                      "Opened the save screen.",
 		                      "Opening the save screen is unavailable.");
+	} else if (name == "backlog_page_up") {
+		HandleScreenButtonAction(id, data, "backlog_page_up", "backlog", "pageup",
+		                         "Scrolled the backlog up.",
+		                         "The backlog is already at the top.");
+	} else if (name == "backlog_page_down") {
+		HandleScreenButtonAction(id, data, "backlog_page_down", "backlog",
+		                         "pagedown", "Scrolled the backlog down.",
+		                         "The backlog is already at the bottom.");
+	} else if (name == "backlog_top") {
+		HandleScreenButtonAction(id, data, "backlog_top", "backlog", "top",
+		                         "Jumped back in the backlog.",
+		                         "There is nothing further back.");
+	} else if (name == "backlog_end") {
+		HandleScreenButtonAction(id, data, "backlog_end", "backlog", "end",
+		                         "Jumped forward in the backlog.",
+		                         "There is nothing further forward.");
 	} else if (name == "open_backlog") {
 		HandleOpenBacklogAction(id, data);
 	} else if (name == "start_auto_mode") {
@@ -899,7 +947,8 @@ void SyncCapabilities(int state) {
 		                 "continue, so a save has to be loaded.",
 		                 false);
 		Log("[Action] Capabilities: title-no-save (open_load)\n");
-	} else if (state >= kCapabilityStatePlayBase) {
+	} else if (state >= kCapabilityStatePlayBase &&
+	           state < kCapabilityStateBacklogBase) {
 		bool const choice = (state & kPlayFlagChoice) != 0;
 		bool const panelOut = (state & kPlayFlagPanelOut) != 0;
 		bool const autoMode = (state & kPlayFlagAuto) != 0;
@@ -1072,6 +1121,41 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendFreeSlotContext();
 		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
+	} else if (state >= kCapabilityStateBacklogBase) {
+		std::vector<NeuroRegisteredAction> actions;
+		actions.push_back({"go_back", "Close the backlog and return to the game.",
+		                   kGoBackSchema});
+		if ((state & kBacklogFlagPageUp) != 0) {
+			actions.push_back({"backlog_page_up",
+			                   "Scroll the backlog up one page.",
+			                   kBacklogPageUpSchema});
+		}
+		if ((state & kBacklogFlagPageDown) != 0) {
+			actions.push_back({"backlog_page_down",
+			                   "Scroll the backlog down one page.",
+			                   kBacklogPageDownSchema});
+		}
+		if ((state & kBacklogFlagTop) != 0) {
+			actions.push_back({"backlog_top",
+			                   "Jump back to the previous scene break in the "
+			                   "backlog, or to its start.",
+			                   kBacklogTopSchema});
+		}
+		if ((state & kBacklogFlagEnd) != 0) {
+			actions.push_back({"backlog_end",
+			                   "Jump forward to the next scene break in the "
+			                   "backlog, or to its end.",
+			                   kBacklogEndSchema});
+		}
+		NeuroSetRegisteredActions(actions.data(),
+		                          static_cast<int>(actions.size()));
+		std::string summary = "[Action] Capabilities: backlog (";
+		for (size_t i = 0; i < actions.size(); ++i) {
+			if (i) summary += ", ";
+			summary += actions[i].name;
+		}
+		summary += ")\n";
+		Log(summary.c_str());
 	} else if (state == kCapabilityStateVoice) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
@@ -1215,6 +1299,11 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(kCapabilityStateLoad);
 	} else if (screen.state == "save") {
 		SyncCapabilities(kCapabilityStateSave);
+	} else if (screen.state == "backlog") {
+		int flags = 0;
+		if (ProbeBacklogButtons(flags)) {
+			SyncCapabilities(kCapabilityStateBacklogBase | flags);
+		}
 	} else if (screen.state == "voice") {
 		SyncCapabilities(kCapabilityStateVoice);
 	} else {

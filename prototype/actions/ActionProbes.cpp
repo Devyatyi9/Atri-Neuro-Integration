@@ -424,6 +424,33 @@ bool ProbeBookmarkList(int limit, std::string &out, int &total) {
 	return true;
 }
 
+bool ProbeBacklogButtons(int &flags) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
+	        L"!= 'Object' || typeof kag.current.names == 'undefined') "
+	        L"return '';"
+	        L"var n = kag.current.names, s = '';"
+	        L"var t = ['pageup', 'pagedown', 'top', 'end'];"
+	        L"for (var i = 0; i < t.count; i++) {"
+	        L"var b = n[t[i]];"
+	        L"s += (typeof b == 'Object' && b.enabled) ? '1' : '0'; }"
+	        L"return s; })()",
+	        raw, "backlog buttons")) {
+		return false;
+	}
+	if (raw.size() != 4) {
+		return false;
+	}
+	flags = 0;
+	for (int i = 0; i < 4; ++i) {
+		if (raw[i] == '1') {
+			flags |= 1 << i;
+		}
+	}
+	return true;
+}
+
 bool ProbeDialogVisible(char const *tag) {
 	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
 	           L"kag.currentDialog != 'Object') return 0;"
