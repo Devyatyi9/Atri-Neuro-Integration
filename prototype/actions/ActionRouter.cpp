@@ -557,7 +557,19 @@ void HandleOpenMenuAction(std::string const &id, std::string const &data) {
 		ok = false;
 	}
 
-	// 2. Press the quick menu's own Option button instead of calling
+	// 2. The bar has to be out. The option button reports visible/enabled even
+	//    while retracted, so without this the settings screen could still open
+	//    with nothing on screen having been pressed.
+	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                     L"kag.QuickMenu != 'Object') return 0;"
+	                     L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
+	                     ready, "open_menu dropdown")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+	
+	// 3. Press the quick menu's own Option button instead of calling
 	//    SystemAction.option() directly. Same destination, but it is the control
 	//    a player actually clicks, so the action is visible on screen rather
 	//    than the settings appearing from nowhere.
@@ -725,17 +737,20 @@ void SyncCapabilities(int state) {
 		}
 		// The quick menu is reachable during a choice too, so it is offered in
 		// every play state -- only its direction follows the bar's position.
+		// open_menu rides with it: the settings screen is reached by the bar's
+		// own option button, so offering it while the bar is retracted meant an
+		// action with nothing on screen behind it.
 		if (panelOut) {
 			actions.push_back({"close_quick_menu", "Retract the quick menu bar.",
 			                   kCloseQuickMenuSchema});
+			actions.push_back(
+			    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
 		} else {
 			actions.push_back(
 			    {"open_quick_menu",
 			     "Slide out the quick menu bar so its buttons are visible.",
 			     kOpenQuickMenuSchema});
 		}
-		actions.push_back(
-		    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));
 		std::string summary = "[Action] Capabilities: ";
