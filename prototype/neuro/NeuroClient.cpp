@@ -126,6 +126,29 @@ neurosdk_error_e SendRegisteredActions() {
 	return SendMessage(&message);
 }
 
+// `actions/register` is additive on the server: it adds to whatever the server
+// already knows and never implies removal. Dropping an action therefore needs
+// an explicit `actions/unregister`, exactly as the SDK's own reference client
+// does (lib/neurosdk/examples/rock_paper_scissors.c uses both messages).
+// Re-sending a shorter register list is not enough -- the server keeps the
+// stale action.
+neurosdk_error_e SendUnregisterActions(std::vector<std::string> const &names) {
+	if (names.empty()) {
+		return NeuroSDK_None;
+	}
+	std::vector<char *> sdkNames;
+	sdkNames.reserve(names.size());
+	for (std::string const &name : names) {
+		sdkNames.push_back(const_cast<char *>(name.c_str()));
+	}
+	neurosdk_message_t message = {};
+	message.kind = NeuroSDK_MessageKind_ActionsUnregister;
+	message.value.actions_unregister.action_names = sdkNames.data();
+	message.value.actions_unregister.action_names_len =
+	    static_cast<int>(sdkNames.size());
+	return SendMessage(&message);
+}
+
 void DispatchAction(std::string const &id,
                     std::string const &name,
                     std::string const &data) {
@@ -352,8 +375,24 @@ bool NeuroSendContext(char const *message, bool silent) {
 
 bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
                                int actionCount) {
+	std::vector<std::string> droppedNames;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		// Names present before but absent from the new set have to be revoked
+		// explicitly; see SendUnregisterActions.
+		for (RegisteredAction const &existing : g_RegisteredActions) {
+			bool stillRegistered = false;
+			for (int index = 0; index < actionCount; ++index) {
+				char const *const name = actions[index].name;
+				if (name && existing.name == name) {
+					stillRegistered = true;
+					break;
+				}
+			}
+			if (!stillRegistered) {
+				droppedNames.push_back(existing.name);
+			}
+		}
 		g_RegisteredActions.clear();
 		for (int index = 0; index < actionCount; ++index) {
 			g_RegisteredActions.push_back(
@@ -364,6 +403,12 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 	}
 	if (!NeuroIsConnected()) {
 		return true;
+	}
+	// Unregister first: the server then never observes a superset of both the
+	// outgoing and incoming action sets.
+	neurosdk_error_e const unregisterError = SendUnregisterActions(droppedNames);
+	if (unregisterError != NeuroSDK_None) {
+		LogError("Unregister dropped actions failed", unregisterError);
 	}
 	neurosdk_error_e const error = SendRegisteredActions();
 	if (error != NeuroSDK_None) {
@@ -411,7 +456,9 @@ bool NeuroUnregisterAction(char const *name) {
 	if (!NeuroIsConnected()) {
 		return true;
 	}
-	neurosdk_error_e const error = SendRegisteredActions();
+	// Revoke it on the server as well; re-sending the shorter register list
+	// alone would leave the action live there (see SendUnregisterActions).
+	neurosdk_error_e const error = SendUnregisterActions({name});
 	if (error != NeuroSDK_None) {
 		LogError("Unregister action failed", error);
 		return false;
