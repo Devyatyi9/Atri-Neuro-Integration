@@ -181,6 +181,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
 }
 
 void ShutdownPluginWorkers() {
+	// Before anything is joined: the workers are mostly blocked in synchronous
+	// TJS calls, and the game thread that answers them is on its way out.
+	BeginTJSExecutorShutdown();
 	if (g_WorkerShutdownStarted.exchange(true)) {
 		return;
 	}

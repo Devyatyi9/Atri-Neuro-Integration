@@ -5,6 +5,11 @@
 class tTJSVariant;
 
 bool InitializeTJSExecutor();
+// Stops new synchronous calls and releases the ones already waiting. Called
+// first thing in shutdown: the game window stops pumping messages as it
+// closes, so a call already in WaitForSingleObject would otherwise hold the
+// whole timeout, and the thread join behind it holds the process.
+void BeginTJSExecutorShutdown();
 void ShutdownTJSExecutor();
 void StopAcceptingTJSCalls();
 void BlockNextTJSSyncCallForStressTest();

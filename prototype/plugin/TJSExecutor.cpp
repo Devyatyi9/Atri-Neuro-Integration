@@ -321,6 +321,13 @@ bool InitializeTJSExecutor() {
 	return SubclassGameWindow();
 }
 
+constexpr DWORD kShutdownCheckMs = 50;
+std::atomic<bool> g_TJSShuttingDown(false);
+
+void BeginTJSExecutorShutdown() {
+	g_TJSShuttingDown.store(true, std::memory_order_release);
+}
+
 void ShutdownTJSExecutor() {
 	UnsubclassGameWindow();
 	if (g_ScriptDispatch) {
@@ -579,7 +586,22 @@ bool ExecuteTJSSync(wchar_t const *code,
 		return false;
 	}
 
-	DWORD waitResult = WaitForSingleObject(data->completedEvent, timeoutMs);
+	// Waited in slices rather than in one block so shutdown is noticed while the
+	// game thread is already gone. Waiting the full timeout there added seconds
+	// to closing the game and made the window appear to hang.
+	DWORD waitResult = WAIT_TIMEOUT;
+	for (DWORD waited = 0; waited < timeoutMs; waited += kShutdownCheckMs) {
+		DWORD const slice = timeoutMs - waited < kShutdownCheckMs
+		                        ? timeoutMs - waited
+		                        : kShutdownCheckMs;
+		waitResult = WaitForSingleObject(data->completedEvent, slice);
+		if (waitResult == WAIT_OBJECT_0) {
+			break;
+		}
+		if (g_TJSShuttingDown.load(std::memory_order_acquire)) {
+			break;
+		}
+	}
 	bool completed = waitResult == WAIT_OBJECT_0;
 	bool executed = completed && data->executed;
 	if (executed && result) {
