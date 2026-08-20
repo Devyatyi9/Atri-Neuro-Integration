@@ -307,6 +307,31 @@ bool ProbeSaveWindow(int &offset, int &page) {
 	return true;
 }
 
+bool ProbeFreeSlots(int limit, std::string &out, int &total) {
+	// Starts at 10: 0..9 are the quick saves, which sit on their own tab.
+	std::string raw;
+	wchar_t probe[768];
+	if (_snwprintf_s(probe, _TRUNCATE,
+	                 L"(function(){ if (typeof kag == 'undefined') return '0';"
+	                 L"var found = 0, listed = 0, s = '';"
+	                 L"for (var i = 10; i < kag.numBookMarks; i++) {"
+	                 L"if (kag.isExistentBookMark(i)) continue;"
+	                 L"found++;"
+	                 L"if (listed < %d) { listed++; s += ' ' + (i + 1); } }"
+	                 L"return found + s; })()",
+	                 limit) < 0) {
+		Log("[Action] free slot probe did not fit\n");
+		return false;
+	}
+	if (!QueryString(probe, raw, "free slots")) {
+		return false;
+	}
+	size_t const space = raw.find(' ');
+	total = atoi(raw.substr(0, space).c_str());
+	out = space == std::string::npos ? std::string() : raw.substr(space + 1);
+	return true;
+}
+
 bool ProbeSlotsShowBase(int base, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "

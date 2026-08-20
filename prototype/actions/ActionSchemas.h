@@ -61,6 +61,15 @@ constexpr char const *const kStopSkipModeSchema =
 // 0-based array.
 // `slot` counts from 1 like the numbering on the load screen; the handler
 // converts to kag's 0-based bookmark index.
+constexpr char const *const kOpenSaveSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+// Same shape as load: `slot` counts from 1. Only empty slots are accepted.
+constexpr char const *const kSaveGameSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
+    "\"required\":[\"slot\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kLoadSaveSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"

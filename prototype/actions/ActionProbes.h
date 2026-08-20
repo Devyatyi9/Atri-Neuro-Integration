@@ -103,6 +103,9 @@ bool ProbeSlotsShowBase(int base, char const *tag);
 // 1. Capped at `limit` entries; `total` receives how many exist in all. Neuro
 // cannot see the screen, so without this the slot numbers mean nothing to her.
 bool ProbeBookmarkList(int limit, std::string &out, int &total);
+// The slot numbers, from 1, of the first `limit` free slots outside the quick
+// range -- what save_game will accept. `total` receives how many are free.
+bool ProbeFreeSlots(int limit, std::string &out, int &total);
 
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);

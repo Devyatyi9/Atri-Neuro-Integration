@@ -87,6 +87,10 @@ constexpr int kCapabilityStateBare = 11;
 // screens, but also the save slots, and entering it is the moment to say what
 // is in them -- the slot numbers mean nothing on their own.
 constexpr int kCapabilityStateLoad = 12;
+// The save screen. Same list as load, different mode: occupied slots are
+// writable there rather than loadable, so what is worth saying on entry is
+// which slots are free.
+constexpr int kCapabilityStateSave = 13;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -416,28 +420,93 @@ constexpr int kQuickSaveCount = 10;
 constexpr int kVisibleSlots = 10;
 constexpr int kSlotColumns = 5;
 
-// Waits for the slot to be pressed and its confirmation to appear.
-bool PressSaveSlot(int position) {
+// Brings the shared save/load list to the window holding `bookmark` and returns
+// its position 0..9 there, or -1 after sending the refusal itself.
+//
+// Load and save are the same screen in two modes, so this serves both.
+int MoveToBookmark(std::string const &id, int bookmark) {
+	int const wantedOffset =
+	    bookmark < kQuickSaveCount ? 0
+	                               : bookmark / kVisibleSlots * kVisibleSlots;
+
+	int offset = -1;
+	int page = -1;
+	if (!ProbeSaveWindow(offset, page)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "Cannot tell which slots the screen is showing right now.");
+		return -1;
+	}
+
+	if (offset != wantedOffset) {
+		// Switching tabs is left to the player: quick and normal saves are
+		// different screens to look at, and moving between them behind her back
+		// would make the slot numbers mean something else mid-action.
+		if ((bookmark < kQuickSaveCount) != (page == 0)) {
+			NeuroSendActionResult(id.c_str(), false,
+			                      bookmark < kQuickSaveCount
+			                          ? "That is a quick save slot; open the "
+			                            "Quick tab first."
+			                          : "That slot is on the normal save list; "
+			                            "leave the Quick tab first.");
+			return -1;
+		}
+
+		char pageButton[16];
+		sprintf_s(pageButton, "page%d", wantedOffset / kVisibleSlots);
+		if (!ProbeScreenButtonReady(pageButton, "slot page button") ||
+		    !DispatchScreenButton(pageButton, "slot page dispatch")) {
+			NeuroSendActionResult(id.c_str(), false,
+			                      "Could not reach the page that slot is on.");
+			return -1;
+		}
+
+		// The list redraws well after the press, and a press does not always
+		// land. Rather than trust it, read back where the window actually ended
+		// up; getting this wrong touches a different slot than the one asked for.
+		Sleep(kPageChangeSettleMs);
+		if (!ProbeSaveWindow(offset, page) || offset != wantedOffset) {
+			NeuroSendActionResult(
+			    id.c_str(), false,
+			    "The screen did not move to the page that slot is on.");
+			return -1;
+		}
+	}
+	return bookmark - offset;
+}
+
+bool PressSlot(int position, char const *tag) {
 	char itemButton[16];
 	sprintf_s(itemButton, "item%d%d", position / kSlotColumns,
 	          position % kSlotColumns);
-	if (!ProbeScreenButtonReady(itemButton, "load_save slot button")) {
-		return false;
-	}
-	return DispatchScreenButton(itemButton, "load_save slot dispatch");
+	std::string const label(tag);
+	return ProbeScreenButtonReady(itemButton, (label + " button").c_str()) &&
+	       DispatchScreenButton(itemButton, (label + " dispatch").c_str());
 }
 
-void HandleLoadSaveAction(std::string const &id, std::string const &data) {
-	// Numbered from 1 like the list the context message sends, and like
-	// select_choice. kag's bookmark index is 0-based.
+// Both slot actions number from 1, like the list their context message sends and
+// like select_choice. kag's bookmark index is 0-based.
+bool ParseSlot(std::string const &id,
+               std::string const &data,
+               char const *action,
+               int &bookmark) {
 	int number = -1;
 	if (!ParseJsonInteger(data, "\"slot\"", number) || number < 1) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    "load_save requires an integer \"slot\" of 1 or more.");
+		    (std::string(action) + " requires an integer \"slot\" of 1 or more.")
+		        .c_str());
+		return false;
+	}
+	bookmark = number - 1;
+	return true;
+}
+
+void HandleLoadSaveAction(std::string const &id, std::string const &data) {
+	int bookmark = -1;
+	if (!ParseSlot(id, data, "load_save", bookmark)) {
 		return;
 	}
-	int const bookmark = number - 1;
 
 	if (!ProbeStateIs("load", "load_save state")) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -449,63 +518,20 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	int const wantedOffset =
-	    bookmark < kQuickSaveCount
-	        ? 0
-	        : bookmark / kVisibleSlots * kVisibleSlots;
-
-	int offset = -1;
-	int page = -1;
-	if (!ProbeSaveWindow(offset, page)) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    "Cannot tell which saves the screen is showing right now.");
+	int const position = MoveToBookmark(id, bookmark);
+	if (position < 0) {
 		return;
 	}
-
-	if (offset != wantedOffset) {
-		// Switching tabs is left to the player: the quick tab and the load tab
-		// are different screens to look at, and moving between them behind her
-		// back would make the slot numbers mean something else mid-action.
-		if ((bookmark < kQuickSaveCount) != (page == 0)) {
-			NeuroSendActionResult(
-			    id.c_str(), false,
-			    bookmark < kQuickSaveCount
-			        ? "That is a quick save; open the Quick tab first."
-			        : "That save is on the Load tab; open it first.");
-			return;
-		}
-
-		char pageButton[16];
-		sprintf_s(pageButton, "page%d", wantedOffset / kVisibleSlots);
-		if (!ProbeScreenButtonReady(pageButton, "load_save page button") ||
-		    !DispatchScreenButton(pageButton, "load_save page dispatch")) {
-			NeuroSendActionResult(id.c_str(), false,
-			                      "Could not reach the page that slot is on.");
-			return;
-		}
-
-		// The list redraws well after the press, and a press does not always
-		// land. Rather than trust it, read back where the window actually ended
-		// up; getting this wrong loads a different save than the one asked for.
-		Sleep(kPageChangeSettleMs);
-		if (!ProbeSaveWindow(offset, page) || offset != wantedOffset) {
-			NeuroSendActionResult(
-			    id.c_str(), false,
-			    "The load screen did not move to the page that slot is on.");
-			return;
-		}
-	}
-
-	if (!PressSaveSlot(bookmark - offset)) {
+	if (!PressSlot(position, "load_save slot")) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "That slot is not selectable right now.");
 		return;
 	}
 
-	// Pressing an empty slot does nothing at all -- no dialog, no state change
-	// -- so silence is the failure signal. A load that took either raises the
-	// confirmation or, when SystemConfig.askload is off, lands straight in play.
+	// Pressing a slot that will not load does nothing at all -- no dialog, no
+	// state change -- so silence is the failure signal. A load that took either
+	// raises the confirmation or, when SystemConfig.askload is off, lands
+	// straight in play.
 	Sleep(kDialogSettleMs);
 	if (!ProbeLoadAccepted("load_save accepted")) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -515,6 +541,48 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(
 	    id.c_str(), true,
 	    "Selected the save; confirm or cancel the dialog to load it.");
+}
+
+void HandleSaveGameAction(std::string const &id, std::string const &data) {
+	int bookmark = -1;
+	if (!ParseSlot(id, data, "save_game", bookmark)) {
+		return;
+	}
+
+	if (!ProbeStateIs("save", "save_game state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Saving is only possible from the save screen.");
+		return;
+	}
+	// Empty slots only. An occupied slot raises an overwrite confirmation and
+	// destroys a save someone deliberately made; that is not something to hand
+	// out until there is a decision about whether to allow it at all.
+	if (ProbeBookmarkExists(bookmark, "save_game occupied")) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "That slot already holds a save, and overwriting is not allowed. "
+		    "Pick an empty slot.");
+		return;
+	}
+
+	int const position = MoveToBookmark(id, bookmark);
+	if (position < 0) {
+		return;
+	}
+	if (!PressSlot(position, "save_game slot")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That slot is not selectable right now.");
+		return;
+	}
+
+	// An empty slot writes immediately -- no confirmation, unlike overwriting --
+	// so the slot turning occupied is the proof it worked.
+	Sleep(kDialogSettleMs);
+	if (!ProbeBookmarkExists(bookmark, "save_game written")) {
+		NeuroSendActionResult(id.c_str(), false, "The save did not go through.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Saved the game to that slot.");
 }
 
 void HandleGoBackAction(std::string const &id, std::string const &data) {
@@ -574,6 +642,12 @@ void HandleNeuroAction(std::string const &id,
 		HandleOpenLoadAction(id, data);
 	} else if (name == "load_save") {
 		HandleLoadSaveAction(id, data);
+	} else if (name == "save_game") {
+		HandleSaveGameAction(id, data);
+	} else if (name == "open_save") {
+		HandleQuickMenuToggle(id, data, "open_save", "save",
+		                      "Opened the save screen.",
+		                      "Opening the save screen is unavailable.");
 	} else if (name == "open_backlog") {
 		HandleOpenBacklogAction(id, data);
 	} else if (name == "start_auto_mode") {
@@ -600,6 +674,28 @@ void HandleNeuroAction(std::string const &id,
 // Lists the saved games as Neuro will have to refer to them. Sent on entering
 // the load screen rather than on demand: she has no way to look at the slots,
 // and a number without a scene name behind it is not a choice.
+// Which slots save_game will take. Occupied ones are refused, so listing the
+// saves themselves here would only invite refusals.
+void SendFreeSlotContext() {
+	std::string slots;
+	int total = 0;
+	if (!ProbeFreeSlots(kListedSaves, slots, total)) {
+		return;
+	}
+	if (total == 0) {
+		NeuroSendContext("The save screen is open. Every slot is taken, and "
+		                 "overwriting is not allowed.",
+		                 false);
+		return;
+	}
+	std::string message = "The save screen is open. Free slots:" + slots;
+	if (total > kListedSaves) {
+		message += " and " + std::to_string(total - kListedSaves) + " more";
+	}
+	message += ". Occupied slots cannot be overwritten.";
+	NeuroSendContext(message.c_str(), false);
+}
+
 void SendSaveListContext() {
 	std::string list;
 	int total = 0;
@@ -703,6 +799,9 @@ void SyncCapabilities(int state) {
 			actions.push_back({"open_load",
 			                   "Open the load screen to pick a saved game.",
 			                   kOpenLoadSchema});
+			actions.push_back({"open_save",
+			                   "Open the save screen to store progress in a slot.",
+			                   kOpenSaveSchema});
 			actions.push_back({"open_backlog",
 			                   "Open the backlog to re-read earlier lines.",
 			                   kOpenBacklogSchema});
@@ -801,6 +900,24 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendSaveListContext();
 		Log("[Action] Capabilities: load (go_back, return_to_title, load_save)\n");
+	} else if (state == kCapabilityStateSave) {
+		NeuroRegisteredAction const actions[] = {
+		    {"go_back",
+		     "Leave the current screen and return to the one it was opened from.",
+		     kGoBackSchema},
+		    {"return_to_title",
+		     "Leave the game and go back to the title screen. Asks for "
+		     "confirmation first.",
+		     kReturnToTitleSchema},
+		    {"save_game",
+		     "Save the current progress into an empty slot, by the slot number "
+		     "listed when this screen opened. Occupied slots are refused.",
+		     kSaveGameSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		SendFreeSlotContext();
+		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
 	} else if (state == kCapabilityStateBare) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: bare (none)\n");
@@ -925,6 +1042,8 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(play);
 	} else if (screen.state == "load") {
 		SyncCapabilities(kCapabilityStateLoad);
+	} else if (screen.state == "save") {
+		SyncCapabilities(kCapabilityStateSave);
 	} else {
 		// Anything that is neither the title nor play. Rather than matching a
 		// list of screen names -- which kept missing ones, and left the previous
