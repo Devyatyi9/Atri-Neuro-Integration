@@ -589,6 +589,25 @@ void HandleViewCgAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Opened that picture.");
 }
 
+void HandleNextCgViewAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "next_cg_view does not accept arguments.");
+		return;
+	}
+	if (!ProbeStateIs("cgmode", "next_cg_view state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the Extra screen.");
+		return;
+	}
+	if (!DispatchGalleryNextView("next_cg_view dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "There is no picture open.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Moved to the next view of that picture.");
+}
+
 void HandleCloseCgAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -1103,6 +1122,8 @@ void HandleNeuroAction(std::string const &id,
 		                         "The music list is already at the bottom.");
 	} else if (name == "view_cg") {
 		HandleViewCgAction(id, data);
+	} else if (name == "next_cg_view") {
+		HandleNextCgViewAction(id, data);
 	} else if (name == "close_cg") {
 		HandleCloseCgAction(id, data);
 	} else if (name == "gallery_page") {
@@ -1469,12 +1490,16 @@ void SyncCapabilities(int state) {
 		std::vector<NeuroRegisteredAction> actions;
 		// While a picture is up it covers the grid, so nothing behind it applies.
 		if (viewOpen) {
-			// Stepping between the views of one picture is left out: the scenario
-			// advances on a left click into the picture layer, which holds focus
-			// while it is up, and nothing reaches it from here yet.
 			actions.push_back({"close_cg",
 			                   "Close the picture and go back to the grid.",
 			                   kGalleryViewSchema});
+			// Offered only while that picture still has further views; on the
+			// last one the game itself returns to the grid.
+			if ((state & kGalleryMoreViewsFlag) != 0) {
+				actions.push_back({"next_cg_view",
+				                   "Show the next view of the open picture.",
+				                   kGalleryViewSchema});
+			}
 		} else {
 			actions.push_back({"go_back",
 			                   "Leave the Extra screen and return to the title.",

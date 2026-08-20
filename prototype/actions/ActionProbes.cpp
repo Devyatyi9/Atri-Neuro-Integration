@@ -578,11 +578,12 @@ bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
 	        L"s += (typeof b == 'Object' && b.enabled) ? '1' : '0'; }"
 	        // Absent controller means nothing has been opened yet, which is the
 	        // same answer as "closed".
-	        // A view covering the grid is recognised by the grid's own controls
-	        // being gone, not by the controller's isQuitViewLoop: that reads
-	        // "finished" while a video is still playing, and the controller
-	        // handle itself dies with each view. The remaining-views count is
-	        // best effort and guarded on its own.
+	        // Neither signal covers both kinds of entry on its own, so both are
+	        // asked. A video replaces the screen, taking the grid's own controls
+	        // with it, but reports isQuitViewLoop as finished while it still
+	        // plays. A picture keeps the controls in place and is only visible
+	        // through isQuitViewLoop. The controller handle dies with each view,
+	        // so its half is guarded separately.
 	        L"var open = kag.current.names['back'] === void ? 1 : 0, left = 0;"
 	        L"try { if (typeof global.__cm_gallery == 'Object') {"
 	        L"var g = global.__cm_gallery;"
@@ -630,6 +631,20 @@ bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
 	return AskFormatted(L"(function(){ if (typeof Current != 'Object') return 0;"
 	                    L"Current.cmd('%hs/%d'); return 1; })()",
 	                    tag, verb, index);
+}
+
+bool DispatchGalleryNextView(char const *tag) {
+	// The scenario waits for a click at [s] with the picture layer holding
+	// focus, so the click has to be delivered into that layer -- the window's
+	// own onPrimaryClick never reaches it. Four arguments: the two-argument form
+	// is rejected outright.
+	return Ask(L"(function(){ if (typeof global.__cm_gallery != 'Object') "
+	           L"return 0;"
+	           L"try { var l = global.__cm_gallery.cglayer;"
+	           L"if (typeof l != 'Object') return 0;"
+	           L"l.onMouseUp(l.width \\ 2, l.height \\ 2, mbLeft, 0);"
+	           L"return 1; } catch (e) { return 0; } })()",
+	           tag);
 }
 
 bool DispatchGalleryExit(char const *tag) {

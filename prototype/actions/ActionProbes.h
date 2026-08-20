@@ -171,6 +171,9 @@ bool DispatchGalleryItem(char const *verb, int index, char const *tag);
 // listens for (*view_rclick -> *view_quit). Not the controller's own onNext:
 // that reaches into an object the engine has already released once a video is
 // playing, and killed the game outright (cgmode.ks:27, 2026-08-20).
+// Steps to the next view of the open picture, by clicking into the picture
+// layer -- the scenario waits there and the window's own click never arrives.
+bool DispatchGalleryNextView(char const *tag);
 bool DispatchGalleryExit(char const *tag);
 bool HoverGalleryItem(char const *prefix, int index, char const *tag);
 
