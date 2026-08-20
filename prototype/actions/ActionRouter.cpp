@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #pragma warning(push)
 #pragma warning(disable : 26495)
@@ -51,6 +52,23 @@ constexpr int kCapabilityStateTitleLoading = 3;
 // A confirmation dialog is modal: nothing else can succeed while it is up, so
 // it gets its own state carrying only the answer action.
 constexpr int kCapabilityStateDialog = 4;
+// The four play states below are the same screen with two independent flags:
+// whether a choice is up, and whether the quick menu bar is out. They are
+// separate states only so the dedup in SyncCapabilities still works on a single
+// int; the action list itself is composed in one place.
+//
+// Choice vs text is a disposable action window in the sense of the SDK's own
+// guidance (neuro-sdk/API/README.md, "Unregister disposable actions before
+// sending result"): while the select layer is up, advancing the text does
+// nothing, and select_choice stops being answerable the moment the layer
+// closes. Offering both at once advertised one action that was certain to fail
+// either way. The quick menu splits the same way -- the bar is either out or
+// retracted, so only one of open/close can apply. Everything that stays valid
+// throughout, including reaching the bar itself during a choice, is offered in
+// all four.
+constexpr int kCapabilityStateChoice = 5;
+constexpr int kCapabilityStateGamePanel = 6;
+constexpr int kCapabilityStateChoicePanel = 7;
 
 char const *kContinueGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
@@ -60,7 +78,7 @@ char const *kAdvanceTextSchema =
     "\"additionalProperties\":false}";
 char const *kSelectChoiceSchema =
     "{\"type\":\"object\",\"properties\":{"
-    "\"index\":{\"type\":\"integer\",\"minimum\":0}},"
+    "\"index\":{\"type\":\"integer\",\"minimum\":1}},"
     "\"required\":[\"index\"],"
     "\"additionalProperties\":false}";
 char const *kGoBackSchema =
@@ -215,13 +233,17 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 }
 
 void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
-	int index = -1;
-	if (!ParseJsonInteger(data, "\"index\"", index) || index < 0) {
+	// Numbered from 1, matching the choice list the context message shows
+	// ("1) ... 2) ..."). The engine array is 0-based, so the two disagreed:
+	// reading "1)" off the context and sending 1 picked the second option.
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"index\"", number) || number < 1) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "select_choice requires a non-negative integer "
-		                      "\"index\".");
+		                      "select_choice requires an integer \"index\" of 1 "
+		                      "or more.");
 		return;
 	}
+	int const index = number - 1;
 
 	bool ok = true;
 	bool ready = false;
@@ -260,7 +282,7 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 		           L"(function(){ if (typeof kag == 'undefined' || "
 		           L"typeof kag.selectLayer == 'undefined') return 0;"
 		           L"var layer = kag.selectLayer;"
-		           L"if (layer.selects == void || layer.selects.count < "
+		           L"if (layer.selects == void || layer.selects.count <= "
 		           L"%d) return 0;"
 		           L"var button = layer.selects[%d];"
 		           L"if (!isvalid button || (typeof button.enabled != "
@@ -683,22 +705,49 @@ void SyncCapabilities(int state) {
 		// something to do.
 		NeuroSendContext("The main menu is ready.", false);
 		Log("[Action] Capabilities: title (continue_game)\n");
-	} else if (state == kCapabilityStateGame) {
-		NeuroRegisteredAction const actions[] = {
-		    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema},
-		    {"select_choice", "Choose a dialogue option by index.",
-		     kSelectChoiceSchema},
-		    {"open_menu", "Open the settings menu.", kOpenMenuSchema},
-		    {"open_quick_menu",
-		     "Slide out the quick menu bar so its buttons are visible.",
-		     kOpenQuickMenuSchema},
-		    {"close_quick_menu", "Retract the quick menu bar.",
-		     kCloseQuickMenuSchema},
-		};
-		NeuroSetRegisteredActions(
-		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		Log("[Action] Capabilities: game (advance_text, select_choice, "
-		    "open_menu, open_quick_menu, close_quick_menu, return_to_title)\n");
+	} else if (state == kCapabilityStateGame ||
+	           state == kCapabilityStateGamePanel ||
+	           state == kCapabilityStateChoice ||
+	           state == kCapabilityStateChoicePanel) {
+		bool const choice = state == kCapabilityStateChoice ||
+		                   state == kCapabilityStateChoicePanel;
+		bool const panelOut = state == kCapabilityStateGamePanel ||
+		                      state == kCapabilityStateChoicePanel;
+		std::vector<NeuroRegisteredAction> actions;
+		if (choice) {
+			actions.push_back({"select_choice",
+			                   "Choose a dialogue option by its number in the "
+			                   "list, counting from 1.",
+			                   kSelectChoiceSchema});
+		} else {
+			actions.push_back(
+			    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema});
+		}
+		// The quick menu is reachable during a choice too, so it is offered in
+		// every play state -- only its direction follows the bar's position.
+		if (panelOut) {
+			actions.push_back({"close_quick_menu", "Retract the quick menu bar.",
+			                   kCloseQuickMenuSchema});
+		} else {
+			actions.push_back(
+			    {"open_quick_menu",
+			     "Slide out the quick menu bar so its buttons are visible.",
+			     kOpenQuickMenuSchema});
+		}
+		actions.push_back(
+		    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
+		NeuroSetRegisteredActions(actions.data(),
+		                          static_cast<int>(actions.size()));
+		std::string summary = "[Action] Capabilities: ";
+		summary += choice ? "choice" : "game";
+		if (panelOut) summary += "+panel";
+		summary += " (";
+		for (size_t i = 0; i < actions.size(); ++i) {
+			if (i) summary += ", ";
+			summary += actions[i].name;
+		}
+		summary += ")\n";
+		Log(summary.c_str());
 	} else if (state == kCapabilityStateDialog) {
 		NeuroRegisteredAction const actions[] = {
 		    {"answer_dialog",
@@ -762,10 +811,10 @@ void TrySendTitleLoadingNotice() {
 }
 
 void RefreshPrototypeActionState() {
-	// Screen state and modal-dialog presence come back from one probe as
-	// "<state>|<0|1>". They are needed together on every poll, and this runs at
-	// 5 Hz against the game main thread, so a second round trip here would be
-	// pure contention for no new information.
+	// Screen state, modal-dialog presence, choice-layer presence and quick menu
+	// position come back from one probe as "<state>|<d>|<c>|<p>". They are needed
+	// together on every poll, and this runs at 5 Hz against the game main thread,
+	// so extra round trips here would be pure contention for no new information.
 	tTJSVariant result;
 	bool const executed = ExecuteTJSSync(
 	    L"(function(){ var s = typeof SystemHook != 'undefined' ? "
@@ -774,10 +823,16 @@ void RefreshPrototypeActionState() {
 	    // member and simply holds void when no dialog is up, and typeof reports
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
-	    L"var d = 0;"
-	    L"if (typeof kag != 'undefined' && typeof kag.currentDialog == 'Object' "
-	    L"&& kag.currentDialog.visible) d = 1;"
-	    L"return s + '|' + d; })()",
+	    L"var d = 0, c = 0, p = 0;"
+	    L"if (typeof kag != 'undefined') {"
+	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
+	    L"d = 1;"
+	    L"if (kag.selectShowing) c = 1;"
+	    // _dropdown is the only usable flag for the bar's position: showing and
+	    // visible both read 1 even while it is retracted (menu-navigation.md).
+	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
+	    L"}"
+	    L"return s + '|' + d + '|' + c + '|' + p; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -792,13 +847,17 @@ void RefreshPrototypeActionState() {
 		return;
 	}
 
-	size_t const separator = probe.rfind('|');
-	if (separator == std::string::npos) {
+	// "<state>|<d>|<c>|<p>": the state can be empty but never contains a bar, so
+	// the three flags are read off the tail by fixed offset from the first one.
+	size_t const separator = probe.find('|');
+	if (separator == std::string::npos || probe.size() != separator + 6) {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return;
 	}
 	std::string const state = probe.substr(0, separator);
-	bool const dialogVisible = probe.compare(separator + 1, 1, "1") == 0;
+	bool const dialogVisible = probe[separator + 1] == '1';
+	bool const choiceVisible = probe[separator + 3] == '1';
+	bool const panelOut = probe[separator + 5] == '1';
 
 	// A modal dialog owns the screen: answering it is the only thing that can
 	// succeed, and leaving the other actions registered would invite calls that
@@ -871,7 +930,16 @@ void RefreshPrototypeActionState() {
 			TrySendTitleLoadingNotice();
 		}
 	} else if (state == "game") {
-		SyncCapabilities(kCapabilityStateGame);
+		// A choice is its own window: while the select layer is up, advancing the
+		// text does nothing, and once it closes select_choice has no target. The
+		// quick menu bar splits the same way -- only one of open/close applies.
+		if (choiceVisible) {
+			SyncCapabilities(panelOut ? kCapabilityStateChoicePanel
+			                          : kCapabilityStateChoice);
+		} else {
+			SyncCapabilities(panelOut ? kCapabilityStateGamePanel
+			                          : kCapabilityStateGame);
+		}
 	} else if (state == "option" || state == "load" || state == "save" ||
 	           state == "voice") {
 		SyncCapabilities(kCapabilityStateMenu);
