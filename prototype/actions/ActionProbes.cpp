@@ -89,11 +89,15 @@ bool ProbeStateIsMenuScreen(char const *tag) {
 	                 state, tag)) {
 		return false;
 	}
-	// Every value the system scenarios jump to, minus title and game. Collected
-	// from the sysjump/syscurrent tags in new-extract-data/sysscn/*.ks so the
-	// list is not built one screen at a time as they are discovered. "voice" is
-	// kept alongside "voicemode" because the older note recorded it that way and
-	// the screen has not been reached yet to settle which the engine reports.
+	// Every value the system scenarios jump to, minus title and game, collected
+	// from the sysjump/syscurrent tags in new-extract-data/sysscn/*.ks -- plus
+	// "voice", which that sweep cannot see because nothing jumps to it. It is the
+	// Voice tab inside the save/load screen, confirmed live 2026-08-20, and is a
+	// different screen from "voicemode" (the voice settings page).
+	//
+	// So this list is a lower bound, not the full set. Nothing depends on it
+	// being complete: the capability refresh resolves screens by the controls
+	// they carry, and this only guards the go_back handler.
 	return state == "option" || state == "load" || state == "save" ||
 	       state == "backlog" || state == "cgmode" || state == "scenemode" ||
 	       state == "soundmode" || state == "voicemode" || state == "voice" ||
