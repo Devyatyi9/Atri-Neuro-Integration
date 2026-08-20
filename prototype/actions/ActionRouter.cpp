@@ -1350,6 +1350,7 @@ void SyncCapabilities(int state) {
 			actions.push_back({"show_scene_list",
 			                   "Switch the backlog to the scene list.",
 			                   kShowSceneListSchema});
+		}
 		// The numbering is window-relative, so it is spelled out in the
 		// description each time rather than left for Neuro to infer: after a
 		// scroll the same number is a different line.
@@ -1368,9 +1369,13 @@ void SyncCapabilities(int state) {
 		std::string jumpText;
 		std::string voiceText;
 		if (!jumpList.empty()) {
-			jumpText = "Go back to one of the lines on screen, numbered from the "
-			           "top. Available now: " + jumpList +
-			           ". Asks for confirmation first.";
+			// In scene mode the same control jumps to whole scenes, so the
+			// wording follows the list that is actually showing.
+			jumpText = std::string("Go back to one of the ") +
+			           ((state & kBacklogFlagSceneList) != 0 ? "scenes"
+			                                                 : "lines") +
+			           " on screen, numbered from the top. Available now: " +
+			           jumpList + ". Asks for confirmation first.";
 			actions.push_back({"jump_to_line", jumpText.c_str(), kJumpToLineSchema});
 		}
 		if (!voiceList.empty()) {
@@ -1378,7 +1383,6 @@ void SyncCapabilities(int state) {
 			            "from the top. Available now: " + voiceList + ".";
 			actions.push_back(
 			    {"replay_backlog_voice", voiceText.c_str(), kReplayBacklogVoiceSchema});
-		}
 		}
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));
