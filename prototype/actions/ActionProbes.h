@@ -127,6 +127,14 @@ bool ProbeVoiceList(int limit, std::string &out, int &total);
 // the log the two downward ones go dark -- so this is re-read while the screen
 // is open rather than sampled once.
 bool ProbeBacklogButtons(int &flags);
+// Which of the five per-line slots on screen currently offer a jump and a voice
+// replay, as bit masks over slots 0..4. The buttons live in the backlog's
+// blockBaseLayer child and report it through `visible`, not `enabled`; the slots
+// are window-relative, so the same number means a different line after
+// scrolling. See docs-local/research/tjs/hooks/Backlog.tjs.md.
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask);
+// Presses one, through the same Current.cmd the button itself carries.
+bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 
 // Whether a modal confirmation is on screen right now.
 bool ProbeDialogVisible(char const *tag);

@@ -110,6 +110,12 @@ constexpr int kBacklogFlagEnd = 1 << 3;
 // Which of the two lists is showing. The screen has one toggle for both
 // directions, so only the one that would change something is offered.
 constexpr int kBacklogFlagSceneList = 1 << 4;
+// The five per-line slots, as two masks packed above the screen flags. They
+// are part of the capability value so that scrolling -- which changes which
+// lines are on screen -- re-registers and re-describes the numbering.
+constexpr int kBacklogJumpShift = 5;
+constexpr int kBacklogVoiceShift = 10;
+constexpr int kBacklogSlotMask = 0x1f;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -464,6 +470,51 @@ void HandleScreenButtonAction(std::string const &id,
 	NeuroSendActionResult(id.c_str(), ok, ok ? okMessage : failMessage);
 }
 
+// The two per-line controls. Their numbering is over the lines currently on
+// screen, so the slot is re-checked against what is visible at this moment.
+void HandleBacklogLineAction(std::string const &id,
+                             std::string const &data,
+                             char const *action,
+                             char const *verb,
+                             bool wantJump,
+                             char const *okMessage) {
+	int number = -1;
+	if (!ParseJsonInteger(data, "\"line\"", number) || number < 1 || number > 5) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    (std::string(action) + " requires a \"line\" between 1 and 5.").c_str());
+		return;
+	}
+	int const slot = number - 1;
+
+	std::string const tag(action);
+	if (!ProbeStateIs("backlog", (tag + " state").c_str())) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works while the backlog is open.");
+		return;
+	}
+	int jumpMask = 0;
+	int voiceMask = 0;
+	if (!ProbeBacklogLineButtons(jumpMask, voiceMask)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Cannot tell which lines are on screen right now.");
+		return;
+	}
+	int const mask = wantJump ? jumpMask : voiceMask;
+	if ((mask & (1 << slot)) == 0) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    wantJump ? "That line cannot be jumped to."
+		             : "That line has no voice to replay.");
+		return;
+	}
+	if (!DispatchBacklogLineButton(verb, slot, (tag + " dispatch").c_str())) {
+		NeuroSendActionResult(id.c_str(), false, "That line did not respond.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, okMessage);
+}
+
 void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -798,6 +849,13 @@ void HandleNeuroAction(std::string const &id,
 		HandleScreenButtonAction(id, data, "show_backlog_lines", "backlog",
 		                         "modechg", "Switched back to the lines.",
 		                         "Cannot switch the backlog view.");
+	} else if (name == "jump_to_line") {
+		HandleBacklogLineAction(id, data, "jump_to_line", "jump", true,
+		                        "Asked to go back to that line; confirm or cancel "
+		                        "the dialog.");
+	} else if (name == "replay_backlog_voice") {
+		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", false,
+		                        "Replaying that line.");
 	} else if (name == "backlog_top") {
 		HandleScreenButtonAction(id, data, "backlog_top", "backlog", "top",
 		                         "Jumped back in the backlog.",
@@ -1166,6 +1224,35 @@ void SyncCapabilities(int state) {
 			actions.push_back({"show_scene_list",
 			                   "Switch the backlog to the scene list.",
 			                   kShowSceneListSchema});
+		// The numbering is window-relative, so it is spelled out in the
+		// description each time rather than left for Neuro to infer: after a
+		// scroll the same number is a different line.
+		int const jumpMask = (state >> kBacklogJumpShift) & kBacklogSlotMask;
+		int const voiceMask = (state >> kBacklogVoiceShift) & kBacklogSlotMask;
+		std::string jumpList;
+		std::string voiceList;
+		for (int slot = 0; slot < 5; ++slot) {
+			if ((jumpMask & (1 << slot)) != 0) {
+				jumpList += (jumpList.empty() ? "" : ", ") + std::to_string(slot + 1);
+			}
+			if ((voiceMask & (1 << slot)) != 0) {
+				voiceList += (voiceList.empty() ? "" : ", ") + std::to_string(slot + 1);
+			}
+		}
+		std::string jumpText;
+		std::string voiceText;
+		if (!jumpList.empty()) {
+			jumpText = "Go back to one of the lines on screen, numbered from the "
+			           "top. Available now: " + jumpList +
+			           ". Asks for confirmation first.";
+			actions.push_back({"jump_to_line", jumpText.c_str(), kJumpToLineSchema});
+		}
+		if (!voiceList.empty()) {
+			voiceText = "Replay the voice of one of the lines on screen, numbered "
+			            "from the top. Available now: " + voiceList + ".";
+			actions.push_back(
+			    {"replay_backlog_voice", voiceText.c_str(), kReplayBacklogVoiceSchema});
+		}
 		}
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));
@@ -1321,8 +1408,13 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(kCapabilityStateSave);
 	} else if (screen.state == "backlog") {
 		int flags = 0;
-		if (ProbeBacklogButtons(flags)) {
-			SyncCapabilities(kCapabilityStateBacklogBase | flags);
+		int jumpMask = 0;
+		int voiceMask = 0;
+		if (ProbeBacklogButtons(flags) &&
+		    ProbeBacklogLineButtons(jumpMask, voiceMask)) {
+			SyncCapabilities(kCapabilityStateBacklogBase | flags |
+			                 (jumpMask << kBacklogJumpShift) |
+			                 (voiceMask << kBacklogVoiceShift));
 		}
 	} else if (screen.state == "voice") {
 		SyncCapabilities(kCapabilityStateVoice);

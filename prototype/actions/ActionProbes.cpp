@@ -453,6 +453,52 @@ bool ProbeBacklogButtons(int &flags) {
 	return true;
 }
 
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
+	        L"!= 'Object') return '';"
+	        L"var base = void;"
+	        L"for (var i = 0; i < kag.current.children.count; i++) {"
+	        L"if (kag.current.children[i].name == 'blockBaseLayer') "
+	        L"base = kag.current.children[i]; }"
+	        L"if (typeof base != 'Object') return '';"
+	        L"var j = '', v = '';"
+	        L"for (var n = 0; n < 5; n++) {"
+	        L"var jf = 0, vf = 0;"
+	        L"for (var i = 0; i < base.children.count; i++) {"
+	        L"var ch = base.children[i];"
+	        L"if (ch.name == 'jump' + n && ch.visible) jf = 1;"
+	        L"if (ch.name == 'vreplay' + n && ch.visible) vf = 1; }"
+	        L"j += jf; v += vf; }"
+	        L"return j + v; })()",
+	        raw, "backlog lines")) {
+		return false;
+	}
+	if (raw.size() != 10) {
+		return false;
+	}
+	jumpMask = 0;
+	voiceMask = 0;
+	for (int i = 0; i < 5; ++i) {
+		if (raw[i] == '1') {
+			jumpMask |= 1 << i;
+		}
+		if (raw[i + 5] == '1') {
+			voiceMask |= 1 << i;
+		}
+	}
+	return true;
+}
+
+bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
+	// The button's own expression is Current.cmd("<verb>/<index>"); calling it
+	// directly is the same dispatch, not a shortcut around it.
+	return AskFormatted(L"(function(){ if (typeof Current != 'Object') return 0;"
+	                    L"Current.cmd('%hs/%d'); return 1; })()",
+	                    tag, verb, index);
+}
+
 bool ProbeDialogVisible(char const *tag) {
 	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
 	           L"kag.currentDialog != 'Object') return 0;"

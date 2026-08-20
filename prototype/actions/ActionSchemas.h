@@ -40,6 +40,18 @@ constexpr char const *const kShowTextWindowSchema =
 constexpr char const *const kOpenLoadSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+// `line` counts the lines currently on screen, from the top. The numbering is
+// window-relative: after scrolling the same number is a different line.
+constexpr char const *const kJumpToLineSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"line\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}},"
+    "\"required\":[\"line\"],"
+    "\"additionalProperties\":false}";
+constexpr char const *const kReplayBacklogVoiceSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"line\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}},"
+    "\"required\":[\"line\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kShowSceneListSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
