@@ -93,6 +93,8 @@ endif()
 if(ATRI_BUILD_PROTOTYPE)
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
+        prototype/actions/ActionJson.cpp
+        prototype/actions/ActionJson.h
         prototype/actions/ActionRouter.cpp
         prototype/actions/ActionRouter.h
         prototype/actions/TJSQuery.cpp
