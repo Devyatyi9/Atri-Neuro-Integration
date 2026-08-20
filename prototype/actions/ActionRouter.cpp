@@ -34,7 +34,6 @@ std::atomic<int> g_SyncedCapabilityState(-1);
 std::atomic<bool> g_TitleLoadingNoticeSent(false);
 constexpr int kCapabilityStateUnknown = -1;
 constexpr int kCapabilityStateTitle = 0;
-constexpr int kCapabilityStateGame = 1;
 constexpr int kCapabilityStateMenu = 2;
 // Startup and the title screen are distinct capability states. The plugin
 // initialises long before the title exists -- splashes run for roughly 24s --
@@ -46,23 +45,23 @@ constexpr int kCapabilityStateTitleLoading = 3;
 // A confirmation dialog is modal: nothing else can succeed while it is up, so
 // it gets its own state carrying only the answer action.
 constexpr int kCapabilityStateDialog = 4;
-// The four play states below are the same screen with two independent flags:
-// whether a choice is up, and whether the quick menu bar is out. They are
-// separate states only so the dedup in SyncCapabilities still works on a single
-// int; the action list itself is composed in one place.
+// Play is not one state but a screen carrying four independent booleans: a
+// choice is up, the quick menu bar is out, auto mode runs, skipping runs.
+// Enumerating the combinations meant a constant per pair and would now mean
+// sixteen, so play is encoded as a base plus flags. The value only has to be
+// distinct per action set, which is all the dedup in SyncCapabilities needs.
 //
 // Choice vs text is a disposable action window in the sense of the SDK's own
 // guidance (neuro-sdk/API/README.md, "Unregister disposable actions before
 // sending result"): while the select layer is up, advancing the text does
 // nothing, and select_choice stops being answerable the moment the layer
-// closes. Offering both at once advertised one action that was certain to fail
-// either way. The quick menu splits the same way -- the bar is either out or
-// retracted, so only one of open/close can apply. Everything that stays valid
-// throughout, including reaching the bar itself during a choice, is offered in
-// all four.
-constexpr int kCapabilityStateChoice = 5;
-constexpr int kCapabilityStateGamePanel = 6;
-constexpr int kCapabilityStateChoicePanel = 7;
+// closes. The bar and the two modes are toggles -- only one direction of each
+// can apply at a time, and the bar's own buttons only exist while it is out.
+constexpr int kCapabilityStatePlayBase = 0x100;
+constexpr int kPlayFlagChoice = 1 << 0;
+constexpr int kPlayFlagPanelOut = 1 << 1;
+constexpr int kPlayFlagAuto = 1 << 2;
+constexpr int kPlayFlagSkip = 1 << 3;
 // The text window hidden away by the bar's hide button: the artwork is all
 // that is left on screen, the hide button itself goes enabled = 0, and a click
 // brings the window back instead of advancing. Only one action can apply.
@@ -344,6 +343,35 @@ void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Opened the load screen.");
 }
 
+// auto and skip are the same bar button pressed twice: one press turns the
+// mode on, the next turns it off, and the button stays enabled throughout.
+// Which direction is registered comes from the mode flag, so the handler only
+// has to press.
+void HandleQuickMenuToggle(std::string const &id,
+                           std::string const &data,
+                           char const *action,
+                           char const *button,
+                           char const *okMessage,
+                           char const *failMessage) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    (std::string(action) + " does not accept arguments.").c_str());
+		return;
+	}
+
+	std::string const tag(action);
+	bool const ok = ProbeStateIs("game", (tag + " state").c_str()) &&
+	                ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
+	                ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
+	                DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false, failMessage);
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, okMessage);
+}
+
 void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -424,6 +452,22 @@ void HandleNeuroAction(std::string const &id,
 		HandleOpenLoadAction(id, data);
 	} else if (name == "open_backlog") {
 		HandleOpenBacklogAction(id, data);
+	} else if (name == "start_auto_mode") {
+		HandleQuickMenuToggle(id, data, "start_auto_mode", "auto",
+		                      "Auto mode is on; the text advances on its own.",
+		                      "Turning auto mode on is unavailable.");
+	} else if (name == "stop_auto_mode") {
+		HandleQuickMenuToggle(id, data, "stop_auto_mode", "auto",
+		                      "Auto mode is off.",
+		                      "Turning auto mode off is unavailable.");
+	} else if (name == "start_skip_mode") {
+		HandleQuickMenuToggle(id, data, "start_skip_mode", "skip",
+		                      "Skipping through the text.",
+		                      "Turning skip mode on is unavailable.");
+	} else if (name == "stop_skip_mode") {
+		HandleQuickMenuToggle(id, data, "stop_skip_mode", "skip",
+		                      "Stopped skipping.",
+		                      "Turning skip mode off is unavailable.");
 	} else {
 		NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
 	}
@@ -463,14 +507,11 @@ void SyncCapabilities(int state) {
 		                 "continue, so a save has to be loaded.",
 		                 false);
 		Log("[Action] Capabilities: title-no-save (open_load)\n");
-	} else if (state == kCapabilityStateGame ||
-	           state == kCapabilityStateGamePanel ||
-	           state == kCapabilityStateChoice ||
-	           state == kCapabilityStateChoicePanel) {
-		bool const choice = state == kCapabilityStateChoice ||
-		                   state == kCapabilityStateChoicePanel;
-		bool const panelOut = state == kCapabilityStateGamePanel ||
-		                      state == kCapabilityStateChoicePanel;
+	} else if (state >= kCapabilityStatePlayBase) {
+		bool const choice = (state & kPlayFlagChoice) != 0;
+		bool const panelOut = (state & kPlayFlagPanelOut) != 0;
+		bool const autoMode = (state & kPlayFlagAuto) != 0;
+		bool const skipMode = (state & kPlayFlagSkip) != 0;
 		std::vector<NeuroRegisteredAction> actions;
 		if (choice) {
 			actions.push_back({"select_choice",
@@ -501,6 +542,28 @@ void SyncCapabilities(int state) {
 			actions.push_back({"open_backlog",
 			                   "Open the backlog to re-read earlier lines.",
 			                   kOpenBacklogSchema});
+			// Both are the same bar button pressed twice, so only the direction
+			// that would actually change something is offered.
+			if (autoMode) {
+				actions.push_back({"stop_auto_mode",
+				                   "Turn off auto mode so the text stops advancing on "
+				                   "its own.",
+				                   kStopAutoModeSchema});
+			} else {
+				actions.push_back({"start_auto_mode",
+				                   "Turn on auto mode so the text advances on its own.",
+				                   kStartAutoModeSchema});
+			}
+			if (skipMode) {
+				actions.push_back({"stop_skip_mode",
+				                   "Stop skipping and read normally again.",
+				                   kStopSkipModeSchema});
+			} else {
+				actions.push_back({"start_skip_mode",
+				                   "Skip quickly through the text until it is turned "
+				                   "off or a choice appears.",
+				                   kStartSkipModeSchema});
+			}
 		} else {
 			actions.push_back(
 			    {"open_quick_menu",
@@ -667,13 +730,17 @@ void RefreshPrototypeActionState() {
 			SyncCapabilities(kCapabilityStateTextHidden);
 			return;
 		}
-		if (screen.choiceVisible) {
-			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateChoicePanel
-			                                     : kCapabilityStateChoice);
-		} else {
-			SyncCapabilities(screen.quickMenuOut ? kCapabilityStateGamePanel
-			                                     : kCapabilityStateGame);
+		int play = kCapabilityStatePlayBase;
+		if (screen.choiceVisible) play |= kPlayFlagChoice;
+		if (screen.quickMenuOut) {
+			play |= kPlayFlagPanelOut;
+			// The mode toggles live on the bar, so they only change the action set
+			// while it is out. Folding them in unconditionally would re-register an
+			// identical set every time auto or skip flipped behind a retracted bar.
+			if (screen.autoMode) play |= kPlayFlagAuto;
+			if (screen.skipMode) play |= kPlayFlagSkip;
 		}
+		SyncCapabilities(play);
 	} else {
 		// Anything that is neither the title nor play. Rather than matching a
 		// list of screen names -- which kept missing ones, and left the previous

@@ -113,15 +113,17 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // member and simply holds void when no dialog is up, and typeof reports
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
-	    L"var d = 0, c = 0, p = 0, h = 0;"
+	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
 	    L"if (kag.selectShowing) c = 1;"
 	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
 	    L"if (kag.messageLayerHiding) h = 1;"
+	    L"if (kag.autoMode) a = 1;"
+	    L"if (kag.skipMode) s2 = 1;"
 	    L"}"
-	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h; })()",
+	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -135,10 +137,10 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>|<d>|<c>|<p>|<h>": the state can be empty but never contains a
-	// bar, so the flags are read off the tail by offset from the first one.
+	// "<state>|<d>|<c>|<p>|<h>|<a>|<s>": the state can be empty but never
+	// contains a bar, so flags are read off the tail by offset from the first.
 	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 8) {
+	if (separator == std::string::npos || probe.size() != separator + 12) {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return false;
 	}
@@ -147,6 +149,8 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.choiceVisible = probe[separator + 3] == '1';
 	out.quickMenuOut = probe[separator + 5] == '1';
 	out.textWindowHidden = probe[separator + 7] == '1';
+	out.autoMode = probe[separator + 9] == '1';
+	out.skipMode = probe[separator + 11] == '1';
 	return true;
 }
 

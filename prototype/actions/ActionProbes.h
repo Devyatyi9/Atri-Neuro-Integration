@@ -30,6 +30,8 @@ struct ScreenSnapshot {
 	bool choiceVisible = false;
 	bool quickMenuOut = false;
 	bool textWindowHidden = false;
+	bool autoMode = false;
+	bool skipMode = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 

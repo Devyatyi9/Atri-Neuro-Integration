@@ -43,6 +43,18 @@ constexpr char const *const kOpenLoadSchema =
 constexpr char const *const kOpenBacklogSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kStartAutoModeSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kStopAutoModeSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kStartSkipModeSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kStopSkipModeSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 
 // `index` counts from 1 so it matches the numbering of the choice list in the
 // context message ("1) ... 2) ..."); the handler converts to the engine's
