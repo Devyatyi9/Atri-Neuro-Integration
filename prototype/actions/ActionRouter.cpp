@@ -453,6 +453,18 @@ void RefreshPrototypeActionState() {
 		return;
 	}
 
+	// A state this function does not recognise falls through every branch below
+	// and returns without a trace, which is indistinguishable from "capabilities
+	// are simply unchanged". Log each distinct value once so an unexpected or
+	// empty state is visible instead of silent.
+	{
+		static std::string lastObservedState;
+		if (state != lastObservedState) {
+			lastObservedState = state;
+			Log(("[Action] Observed state: '" + state + "'\n").c_str());
+		}
+	}
+
 	if (state == "title") {
 		SyncCapabilities(kCapabilityStateTitle);
 	} else if (state == "game") {
