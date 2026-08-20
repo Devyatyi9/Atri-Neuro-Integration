@@ -107,6 +107,9 @@ constexpr int kBacklogFlagPageUp = 1 << 0;
 constexpr int kBacklogFlagPageDown = 1 << 1;
 constexpr int kBacklogFlagTop = 1 << 2;
 constexpr int kBacklogFlagEnd = 1 << 3;
+// Which of the two lists is showing. The screen has one toggle for both
+// directions, so only the one that would change something is offered.
+constexpr int kBacklogFlagSceneList = 1 << 4;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -787,6 +790,14 @@ void HandleNeuroAction(std::string const &id,
 		HandleScreenButtonAction(id, data, "backlog_page_down", "backlog",
 		                         "pagedown", "Scrolled the backlog down.",
 		                         "The backlog is already at the bottom.");
+	} else if (name == "show_scene_list") {
+		HandleScreenButtonAction(id, data, "show_scene_list", "backlog", "modechg",
+		                         "Switched to the scene list.",
+		                         "Cannot switch the backlog view.");
+	} else if (name == "show_backlog_lines") {
+		HandleScreenButtonAction(id, data, "show_backlog_lines", "backlog",
+		                         "modechg", "Switched back to the lines.",
+		                         "Cannot switch the backlog view.");
 	} else if (name == "backlog_top") {
 		HandleScreenButtonAction(id, data, "backlog_top", "backlog", "top",
 		                         "Jumped back in the backlog.",
@@ -1146,6 +1157,15 @@ void SyncCapabilities(int state) {
 			                   "Jump forward to the next scene break in the "
 			                   "backlog, or to its end.",
 			                   kBacklogEndSchema});
+		}
+		if ((state & kBacklogFlagSceneList) != 0) {
+			actions.push_back({"show_backlog_lines",
+			                   "Switch the backlog back to the list of lines.",
+			                   kShowBacklogLinesSchema});
+		} else {
+			actions.push_back({"show_scene_list",
+			                   "Switch the backlog to the scene list.",
+			                   kShowSceneListSchema});
 		}
 		NeuroSetRegisteredActions(actions.data(),
 		                          static_cast<int>(actions.size()));

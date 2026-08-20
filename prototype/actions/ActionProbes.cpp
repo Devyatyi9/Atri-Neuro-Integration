@@ -435,15 +435,17 @@ bool ProbeBacklogButtons(int &flags) {
 	        L"for (var i = 0; i < t.count; i++) {"
 	        L"var b = n[t[i]];"
 	        L"s += (typeof b == 'Object' && b.enabled) ? '1' : '0'; }"
+	        L"var c = n['caption_scene'];"
+	        L"s += (typeof c == 'Object' && c.visible) ? '1' : '0';"
 	        L"return s; })()",
 	        raw, "backlog buttons")) {
 		return false;
 	}
-	if (raw.size() != 4) {
+	if (raw.size() != 5) {
 		return false;
 	}
 	flags = 0;
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		if (raw[i] == '1') {
 			flags |= 1 << i;
 		}

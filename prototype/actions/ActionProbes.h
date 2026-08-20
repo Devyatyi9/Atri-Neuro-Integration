@@ -122,8 +122,8 @@ bool ProbeVoiceExists(int index, char const *tag);
 // "<slot>	<speaker>	<scene title>" lines, slot numbered from 1.
 bool ProbeVoiceList(int limit, std::string &out, int &total);
 
-// Which of the backlog's four scroll controls are usable right now, as the bit
-// flags the router defines. They follow the reading position -- at the bottom of
+// Which of the backlog's four scroll controls are usable right now, plus which
+// of its two modes is showing, as the bit flags the router defines. They follow the reading position -- at the bottom of
 // the log the two downward ones go dark -- so this is re-read while the screen
 // is open rather than sampled once.
 bool ProbeBacklogButtons(int &flags);

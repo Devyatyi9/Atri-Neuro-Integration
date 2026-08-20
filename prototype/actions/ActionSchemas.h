@@ -40,6 +40,12 @@ constexpr char const *const kShowTextWindowSchema =
 constexpr char const *const kOpenLoadSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kShowSceneListSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kShowBacklogLinesSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kBacklogPageUpSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
