@@ -128,6 +128,10 @@ class Harness:
         with self._event_ready:
             self._events.append({
                 "sequence": self._next_sequence,
+                # Epoch milliseconds, so latency between a game-side change and
+                # the resulting protocol message can be measured from the log
+                # instead of guessed with a stopwatch.
+                "timestamp_ms": int(time.time() * 1000),
                 "direction": direction,
                 "message": message,
             })
@@ -215,6 +219,44 @@ class Harness:
     def events(self, after: int) -> list[dict[str, Any]]:
         with self._lock:
             return [event for event in self._events if event["sequence"] > after]
+
+    def context_messages(self, after: int = 0) -> list[dict[str, Any]]:
+        """Only the game's `context` messages -- the payload Neuro actually reads.
+
+        Separate from events() so inspecting the context stream does not mean
+        paging through every register/result message alongside it.
+        """
+        with self._lock:
+            return [
+                {"sequence": event["sequence"],
+                 "timestamp_ms": event["timestamp_ms"],
+                 "silent": (event["message"].get("data") or {}).get("silent"),
+                 "message": (event["message"].get("data") or {}).get("message")}
+                for event in self._events
+                if event["sequence"] > after
+                and event["direction"] == "client_to_server"
+                and event["message"].get("command") == "context"
+            ]
+
+    def force_action(self, query: str, action_names: list[str],
+                     state: str | None = None, ephemeral_context: bool = False,
+                     priority: str = "low") -> None:
+        """Send actions/force, the server's 'you must act now' request."""
+        data: dict[str, Any] = {
+            "query": query,
+            "action_names": action_names,
+            "ephemeral_context": ephemeral_context,
+            "priority": priority,
+        }
+        if state is not None:
+            data["state"] = state
+        self.send({"command": "actions/force", "data": data})
+
+    def clear_events(self) -> None:
+        """Drop recorded events without restarting; keeps the connection and the
+        action registry, so a test can start from a clean log mid-session."""
+        with self._lock:
+            self._events.clear()
 
     def wait_for_result(self, action_id: str, after: int, timeout_ms: int) -> dict[str, Any]:
         deadline = time.monotonic() + timeout_ms / 1000

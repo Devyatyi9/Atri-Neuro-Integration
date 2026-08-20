@@ -66,6 +66,33 @@ def harness_wait_action_result(action_id: str, after_sequence: int = 0, timeout_
 
 
 @MCP.tool()
+def harness_context(after_sequence: int = 0) -> str:
+    """Return only the game's `context` messages (the text Neuro reads), with
+    timestamps and the silent flag. Use instead of harness_events when checking
+    the context payload, so the output is not buried in protocol traffic."""
+    return json.dumps(HARNESS.context_messages(after_sequence))
+
+
+@MCP.tool()
+def harness_force_action(query: str,
+                         action_names: list[str],
+                         state: str | None = None,
+                         ephemeral_context: bool = False,
+                         priority: str = "low") -> str:
+    """Send actions/force, telling the game it must pick one of action_names now."""
+    HARNESS.force_action(query, action_names, state, ephemeral_context, priority)
+    return json.dumps({"sent": True, "sequence": HARNESS.status()["last_sequence"]})
+
+
+@MCP.tool()
+def harness_clear_events() -> str:
+    """Drop the recorded event log without restarting or dropping the game
+    connection. The action registry is kept."""
+    HARNESS.clear_events()
+    return json.dumps({"cleared": True})
+
+
+@MCP.tool()
 def harness_disconnect_game() -> str:
     """Close the current game WebSocket to test the client's reconnect behavior."""
     HARNESS.disconnect()
