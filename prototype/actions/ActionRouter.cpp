@@ -32,10 +32,21 @@ std::unordered_set<std::string> g_ActionIdSet;
 constexpr size_t kMaxRememberedActionIds = 256;
 
 std::atomic<int> g_SyncedCapabilityState(-1);
+// Whether the "still starting up" notice reached the server. It cannot simply
+// be sent once on entering the loading state, because that happens before the
+// SDK connects.
+std::atomic<bool> g_TitleLoadingNoticeSent(false);
 constexpr int kCapabilityStateUnknown = -1;
 constexpr int kCapabilityStateTitle = 0;
 constexpr int kCapabilityStateGame = 1;
 constexpr int kCapabilityStateMenu = 2;
+// Startup and the title screen are distinct capability states. The plugin
+// initialises long before the title exists -- splashes run for roughly 24s --
+// so registering continue_game at init advertised an action that was certain to
+// fail for that whole window, and an autonomous engine does call it (observed
+// in Gary: randy dispatched continue_game on its own). This state carries no
+// actions and explains the wait through context instead.
+constexpr int kCapabilityStateTitleLoading = 3;
 
 char const *kContinueGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
@@ -387,12 +398,22 @@ void SyncCapabilities(int state) {
 	if (state == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
-	if (state == kCapabilityStateTitle) {
+	if (state == kCapabilityStateTitleLoading) {
+		// No action can succeed yet, so advertise none. The explanatory context
+		// is not sent here: this state is entered during plugin init, before the
+		// SDK connects, and NeuroSendContext drops anything sent while not ready.
+		// RefreshPrototypeActionState retries it until it lands.
+		NeuroSetRegisteredActions(nullptr, 0);
+		Log("[Action] Capabilities: title-loading (none)\n");
+	} else if (state == kCapabilityStateTitle) {
 		NeuroRegisteredAction const actions[] = {
 		    {"continue_game", "Continue the current game.", kContinueGameSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		// Not silent: the menu becoming usable is the moment there is finally
+		// something to do.
+		NeuroSendContext("The main menu is ready.", false);
 		Log("[Action] Capabilities: title (continue_game)\n");
 	} else if (state == kCapabilityStateGame) {
 		NeuroRegisteredAction const actions[] = {
@@ -421,7 +442,9 @@ void SyncCapabilities(int state) {
 
 void InitializePrototypeActionRouter() {
 	NeuroSetActionHandler(HandleNeuroAction);
-	SyncCapabilities(kCapabilityStateTitle);
+	// Init runs during the startup splashes, so nothing is dispatchable yet;
+	// the monitor promotes this to the real title state once the menu is usable.
+	SyncCapabilities(kCapabilityStateTitleLoading);
 }
 
 void ShutdownPrototypeActionRouter() {
@@ -429,9 +452,24 @@ void ShutdownPrototypeActionRouter() {
 	g_ContinueActionInFlight.store(false, std::memory_order_release);
 	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
 	                              std::memory_order_release);
+	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	g_ActionIds.clear();
 	g_ActionIdSet.clear();
+}
+
+// Retried every poll until accepted: the loading state starts before the SDK
+// connects, and NeuroSendContext drops anything sent while not ready rather
+// than queueing it, so a single send on entering the state would be lost.
+void TrySendTitleLoadingNotice() {
+	if (g_TitleLoadingNoticeSent.load(std::memory_order_acquire)) {
+		return;
+	}
+	if (NeuroSendContext(
+	        "The game is starting up. The main menu is not available yet.",
+	        true)) {
+		g_TitleLoadingNoticeSent.store(true, std::memory_order_release);
+	}
 }
 
 void RefreshPrototypeActionState() {
@@ -466,7 +504,45 @@ void RefreshPrototypeActionState() {
 	}
 
 	if (state == "title") {
-		SyncCapabilities(kCapabilityStateTitle);
+		// Register continue_game only once the control it dispatches is actually
+		// usable, matching the guards the action itself runs. Probed only while
+		// it is not yet registered, so the steady state costs nothing extra.
+		if (g_SyncedCapabilityState.load(std::memory_order_acquire) ==
+		    kCapabilityStateTitle) {
+			SyncCapabilities(kCapabilityStateTitle);
+		} else {
+			bool canContinue = false;
+			bool buttonReady = false;
+			if (QueryBool(L"typeof SystemAction != 'undefined' && "
+			              L"SystemAction.canContinue ? 1 : 0",
+			              canContinue, "title canContinue") &&
+			    canContinue &&
+			    QueryBool(
+			        L"(function(){ if (typeof kag == 'undefined' || typeof "
+			        L"kag.current == 'undefined' || typeof kag.current.names == "
+			        L"'undefined') return 0;"
+			        L"var button = kag.current.names['cont'];"
+			        L"if (typeof button == 'undefined' || !isvalid button || "
+			        L"!button.visible || !button.enabled) return 0;"
+			        L"if (typeof button.controlOwner == 'undefined' || typeof "
+			        L"button.controlOwner.onButtonClick != 'Object') return 0;"
+			        L"return 1; })()",
+			        buttonReady, "title button") &&
+			    buttonReady) {
+				SyncCapabilities(kCapabilityStateTitle);
+			} else {
+				SyncCapabilities(kCapabilityStateTitleLoading);
+				TrySendTitleLoadingNotice();
+			}
+		}
+	} else if (state.empty()) {
+		// Still in the startup splashes: SystemHook.currentState is genuinely an
+		// empty string until the title exists. This is the bulk of the wait, so
+		// the notice has to cover it -- restricting it to the brief
+		// title-but-not-ready window made it arrive just as the menu appeared,
+		// which read as nonsense ("not available yet" the moment it was).
+		SyncCapabilities(kCapabilityStateTitleLoading);
+		TrySendTitleLoadingNotice();
 	} else if (state == "game") {
 		SyncCapabilities(kCapabilityStateGame);
 	} else if (state == "option" || state == "load" || state == "save" ||

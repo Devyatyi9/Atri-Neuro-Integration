@@ -202,6 +202,12 @@ class Harness:
             with self._lock:
                 if self._connection is connection:
                     self._connection = None
+                    # Drop the action registry on disconnect, matching the
+                    # reference server (test-gary removes the game entirely and
+                    # emits api/registry/game_removed). Keeping it would report
+                    # actions as callable while nothing is connected.
+                    self._actions.clear()
+                    self._protocol_notes.clear()
 
     def send(self, message: dict[str, Any]) -> None:
         payload = json.dumps(message, separators=(",", ":")).encode("utf-8")
