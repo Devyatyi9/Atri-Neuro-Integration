@@ -31,6 +31,11 @@ constexpr size_t kMaxRememberedActionIds = 256;
 // both land late. Neither has a readable "ready" flag to poll instead.
 constexpr DWORD kPageChangeSettleMs = 1200;
 constexpr DWORD kDialogSettleMs = 150;
+// How long the jump preview stays up before the row is actually pressed. The
+// row carries a hover pair that puts the target scene behind the log, and a
+// player sees it while moving the cursor; without the pause the confirmation
+// would open over a preview that never rendered.
+constexpr DWORD kHoverPreviewMs = 400;
 
 std::atomic<int> g_SyncedCapabilityState(-1);
 // Whether the "still starting up" notice reached the server. It cannot simply
@@ -507,7 +512,20 @@ void HandleBacklogLineAction(std::string const &id,
 		             : "That line has no voice to replay.");
 		return;
 	}
+	// Hover first, the way the row is reached with a cursor: the preview is the
+	// only thing on screen that says which line this is, and the confirmation
+	// that follows does not name it.
+	if (wantJump) {
+		DispatchBacklogLineButton("showJumpView", slot, (tag + " hover").c_str());
+		Sleep(kHoverPreviewMs);
+	}
 	if (!DispatchBacklogLineButton(verb, slot, (tag + " dispatch").c_str())) {
+		// Leaving a preview up over a press that never happened would be a lie
+		// about what is selected.
+		if (wantJump) {
+			DispatchBacklogLineButton("hideJumpView", slot,
+			                          (tag + " unhover").c_str());
+		}
 		NeuroSendActionResult(id.c_str(), false, "That line did not respond.");
 		return;
 	}

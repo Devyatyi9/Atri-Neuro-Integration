@@ -148,6 +148,9 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out);
 bool ProbeCurrentLine(int langType, std::string &out);
 
 // Presses one, through the same Current.cmd the button itself carries.
+// The jump rows also carry a hover pair, showJumpView/hideJumpView, which puts
+// a preview of the target scene behind the log; passing "showJumpView" or
+// "hideJumpView" as `verb` drives it the same way.
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 
 // Whether a modal confirmation is on screen right now.
