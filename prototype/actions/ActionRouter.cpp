@@ -966,9 +966,11 @@ void HandleNeuroAction(std::string const &id,
 		                         "modechg", "Switched back to the lines.",
 		                         "Cannot switch the backlog view.");
 	} else if (name == "jump_to_line") {
+		// Deliberately not "that line": the same control lists whole scenes in
+		// scene mode, and the result would then name the wrong thing.
 		HandleBacklogLineAction(id, data, "jump_to_line", "jump", true,
-		                        "Asked to go back to that line; confirm or cancel "
-		                        "the dialog.");
+		                        "Asked to go back there; confirm or cancel the "
+		                        "dialog.");
 	} else if (name == "replay_backlog_voice") {
 		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", false,
 		                        "Replaying that line.");
