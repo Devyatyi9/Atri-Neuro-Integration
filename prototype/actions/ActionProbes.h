@@ -133,6 +133,19 @@ bool ProbeBacklogButtons(int &flags);
 // are window-relative, so the same number means a different line after
 // scrolling. See docs-local/research/tjs/hooks/Backlog.tjs.md.
 bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask);
+// How many lines the conversation history holds, and a window of it as
+// "<index>	<speaker>	<line>" rows with `index` numbered from 1. Both come from
+// the player object the backlog reads, so neither depends on what is on screen.
+// Speaker and line are localized: the displayed name is the "disp" key, not
+// "name" -- see Backlog.tjs.md.
+bool ProbeHistoryCount(int &total);
+// `langType` picks the language column: 0 is the Japanese original, -1 means
+// whatever the game is currently displaying (kag.languageType).
+bool ProbeHistoryWindow(int from, int count, int langType, std::string &out);
+// The line on screen right now, as "<speaker>	<line>". Comes from the entry the
+// monitor keeps from the render path, so it can be re-read in either language.
+bool ProbeCurrentLine(int langType, std::string &out);
+
 // Presses one, through the same Current.cmd the button itself carries.
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 

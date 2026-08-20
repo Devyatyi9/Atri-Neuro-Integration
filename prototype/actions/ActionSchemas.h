@@ -42,6 +42,21 @@ constexpr char const *const kOpenLoadSchema =
     "\"additionalProperties\":false}";
 // `line` counts the lines currently on screen, from the top. The numbering is
 // window-relative: after scrolling the same number is a different line.
+// `from` is optional: omitted means the most recent lines. Numbered from 1
+// over the whole history, unlike the window-relative line numbers above.
+// Optional language on both readers: omitted or "displayed" gives what is on
+// screen, "japanese" gives the original column of the language table.
+constexpr char const *const kReadLineSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"language\":{\"type\":\"string\","
+    "\"enum\":[\"displayed\",\"japanese\"]}},"
+    "\"additionalProperties\":false}";
+constexpr char const *const kReadBacklogSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"from\":{\"type\":\"integer\",\"minimum\":1},"
+    "\"language\":{\"type\":\"string\","
+    "\"enum\":[\"displayed\",\"japanese\"]}},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kJumpToLineSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"line\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}},"

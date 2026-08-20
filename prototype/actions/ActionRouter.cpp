@@ -515,6 +515,105 @@ void HandleBacklogLineAction(std::string const &id,
 	NeuroSendActionResult(id.c_str(), true, okMessage);
 }
 
+// Reads a window of the conversation history. Registered only while the
+// backlog is open: the history is readable at any time, but advertising it
+// everywhere would put an action in front of Neuro on every screen for
+// something she asked for by opening the log.
+constexpr int kHistoryWindow = 4;
+
+// Both readers take the same optional language: absent means whatever the
+// game is showing, "japanese" means the original column. getLangInfo takes the
+// language as its third argument, so no state has to be changed to read it.
+int ParseReadLanguage(std::string const &data) {
+	return data.find("japanese") == std::string::npos ? -1 : 0;
+}
+
+void HandleReadCurrentLineAction(std::string const &id,
+                                 std::string const &data) {
+	std::string line;
+	if (!ProbeCurrentLine(ParseReadLanguage(data), line)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "There is no line on screen to read.");
+		return;
+	}
+	size_t const tab = line.find('	');
+	std::string message = "Current line: ";
+	if (tab != std::string::npos && tab > 0) {
+		message += line.substr(0, tab) + ": ";
+	}
+	message += tab == std::string::npos ? line : line.substr(tab + 1);
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
+}
+
+void HandleReadBacklogAction(std::string const &id, std::string const &data) {
+	if (!ProbeStateIs("backlog", "read_backlog state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works while the backlog is open.");
+		return;
+	}
+	int total = 0;
+	if (!ProbeHistoryCount(total) || total <= 0) {
+		NeuroSendActionResult(id.c_str(), false, "The history is not readable.");
+		return;
+	}
+
+	// Without "from", the newest lines -- which is what "what was just said"
+	// means. Numbered from 1 like everything else Neuro is given.
+	int number = 0;
+	bool const hasFrom = ParseJsonInteger(data, "\"from\"", number);
+	if (hasFrom && (number < 1 || number > total)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    ("\"from\" must be between 1 and " + std::to_string(total) + ".")
+		        .c_str());
+		return;
+	}
+	int const first = hasFrom ? number - 1 : total - kHistoryWindow;
+
+	std::string window;
+	if (!ProbeHistoryWindow(first, kHistoryWindow, ParseReadLanguage(data),
+	                        window) ||
+	    window.empty()) {
+		NeuroSendActionResult(id.c_str(), false, "Could not read those lines.");
+		return;
+	}
+
+	std::string message = "Lines out of " + std::to_string(total) + ":";
+	size_t start = 0;
+	while (start < window.size()) {
+		size_t const lineEnd = window.find('\n', start);
+		std::string const row = window.substr(
+		    start,
+		    lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
+		start = lineEnd == std::string::npos ? window.size() : lineEnd + 1;
+		size_t const firstTab = row.find('	');
+		size_t const secondTab = firstTab == std::string::npos
+		                             ? std::string::npos
+		                             : row.find('	', firstTab + 1);
+		size_t const thirdTab = secondTab == std::string::npos
+		                            ? std::string::npos
+		                            : row.find('	', secondTab + 1);
+		if (thirdTab == std::string::npos) {
+			continue;
+		}
+		std::string const speaker =
+		    row.substr(firstTab + 1, secondTab - firstTab - 1);
+		bool const hasVoice = row[secondTab + 1] == '1';
+		message += " " + row.substr(0, firstTab) + ") ";
+		if (!speaker.empty()) {
+			message += speaker + ": ";
+		}
+		message += row.substr(thirdTab + 1);
+		// Marks the lines jump_to_line and replay_backlog_voice can act on once
+		// they are scrolled into view.
+		if (hasVoice) {
+			message += " [voiced]";
+		}
+		message += ";";
+	}
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
+}
+
 void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -856,6 +955,10 @@ void HandleNeuroAction(std::string const &id,
 	} else if (name == "replay_backlog_voice") {
 		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", false,
 		                        "Replaying that line.");
+	} else if (name == "read_current_line") {
+		HandleReadCurrentLineAction(id, data);
+	} else if (name == "read_backlog") {
+		HandleReadBacklogAction(id, data);
 	} else if (name == "backlog_top") {
 		HandleScreenButtonAction(id, data, "backlog_top", "backlog", "top",
 		                         "Jumped back in the backlog.",
@@ -908,10 +1011,10 @@ void SendVoiceListContext() {
 		    start,
 		    lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
 		start = lineEnd == std::string::npos ? list.size() : lineEnd + 1;
-		size_t const firstTab = line.find('	');
+		size_t const firstTab = line.find('\t');
 		size_t const secondTab = firstTab == std::string::npos
 		                             ? std::string::npos
-		                             : line.find('	', firstTab + 1);
+		                             : line.find('\t', firstTab + 1);
 		if (secondTab == std::string::npos) {
 			continue;
 		}
@@ -1045,6 +1148,12 @@ void SyncCapabilities(int state) {
 			                   kCloseQuickMenuSchema});
 			actions.push_back(
 			    {"open_menu", "Open the settings menu.", kOpenMenuSchema});
+		// Always available while a line is on screen: it is how the same line is
+		// re-read in the original Japanese, which the context feed never carries.
+		actions.push_back({"read_current_line",
+		                   "Read the line currently on screen. Pass language "
+		                   "\"japanese\" for the original wording.",
+		                   kReadLineSchema});
 			actions.push_back({"hide_text_window",
 			                   "Hide the text window so only the artwork is on "
 			                   "screen.",
@@ -1191,9 +1300,27 @@ void SyncCapabilities(int state) {
 		SendFreeSlotContext();
 		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
 	} else if (state >= kCapabilityStateBacklogBase) {
+		// Only on the way in, not on every scroll: the flags change constantly
+		// while paging, and the total does not.
+		if (g_SyncedCapabilityState.load(std::memory_order_acquire) <
+		    kCapabilityStateBacklogBase) {
+			int total = 0;
+			if (ProbeHistoryCount(total) && total > 0) {
+				NeuroSendContext(("The backlog is open. It holds " +
+				                  std::to_string(total) +
+				                  " lines; read_backlog reads four at a time.")
+				                     .c_str(),
+				                 false);
+			}
+		}
 		std::vector<NeuroRegisteredAction> actions;
 		actions.push_back({"go_back", "Close the backlog and return to the game.",
 		                   kGoBackSchema});
+		actions.push_back({"read_backlog",
+		                   "Read four lines of the conversation history. Give "
+		                   "\"from\" to start at a line number, or leave it out "
+		                   "for the four most recent.",
+		                   kReadBacklogSchema});
 		if ((state & kBacklogFlagPageUp) != 0) {
 			actions.push_back({"backlog_page_up",
 			                   "Scroll the backlog up one page.",

@@ -491,6 +491,65 @@ bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask) {
 	return true;
 }
 
+bool ProbeHistoryCount(int &total) {
+	std::string raw;
+	if (!QueryString(L"(function(){ if (typeof global.__cm_backlog != 'Object') "
+	                 L"return '';"
+	                 L"try { return '' + "
+	                 L"global.__cm_backlog.playerObject.getHistoryCount(); }"
+	                 L"catch (e) { return ''; } })()",
+	                 raw, "history count") ||
+	    raw.empty()) {
+		return false;
+	}
+	total = atoi(raw.c_str());
+	return true;
+}
+
+bool ProbeCurrentLine(int langType, std::string &out) {
+	wchar_t probe[768];
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_langEntry != 'Object') "
+	        L"return '';"
+	        L"try { var d = global.__cm_langEntry;"
+	        L"var lt = %d < 0 ? kag.languageType : %d;"
+	        L"var nm = kag.getLangInfo(d, 'disp', lt);"
+	        L"if (nm == '') nm = d.name;"
+	        L"return nm + '\\t' + "
+	        L"kag.getLangInfo(d, 'text', lt); } catch (e) { return ''; } })()",
+	        langType, langType) < 0) {
+		Log("[Action] current line probe did not fit\n");
+		return false;
+	}
+	return QueryString(probe, out, "current line") && !out.empty();
+}
+
+bool ProbeHistoryWindow(int from, int count, int langType,
+                        std::string &out) {
+	wchar_t probe[1024];
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
+	        L"try { var p = global.__cm_backlog.playerObject;"
+	        L"var n = p.getHistoryCount(), s = '';"
+	        L"var lt = %d < 0 ? kag.languageType : %d;"
+	        L"for (var i = %d; i < %d && i < n; i++) {"
+	        L"if (i < 0) continue;"
+	        L"var d = p.getHistoryData(i);"
+	        L"var nm = kag.getLangInfo(d, 'disp', lt);"
+	        L"if (nm == '') nm = d.name;"
+	        L"s += (i + 1) + '\\t' + nm + '\\t' + "
+	        L"(d.voice !== void ? '1' : '0') + '\\t' + "
+	        L"kag.getLangInfo(d, 'text', lt) + '\\n'; }"
+	        L"return s; } catch (e) { return ''; } })()",
+	        langType, langType, from, from + count) < 0) {
+		Log("[Action] history window probe did not fit\n");
+		return false;
+	}
+	return QueryString(probe, out, "history window");
+}
+
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	// The button's own expression is Current.cmd("<verb>/<index>"); calling it
 	// directly is the same dispatch, not a shortcut around it.

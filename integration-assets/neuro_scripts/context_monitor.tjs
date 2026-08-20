@@ -25,7 +25,6 @@
     //     renderer (rendermsgwin drawName/drawHistory, SelectLayer) goes through
     //     to resolve arg0.language[kag.languageType][field], so intercepting it
     //     yields exactly what the player sees.
-    //     See docs-local/research/tjs/hooks/HistoryLayer.tjs.md.
     if (typeof global.__cm_origGetLangInfo == "undefined") {
       global.__cm_langText = "";
       global.__cm_langName = "";
@@ -42,8 +41,14 @@
         if (arg2 === void) arg2 = kag.languageType;
         var r = global.__cm_origGetLangInfo(arg0, arg1, arg2);
         try {
-          if (arg1 == "text") global.__cm_langText = "" + r;
-          else if (arg1 == "disp") global.__cm_langName = "" + r;
+          if (arg1 == "text") {
+            global.__cm_langText = "" + r;
+            // The entry itself, not just the rendered string: keeping it lets
+            // the same line be read back in another language later, since
+            // getLangInfo takes the language as its third argument. The raw
+            // currentText property bypasses the language table entirely.
+            global.__cm_langEntry = arg0;
+          } else if (arg1 == "disp") global.__cm_langName = "" + r;
         } catch (e) {}
         return r;
       };
@@ -68,6 +73,21 @@
           global.__cm_events.add("dialogue\t" + global.__cm_langName + "\t" + global.__cm_langText);
         } catch (e) {}
         return global.__cm_origP(p);
+      };
+    }
+
+    // The backlog is a view, not a store: its getBlockCount/getBlockInfo proxy
+    // into playerObject.getHistoryCount/getHistoryData, which hold the whole
+    // conversation. The controller instance is not exposed, so the class method
+    // is wrapped once and the instance caught as it goes by -- the same trick as
+    // the save store below.
+    if (typeof global.DragScrollableBacklog != "undefined" &&
+        typeof global.__cm_origBlockInfo == "undefined") {
+      global.__cm_backlog = void;
+      global.__cm_origBlockInfo = global.DragScrollableBacklog.getBlockInfo;
+      global.DragScrollableBacklog.getBlockInfo = function(a0) {
+        global.__cm_backlog = this;
+        return global.__cm_origBlockInfo(a0);
       };
     }
 
