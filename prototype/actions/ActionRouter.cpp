@@ -91,6 +91,9 @@ constexpr int kCapabilityStateLoad = 12;
 // writable there rather than loadable, so what is worth saying on entry is
 // which slots are free.
 constexpr int kCapabilityStateSave = 13;
+// The voice tab: the same list again, holding recorded lines instead of saves.
+// Pressing one replays it, the way the backlog replays a line.
+constexpr int kCapabilityStateVoice = 14;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -424,7 +427,9 @@ constexpr int kSlotColumns = 5;
 // its position 0..9 there, or -1 after sending the refusal itself.
 //
 // Load and save are the same screen in two modes, so this serves both.
-int MoveToBookmark(std::string const &id, int bookmark) {
+int MoveToBookmark(std::string const &id,
+                   int bookmark,
+                   char const *firstTenMessage) {
 	int const wantedOffset =
 	    bookmark < kQuickSaveCount ? 0
 	                               : bookmark / kVisibleSlots * kVisibleSlots;
@@ -443,12 +448,7 @@ int MoveToBookmark(std::string const &id, int bookmark) {
 		// different screens to look at, and moving between them behind her back
 		// would make the slot numbers mean something else mid-action.
 		if ((bookmark < kQuickSaveCount) != (page == 0)) {
-			NeuroSendActionResult(id.c_str(), false,
-			                      bookmark < kQuickSaveCount
-			                          ? "That is a quick save slot; open the "
-			                            "Quick tab first."
-			                          : "That slot is on the normal save list; "
-			                            "leave the Quick tab first.");
+			NeuroSendActionResult(id.c_str(), false, firstTenMessage);
 			return -1;
 		}
 
@@ -518,7 +518,11 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	int const position = MoveToBookmark(id, bookmark);
+	int const position = MoveToBookmark(
+	    id, bookmark,
+	    bookmark < kQuickSaveCount
+	        ? "That is a quick save slot; open the Quick tab first."
+	        : "That slot is on the normal list; leave the Quick tab first.");
 	if (position < 0) {
 		return;
 	}
@@ -565,7 +569,11 @@ void HandleSaveGameAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	int const position = MoveToBookmark(id, bookmark);
+	int const position = MoveToBookmark(
+	    id, bookmark,
+	    bookmark < kQuickSaveCount
+	        ? "That is a quick save slot; open the Quick tab first."
+	        : "That slot is on the normal list; leave the Quick tab first.");
 	if (position < 0) {
 		return;
 	}
@@ -583,6 +591,42 @@ void HandleSaveGameAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Saved the game to that slot.");
+}
+
+void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
+	int bookmark = -1;
+	if (!ParseSlot(id, data, "play_voice", bookmark)) {
+		return;
+	}
+
+	if (!ProbeStateIs("voice", "play_voice state")) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "Voice lines can only be replayed from the voice screen.");
+		return;
+	}
+	if (!ProbeVoiceExists(bookmark, "play_voice exists")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "There is no recorded line in that slot.");
+		return;
+	}
+
+	// The first ten entries sit on a page the page buttons cannot reach, the
+	// same way the quick saves do on the save list.
+	int const position = MoveToBookmark(
+	    id, bookmark,
+	    "That line is on the first page, which the page buttons cannot reach.");
+	if (position < 0) {
+		return;
+	}
+	if (!PressSlot(position, "play_voice slot")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That line is not selectable right now.");
+		return;
+	}
+	// Replaying only plays audio: no dialog, no screen change, nothing to wait
+	// for and nothing to undo.
+	NeuroSendActionResult(id.c_str(), true, "Replaying that line.");
 }
 
 void HandleGoBackAction(std::string const &id, std::string const &data) {
@@ -642,6 +686,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleOpenLoadAction(id, data);
 	} else if (name == "load_save") {
 		HandleLoadSaveAction(id, data);
+	} else if (name == "play_voice") {
+		HandlePlayVoiceAction(id, data);
 	} else if (name == "save_game") {
 		HandleSaveGameAction(id, data);
 	} else if (name == "open_save") {
@@ -676,6 +722,39 @@ void HandleNeuroAction(std::string const &id,
 // and a number without a scene name behind it is not a choice.
 // Which slots save_game will take. Occupied ones are refused, so listing the
 // saves themselves here would only invite refusals.
+// What is in the voice list. Each row carries the speaker and the scene it is
+// from, which is what makes a slot number mean anything.
+void SendVoiceListContext() {
+	std::string list;
+	int total = 0;
+	if (!ProbeVoiceList(kListedSaves, list, total) || total == 0) {
+		return;
+	}
+	std::string message = "The voice screen is open. Recorded lines:";
+	size_t start = 0;
+	while (start < list.size()) {
+		size_t const lineEnd = list.find('\n', start);
+		std::string const line = list.substr(
+		    start,
+		    lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
+		start = lineEnd == std::string::npos ? list.size() : lineEnd + 1;
+		size_t const firstTab = line.find('	');
+		size_t const secondTab = firstTab == std::string::npos
+		                             ? std::string::npos
+		                             : line.find('	', firstTab + 1);
+		if (secondTab == std::string::npos) {
+			continue;
+		}
+		message += " " + line.substr(0, firstTab) + ") " +
+		           line.substr(firstTab + 1, secondTab - firstTab - 1) + " in " +
+		           line.substr(secondTab + 1) + ";";
+	}
+	if (total > kListedSaves) {
+		message += " and " + std::to_string(total - kListedSaves) + " more.";
+	}
+	NeuroSendContext(message.c_str(), false);
+}
+
 void SendFreeSlotContext() {
 	std::string slots;
 	int total = 0;
@@ -918,6 +997,20 @@ void SyncCapabilities(int state) {
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		SendFreeSlotContext();
 		Log("[Action] Capabilities: save (go_back, return_to_title, save_game)\n");
+	} else if (state == kCapabilityStateVoice) {
+		NeuroRegisteredAction const actions[] = {
+		    {"go_back",
+		     "Leave the current screen and return to the one it was opened from.",
+		     kGoBackSchema},
+		    {"play_voice",
+		     "Replay a recorded line by its slot number, as listed when this "
+		     "screen opened.",
+		     kPlayVoiceSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		SendVoiceListContext();
+		Log("[Action] Capabilities: voice (go_back, play_voice)\n");
 	} else if (state == kCapabilityStateBare) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: bare (none)\n");
@@ -1044,6 +1137,8 @@ void RefreshPrototypeActionState() {
 		SyncCapabilities(kCapabilityStateLoad);
 	} else if (screen.state == "save") {
 		SyncCapabilities(kCapabilityStateSave);
+	} else if (screen.state == "voice") {
+		SyncCapabilities(kCapabilityStateVoice);
 	} else {
 		// Anything that is neither the title nor play. Rather than matching a
 		// list of screen names -- which kept missing ones, and left the previous

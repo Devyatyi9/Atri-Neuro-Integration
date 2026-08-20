@@ -107,6 +107,14 @@ bool ProbeBookmarkList(int limit, std::string &out, int &total);
 // range -- what save_game will accept. `total` receives how many are free.
 bool ProbeFreeSlots(int limit, std::string &out, int &total);
 
+// The voice tab is the same paged list in a third mode: each entry is a
+// recorded line, and pressing one replays it. Its rows carry more than the save
+// rows do -- speaker, scene and the line itself -- through the store's own
+// getItemInfo, which is why these do not go through the bookmark calls.
+bool ProbeVoiceExists(int index, char const *tag);
+// "<slot>	<speaker>	<scene title>" lines, slot numbered from 1.
+bool ProbeVoiceList(int limit, std::string &out, int &total);
+
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);
 bool DispatchDialogLink(bool confirm, char const *tag);

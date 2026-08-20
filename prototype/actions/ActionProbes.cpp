@@ -332,6 +332,44 @@ bool ProbeFreeSlots(int limit, std::string &out, int &total) {
 	return true;
 }
 
+bool ProbeVoiceExists(int index, char const *tag) {
+	return AskFormatted(
+	    L"(function(){ if (typeof global.__cm_saveStore != 'Object') return 0;"
+	    L"try { return global.__cm_saveStore.isExistData(%d) ? 1 : 0; }"
+	    L"catch (e) { return 0; } })()",
+	    tag, index);
+}
+
+bool ProbeVoiceList(int limit, std::string &out, int &total) {
+	wchar_t probe[1024];
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
+	        L"return '0';"
+	        L"var st = global.__cm_saveStore;"
+	        L"var found = 0, listed = 0, s = '';"
+	        L"try { for (var i = 0; i < st.count; i++) {"
+	        L"if (!st.isExistData(i)) continue;"
+	        L"found++;"
+	        L"if (listed < %d) { listed++; var d = st.getItemInfo(i);"
+	        L"s += '\n' + (i + 1) + '\t' + d.name + '\t' + d.title; } }"
+	        L"} catch (e) { }"
+	        L"return found + s; })()",
+	        limit) < 0) {
+		Log("[Action] voice list probe did not fit\n");
+		return false;
+	}
+	std::string raw;
+	if (!QueryString(probe, raw, "voice list")) {
+		return false;
+	}
+	size_t const firstLine = raw.find('\n');
+	total = atoi(raw.substr(0, firstLine).c_str());
+	out = firstLine == std::string::npos ? std::string()
+	                                     : raw.substr(firstLine + 1);
+	return true;
+}
+
 bool ProbeSlotsShowBase(int base, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "

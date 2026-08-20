@@ -65,6 +65,12 @@ constexpr char const *const kOpenSaveSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
 // Same shape as load: `slot` counts from 1. Only empty slots are accepted.
+// Same shape again: `slot` counts from 1, over the voice list this time.
+constexpr char const *const kPlayVoiceSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
+    "\"required\":[\"slot\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kSaveGameSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
