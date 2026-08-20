@@ -558,13 +558,19 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	                    tag, verb, index);
 }
 
-bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
-                  int &variantsLeft) {
+bool ProbeGallery(int &page, int &squareCount, int &trackCount,
+                  int &scrollMask, bool &viewOpen, int &variantsLeft) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof Current != 'Object' || typeof kag.current "
 	        L"!= 'Object') return '';"
 	        L"try { var s = '' + Current.page + '|';"
+	        // The last page uses fewer than nine cells; the rest are invisible.
+	        L"var sq = 0;"
+	        L"for (var i = 0; i < 9; i++) {"
+	        L"var c = kag.current.names['item' + i];"
+	        L"if (typeof c == 'Object' && c.visible) sq = i + 1; }"
+	        L"s += sq + '|';"
 	        // The list beside the grid is its own set of controls; how many it
 	        // offers is simply how many are on screen.
 	        L"var t = 0;"
@@ -605,7 +611,7 @@ bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
 	// "<page>|<tracks>|<four arrow flags>|<open>|<variants left>"
 	int values[3] = {0, 0, 0};
 	size_t cursor = 0;
-	for (int field = 0; field < 2; ++field) {
+	for (int field = 0; field < 3; ++field) {
 		size_t const bar = raw.find('|', cursor);
 		if (bar == std::string::npos) {
 			return false;
@@ -617,7 +623,8 @@ bool ProbeGallery(int &page, int &trackCount, int &scrollMask, bool &viewOpen,
 		return false;
 	}
 	page = values[0];
-	trackCount = values[1];
+	squareCount = values[1];
+	trackCount = values[2];
 	scrollMask = 0;
 	for (int i = 0; i < 4; ++i) {
 		if (raw[cursor + i] == '1') {

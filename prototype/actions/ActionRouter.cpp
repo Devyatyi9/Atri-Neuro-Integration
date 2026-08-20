@@ -135,6 +135,10 @@ constexpr int kGalleryViewOpenFlag = 1 << 4;
 // keeps the capability value distinct as they are stepped through by hand,
 // so the set is re-registered rather than going stale.
 constexpr int kGalleryMoreViewsFlag = 1 << 5;
+// How many cells the page uses, carried so a page with fewer of them
+// re-registers and says the smaller maximum.
+constexpr int kGallerySquareShift = 6;
+constexpr int kGallerySquareMask = 0xf;
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -576,6 +580,22 @@ void HandleViewCgAction(std::string const &id, std::string const &data) {
 		                      "That only works on the Extra screen.");
 		return;
 	}
+	// The page decides how many squares there are, so the bound is read now
+	// rather than taken from the schema.
+	int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
+	bool open = false;
+	if (!ProbeGallery(page, squares, tracks, scroll, open, variants)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Cannot tell what the gallery is showing.");
+		return;
+	}
+	if (number > squares) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    ("This page has only " + std::to_string(squares) + " squares.")
+		        .c_str());
+		return;
+	}
 
 	char button[16];
 	sprintf_s(button, "item%d", slot);
@@ -661,9 +681,10 @@ void HandlePlayMusicAction(std::string const &id, std::string const &data) {
 		                      "That only works on the Extra screen.");
 		return;
 	}
-	int page = 0, tracks = 0, scroll = 0, variants = 0;
+	int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 	bool open = false;
-	if (!ProbeGallery(page, tracks, scroll, open, variants) || number > tracks) {
+	if (!ProbeGallery(page, squares, tracks, scroll, open, variants) ||
+	    number > tracks) {
 		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
 		return;
 	}
@@ -1488,6 +1509,9 @@ void SyncCapabilities(int state) {
 		int const scrollMask = state & kGalleryScrollMask;
 		bool const viewOpen = (state & kGalleryViewOpenFlag) != 0;
 		std::vector<NeuroRegisteredAction> actions;
+		// Both outlive the register call below, which copies what it is given.
+		std::string viewText;
+		std::string viewSchema;
 		// While a picture is up it covers the grid, so nothing behind it applies.
 		if (viewOpen) {
 			actions.push_back({"close_cg",
@@ -1504,10 +1528,25 @@ void SyncCapabilities(int state) {
 			actions.push_back({"go_back",
 			                   "Leave the Extra screen and return to the title.",
 			                   kGoBackSchema});
-			actions.push_back({"view_cg",
-			                   "Open one of the nine squares of the picture grid, "
-			                   "numbered from the top left.",
-			                   kViewCgSchema});
+			// The grid's last page carries fewer squares, so both the wording
+			// and the schema's maximum follow the page rather than assuming
+			// nine everywhere.
+			int const squares =
+			    (state >> kGallerySquareShift) & kGallerySquareMask;
+			if (squares > 0) {
+				viewText = "Open one of the " + std::to_string(squares) +
+				           " squares of the picture grid on this page, numbered "
+				           "from the top left.";
+				viewSchema = std::string(
+				                 "{\"type\":\"object\",\"properties\":{"
+				                 "\"square\":{\"type\":\"integer\","
+				                 "\"minimum\":1,\"maximum\":") +
+				             std::to_string(squares) +
+				             "}},\"required\":[\"square\"],"
+				             "\"additionalProperties\":false}";
+				actions.push_back(
+				    {"view_cg", viewText.c_str(), viewSchema.c_str()});
+			}
 			actions.push_back({"gallery_page",
 			                   "Switch the picture grid to one of its four pages.",
 			                   kGalleryPageSchema});
@@ -1805,12 +1844,13 @@ void RefreshPrototypeActionState() {
 	} else if (screen.state == "save") {
 		SyncCapabilities(kCapabilityStateSave);
 	} else if (screen.state == "cgmode") {
-		int page = 0, tracks = 0, scroll = 0, variants = 0;
+		int page = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
 		bool open = false;
-		if (ProbeGallery(page, tracks, scroll, open, variants)) {
+		if (ProbeGallery(page, squares, tracks, scroll, open, variants)) {
 			SyncCapabilities(kCapabilityStateGalleryBase | scroll |
 			                 (open ? kGalleryViewOpenFlag : 0) |
-			                 (variants > 0 ? kGalleryMoreViewsFlag : 0));
+			                 (variants > 0 ? kGalleryMoreViewsFlag : 0) |
+			                 (squares << kGallerySquareShift));
 		} else {
 			SyncScreenByControls(stateChanged);
 		}

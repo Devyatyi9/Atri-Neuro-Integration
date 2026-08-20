@@ -59,11 +59,8 @@ constexpr char const *const kReadBacklogSchema =
     "\"additionalProperties\":false}";
 // The Extra screen: a square of the nine-picture grid, one of its four pages,
 // or a track of the music list beside it. All numbered from 1.
-constexpr char const *const kViewCgSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"square\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":9}},"
-    "\"required\":[\"square\"],"
-    "\"additionalProperties\":false}";
+// view_cg has no constant schema: its maximum is the number of squares the
+// current page uses, so the router builds it per registration.
 constexpr char const *const kGalleryPageSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":4}},"

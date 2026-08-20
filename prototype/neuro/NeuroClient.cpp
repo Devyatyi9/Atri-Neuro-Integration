@@ -417,16 +417,29 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
 		// Names present before but absent from the new set have to be revoked
 		// explicitly; see SendUnregisterActions.
+		//
+		// A name that stays but whose description or schema changed has to be
+		// revoked too. Registering an action that is already registered is
+		// ignored by the server ("If you try to register an action that is
+		// already registered, it will be ignored" -- neuro-sdk/API/
+		// SPECIFICATION.md), so an updated description or schema would never
+		// reach Neuro otherwise. That is not hypothetical: view_cg narrows its
+		// square range on the gallery's last page, and the old range kept
+		// standing until this dropped it first (2026-08-20).
 		for (RegisteredAction const &existing : g_RegisteredActions) {
-			bool stillRegistered = false;
+			bool unchanged = false;
 			for (int index = 0; index < actionCount; ++index) {
 				char const *const name = actions[index].name;
-				if (name && existing.name == name) {
-					stillRegistered = true;
-					break;
+				if (!name || existing.name != name) {
+					continue;
 				}
+				char const *const description = actions[index].description;
+				char const *const schema = actions[index].jsonSchema;
+				unchanged = existing.description == (description ? description : "") &&
+				            existing.jsonSchema == (schema ? schema : "{}");
+				break;
 			}
-			if (!stillRegistered) {
+			if (!unchanged) {
 				droppedNames.push_back(existing.name);
 			}
 		}
