@@ -65,6 +65,9 @@ char const *kGoBackSchema =
 char const *kOpenMenuSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+char const *kOpenQuickMenuSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 
 bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
 	size_t const keyPos = json.find(key);
@@ -315,6 +318,56 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
 }
 
+void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_quick_menu does not accept arguments.");
+		return;
+	}
+
+	bool ok = true;
+	bool ready = false;
+
+	std::string state;
+	if (ok && !QueryString(
+	              L"typeof SystemHook != 'undefined' ? SystemHook.currentState "
+	              L": ''",
+	              state, "quick_menu state")) {
+		ok = false;
+	} else if (state != "game") {
+		ok = false;
+	}
+
+	// updown(1) is the real slide-out. The panel's own open()/close() are empty
+	// stubs, and showing/visible read 1 even while it is retracted, so
+	// _dropdown is the only usable state flag; see menu-navigation.md.
+	if (ok && !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	                     L"kag.QuickMenu == 'undefined') return 0;"
+	                     L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
+	                     L"if (!kag.QuickMenu.canDropDown) return 0;"
+	                     L"return 1; })()",
+	                     ready, "quick_menu dispatchable")) {
+		ok = false;
+	} else if (ok && !ready) {
+		ok = false;
+	}
+
+	bool dispatched = false;
+	if (ok) {
+		dispatched = QueryBool(
+		    L"(function(){ kag.QuickMenu.updown(1); return kag.QuickMenu._dropdown "
+		    L"? 1 : 0; })()",
+		    dispatched, "quick_menu dispatch");
+	}
+
+	if (!ok || !dispatched) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Opening the quick menu is unavailable.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
+}
+
 void HandleOpenMenuAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -337,11 +390,20 @@ void HandleOpenMenuAction(std::string const &id, std::string const &data) {
 		ok = false;
 	}
 
-	// 2. SystemAction.option is the same entry point the quickmenu button uses
-	//    (global startOption); see research/runtime/menu-navigation.md.
-	if (ok && !QueryBool(L"typeof SystemAction != 'undefined' && typeof "
-	                     L"SystemAction.option == 'Object' ? 1 : 0",
-	                     ready, "open_menu dispatchable")) {
+	// 2. Press the quick menu's own Option button instead of calling
+	//    SystemAction.option() directly. Same destination, but it is the control
+	//    a player actually clicks, so the action is visible on screen rather
+	//    than the settings appearing from nowhere.
+	if (ok &&
+	    !QueryBool(L"(function(){ if (typeof kag == 'undefined' || typeof "
+	               L"kag.QuickMenu == 'undefined') return 0;"
+	               L"var button = kag.QuickMenu.names['option'];"
+	               L"if (typeof button == 'undefined' || !isvalid button || "
+	               L"!button.visible || !button.enabled) return 0;"
+	               L"if (typeof button.controlOwner == 'undefined' || typeof "
+	               L"button.controlOwner.onButtonClick != 'Object') return 0;"
+	               L"return 1; })()",
+	               ready, "open_menu button")) {
 		ok = false;
 	} else if (ok && !ready) {
 		ok = false;
@@ -349,9 +411,10 @@ void HandleOpenMenuAction(std::string const &id, std::string const &data) {
 
 	bool dispatched = false;
 	if (ok) {
-		dispatched =
-		    QueryBool(L"(function(){ SystemAction.option(); return 1; })()",
-		              dispatched, "open_menu dispatch");
+		dispatched = QueryBool(
+		    L"(function(){ var button = kag.QuickMenu.names['option'];"
+		    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()",
+		    dispatched, "open_menu dispatch");
 	}
 
 	if (!ok || !dispatched) {
@@ -439,6 +502,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleSelectChoiceAction(id, data);
 	} else if (name == "open_menu") {
 		HandleOpenMenuAction(id, data);
+	} else if (name == "open_quick_menu") {
+		HandleOpenQuickMenuAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
 	} else {
@@ -473,11 +538,14 @@ void SyncCapabilities(int state) {
 		    {"select_choice", "Choose a dialogue option by index.",
 		     kSelectChoiceSchema},
 		    {"open_menu", "Open the settings menu.", kOpenMenuSchema},
+		    {"open_quick_menu",
+		     "Slide out the quick menu bar so its buttons are visible.",
+		     kOpenQuickMenuSchema},
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
 		Log("[Action] Capabilities: game (advance_text, select_choice, "
-		    "open_menu)\n");
+		    "open_menu, open_quick_menu)\n");
 	} else if (state == kCapabilityStateMenu) {
 		NeuroRegisteredAction const actions[] = {
 		    {"go_back",
@@ -595,8 +663,18 @@ void RefreshPrototypeActionState() {
 		// the notice has to cover it -- restricting it to the brief
 		// title-but-not-ready window made it arrive just as the menu appeared,
 		// which read as nonsense ("not available yet" the moment it was).
-		SyncCapabilities(kCapabilityStateTitleLoading);
-		TrySendTitleLoadingNotice();
+		//
+		// Only believe an empty reading before any real state has been seen.
+		// currentState is not a stable field: it was observed holding unrelated
+		// values mid-session (e.g. "bgmPlaying" while the option screen was up),
+		// so treating a stray empty reading as "back to loading" would revoke the
+		// live action set for no reason.
+		int const synced = g_SyncedCapabilityState.load(std::memory_order_acquire);
+		if (synced == kCapabilityStateUnknown ||
+		    synced == kCapabilityStateTitleLoading) {
+			SyncCapabilities(kCapabilityStateTitleLoading);
+			TrySendTitleLoadingNotice();
+		}
 	} else if (state == "game") {
 		SyncCapabilities(kCapabilityStateGame);
 	} else if (state == "option" || state == "load" || state == "save" ||
