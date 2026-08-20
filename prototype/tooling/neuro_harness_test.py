@@ -86,6 +86,22 @@ def check_startup_and_register(harness: Harness) -> int:
     return register_event["sequence"]
 
 
+def check_action_registry_consistent(harness: Harness) -> None:
+    """The tracked action set must be sane and free of protocol violations.
+
+    Recording messages alone cannot catch this: `actions/register` is additive,
+    so an action the game believes it dropped stays callable on the server until
+    an explicit `actions/unregister` arrives. A missing unregister therefore
+    looks perfectly fine in the raw event log -- it went unnoticed for a day
+    that way -- but shows up here as an action that is still active.
+    """
+    registry = harness.actions()
+    assert registry["active"], (
+        f"no action is callable on the server side: {registry}")
+    assert not registry["protocol_notes"], (
+        f"protocol violations observed: {registry['protocol_notes']}")
+
+
 def check_unknown_action(harness: Harness, after: int) -> int:
     """An unregistered action name must fail gracefully, not hang or crash."""
     action_id = f"regress-unknown-{uuid.uuid4().hex[:8]}"
@@ -158,6 +174,9 @@ def main() -> int:
 
         after = check_startup_and_register(harness)
         print("PASS: startup + well-formed actions/register", flush=True)
+
+        check_action_registry_consistent(harness)
+        print("PASS: server-side action registry consistent", flush=True)
 
         after = check_unknown_action(harness, after)
         print("PASS: unknown action name rejected", flush=True)

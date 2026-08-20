@@ -73,7 +73,56 @@ class Harness:
         self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._listener.bind((HOST, PORT))
         self._listener.listen(1)
+        # Server-side action registry, mirroring what a real server maintains.
+        # Recording raw messages is not enough to catch protocol-state bugs: a
+        # missing actions/unregister looked perfectly fine in the event log for a
+        # full day while the action stayed live on the real server.
+        self._actions: dict[str, dict[str, Any]] = {}
+        self._protocol_notes: deque[str] = deque(maxlen=MAX_EVENTS)
         threading.Thread(target=self._accept_loop, daemon=True).start()
+
+    def _apply_action_registry(self, message: dict[str, Any]) -> None:
+        """Track the action set the way the reference server does.
+
+        actions/register is additive and never implies removal; only
+        actions/unregister deactivates. Mirrors test-gary's
+        registerActions/unregisterActions, including its duplicate and
+        unknown/inactive diagnostics.
+        """
+        command = message.get("command")
+        data = message.get("data") or {}
+        if command == "actions/register":
+            for action in data.get("actions") or []:
+                name = action.get("name")
+                if not name:
+                    continue
+                existing = self._actions.get(name)
+                if existing and existing["active"]:
+                    self._protocol_notes.append(
+                        f"register of already-active action: {name}")
+                self._actions[name] = {"action": action, "active": True}
+        elif command == "actions/unregister":
+            for name in data.get("action_names") or []:
+                existing = self._actions.get(name)
+                if existing is None:
+                    self._protocol_notes.append(
+                        f"unregister of never-registered action: {name}")
+                elif not existing["active"]:
+                    self._protocol_notes.append(
+                        f"unregister of already-inactive action: {name}")
+                else:
+                    existing["active"] = False
+
+    def actions(self) -> dict[str, Any]:
+        """Current server-side view: which actions the game could actually call."""
+        with self._lock:
+            return {
+                "active": sorted(name for name, entry in self._actions.items()
+                                 if entry["active"]),
+                "inactive": sorted(name for name, entry in self._actions.items()
+                                   if not entry["active"]),
+                "protocol_notes": list(self._protocol_notes),
+            }
 
     def _record(self, direction: str, message: dict[str, Any]) -> None:
         with self._event_ready:
@@ -116,6 +165,10 @@ class Harness:
             with self._lock:
                 previous = self._connection
                 self._connection = connection
+                # A reconnect is a fresh game session on the server side, so the
+                # action registry starts empty again.
+                self._actions.clear()
+                self._protocol_notes.clear()
             self._record("harness", {"event": "connected"})
             if previous:
                 previous.close()
@@ -129,6 +182,8 @@ class Harness:
                 if opcode != 1:
                     continue
                 message = json.loads(payload.decode("utf-8"))
+                with self._lock:
+                    self._apply_action_registry(message)
                 self._record("client_to_server", message)
                 if message.get("command") == "startup":
                     self.send({"command": "startup", "data": {"session": {

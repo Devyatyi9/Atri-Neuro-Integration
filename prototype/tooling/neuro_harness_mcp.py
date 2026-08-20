@@ -33,6 +33,17 @@ def harness_status() -> str:
 
 
 @MCP.tool()
+def harness_actions() -> str:
+    """Return the server-side action registry: which actions are currently
+    callable, which were unregistered, and any protocol notes (duplicate
+    registers, unregisters of unknown/inactive actions). Use this rather than
+    reading raw events to judge whether a capability switch really took effect:
+    actions/register is additive, so a stale action stays callable until an
+    explicit actions/unregister arrives."""
+    return json.dumps(HARNESS.actions())
+
+
+@MCP.tool()
 def harness_events(after_sequence: int = 0) -> str:
     """Return captured client/server protocol messages after a sequence number."""
     return json.dumps(HARNESS.events(after_sequence))

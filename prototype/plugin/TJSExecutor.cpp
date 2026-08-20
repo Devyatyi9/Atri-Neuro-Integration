@@ -589,6 +589,11 @@ bool ExecuteTJSSync(wchar_t const *code,
 		data->cancelled.store(true, std::memory_order_release);
 		TakeTJSSyncCall(callId);
 		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
+	} else if (!executed) {
+		// The game thread answered but skipped the call (cancelled, or TJS not
+		// ready). This used to return false with no trace at all, which hid the
+		// cause of dropped polls from every caller.
+		Log("  [ExecuteTJSSync] Game thread skipped the call (not executed)\n");
 	}
 	return executed;
 }

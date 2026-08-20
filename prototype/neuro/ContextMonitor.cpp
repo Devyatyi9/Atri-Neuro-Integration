@@ -35,11 +35,15 @@ static void ContextMonitorThread() {
 		bool ok = ExecuteTJSSync(
 		    L"neuroExecFile(\"neuro_scripts/context_monitor.tjs\", 1)", &result,
 		    5000, TJSExecMode::Expression);
-		if (!ok)
-			continue;
-
+		// Capability and exit-hook upkeep must not depend on the context script
+		// succeeding: they are separate concerns with their own probes, and
+		// skipping them on a dropped poll delayed action registration for as
+		// long as the drops lasted (measured at 15s on 2026-08-19).
 		RefreshPrototypeActionState();
 		RetryInstallExitHookIfReady();
+
+		if (!ok)
+			continue;
 
 		ttstr resultStr(result);
 		if (resultStr.IsEmpty())
