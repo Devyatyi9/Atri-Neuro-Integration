@@ -87,6 +87,9 @@ constexpr int kPlayFlagSkip = 1 << 3;
 constexpr int kPlayFlagVoice = 1 << 4;
 constexpr int kPlayFlagPrevious = 1 << 5;
 constexpr int kPlayFlagNext = 1 << 6;
+constexpr int kPlayFlagQuickSave = 1 << 7;
+constexpr int kPlayFlagQuickLoad = 1 << 8;
+constexpr int kPlayFlagSaveVoice = 1 << 9;
 // The text window hidden away by the bar's hide button: the artwork is all
 // that is left on screen, the hide button itself goes enabled = 0, and a click
 // brings the window back instead of advancing. Only one action can apply.
@@ -132,6 +135,7 @@ constexpr int kBacklogFlagSceneList = 1 << 4;
 // lines are on screen -- re-registers and re-describes the numbering.
 constexpr int kBacklogJumpShift = 5;
 constexpr int kBacklogVoiceShift = 10;
+constexpr int kBacklogSaveShift = 15;
 constexpr int kBacklogSlotMask = 0x1f;
 // The Extra screen. Its nine squares come and go with what has been unlocked,
 // so the mask rides in the capability value the same way the backlog rows do.
@@ -617,7 +621,8 @@ void HandleBacklogLineAction(std::string const &id,
                              std::string const &data,
                              char const *action,
                              char const *verb,
-                             bool wantJump,
+                             // 0 jump, 1 replay, 2 keep in the collection
+                             int which,
                              char const *okMessage) {
 	int number = -1;
 	if (!ParseJsonInteger(data, "\"line\"", number) || number < 1 || number > 5) {
@@ -636,30 +641,31 @@ void HandleBacklogLineAction(std::string const &id,
 	}
 	int jumpMask = 0;
 	int voiceMask = 0;
-	if (!ProbeBacklogLineButtons(jumpMask, voiceMask)) {
+	int saveMask = 0;
+	if (!ProbeBacklogLineButtons(jumpMask, voiceMask, saveMask)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Cannot tell which lines are on screen right now.");
 		return;
 	}
-	int const mask = wantJump ? jumpMask : voiceMask;
+	int const mask = which == 0 ? jumpMask : which == 1 ? voiceMask : saveMask;
 	if ((mask & (1 << slot)) == 0) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    wantJump ? "That line cannot be jumped to."
-		             : "That line has no voice to replay.");
+		    which == 0 ? "That line cannot be jumped to."
+		               : "That line has no voice.");
 		return;
 	}
 	// Hover first, the way the row is reached with a cursor: the preview is the
 	// only thing on screen that says which line this is, and the confirmation
 	// that follows does not name it.
-	if (wantJump) {
+	if (which == 0) {
 		DispatchBacklogLineButton("showJumpView", slot, (tag + " hover").c_str());
 		Sleep(kHoverPreviewMs);
 	}
 	if (!DispatchBacklogLineButton(verb, slot, (tag + " dispatch").c_str())) {
 		// Leaving a preview up over a press that never happened would be a lie
 		// about what is selected.
-		if (wantJump) {
+		if (which == 0) {
 			DispatchBacklogLineButton("hideJumpView", slot,
 			                          (tag + " unhover").c_str());
 		}
@@ -1218,6 +1224,18 @@ void HandleNeuroAction(std::string const &id,
 		HandlePlayVoiceAction(id, data);
 	} else if (name == "save_game") {
 		HandleSaveGameAction(id, data);
+	} else if (name == "quick_save") {
+		HandleQuickMenuToggle(id, data, "quick_save", "qsave",
+		                      "Saved to the quick slot.",
+		                      "Quick saving is unavailable.");
+	} else if (name == "quick_load") {
+		HandleQuickMenuToggle(id, data, "quick_load", "qload",
+		                      "Loading the quick save.",
+		                      "There is no quick save to load.");
+	} else if (name == "save_voice_line") {
+		HandleQuickMenuToggle(id, data, "save_voice_line", "vsave",
+		                      "Opened the voice collection to keep this line.",
+		                      "Keeping this line is unavailable.");
 	} else if (name == "replay_voice") {
 		HandleQuickMenuToggle(id, data, "replay_voice", "vreplay",
 		                      "Playing that line again.",
@@ -1257,11 +1275,14 @@ void HandleNeuroAction(std::string const &id,
 	} else if (name == "jump_to_line") {
 		// Deliberately not "that line": the same control lists whole scenes in
 		// scene mode, and the result would then name the wrong thing.
-		HandleBacklogLineAction(id, data, "jump_to_line", "jump", true,
+		HandleBacklogLineAction(id, data, "jump_to_line", "jump", 0,
 		                        "Asked to go back there; confirm or cancel the "
 		                        "dialog.");
+	} else if (name == "save_backlog_voice") {
+		HandleBacklogLineAction(id, data, "save_backlog_voice", "vsave", 2,
+		                        "Opened the voice collection to keep that line.");
 	} else if (name == "replay_backlog_voice") {
-		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", false,
+		HandleBacklogLineAction(id, data, "replay_backlog_voice", "vreplay", 1,
 		                        "Replaying that line.");
 	} else if (name == "music_line_up") {
 		HandleScreenButtonAction(id, data, "music_line_up", "cgmode", "up",
@@ -1570,6 +1591,24 @@ void SyncCapabilities(int kind, int payload = 0) {
 				                   "Go back to the previous scene break.",
 				                   kPreviousSceneSchema});
 			}
+			if ((payload & kPlayFlagQuickSave) != 0) {
+				actions.push_back({"quick_save",
+				                   "Save straight into the quick slot, without "
+				                   "opening the save screen.",
+				                   kQuickSaveSchema});
+			}
+			if ((payload & kPlayFlagQuickLoad) != 0) {
+				actions.push_back({"quick_load",
+				                   "Load the most recent quick save. Asks for "
+				                   "confirmation first.",
+				                   kQuickLoadSchema});
+			}
+			if ((payload & kPlayFlagSaveVoice) != 0) {
+				actions.push_back({"save_voice_line",
+				                   "Add the current line's voice to the voice "
+				                   "collection, on the Extra screen.",
+				                   kSaveVoiceSchema});
+			}
 			if (canGoNext) {
 				actions.push_back({"next_scene",
 				                   "Jump ahead to the next scene break, the same place "
@@ -1847,6 +1886,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 		// scroll the same number is a different line.
 		int const jumpMask = (payload >> kBacklogJumpShift) & kBacklogSlotMask;
 		int const voiceMask = (payload >> kBacklogVoiceShift) & kBacklogSlotMask;
+		int const saveMask = (payload >> kBacklogSaveShift) & kBacklogSlotMask;
 		std::string jumpList;
 		std::string voiceList;
 		for (int slot = 0; slot < 5; ++slot) {
@@ -1865,7 +1905,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 		// range stops at the highest row that is actually there.
 		int highest = 0;
 		for (int slot = 0; slot < 5; ++slot) {
-			if (((jumpMask | voiceMask) & (1 << slot)) != 0) {
+			if (((jumpMask | voiceMask | saveMask) & (1 << slot)) != 0) {
 				highest = slot + 1;
 			}
 		}
@@ -1880,6 +1920,22 @@ void SyncCapabilities(int kind, int payload = 0) {
 			jumpSchema = BoundedIntSchema("line", highest);
 			actions.push_back(
 			    {"jump_to_line", jumpText.c_str(), jumpSchema.c_str()});
+		}
+		std::string saveList;
+		for (int slot = 0; slot < 5; ++slot) {
+			if ((saveMask & (1 << slot)) != 0) {
+				saveList += (saveList.empty() ? "" : ", ") + std::to_string(slot + 1);
+			}
+		}
+		std::string saveText;
+		std::string saveSchema;
+		if (!saveList.empty()) {
+			saveText = "Keep the voice of one of the lines on screen in the "
+			           "collection, numbered from the top. Available now: " +
+			           saveList + ".";
+			saveSchema = BoundedIntSchema("line", highest);
+			actions.push_back(
+			    {"save_backlog_voice", saveText.c_str(), saveSchema.c_str()});
 		}
 		if (!voiceList.empty()) {
 			voiceText = "Replay the voice of one of the lines on screen, numbered "
@@ -2069,6 +2125,9 @@ void RefreshPrototypeActionState() {
 			if (screen.canReplayVoice) play |= kPlayFlagVoice;
 			if (screen.canGoPrevious) play |= kPlayFlagPrevious;
 			if (screen.canGoNext) play |= kPlayFlagNext;
+			if (screen.canQuickSave) play |= kPlayFlagQuickSave;
+			if (screen.canQuickLoad) play |= kPlayFlagQuickLoad;
+			if (screen.canSaveVoice) play |= kPlayFlagSaveVoice;
 		}
 		SyncCapabilities(kCapabilityStatePlay, play);
 	} else if (screen.state == "load") {
@@ -2093,12 +2152,14 @@ void RefreshPrototypeActionState() {
 		int flags = 0;
 		int jumpMask = 0;
 		int voiceMask = 0;
+		int saveMask = 0;
 		if (ProbeBacklogButtons(flags) &&
-		    ProbeBacklogLineButtons(jumpMask, voiceMask)) {
+		    ProbeBacklogLineButtons(jumpMask, voiceMask, saveMask)) {
 			SyncCapabilities(kCapabilityStateBacklog,
 			                 flags |
 			                 (jumpMask << kBacklogJumpShift) |
-			                 (voiceMask << kBacklogVoiceShift));
+			                 (voiceMask << kBacklogVoiceShift) |
+			                 (saveMask << kBacklogSaveShift));
 		} else {
 			SyncScreenByControls(stateChanged);
 		}

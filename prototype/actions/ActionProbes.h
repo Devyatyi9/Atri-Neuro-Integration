@@ -39,6 +39,11 @@ struct ScreenSnapshot {
 	bool canReplayVoice = false;
 	bool canGoPrevious = false;
 	bool canGoNext = false;
+	// The rest of the bar: quick save and quick load follow canStore/canQuickLoad,
+	// and the voice-collection button is always live.
+	bool canQuickSave = false;
+	bool canQuickLoad = false;
+	bool canSaveVoice = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -132,7 +137,8 @@ bool ProbeBacklogButtons(int &flags);
 // blockBaseLayer child and report it through `visible`, not `enabled`; the slots
 // are window-relative, so the same number means a different line after
 // scrolling.
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask);
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask,
+                             int &saveMask);
 // How many lines the conversation history holds, and a window of it as
 // "<index>	<speaker>	<line>" rows with `index` numbered from 1. Both come from
 // the player object the backlog reads, so neither depends on what is on screen.

@@ -114,6 +114,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0, v = 0, b = 0, n = 0;"
+	    L"var qs = 0, ql = 0, vs = 0;"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
@@ -127,10 +128,13 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"if (typeof q['vreplay'] == 'Object' && q['vreplay'].enabled) v = 1;"
 	    L"if (typeof q['xprev'] == 'Object' && q['xprev'].enabled) b = 1;"
 	    L"if (typeof q['next'] == 'Object' && q['next'].enabled) n = 1;"
+	    L"if (typeof q['qsave'] == 'Object' && q['qsave'].enabled) qs = 1;"
+	    L"if (typeof q['qload'] == 'Object' && q['qload'].enabled) ql = 1;"
+	    L"if (typeof q['vsave'] == 'Object' && q['vsave'].enabled) vs = 1;"
 	    L"}"
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 + "
-	    L"'|' + v + '|' + b + '|' + n; })()",
+	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -147,7 +151,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	// "<state>|<d>|<c>|<p>|<h>|<a>|<s>": the state can be empty but never
 	// contains a bar, so flags are read off the tail by offset from the first.
 	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 18) {
+	if (separator == std::string::npos || probe.size() != separator + 24) {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return false;
 	}
@@ -161,6 +165,9 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.canReplayVoice = probe[separator + 13] == '1';
 	out.canGoPrevious = probe[separator + 15] == '1';
 	out.canGoNext = probe[separator + 17] == '1';
+	out.canQuickSave = probe[separator + 19] == '1';
+	out.canQuickLoad = probe[separator + 21] == '1';
+	out.canSaveVoice = probe[separator + 23] == '1';
 	return true;
 }
 
@@ -453,7 +460,8 @@ bool ProbeBacklogButtons(int &flags) {
 	return true;
 }
 
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask) {
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask,
+                             int &saveMask) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
@@ -463,29 +471,34 @@ bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask) {
 	        L"if (kag.current.children[i].name == 'blockBaseLayer') "
 	        L"base = kag.current.children[i]; }"
 	        L"if (typeof base != 'Object') return '';"
-	        L"var j = '', v = '';"
+	        L"var j = '', v = '', w = '';"
 	        L"for (var n = 0; n < 5; n++) {"
-	        L"var jf = 0, vf = 0;"
+	        L"var jf = 0, vf = 0, wf = 0;"
 	        L"for (var i = 0; i < base.children.count; i++) {"
 	        L"var ch = base.children[i];"
 	        L"if (ch.name == 'jump' + n && ch.visible) jf = 1;"
-	        L"if (ch.name == 'vreplay' + n && ch.visible) vf = 1; }"
-	        L"j += jf; v += vf; }"
-	        L"return j + v; })()",
+	        L"if (ch.name == 'vreplay' + n && ch.visible) vf = 1;"
+	        L"if (ch.name == 'vsave' + n && ch.visible) wf = 1; }"
+	        L"j += jf; v += vf; w += wf; }"
+	        L"return j + v + w; })()",
 	        raw, "backlog lines")) {
 		return false;
 	}
-	if (raw.size() != 10) {
+	if (raw.size() != 15) {
 		return false;
 	}
 	jumpMask = 0;
 	voiceMask = 0;
+	saveMask = 0;
 	for (int i = 0; i < 5; ++i) {
 		if (raw[i] == '1') {
 			jumpMask |= 1 << i;
 		}
 		if (raw[i + 5] == '1') {
 			voiceMask |= 1 << i;
+		}
+		if (raw[i + 10] == '1') {
+			saveMask |= 1 << i;
 		}
 	}
 	return true;
