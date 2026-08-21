@@ -17,6 +17,11 @@
 
 // Screen state, as reported by SystemHook.currentState.
 bool ProbeStateIs(char const *expected, char const *tag);
+// The scenario the screen runs, from the active conductor. This is what the
+// slot screens go by: their tabs change the scenario, while the state string
+// does not follow and kag.currentStorage names the scene behind a menu opened
+// in play.
+bool ProbeScenarioIs(char const *expected, char const *tag);
 // The screens that share the plain "back" control: option, load, save, voice
 // and backlog. Only some of them also carry a "title" control, so
 // return_to_title still stands on its own button probe.
@@ -26,6 +31,13 @@ bool ProbeStateIsMenuScreen(char const *tag);
 // main thread, so it is deliberately a single round trip.
 struct ScreenSnapshot {
 	std::string state;
+	// The scenario the screen is running, e.g. "load.ks", from the active
+	// conductor. The save screen's tabs move between load.ks, save.ks and
+	// voice.ks, and this is what follows them: `state` keeps reporting whichever
+	// of the three was entered first. Not kag.currentStorage either -- a menu
+	// opened during play runs on the extra conductor, and that field keeps
+	// naming the scene behind it.
+	std::string storage;
 	bool dialogVisible = false;
 	bool choiceVisible = false;
 	bool quickMenuOut = false;
@@ -121,6 +133,11 @@ bool ProbeLoadAccepted(char const *tag);
 // on load/save.
 bool ProbeSaveWindow(int &offset, int &page);
 
+// Which of the save screen's four tabs are on the tab bar, and which of those
+// can be pressed, as the bit flags the router defines. The tab that is open has
+// no button of its own, so it is absent from both masks.
+bool ProbeSaveTabs(int &visibleMask, int &enabledMask);
+
 // Whether the ten slots on screen are the ten bookmarks starting at `base`,
 // checked by comparing each slot's enabled flag against whether that bookmark
 // exists. There is no readable page indicator, and a page button press does not
@@ -128,13 +145,17 @@ bool ProbeSaveWindow(int &offset, int &page);
 // being on it. Only meaningful once the page has settled.
 bool ProbeSlotsShowBase(int base, char const *tag);
 
-// The saves themselves, as "<slot>	<scene>	<date>" lines, slot numbered from
-// 1. Capped at `limit` entries; `total` receives how many exist in all. Neuro
-// cannot see the screen, so without this the slot numbers mean nothing to her.
-bool ProbeBookmarkList(int limit, std::string &out, int &total);
-// The slot numbers, from 1, of the first `limit` free slots outside the quick
-// range -- what save_game will accept. `total` receives how many are free.
-bool ProbeFreeSlots(int limit, std::string &out, int &total);
+// The ten slots the screen is showing, as "<slot>	<what>	<when>" lines with
+// `slot` numbered from 1 the way the screen numbers them, top left first. Empty
+// slots are listed too, with both fields blank: their numbers are what
+// save_game accepts. `base` and `page` come back as well -- page 0 is the quick
+// tab. `voice` picks the fields, since the voice tab holds lines rather than
+// saves.
+bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out);
+
+// How many page buttons the screen carries. Unlike the settings tabs, the page
+// of the open window has a button too, so this is the page count as it stands.
+int ProbeSavePageCount();
 
 // The voice tab is the same paged list in a third mode: each entry is a
 // recorded line, and pressing one replays it. Its rows carry more than the save
@@ -146,8 +167,6 @@ bool ProbeVoiceExists(int index, char const *tag);
 // slots do opposite things -- vsave leaves the line in tf.VoiceSave, vload
 // deletes it.
 bool ProbeVoiceSaveMode(char const *tag);
-// "<slot>	<speaker>	<scene title>" lines, slot numbered from 1.
-bool ProbeVoiceList(int limit, std::string &out, int &total);
 
 // Which of the backlog's four scroll controls are usable right now, plus which
 // of its two modes is showing, as the bit flags the router defines. They follow

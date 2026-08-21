@@ -82,6 +82,16 @@ bool ProbeStateIs(char const *expected, char const *tag) {
 	return state == expected;
 }
 
+bool ProbeScenarioIs(char const *expected, char const *tag) {
+	std::string storage;
+	if (!QueryString(L"(function(){ try { return '' + kag.conductor.curStorage; }"
+	                 L" catch (e) { return ''; } })()",
+	                 storage, tag)) {
+		return false;
+	}
+	return storage == expected;
+}
+
 bool ProbeStateIsMenuScreen(char const *tag) {
 	std::string state;
 	if (!QueryString(L"typeof SystemHook != 'undefined' ? "
@@ -116,6 +126,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0, v = 0, b = 0, n = 0;"
 	    L"var qs = 0, ql = 0, vs = 0;"
 	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0;"
+	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
@@ -148,12 +159,16 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"xv = 1; if (t['extra'].enabled) xe = 1; }"
 	    L"if (typeof t['tend'] == 'Object' && t['tend'].visible) ev = 1;"
 	    L"}"
+	    // Which scenario the screen is running. Read from the active conductor,
+	    // not from kag.currentStorage: a menu opened during play runs on the
+	    // extra conductor, and currentStorage keeps naming the scene behind it.
+	    L"try { sg = '' + kag.conductor.curStorage; } catch (e) { sg = ''; }"
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 "
 	    L"+ "
 	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs"
-	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev; "
-	    L"})()",
+	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
+	    L"+ '|' + sg; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -167,12 +182,14 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>" followed by eighteen single-digit flags, each behind a bar. The
-	// state can be empty but never contains a bar, so the flags are read off the
-	// tail by offset from the first one. The length check is what catches a
-	// field added to the expression and not here.
+	// "<state>", then eighteen single-digit flags each behind a bar, then the
+	// scenario storage. Neither string contains a bar, so the flags sit at fixed
+	// offsets from the first one and the storage is whatever follows them. The
+	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 36) {
+	size_t const flagsEnd = separator + 36;
+	if (separator == std::string::npos || probe.size() <= flagsEnd ||
+	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return false;
 	}
@@ -195,6 +212,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.titleShowsExtra = probe[separator + 31] == '1';
 	out.titleCanOpenExtra = probe[separator + 33] == '1';
 	out.titleShowsTrueEnd = probe[separator + 35] == '1';
+	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }
 
@@ -354,6 +372,32 @@ bool ProbeLoadAccepted(char const *tag) {
 	    tag);
 }
 
+bool ProbeSaveTabs(int &visibleMask, int &enabledMask) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
+	        L"!= 'Object' || typeof kag.current.names == 'undefined') return '';"
+	        L"var n = kag.current.names;"
+	        // Bit order is the order the tabs sit on screen, left to right.
+	        L"var names = ['to_save', 'to_load', 'to_quick', 'to_voice'];"
+	        L"var v = 0, e = 0;"
+	        L"for (var i = 0; i < names.count; i++) {"
+	        L"var b = n[names[i]];"
+	        L"if (typeof b == 'Object' && b.visible) {"
+	        L"v = v | (1 << i); if (b.enabled) e = e | (1 << i); } }"
+	        L"return v + '|' + e; })()",
+	        raw, "save tabs")) {
+		return false;
+	}
+	size_t const separator = raw.find('|');
+	if (separator == std::string::npos) {
+		return false;
+	}
+	visibleMask = atoi(raw.substr(0, separator).c_str());
+	enabledMask = atoi(raw.substr(separator + 1).c_str());
+	return true;
+}
+
 bool ProbeSaveWindow(int &offset, int &page) {
 	// Every access is wrapped: the instance is invalidated the moment the screen
 	// closes, and touching it then throws rather than returning void.
@@ -375,31 +419,6 @@ bool ProbeSaveWindow(int &offset, int &page) {
 	return true;
 }
 
-bool ProbeFreeSlots(int limit, std::string &out, int &total) {
-	// Starts at 10: 0..9 are the quick saves, which sit on their own tab.
-	std::string raw;
-	wchar_t probe[768];
-	if (_snwprintf_s(probe, _TRUNCATE,
-	                 L"(function(){ if (typeof kag == 'undefined') return '0';"
-	                 L"var found = 0, listed = 0, s = '';"
-	                 L"for (var i = 10; i < kag.numBookMarks; i++) {"
-	                 L"if (kag.isExistentBookMark(i)) continue;"
-	                 L"found++;"
-	                 L"if (listed < %d) { listed++; s += ' ' + (i + 1); } }"
-	                 L"return found + s; })()",
-	                 limit) < 0) {
-		Log("[Action] free slot probe did not fit\n");
-		return false;
-	}
-	if (!QueryString(probe, raw, "free slots")) {
-		return false;
-	}
-	size_t const space = raw.find(' ');
-	total = atoi(raw.substr(0, space).c_str());
-	out = space == std::string::npos ? std::string() : raw.substr(space + 1);
-	return true;
-}
-
 bool ProbeVoiceSaveMode(char const *tag) {
 	return Ask(
 	    L"(function(){ try { return typeof tf.VoiceSave == 'Object' "
@@ -413,36 +432,6 @@ bool ProbeVoiceExists(int index, char const *tag) {
 	    L"try { return global.__cm_saveStore.isExistData(%d) ? 1 : 0; }"
 	    L"catch (e) { return 0; } })()",
 	    tag, index);
-}
-
-bool ProbeVoiceList(int limit, std::string &out, int &total) {
-	wchar_t probe[1024];
-	if (_snwprintf_s(
-	        probe, _TRUNCATE,
-	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
-	        L"return '0';"
-	        L"var st = global.__cm_saveStore;"
-	        L"var found = 0, listed = 0, s = '';"
-	        L"try { for (var i = 0; i < st.count; i++) {"
-	        L"if (!st.isExistData(i)) continue;"
-	        L"found++;"
-	        L"if (listed < %d) { listed++; var d = st.getItemInfo(i);"
-	        L"s += '\n' + (i + 1) + '\t' + d.name + '\t' + d.title; } }"
-	        L"} catch (e) { }"
-	        L"return found + s; })()",
-	        limit) < 0) {
-		Log("[Action] voice list probe did not fit\n");
-		return false;
-	}
-	std::string raw;
-	if (!QueryString(probe, raw, "voice list")) {
-		return false;
-	}
-	size_t const firstLine = raw.find('\n');
-	total = atoi(raw.substr(0, firstLine).c_str());
-	out = firstLine == std::string::npos ? std::string()
-	                                     : raw.substr(firstLine + 1);
-	return true;
 }
 
 bool ProbeSlotsShowBase(int base, char const *tag) {
@@ -459,35 +448,55 @@ bool ProbeSlotsShowBase(int base, char const *tag) {
 	    tag, base);
 }
 
-bool ProbeBookmarkList(int limit, std::string &out, int &total) {
+bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out) {
 	wchar_t probe[1024];
-	int const written = _snwprintf_s(
-	    probe, _TRUNCATE,
-	    L"(function(){ if (typeof kag == 'undefined' || typeof "
-	    L"kag.isExistentBookMark != 'Object') return '0';"
-	    L"var found = 0, listed = 0, s = '';"
-	    L"for (var i = 0; i < kag.numBookMarks; i++) {"
-	    L"if (!kag.isExistentBookMark(i)) continue;"
-	    L"found++;"
-	    L"if (listed < %d) { listed++;"
-	    L"s += '\n' + (i + 1) + '\t' + kag.getBookMarkPageName(i) + '\t' + "
-	    L"kag.getBookMarkDate(i); } }"
-	    L"return found + s; })()",
-	    limit);
-	if (written < 0) {
-		Log("[Action] bookmark list probe did not fit\n");
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
+	        L"return '';"
+	        L"var st = global.__cm_saveStore;"
+	        L"try { var s = st.offset + '|' + st.page;"
+	        L"for (var i = 0; i < 10; i++) {"
+	        L"var idx = st.offset + i;"
+	        L"s += '\n' + (i + 1) + '\t';"
+	        L"if (idx < st.count && st.isExistData(idx)) {"
+	        L"var d = st.getItemInfo(idx);"
+	        L"s += d['%hs'] + '\t' + d['%hs']; } else { s += '\t'; } }"
+	        L"return s; } catch (e) { return ''; } })()",
+	        voice ? "name" : "title", voice ? "title" : "realdate") < 0) {
+		Log("[Action] slot window probe did not fit\n");
 		return false;
 	}
-
 	std::string raw;
-	if (!QueryString(probe, raw, "bookmark list")) {
+	if (!QueryString(probe, raw, "slot window")) {
 		return false;
 	}
 	size_t const firstLine = raw.find('\n');
-	total = atoi(raw.substr(0, firstLine).c_str());
-	out = firstLine == std::string::npos ? std::string()
-	                                     : raw.substr(firstLine + 1);
+	size_t const separator = raw.find('|');
+	if (firstLine == std::string::npos || separator == std::string::npos ||
+	    separator > firstLine) {
+		return false;
+	}
+	base = atoi(raw.substr(0, separator).c_str());
+	page = atoi(raw.substr(separator + 1, firstLine - separator - 1).c_str());
+	out = raw.substr(firstLine + 1);
 	return true;
+}
+
+int ProbeSavePageCount() {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (typeof kag == 'undefined' || typeof "
+	        L"kag.current != 'Object' || typeof kag.current.names == "
+	        L"'undefined') return '0';"
+	        L"var n = 0;"
+	        L"for (var i = 1; i <= 32; i++) {"
+	        L"if (typeof kag.current.names['page' + i] == 'Object') n++; }"
+	        L"return '' + n; })()",
+	        raw, "save page count")) {
+		return 0;
+	}
+	return atoi(raw.c_str());
 }
 
 bool ProbeBacklogButtons(int &flags) {
@@ -778,20 +787,27 @@ bool DispatchExitRequest(char const *tag) {
 
 int ProbeTabCount() {
 	std::string raw;
-	if (!QueryString(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                 L"kag.current != 'Object' || typeof kag.current.names == "
-	                 L"'undefined') return '0';"
-	                 // The tab that is open has no button -- you do not press
-	                 // the one you are on -- so the controls always come one
-	                 // short of the real count, whichever tab that is. Counting
-	                 // what is there and adding the current one back gives the
-	                 // total; the missing index is exactly the open tab.
-	                 L"var n = 0;"
-	                 L"for (var i = 0; i < 16; i++) {"
-	                 L"var b = kag.current.names['page' + i];"
-	                 L"if (typeof b == 'Object') n++; }"
-	                 L"return '' + (n > 0 ? n + 1 : 0); })()",
-	                 raw, "tab count")) {
+	if (!QueryString(
+	        L"(function(){ if (typeof kag == 'undefined' || typeof "
+	        L"kag.current != 'Object' || typeof kag.current.names == "
+	        L"'undefined') return '0';"
+	        // The slot screens carry page buttons of their own, over a
+	        // list rather than over tabs. Counting those as settings
+	        // tabs offered a sixteen-tab settings screen on top of the
+	        // save list, so a slot grid means "no tabs here" outright.
+	        L"if (typeof kag.current.names['item00'] == 'Object') return "
+	        L"'0';"
+	        // The tab that is open has no button -- you do not press
+	        // the one you are on -- so the controls always come one
+	        // short of the real count, whichever tab that is. Counting
+	        // what is there and adding the current one back gives the
+	        // total; the missing index is exactly the open tab.
+	        L"var n = 0;"
+	        L"for (var i = 0; i < 16; i++) {"
+	        L"var b = kag.current.names['page' + i];"
+	        L"if (typeof b == 'Object') n++; }"
+	        L"return '' + (n > 0 ? n + 1 : 0); })()",
+	        raw, "tab count")) {
 		return 0;
 	}
 	return atoi(raw.c_str());

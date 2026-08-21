@@ -120,8 +120,6 @@ constexpr char const *const kStopSkipModeSchema =
 // `index` counts from 1 so it matches the numbering of the choice list in the
 // context message ("1) ... 2) ..."); the handler converts to the engine's
 // 0-based array.
-// `slot` counts from 1 like the numbering on the load screen; the handler
-// converts to kag's 0-based bookmark index.
 constexpr char const *const kQuickSaveSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
@@ -143,21 +141,13 @@ constexpr char const *const kNextSceneSchema =
 constexpr char const *const kOpenSaveSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
-// Same shape as load: `slot` counts from 1. Only empty slots are accepted.
-// Same shape again: `slot` counts from 1, over the voice list this time.
-constexpr char const *const kPlayVoiceSchema =
+// One shape for every slot grid: load, save and the voice collection all show
+// the same ten cells. `slot` is 1 to 10 as the screen numbers them, top left
+// first, so a number always means the cell on view and never an index into the
+// list behind it.
+constexpr char const *const kSlotSchema =
     "{\"type\":\"object\",\"properties\":{"
-    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
-    "\"required\":[\"slot\"],"
-    "\"additionalProperties\":false}";
-constexpr char const *const kSaveGameSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
-    "\"required\":[\"slot\"],"
-    "\"additionalProperties\":false}";
-constexpr char const *const kLoadSaveSchema =
-    "{\"type\":\"object\",\"properties\":{"
-    "\"slot\":{\"type\":\"integer\",\"minimum\":1}},"
+    "\"slot\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":10}},"
     "\"required\":[\"slot\"],"
     "\"additionalProperties\":false}";
 constexpr char const *const kSelectChoiceSchema =
