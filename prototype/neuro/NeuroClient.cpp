@@ -415,35 +415,40 @@ bool NeuroSendContext(char const *message, bool silent) {
 bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
                                int actionCount) {
 	std::vector<std::string> droppedNames;
+	bool identical = false;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		// Names present before but absent from the new set have to be revoked
-		// explicitly; see SendUnregisterActions.
+		// The set is replaced whole rather than diffed name by name. Two reasons,
+		// and the second is the one that forced it:
 		//
-		// A name that stays but whose description or schema changed has to be
-		// revoked too. Registering an action that is already registered is
-		// ignored by the server ("If you try to register an action that is
-		// already registered, it will be ignored" -- neuro-sdk/API/
-		// SPECIFICATION.md), so an updated description or schema would never
-		// reach Neuro otherwise. That is not hypothetical: view_cg narrows its
-		// square range on the gallery's last page, and the old range kept
-		// standing until this dropped it first (2026-08-20).
+		// A name whose description or schema changed has to be revoked before it
+		// can be re-registered at all -- the server ignores a register for a name
+		// it already knows (neuro-sdk/API/SPECIFICATION.md), so an updated
+		// description would never arrive.
+		//
+		// And a name that survives keeps the place it was first given, because
+		// register only appends. Adding one action to a set therefore puts it at
+		// the end of the list a client shows, wherever it belongs in the set we
+		// built. The quick menu is ordered to mirror the bar on screen, and that
+		// order only survives if every entry is re-sent together.
+		identical = g_RegisteredActions.size() == static_cast<size_t>(actionCount);
+		for (int index = 0; identical && index < actionCount; ++index) {
+			RegisteredAction const &existing = g_RegisteredActions[index];
+			char const *const name = actions[index].name;
+			char const *const description = actions[index].description;
+			char const *const schema = actions[index].jsonSchema;
+			identical = existing.name == (name ? name : "") &&
+			            existing.description == (description ? description : "") &&
+			            existing.jsonSchema == (schema ? schema : "{}");
+		}
+		// Nothing to say when the set is the same one, down to the order. This is
+		// the common case at 5 Hz, and re-sending it only produced "register of
+		// already-active action" noise in the viewers.
+		if (identical) {
+			return true;
+		}
 		for (RegisteredAction const &existing : g_RegisteredActions) {
-			bool unchanged = false;
-			for (int index = 0; index < actionCount; ++index) {
-				char const *const name = actions[index].name;
-				if (!name || existing.name != name) {
-					continue;
-				}
-				char const *const description = actions[index].description;
-				char const *const schema = actions[index].jsonSchema;
-				unchanged = existing.description == (description ? description : "") &&
-				            existing.jsonSchema == (schema ? schema : "{}");
-				break;
-			}
-			if (!unchanged) {
-				droppedNames.push_back(existing.name);
-			}
+			droppedNames.push_back(existing.name);
 		}
 		g_RegisteredActions.clear();
 		for (int index = 0; index < actionCount; ++index) {
