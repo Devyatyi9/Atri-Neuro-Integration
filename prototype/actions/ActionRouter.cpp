@@ -54,6 +54,10 @@ long long CapabilityKey(int kind, int payload) {
 // be sent once on entering the loading state, because that happens before the
 // SDK connects.
 std::atomic<bool> g_TitleLoadingNoticeSent(false);
+// The same problem for the first-run language screen, which comes up in the
+// same window: it is on screen seconds after the splashes, while the SDK may
+// still be connecting.
+std::atomic<bool> g_LanguageNoticeSent(false);
 constexpr int kCapabilityStateUnknown = -1;
 constexpr int kCapabilityStateTitle = 0;
 constexpr int kCapabilityStateMenu = 2;
@@ -165,6 +169,15 @@ constexpr int kGalleryPageShift = 11;
 constexpr int kGalleryPageMask = 0x1f;
 constexpr int kGalleryTrackShift = 16;
 constexpr int kGalleryTrackMask = 0x3f;
+// The language screen the game opens once, on the very first launch, before the
+// title has ever existed. It reports itself as "option" -- the same state
+// string as the settings screen -- and carries the same "back" control, so it
+// used to resolve as a settings screen: go_back was registered, the context
+// announced "a settings screen", and nothing said the game was standing there
+// waiting to be let past. The control is not a way back to anywhere; it is the
+// OK button of a prompt with nothing behind it yet.
+constexpr int kCapabilityStateLanguageSelect = 18;
+
 // How many saves the entering context lists before it just gives the total.
 // Fifteen is one screenful, which keeps the message about as long as what a
 // player sees at a glance.
@@ -308,9 +321,8 @@ void HandleSettingsTabAction(std::string const &id, std::string const &data) {
 	sprintf_s(button, "page%d", number - 1);
 	if (!ProbeScreenButtonReady(button, "settings_tab button") ||
 	    !DispatchScreenButton(button, "settings_tab dispatch")) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    "That tab is already open, or there is no such tab.");
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That tab is already open, or there is no such tab.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Switched to that tab.");
@@ -422,7 +434,8 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	// .title() straight from game made the confirmation dialog appear out of
 	// nowhere -- mid-choice, with nothing on screen explaining it. The settings
 	// screen is where a player finds this button, so the route is
-	// open_quick_menu -> open_settings -> return_to_title and every step is visible.
+	// open_quick_menu -> open_settings -> return_to_title and every step is
+	// visible.
 	//
 	// The control's handler is SystemAction.title() -> _title(), which guards on
 	// kag.startAnchorEnabled and raises the AskTitle dialog; see
@@ -458,9 +471,9 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 		NeuroSendActionResult(id.c_str(), false, "No dialog is waiting.");
 		return;
 	}
-	NeuroSendActionResult(id.c_str(), true,
-	                      confirm ? "Confirmed the dialog."
-	                              : "Cancelled the dialog.");
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    confirm ? "Confirmed the dialog." : "Cancelled the dialog.");
 }
 
 void HandleHideUiAction(std::string const &id, std::string const &data) {
@@ -495,8 +508,7 @@ void HandleShowUiAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIs("game", "show_ui state") &&
 	                DispatchShowTextWindow("show_ui dispatch");
 	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "The text window is not hidden.");
+		NeuroSendActionResult(id.c_str(), false, "The text window is not hidden.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Brought the text window back.");
@@ -548,10 +560,11 @@ void HandleQuickMenuToggle(std::string const &id,
 	}
 
 	std::string const tag(action);
-	bool const ok = ProbeStateIs("game", (tag + " state").c_str()) &&
-	                ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
-	                ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
-	                DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	bool const ok =
+	    ProbeStateIs("game", (tag + " state").c_str()) &&
+	    ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
+	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
+	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, failMessage);
 		return;
@@ -578,10 +591,11 @@ void HandleSceneStepAction(std::string const &id,
 	}
 
 	std::string const tag(action);
-	bool const ok = ProbeStateIs("game", (tag + " state").c_str()) &&
-	                ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
-	                ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
-	                DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	bool const ok =
+	    ProbeStateIs("game", (tag + " state").c_str()) &&
+	    ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
+	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
+	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false, failMessage);
 		return;
@@ -628,7 +642,8 @@ void HandleBacklogLineAction(std::string const &id,
 	if (!ParseJsonInteger(data, "\"line\"", number) || number < 1 || number > 5) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    (std::string(action) + " requires a \"line\" between 1 and 5.").c_str());
+		    (std::string(action) + " requires a \"line\" between 1 and 5.")
+		        .c_str());
 		return;
 	}
 	int const slot = number - 1;
@@ -649,10 +664,9 @@ void HandleBacklogLineAction(std::string const &id,
 	}
 	int const mask = which == 0 ? jumpMask : which == 1 ? voiceMask : saveMask;
 	if ((mask & (1 << slot)) == 0) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    which == 0 ? "That line cannot be jumped to."
-		               : "That line has no voice.");
+		NeuroSendActionResult(id.c_str(), false,
+		                      which == 0 ? "That line cannot be jumped to."
+		                                 : "That line has no voice.");
 		return;
 	}
 	// Hover first, the way the row is reached with a cursor: the preview is the
@@ -690,8 +704,8 @@ int ParseReadLanguage(std::string const &data) {
 
 // Builds the schema for a single integer field bounded to what is actually on
 // screen right now. The bound has to travel with the schema rather than being
-// baked in: the gallery's last page carries fewer squares, and the backlog shows
-// fewer rows near the ends of the log.
+// baked in: the gallery's last page carries fewer squares, and the backlog
+// shows fewer rows near the ends of the log.
 std::string BoundedIntSchema(char const *field, int maximum) {
 	return std::string("{\"type\":\"object\",\"properties\":{\"") + field +
 	       "\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":" +
@@ -886,9 +900,9 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 	size_t start = 0;
 	while (start < window.size()) {
 		size_t const lineEnd = window.find('\n', start);
-		std::string const row = window.substr(
-		    start,
-		    lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
+		std::string const row =
+		    window.substr(start, lineEnd == std::string::npos ? std::string::npos
+		                                                      : lineEnd - start);
 		start = lineEnd == std::string::npos ? window.size() : lineEnd + 1;
 		size_t const firstTab = row.find('	');
 		size_t const secondTab = firstTab == std::string::npos
@@ -942,9 +956,9 @@ void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 }
 
 // Bookmarks are one flat range, and which tab shows a given one follows from
-// the index: 0..9 are the quick saves, on a tab with a single page, and the rest
-// live on load/save at ten to a page. Page N shows offset N * 10, so page 1
-// starts at bookmark 10, not 0.
+// the index: 0..9 are the quick saves, on a tab with a single page, and the
+// rest live on load/save at ten to a page. Page N shows offset N * 10, so page
+// 1 starts at bookmark 10, not 0.
 constexpr int kQuickSaveCount = 10;
 constexpr int kVisibleSlots = 10;
 constexpr int kSlotColumns = 5;
@@ -957,8 +971,7 @@ int MoveToBookmark(std::string const &id,
                    int bookmark,
                    char const *firstTenMessage) {
 	int const wantedOffset =
-	    bookmark < kQuickSaveCount ? 0
-	                               : bookmark / kVisibleSlots * kVisibleSlots;
+	    bookmark < kQuickSaveCount ? 0 : bookmark / kVisibleSlots * kVisibleSlots;
 
 	int offset = -1;
 	int page = -1;
@@ -1010,8 +1023,8 @@ bool PressSlot(int position, char const *tag) {
 	       DispatchScreenButton(itemButton, (label + " dispatch").c_str());
 }
 
-// Both slot actions number from 1, like the list their context message sends and
-// like select_choice. kag's bookmark index is 0-based.
+// Both slot actions number from 1, like the list their context message sends
+// and like select_choice. kag's bookmark index is 0-based.
 bool ParseSlot(std::string const &id,
                std::string const &data,
                char const *action,
@@ -1202,6 +1215,30 @@ void HandleGoBackAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Returned to the previous screen.");
 }
 
+void HandleConfirmLanguageAction(std::string const &id,
+                                 std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "confirm_language does not accept arguments.");
+		return;
+	}
+
+	// Same "back" control as every other menu screen, and the same press: on
+	// this screen it is the OK of the first-run prompt, and the game goes on to
+	// the title behind it.
+	bool const ok = ProbeLanguageScreen("confirm_language screen") &&
+	                ProbeScreenButtonReady("back", "confirm_language button") &&
+	                DispatchScreenButton("back", "confirm_language dispatch");
+	if (!ok) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The language screen is no longer up.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Language confirmed. The game is going on to the "
+	                      "title screen.");
+}
+
 void HandleNeuroAction(std::string const &id,
                        std::string const &name,
                        std::string const &data) {
@@ -1239,6 +1276,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleAnswerDialogAction(id, data);
 	} else if (name == "go_back") {
 		HandleGoBackAction(id, data);
+	} else if (name == "confirm_language") {
+		HandleConfirmLanguageAction(id, data);
 	} else if (name == "hide_ui") {
 		HandleHideUiAction(id, data);
 	} else if (name == "show_ui") {
@@ -1395,9 +1434,9 @@ void SendVoiceListContext() {
 	size_t start = 0;
 	while (start < list.size()) {
 		size_t const lineEnd = list.find('\n', start);
-		std::string const line = list.substr(
-		    start,
-		    lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
+		std::string const line =
+		    list.substr(start, lineEnd == std::string::npos ? std::string::npos
+		                                                    : lineEnd - start);
 		start = lineEnd == std::string::npos ? list.size() : lineEnd + 1;
 		size_t const firstTab = line.find('\t');
 		size_t const secondTab = firstTab == std::string::npos
@@ -1423,9 +1462,10 @@ void SendFreeSlotContext() {
 		return;
 	}
 	if (total == 0) {
-		NeuroSendContext("The save screen is open. Every slot is taken, and "
-		                 "overwriting is not allowed.",
-		                 false);
+		NeuroSendContext(
+		    "The save screen is open. Every slot is taken, and "
+		    "overwriting is not allowed.",
+		    false);
 		return;
 	}
 	std::string message = "The save screen is open. Free slots:" + slots;
@@ -1452,8 +1492,9 @@ void SendSaveListContext() {
 	size_t start = 0;
 	while (start < list.size()) {
 		size_t const lineEnd = list.find('\n', start);
-		std::string const line = list.substr(
-		    start, lineEnd == std::string::npos ? std::string::npos : lineEnd - start);
+		std::string const line =
+		    list.substr(start, lineEnd == std::string::npos ? std::string::npos
+		                                                    : lineEnd - start);
 		start = lineEnd == std::string::npos ? list.size() : lineEnd + 1;
 
 		size_t const firstTab = line.find('\t');
@@ -1483,18 +1524,34 @@ int SyncedCapabilityKind() {
 char const *ScreenName(int kind) {
 	switch (kind) {
 		case kCapabilityStateTitle:
-		case kCapabilityStateTitleNoSave: return "the title screen";
-		case kCapabilityStatePlay: return "the story";
-		case kCapabilityStateLoad: return "the load screen";
-		case kCapabilityStateSave: return "the save screen";
-		case kCapabilityStateBacklog: return "the backlog";
-		case kCapabilityStateGallery: return "the Extra screen";
-		case kCapabilityStateVoice: return "the voice collection";
+		case kCapabilityStateTitleNoSave:
+			return "the title screen";
+		case kCapabilityStatePlay:
+			return "the story";
+		case kCapabilityStateLoad:
+			return "the load screen";
+		case kCapabilityStateSave:
+			return "the save screen";
+		case kCapabilityStateBacklog:
+			return "the backlog";
+		case kCapabilityStateGallery:
+			return "the Extra screen";
+		case kCapabilityStateVoice:
+			return "the voice collection";
 		case kCapabilityStateMenu:
-		case kCapabilityStateMenuBackOnly: return "a settings screen";
-		case kCapabilityStateDialog: return "a confirmation dialog";
-		case kCapabilityStateTextHidden: return "the story with the interface hidden";
-		default: return nullptr;
+		case kCapabilityStateMenuBackOnly:
+			return "a settings screen";
+		case kCapabilityStateDialog:
+			return "a confirmation dialog";
+		// Named but not announced through this path: the branch that registers
+		// it sends its own line, which has to say what the screen wants rather
+		// than only where we are.
+		case kCapabilityStateLanguageSelect:
+			return nullptr;
+		case kCapabilityStateTextHidden:
+			return "the story with the interface hidden";
+		default:
+			return nullptr;
 	}
 }
 
@@ -1552,9 +1609,10 @@ void SyncCapabilities(int kind, int payload = 0) {
 		};
 		NeuroSetRegisteredActions(
 		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		NeuroSendContext("The main menu is ready. There is no game in progress to "
-		                 "continue, so a save has to be loaded.",
-		                 false);
+		NeuroSendContext(
+		    "The main menu is ready. There is no game in progress to "
+		    "continue, so a save has to be loaded.",
+		    false);
 		Log("[Action] Capabilities: title-no-save (open_load)\n");
 	} else if (kind == kCapabilityStatePlay) {
 		bool const choice = (payload & kPlayFlagChoice) != 0;
@@ -1578,8 +1636,8 @@ void SyncCapabilities(int kind, int payload = 0) {
 			                   "list, counting from 1.",
 			                   kSelectChoiceSchema});
 		} else {
-			actions.push_back(
-			    {"advance_text", "Advance the current dialogue.", kAdvanceTextSchema});
+			actions.push_back({"advance_text", "Advance the current dialogue.",
+			                   kAdvanceTextSchema});
 		}
 		// The quick menu is reachable during a choice too, so it is offered in
 		// every play state -- only its direction follows the bar's position.
@@ -1591,8 +1649,8 @@ void SyncCapabilities(int kind, int payload = 0) {
 			                   kCloseQuickMenuSchema});
 			actions.push_back(
 			    {"open_settings", "Open the settings screen.", kOpenSettingsSchema});
-		// Always available while a line is on screen: it is how the same line is
-		// re-read in the original Japanese, which the context feed never carries.
+			// Always available while a line is on screen: it is how the same line is
+			// re-read in the original Japanese, which the context feed never carries.
 
 			actions.push_back({"hide_ui",
 			                   "Hide the text window so only the artwork is on "
@@ -1628,43 +1686,45 @@ void SyncCapabilities(int kind, int payload = 0) {
 				                   "Skip quickly through the text until it is turned "
 				                   "off or a choice appears.",
 				                   kStartSkipModeSchema});
-			// The game already decides when these apply -- a voice to replay, a scene
-			// history to step back into, a next stop to jump to -- and the bar shows
-			// it in the buttons. Offering them otherwise would advertise a dead press.
-			if (canReplayVoice) {
-				actions.push_back({"replay_voice",
-				                   "Play the current line's voice again.",
-				                   kReplayVoiceSchema});
-			}
-			if (canGoPrevious) {
-				actions.push_back({"previous_scene",
-				                   "Go back to the previous scene break.",
-				                   kPreviousSceneSchema});
-			}
-			if ((payload & kPlayFlagQuickSave) != 0) {
-				actions.push_back({"quick_save",
-				                   "Save straight into the quick slot, without "
-				                   "opening the save screen.",
-				                   kQuickSaveSchema});
-			}
-			if ((payload & kPlayFlagQuickLoad) != 0) {
-				actions.push_back({"quick_load",
-				                   "Load the most recent quick save. Asks for "
-				                   "confirmation first.",
-				                   kQuickLoadSchema});
-			}
-			if ((payload & kPlayFlagSaveVoice) != 0) {
-				actions.push_back({"save_voice_line",
-				                   "Add the current line's voice to the voice "
-				                   "collection, on the Extra screen.",
-				                   kSaveVoiceSchema});
-			}
-			if (canGoNext) {
-				actions.push_back({"next_scene",
-				                   "Jump ahead to the next scene break, the same place "
-				                   "skipping would stop at.",
-				                   kNextSceneSchema});
-			}
+				// The game already decides when these apply -- a voice to replay, a
+				// scene history to step back into, a next stop to jump to -- and the
+				// bar shows it in the buttons. Offering them otherwise would advertise
+				// a dead press.
+				if (canReplayVoice) {
+					actions.push_back({"replay_voice",
+					                   "Play the current line's voice again.",
+					                   kReplayVoiceSchema});
+				}
+				if (canGoPrevious) {
+					actions.push_back({"previous_scene",
+					                   "Go back to the previous scene break.",
+					                   kPreviousSceneSchema});
+				}
+				if ((payload & kPlayFlagQuickSave) != 0) {
+					actions.push_back({"quick_save",
+					                   "Save straight into the quick slot, without "
+					                   "opening the save screen.",
+					                   kQuickSaveSchema});
+				}
+				if ((payload & kPlayFlagQuickLoad) != 0) {
+					actions.push_back({"quick_load",
+					                   "Load the most recent quick save. Asks for "
+					                   "confirmation first.",
+					                   kQuickLoadSchema});
+				}
+				if ((payload & kPlayFlagSaveVoice) != 0) {
+					actions.push_back({"save_voice_line",
+					                   "Add the current line's voice to the voice "
+					                   "collection, on the Extra screen.",
+					                   kSaveVoiceSchema});
+				}
+				if (canGoNext) {
+					actions.push_back(
+					    {"next_scene",
+					     "Jump ahead to the next scene break, the same place "
+					     "skipping would stop at.",
+					     kNextSceneSchema});
+				}
 			}
 		} else {
 			actions.push_back(
@@ -1672,14 +1732,15 @@ void SyncCapabilities(int kind, int payload = 0) {
 			     "Slide out the quick menu bar so its buttons are visible.",
 			     kOpenQuickMenuSchema});
 		}
-		NeuroSetRegisteredActions(actions.data(),
-		                          static_cast<int>(actions.size()));
+		NeuroSetRegisteredActions(actions.data(), static_cast<int>(actions.size()));
 		std::string summary = "[Action] Capabilities: ";
 		summary += choice ? "choice" : "game";
-		if (panelOut) summary += "+panel";
+		if (panelOut)
+			summary += "+panel";
 		summary += " (";
 		for (size_t i = 0; i < actions.size(); ++i) {
-			if (i) summary += ", ";
+			if (i)
+				summary += ", ";
 			summary += actions[i].name;
 		}
 		summary += ")\n";
@@ -1725,24 +1786,22 @@ void SyncCapabilities(int kind, int payload = 0) {
 			// out here in screen order. A seventh tab (the shortcut list) is
 			// visible in the game but has no pageN control -- it is reached
 			// some other way and is not covered.
-			static char const *const kTabNames[] = {
-			    "display", "program", "text",     "sound",
-			    "dialogue", "touch",  "shortcuts"};
+			static char const *const kTabNames[] = {"display",  "program",  "text",
+			                                        "sound",    "dialogue", "touch",
+			                                        "shortcuts"};
 			tabText = "Switch the settings screen to one of its " +
 			          std::to_string(payload) + " tabs:";
-			for (int tab = 0; tab < payload &&
-			                  tab < static_cast<int>(sizeof(kTabNames) /
-			                                         sizeof(kTabNames[0]));
+			for (int tab = 0;
+			     tab < payload &&
+			     tab < static_cast<int>(sizeof(kTabNames) / sizeof(kTabNames[0]));
 			     ++tab) {
 				tabText += " " + std::to_string(tab + 1) + ") " + kTabNames[tab];
 			}
 			tabText += ".";
 			tabSchema = BoundedIntSchema("tab", payload);
-			actions.push_back(
-			    {"settings_tab", tabText.c_str(), tabSchema.c_str()});
+			actions.push_back({"settings_tab", tabText.c_str(), tabSchema.c_str()});
 		}
-		NeuroSetRegisteredActions(actions.data(),
-		                          static_cast<int>(actions.size()));
+		NeuroSetRegisteredActions(actions.data(), static_cast<int>(actions.size()));
 		Log(kind == kCapabilityStateMenu
 		        ? "[Action] Capabilities: menu (go_back, return_to_title)\n"
 		        : "[Action] Capabilities: menu-back-only (go_back)\n");
@@ -1812,15 +1871,13 @@ void SyncCapabilities(int kind, int payload = 0) {
 			// The grid's last page carries fewer squares, so both the wording
 			// and the schema's maximum follow the page rather than assuming
 			// nine everywhere.
-			int const squares =
-			    (payload >> kGallerySquareShift) & kGallerySquareMask;
+			int const squares = (payload >> kGallerySquareShift) & kGallerySquareMask;
 			if (squares > 0) {
 				viewText = "Open one of the " + std::to_string(squares) +
 				           " squares of the picture grid on this page, numbered "
 				           "from the top left.";
 				viewSchema = BoundedIntSchema("square", squares);
-				actions.push_back(
-				    {"view_cg", viewText.c_str(), viewSchema.c_str()});
+				actions.push_back({"view_cg", viewText.c_str(), viewSchema.c_str()});
 			}
 			int const pages = (payload >> kGalleryPageShift) & kGalleryPageMask;
 			int const tracks = (payload >> kGalleryTrackShift) & kGalleryTrackMask;
@@ -1853,11 +1910,11 @@ void SyncCapabilities(int kind, int payload = 0) {
 				}
 			}
 		}
-		NeuroSetRegisteredActions(actions.data(),
-		                          static_cast<int>(actions.size()));
+		NeuroSetRegisteredActions(actions.data(), static_cast<int>(actions.size()));
 		std::string summary = "[Action] Capabilities: extra (";
 		for (size_t i = 0; i < actions.size(); ++i) {
-			if (i) summary += ", ";
+			if (i)
+				summary += ", ";
 			summary += actions[i].name;
 		}
 		summary += ")\n";
@@ -1868,11 +1925,11 @@ void SyncCapabilities(int kind, int payload = 0) {
 		if (SyncedCapabilityKind() != kCapabilityStateBacklog) {
 			int total = 0;
 			if (ProbeHistoryCount(total) && total > 0) {
-				NeuroSendContext(("The backlog is open. It holds " +
-				                  std::to_string(total) +
-				                  " lines; read_backlog reads four at a time.")
-				                     .c_str(),
-				                 false);
+				NeuroSendContext(
+				    ("The backlog is open. It holds " + std::to_string(total) +
+				     " lines; read_backlog reads four at a time.")
+				        .c_str(),
+				    false);
 			}
 		}
 		std::vector<NeuroRegisteredAction> actions;
@@ -1897,12 +1954,10 @@ void SyncCapabilities(int kind, int payload = 0) {
 			             "},\"language\":{\"type\":\"string\","
 			             "\"enum\":[\"displayed\",\"japanese\"]}},"
 			             "\"additionalProperties\":false}";
-			actions.push_back(
-			    {"read_backlog", readText.c_str(), readSchema.c_str()});
+			actions.push_back({"read_backlog", readText.c_str(), readSchema.c_str()});
 		}
 		if ((payload & kBacklogFlagPageUp) != 0) {
-			actions.push_back({"backlog_page_up",
-			                   "Scroll the backlog up one page.",
+			actions.push_back({"backlog_page_up", "Scroll the backlog up one page.",
 			                   kBacklogPageUpSchema});
 		}
 		if ((payload & kBacklogFlagPageDown) != 0) {
@@ -1962,14 +2017,13 @@ void SyncCapabilities(int kind, int payload = 0) {
 		if (!jumpList.empty()) {
 			// In scene mode the same control jumps to whole scenes, so the
 			// wording follows the list that is actually showing.
-			jumpText = std::string("Go back to one of the ") +
-			           ((payload & kBacklogFlagSceneList) != 0 ? "scenes"
-			                                                 : "lines") +
-			           " on screen, numbered from the top. Available now: " +
-			           jumpList + ". Asks for confirmation first.";
+			jumpText =
+			    std::string("Go back to one of the ") +
+			    ((payload & kBacklogFlagSceneList) != 0 ? "scenes" : "lines") +
+			    " on screen, numbered from the top. Available now: " + jumpList +
+			    ". Asks for confirmation first.";
 			jumpSchema = BoundedIntSchema("line", highest);
-			actions.push_back(
-			    {"jump_to_line", jumpText.c_str(), jumpSchema.c_str()});
+			actions.push_back({"jump_to_line", jumpText.c_str(), jumpSchema.c_str()});
 		}
 		std::string saveList;
 		for (int slot = 0; slot < 5; ++slot) {
@@ -1980,25 +2034,28 @@ void SyncCapabilities(int kind, int payload = 0) {
 		std::string saveText;
 		std::string saveSchema;
 		if (!saveList.empty()) {
-			saveText = "Keep the voice of one of the lines on screen in the "
-			           "collection, numbered from the top. Available now: " +
-			           saveList + ".";
+			saveText =
+			    "Keep the voice of one of the lines on screen in the "
+			    "collection, numbered from the top. Available now: " +
+			    saveList + ".";
 			saveSchema = BoundedIntSchema("line", highest);
 			actions.push_back(
 			    {"save_backlog_voice", saveText.c_str(), saveSchema.c_str()});
 		}
 		if (!voiceList.empty()) {
-			voiceText = "Replay the voice of one of the lines on screen, numbered "
-			            "from the top. Available now: " + voiceList + ".";
+			voiceText =
+			    "Replay the voice of one of the lines on screen, numbered "
+			    "from the top. Available now: " +
+			    voiceList + ".";
 			voiceSchema = BoundedIntSchema("line", highest);
 			actions.push_back(
 			    {"replay_backlog_voice", voiceText.c_str(), voiceSchema.c_str()});
 		}
-		NeuroSetRegisteredActions(actions.data(),
-		                          static_cast<int>(actions.size()));
+		NeuroSetRegisteredActions(actions.data(), static_cast<int>(actions.size()));
 		std::string summary = "[Action] Capabilities: backlog (";
 		for (size_t i = 0; i < actions.size(); ++i) {
-			if (i) summary += ", ";
+			if (i)
+				summary += ", ";
 			summary += actions[i].name;
 		}
 		summary += ")\n";
@@ -2032,6 +2089,19 @@ void SyncCapabilities(int kind, int payload = 0) {
 		Log(keeping ? "[Action] Capabilities: voice-keep (go_back, "
 		              "save_voice_to_slot)\n"
 		            : "[Action] Capabilities: voice (go_back, play_voice)\n");
+	} else if (kind == kCapabilityStateLanguageSelect) {
+		NeuroRegisteredAction const actions[] = {
+		    {"confirm_language",
+		     "Accept the languages the game is offering and go on to the title "
+		     "screen.",
+		     kConfirmLanguageSchema},
+		};
+		NeuroSetRegisteredActions(
+		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		// The context goes through the retry below rather than being sent here:
+		// this screen is up while the SDK may still be connecting, and a context
+		// sent then is dropped rather than queued.
+		Log("[Action] Capabilities: language-select (confirm_language)\n");
 	} else if (kind == kCapabilityStateBare) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: bare (none)\n");
@@ -2062,6 +2132,7 @@ void ShutdownPrototypeActionRouter() {
 	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
 	                              std::memory_order_release);
 	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
+	g_LanguageNoticeSent.store(false, std::memory_order_release);
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	g_ActionIds.clear();
 	g_ActionIdSet.clear();
@@ -2078,6 +2149,23 @@ void TrySendTitleLoadingNotice() {
 	        "The game is starting up. The main menu is not available yet.",
 	        true)) {
 		g_TitleLoadingNoticeSent.store(true, std::memory_order_release);
+	}
+}
+
+// Same retry, for the screen that is on the other side of that same wait. Not
+// silent: this one is a question the game is holding still for, and nothing
+// else can happen until it is answered.
+void TrySendLanguageNotice() {
+	if (g_LanguageNoticeSent.load(std::memory_order_acquire)) {
+		return;
+	}
+	if (NeuroSendContext(
+	        "The game is asking which languages to use. It only asks this once, "
+	        "on the very first launch, and it will not go any further until the "
+	        "question is answered. The languages already selected are the ones "
+	        "it will use; confirming them is what gets past this screen.",
+	        false)) {
+		g_LanguageNoticeSent.store(true, std::memory_order_release);
 	}
 }
 
@@ -2104,9 +2192,22 @@ void SyncScreenByControls(bool stateChanged) {
 	// stayed open (found via Tony with validation off, 2026-08-20). The button
 	// probes below stay behind the settled check -- only this one is cheap
 	// enough to repeat.
+	if (synced == kCapabilityStateLanguageSelect && !stateChanged) {
+		// Sitting on the first-run screen. Nothing about it can change without
+		// leaving it, and leaving changes the state string, so the only work
+		// left here is landing the notice if the SDK was not ready for it yet.
+		TrySendLanguageNotice();
+		return;
+	}
 	if (settled && !stateChanged) {
 		SyncCapabilities(synced, ProbeTabCount());
 		return;
+	} else if (ProbeLanguageScreen("screen language controls")) {
+		// Checked before the back/title pair, which cannot tell this screen
+		// apart from the backlog: both carry "back" and neither carries
+		// "title".
+		SyncCapabilities(kCapabilityStateLanguageSelect);
+		TrySendLanguageNotice();
 	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
 		SyncCapabilities(kCapabilityStateBare);
 	} else if (ProbeScreenButtonReady("title", "screen title button")) {
@@ -2187,20 +2288,29 @@ void RefreshPrototypeActionState() {
 			return;
 		}
 		int play = 0;
-		if (screen.choiceVisible) play |= kPlayFlagChoice;
+		if (screen.choiceVisible)
+			play |= kPlayFlagChoice;
 		if (screen.quickMenuOut) {
 			play |= kPlayFlagPanelOut;
 			// The mode toggles live on the bar, so they only change the action set
 			// while it is out. Folding them in unconditionally would re-register an
 			// identical set every time auto or skip flipped behind a retracted bar.
-			if (screen.autoMode) play |= kPlayFlagAuto;
-			if (screen.skipMode) play |= kPlayFlagSkip;
-			if (screen.canReplayVoice) play |= kPlayFlagVoice;
-			if (screen.canGoPrevious) play |= kPlayFlagPrevious;
-			if (screen.canGoNext) play |= kPlayFlagNext;
-			if (screen.canQuickSave) play |= kPlayFlagQuickSave;
-			if (screen.canQuickLoad) play |= kPlayFlagQuickLoad;
-			if (screen.canSaveVoice) play |= kPlayFlagSaveVoice;
+			if (screen.autoMode)
+				play |= kPlayFlagAuto;
+			if (screen.skipMode)
+				play |= kPlayFlagSkip;
+			if (screen.canReplayVoice)
+				play |= kPlayFlagVoice;
+			if (screen.canGoPrevious)
+				play |= kPlayFlagPrevious;
+			if (screen.canGoNext)
+				play |= kPlayFlagNext;
+			if (screen.canQuickSave)
+				play |= kPlayFlagQuickSave;
+			if (screen.canQuickLoad)
+				play |= kPlayFlagQuickLoad;
+			if (screen.canSaveVoice)
+				play |= kPlayFlagSaveVoice;
 		}
 		SyncCapabilities(kCapabilityStatePlay, play);
 	} else if (screen.state == "load") {
@@ -2212,12 +2322,11 @@ void RefreshPrototypeActionState() {
 		bool open = false;
 		if (ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
 			SyncCapabilities(kCapabilityStateGallery,
-			                 scroll |
-			                 (open ? kGalleryViewOpenFlag : 0) |
-			                 (variants > 0 ? kGalleryMoreViewsFlag : 0) |
-			                 (squares << kGallerySquareShift) |
-			                 (pages << kGalleryPageShift) |
-			                 (tracks << kGalleryTrackShift));
+			                 scroll | (open ? kGalleryViewOpenFlag : 0) |
+			                     (variants > 0 ? kGalleryMoreViewsFlag : 0) |
+			                     (squares << kGallerySquareShift) |
+			                     (pages << kGalleryPageShift) |
+			                     (tracks << kGalleryTrackShift));
 		} else {
 			SyncScreenByControls(stateChanged);
 		}
@@ -2229,10 +2338,9 @@ void RefreshPrototypeActionState() {
 		if (ProbeBacklogButtons(flags) &&
 		    ProbeBacklogLineButtons(jumpMask, voiceMask, saveMask)) {
 			SyncCapabilities(kCapabilityStateBacklog,
-			                 flags |
-			                 (jumpMask << kBacklogJumpShift) |
-			                 (voiceMask << kBacklogVoiceShift) |
-			                 (saveMask << kBacklogSaveShift));
+			                 flags | (jumpMask << kBacklogJumpShift) |
+			                     (voiceMask << kBacklogVoiceShift) |
+			                     (saveMask << kBacklogSaveShift));
 		} else {
 			SyncScreenByControls(stateChanged);
 		}

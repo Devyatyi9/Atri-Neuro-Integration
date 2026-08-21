@@ -39,8 +39,8 @@ struct ScreenSnapshot {
 	bool canReplayVoice = false;
 	bool canGoPrevious = false;
 	bool canGoNext = false;
-	// The rest of the bar: quick save and quick load follow canStore/canQuickLoad,
-	// and the voice-collection button is always live.
+	// The rest of the bar: quick save and quick load follow
+	// canStore/canQuickLoad, and the voice-collection button is always live.
 	bool canQuickSave = false;
 	bool canQuickLoad = false;
 	bool canSaveVoice = false;
@@ -52,6 +52,13 @@ bool ProbeScreen(ScreenSnapshot &out);
 // rather than calling SystemAction directly keeps the action visible on screen.
 bool ProbeScreenButtonReady(char const *button, char const *tag);
 bool DispatchScreenButton(char const *button, char const *tag);
+
+// The language screen the game opens once, on the very first launch. It reports
+// itself as "option", the same state string as the settings screen, so the
+// state name cannot tell them apart; the controls can. Verified live on a
+// first-run launch (2026-08-21): back, lang_text, lang_ui, lang_sub and four
+// disabled decorations, with no "title" control and no page tabs.
+bool ProbeLanguageScreen(char const *tag);
 
 // A suspend-save tagged "continue" exists.
 bool ProbeCanContinue(char const *tag);
@@ -100,8 +107,9 @@ bool ProbeLoadAccepted(char const *tag);
 // The base bookmark index of the ten slots currently on screen, from the store
 // instance the monitor catches (see context_monitor.tjs). This is the only
 // reliable reading: the screen shows nothing about which page it is on, and the
-// slots' enabled flags cannot tell two pages apart when saves run consecutively.
-// `page` comes back too -- 0 on the quick-save tab, 1..lastPage on load/save.
+// slots' enabled flags cannot tell two pages apart when saves run
+// consecutively. `page` comes back too -- 0 on the quick-save tab, 1..lastPage
+// on load/save.
 bool ProbeSaveWindow(int &offset, int &page);
 
 // Whether the ten slots on screen are the ten bookmarks starting at `base`,
@@ -133,17 +141,16 @@ bool ProbeVoiceSaveMode(char const *tag);
 bool ProbeVoiceList(int limit, std::string &out, int &total);
 
 // Which of the backlog's four scroll controls are usable right now, plus which
-// of its two modes is showing, as the bit flags the router defines. They follow the reading position -- at the bottom of
-// the log the two downward ones go dark -- so this is re-read while the screen
-// is open rather than sampled once.
+// of its two modes is showing, as the bit flags the router defines. They follow
+// the reading position -- at the bottom of the log the two downward ones go
+// dark -- so this is re-read while the screen is open rather than sampled once.
 bool ProbeBacklogButtons(int &flags);
 // Which of the five per-line slots on screen currently offer a jump and a voice
 // replay, as bit masks over slots 0..4. The buttons live in the backlog's
-// blockBaseLayer child and report it through `visible`, not `enabled`; the slots
-// are window-relative, so the same number means a different line after
+// blockBaseLayer child and report it through `visible`, not `enabled`; the
+// slots are window-relative, so the same number means a different line after
 // scrolling.
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask,
-                             int &saveMask);
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask, int &saveMask);
 // How many lines the conversation history holds, and a window of it as
 // "<index>	<speaker>	<line>" rows with `index` numbered from 1. Both come from
 // the player object the backlog reads, so neither depends on what is on screen.
@@ -154,8 +161,9 @@ bool ProbeHistoryCount(int &total);
 // `langType` picks the language column: 0 is the Japanese original, -1 means
 // whatever the game is currently displaying (kag.languageType).
 bool ProbeHistoryWindow(int from, int count, int langType, std::string &out);
-// The line on screen right now, as "<speaker>	<line>". Comes from the entry the
-// monitor keeps from the render path, so it can be re-read in either language.
+// The line on screen right now, as "<speaker>	<line>". Comes from the entry
+// the monitor keeps from the render path, so it can be re-read in either
+// language.
 bool ProbeCurrentLine(int langType, std::string &out);
 
 // Presses one, through the same Current.cmd the button itself carries.
@@ -165,21 +173,25 @@ bool ProbeCurrentLine(int langType, std::string &out);
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 
 // The Extra screen: a nine-square picture grid over four pages, with the music
-// player's track list beside it. Every square is pressable -- there is no locked
-// state to test -- so what matters is the page, how many tracks the list offers,
-// which of its four arrows are live, and whether a picture is currently open
-// over the grid. `variantsLeft` is how many more views that picture holds.
+// player's track list beside it. Every square is pressable -- there is no
+// locked state to test -- so what matters is the page, how many tracks the list
+// offers, which of its four arrows are live, and whether a picture is currently
+// open over the grid. `variantsLeft` is how many more views that picture holds.
 //
-// The open-picture part comes from the gallery controller, which is only in hand
-// after a square has been pressed once; before that it reports closed, which is
-// true.
-// `squareCount` is how many of the nine cells the current page actually uses:
-// the last page carries fewer, and the unused ones are simply invisible.
-bool ProbeGallery(int &page, int &pageCount, int &squareCount,
-                  int &trackCount, int &scrollMask, bool &viewOpen,
+// The open-picture part comes from the gallery controller, which is only in
+// hand after a square has been pressed once; before that it reports closed,
+// which is true. `squareCount` is how many of the nine cells the current page
+// actually uses: the last page carries fewer, and the unused ones are simply
+// invisible.
+bool ProbeGallery(int &page,
+                  int &pageCount,
+                  int &squareCount,
+                  int &trackCount,
+                  int &scrollMask,
+                  bool &viewOpen,
                   int &variantsLeft);
-// Presses a track in the music list. The picture squares go through the screen's
-// own button dispatch instead: Current.cmd does nothing for them.
+// Presses a track in the music list. The picture squares go through the
+// screen's own button dispatch instead: Current.cmd does nothing for them.
 bool DispatchGalleryItem(char const *verb, int index, char const *tag);
 // Leaves the open picture, through the right click the gallery scenario itself
 // listens for (*view_rclick -> *view_quit). Not the controller's own onNext:

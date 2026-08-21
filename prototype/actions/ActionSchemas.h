@@ -37,6 +37,9 @@ constexpr char const *const kHideUiSchema =
 constexpr char const *const kShowUiSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kConfirmLanguageSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kOpenLoadSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

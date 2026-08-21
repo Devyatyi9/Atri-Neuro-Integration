@@ -58,6 +58,19 @@ while ((Get-Date) -lt $deadline) {
         $lastState = $state
     }
 
+    if ($state -eq "option") {
+        # The first-run language screen reports itself as "option" too, and the
+        # title never arrives while it is up: waiting the full timeout there
+        # only reports "last state: option", which says nothing about why.
+        # Detected by its controls, the same way the plugin does it.
+        $isLanguageScreen = Invoke-Tjs "(function(){ if (typeof kag.current.names['lang_text'] != 'Object') return 0; if (typeof kag.current.names['title'] == 'Object') return 0; return 1; })()"
+        if ($isLanguageScreen -eq "1") {
+            Write-Host "BLOCKED: the first-run language screen is up; the title is behind it."
+            Write-Host "         Press its OK (kag.current.names['back']) or send the confirm_language action."
+            exit 1
+        }
+    }
+
     if ($state -eq "title") {
         $ready = Invoke-Tjs $buttonReadyProbe
         # Continue additionally needs a suspend-save to exist.

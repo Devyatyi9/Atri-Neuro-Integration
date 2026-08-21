@@ -133,7 +133,8 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"if (typeof q['vsave'] == 'Object' && q['vsave'].enabled) vs = 1;"
 	    L"}"
 	    L"}"
-	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 + "
+	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 "
+	    L"+ "
 	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
@@ -179,19 +180,32 @@ bool DispatchScreenButton(char const *button, char const *tag) {
 	return AskFormatted(kScreenButtonDispatch, tag, button);
 }
 
+bool ProbeLanguageScreen(char const *tag) {
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
+	    L"!= 'Object' || typeof kag.current.names == 'undefined') return 0;"
+	    L"if (typeof kag.current.names['lang_text'] != 'Object') return 0;"
+	    L"if (typeof kag.current.names['title'] == 'Object') return 0;"
+	    L"if (typeof kag.current.names['page1'] == 'Object') return 0;"
+	    L"return 1; })()",
+	    tag);
+}
+
 bool ProbeCanContinue(char const *tag) {
-	return Ask(L"typeof SystemAction != 'undefined' && SystemAction.canContinue "
-	           L"? 1 : 0",
-	           tag);
+	return Ask(
+	    L"typeof SystemAction != 'undefined' && SystemAction.canContinue "
+	    L"? 1 : 0",
+	    tag);
 }
 
 bool ProbeClickWaiting(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.onPrimaryClick != 'Object') return 0;"
-	           L"if (typeof kag.clickWaiting == 'undefined' || "
-	           L"!kag.clickWaiting) return 0;"
-	           L"return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.onPrimaryClick != 'Object') return 0;"
+	    L"if (typeof kag.clickWaiting == 'undefined' || "
+	    L"!kag.clickWaiting) return 0;"
+	    L"return 1; })()",
+	    tag);
 }
 
 bool DispatchPrimaryClick(char const *tag) {
@@ -199,14 +213,15 @@ bool DispatchPrimaryClick(char const *tag) {
 }
 
 bool ProbeChoiceLayerReady(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.selectLayer == 'undefined') return 0;"
-	           L"var layer = kag.selectLayer;"
-	           L"if (layer.selects == void || layer.selects.count < 1) return 0;"
-	           L"if (typeof layer.enabled != 'undefined' && !layer.enabled) "
-	           L"return 0;"
-	           L"return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.selectLayer == 'undefined') return 0;"
+	    L"var layer = kag.selectLayer;"
+	    L"if (layer.selects == void || layer.selects.count < 1) return 0;"
+	    L"if (typeof layer.enabled != 'undefined' && !layer.enabled) "
+	    L"return 0;"
+	    L"return 1; })()",
+	    tag);
 }
 
 bool ProbeChoiceButtonReady(int index, char const *tag) {
@@ -223,46 +238,52 @@ bool ProbeChoiceButtonReady(int index, char const *tag) {
 }
 
 bool DispatchChoice(int index, char const *tag) {
-	return AskFormatted(L"(function(){ var layer = kag.selectLayer;"
-	                    L"var button = layer.selects[%d];"
-	                    L"layer.onButtonClick(button); return 1; })()",
-	                    tag, index);
+	return AskFormatted(
+	    L"(function(){ var layer = kag.selectLayer;"
+	    L"var button = layer.selects[%d];"
+	    L"layer.onButtonClick(button); return 1; })()",
+	    tag, index);
 }
 
 bool ProbeQuickMenuCanDropDown(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.QuickMenu != 'Object') return 0;"
-	           L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
-	           L"if (!kag.QuickMenu.canDropDown) return 0;"
-	           L"return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.QuickMenu != 'Object') return 0;"
+	    L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
+	    L"if (!kag.QuickMenu.canDropDown) return 0;"
+	    L"return 1; })()",
+	    tag);
 }
 
 bool ProbeQuickMenuHasUpdown(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.QuickMenu != 'Object') return 0;"
-	           L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
-	           L"return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.QuickMenu != 'Object') return 0;"
+	    L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
+	    L"return 1; })()",
+	    tag);
 }
 
 bool ProbeQuickMenuIsOut(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.QuickMenu != 'Object') return 0;"
-	           L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.QuickMenu != 'Object') return 0;"
+	    L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
+	    tag);
 }
 
 bool DispatchQuickMenuOpen(char const *tag) {
-	return Ask(L"(function(){ kag.QuickMenu.updown(1); return "
-	           L"kag.QuickMenu._dropdown ? 1 : 0; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ kag.QuickMenu.updown(1); return "
+	    L"kag.QuickMenu._dropdown ? 1 : 0; })()",
+	    tag);
 }
 
 bool DispatchQuickMenuClose(char const *tag) {
-	return Ask(L"(function(){ kag.QuickMenu.updown(0); return "
-	           L"kag.QuickMenu._dropdown ? 0 : 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ kag.QuickMenu.updown(0); return "
+	    L"kag.QuickMenu._dropdown ? 0 : 1; })()",
+	    tag);
 }
 
 bool ProbeQuickMenuButtonReady(char const *button, char const *tag) {
@@ -279,40 +300,44 @@ bool DispatchShowTextWindow(char const *tag) {
 	// and re-triggers the conductor. Confirmed live 2026-08-20: 1 -> 0. There is
 	// no control to route through here -- the bar's own hide button reports
 	// enabled = 0 once the window is gone.
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.showMessageLayerByUser != 'Object') return 0;"
-	           L"kag.showMessageLayerByUser();"
-	           L"return kag.messageLayerHiding ? 0 : 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.showMessageLayerByUser != 'Object') return 0;"
+	    L"kag.showMessageLayerByUser();"
+	    L"return kag.messageLayerHiding ? 0 : 1; })()",
+	    tag);
 }
 
 bool ProbeBookmarkExists(int number, char const *tag) {
-	return AskFormatted(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	                    L"kag.isExistentBookMark != 'Object') return 0;"
-	                    L"if (%d < 0 || %d >= kag.numBookMarks) return 0;"
-	                    L"return kag.isExistentBookMark(%d) ? 1 : 0; })()",
-	                    tag, number, number, number);
+	return AskFormatted(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.isExistentBookMark != 'Object') return 0;"
+	    L"if (%d < 0 || %d >= kag.numBookMarks) return 0;"
+	    L"return kag.isExistentBookMark(%d) ? 1 : 0; })()",
+	    tag, number, number, number);
 }
 
 bool ProbeLoadAccepted(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined') return 0;"
-	           L"if (typeof kag.currentDialog == 'Object' && "
-	           L"kag.currentDialog.visible) return 1;"
-	           L"if (typeof SystemHook != 'undefined' && "
-	           L"SystemHook.currentState == 'game') return 1;"
-	           L"return 0; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined') return 0;"
+	    L"if (typeof kag.currentDialog == 'Object' && "
+	    L"kag.currentDialog.visible) return 1;"
+	    L"if (typeof SystemHook != 'undefined' && "
+	    L"SystemHook.currentState == 'game') return 1;"
+	    L"return 0; })()",
+	    tag);
 }
 
 bool ProbeSaveWindow(int &offset, int &page) {
 	// Every access is wrapped: the instance is invalidated the moment the screen
 	// closes, and touching it then throws rather than returning void.
 	std::string raw;
-	if (!QueryString(L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
-	                 L"return '';"
-	                 L"try { return global.__cm_saveStore.offset + '|' + "
-	                 L"global.__cm_saveStore.page; } catch (e) { return ''; } })()",
-	                 raw, "save window")) {
+	if (!QueryString(
+	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
+	        L"return '';"
+	        L"try { return global.__cm_saveStore.offset + '|' + "
+	        L"global.__cm_saveStore.page; } catch (e) { return ''; } })()",
+	        raw, "save window")) {
 		return false;
 	}
 	size_t const separator = raw.find('|');
@@ -350,9 +375,10 @@ bool ProbeFreeSlots(int limit, std::string &out, int &total) {
 }
 
 bool ProbeVoiceSaveMode(char const *tag) {
-	return Ask(L"(function(){ try { return typeof tf.VoiceSave == 'Object' "
-	           L"? 1 : 0; } catch (e) { return 0; } })()",
-	           tag);
+	return Ask(
+	    L"(function(){ try { return typeof tf.VoiceSave == 'Object' "
+	    L"? 1 : 0; } catch (e) { return 0; } })()",
+	    tag);
 }
 
 bool ProbeVoiceExists(int index, char const *tag) {
@@ -433,7 +459,8 @@ bool ProbeBookmarkList(int limit, std::string &out, int &total) {
 	}
 	size_t const firstLine = raw.find('\n');
 	total = atoi(raw.substr(0, firstLine).c_str());
-	out = firstLine == std::string::npos ? std::string() : raw.substr(firstLine + 1);
+	out = firstLine == std::string::npos ? std::string()
+	                                     : raw.substr(firstLine + 1);
 	return true;
 }
 
@@ -466,8 +493,7 @@ bool ProbeBacklogButtons(int &flags) {
 	return true;
 }
 
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask,
-                             int &saveMask) {
+bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask, int &saveMask) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
@@ -544,8 +570,7 @@ bool ProbeCurrentLine(int langType, std::string &out) {
 	return QueryString(probe, out, "current line") && !out.empty();
 }
 
-bool ProbeHistoryWindow(int from, int count, int langType,
-                        std::string &out) {
+bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
 	wchar_t probe[1024];
 	if (_snwprintf_s(
 	        probe, _TRUNCATE,
@@ -572,13 +597,18 @@ bool ProbeHistoryWindow(int from, int count, int langType,
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	// The button's own expression is Current.cmd("<verb>/<index>"); calling it
 	// directly is the same dispatch, not a shortcut around it.
-	return AskFormatted(L"(function(){ if (typeof Current != 'Object') return 0;"
-	                    L"Current.cmd('%hs/%d'); return 1; })()",
-	                    tag, verb, index);
+	return AskFormatted(
+	    L"(function(){ if (typeof Current != 'Object') return 0;"
+	    L"Current.cmd('%hs/%d'); return 1; })()",
+	    tag, verb, index);
 }
 
-bool ProbeGallery(int &page, int &pageCount, int &squareCount,
-                  int &trackCount, int &scrollMask, bool &viewOpen,
+bool ProbeGallery(int &page,
+                  int &pageCount,
+                  int &squareCount,
+                  int &trackCount,
+                  int &scrollMask,
+                  bool &viewOpen,
                   int &variantsLeft) {
 	std::string raw;
 	if (!QueryString(
@@ -664,14 +694,16 @@ bool ProbeGallery(int &page, int &pageCount, int &squareCount,
 	}
 	viewOpen = raw[cursor] == '1';
 	size_t const last = raw.find('|', cursor);
-	variantsLeft = last == std::string::npos ? 0 : atoi(raw.substr(last + 1).c_str());
+	variantsLeft =
+	    last == std::string::npos ? 0 : atoi(raw.substr(last + 1).c_str());
 	return true;
 }
 
 bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
-	return AskFormatted(L"(function(){ if (typeof Current != 'Object') return 0;"
-	                    L"Current.cmd('%hs/%d'); return 1; })()",
-	                    tag, verb, index);
+	return AskFormatted(
+	    L"(function(){ if (typeof Current != 'Object') return 0;"
+	    L"Current.cmd('%hs/%d'); return 1; })()",
+	    tag, verb, index);
 }
 
 bool DispatchGalleryNextView(char const *tag) {
@@ -679,20 +711,22 @@ bool DispatchGalleryNextView(char const *tag) {
 	// focus, so the click has to be delivered into that layer -- the window's
 	// own onPrimaryClick never reaches it. Four arguments: the two-argument form
 	// is rejected outright.
-	return Ask(L"(function(){ if (typeof global.__cm_gallery != 'Object') "
-	           L"return 0;"
-	           L"try { var l = global.__cm_gallery.cglayer;"
-	           L"if (typeof l != 'Object') return 0;"
-	           L"l.onMouseUp(l.width \\ 2, l.height \\ 2, mbLeft, 0);"
-	           L"return 1; } catch (e) { return 0; } })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof global.__cm_gallery != 'Object') "
+	    L"return 0;"
+	    L"try { var l = global.__cm_gallery.cglayer;"
+	    L"if (typeof l != 'Object') return 0;"
+	    L"l.onMouseUp(l.width \\ 2, l.height \\ 2, mbLeft, 0);"
+	    L"return 1; } catch (e) { return 0; } })()",
+	    tag);
 }
 
 bool DispatchGalleryExit(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.onPrimaryRightClick != 'Object') return 0;"
-	           L"kag.onPrimaryRightClick(); return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.onPrimaryRightClick != 'Object') return 0;"
+	    L"kag.onPrimaryRightClick(); return 1; })()",
+	    tag);
 }
 
 bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
@@ -709,10 +743,11 @@ bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
 }
 
 bool DispatchExitRequest(char const *tag) {
-	return Ask(L"(function(){ if (typeof SystemAction != 'Object' || typeof "
-	           L"SystemAction.exit != 'Object') return 0;"
-	           L"SystemAction.exit(); return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof SystemAction != 'Object' || typeof "
+	    L"SystemAction.exit != 'Object') return 0;"
+	    L"SystemAction.exit(); return 1; })()",
+	    tag);
 }
 
 int ProbeTabCount() {
@@ -737,10 +772,11 @@ int ProbeTabCount() {
 }
 
 bool ProbeDialogVisible(char const *tag) {
-	return Ask(L"(function(){ if (typeof kag == 'undefined' || typeof "
-	           L"kag.currentDialog != 'Object') return 0;"
-	           L"return kag.currentDialog.visible ? 1 : 0; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.currentDialog != 'Object') return 0;"
+	    L"return kag.currentDialog.visible ? 1 : 0; })()",
+	    tag);
 }
 
 bool ProbeDialogLinkReady(bool confirm, char const *tag) {
@@ -756,7 +792,8 @@ bool ProbeDialogLinkReady(bool confirm, char const *tag) {
 }
 
 bool DispatchDialogLink(bool confirm, char const *tag) {
-	return AskFormatted(L"(function(){ var d = kag.currentDialog;"
-	                    L"d.processLink(d.names['%hs'].linkNum); return 1; })()",
-	                    tag, confirm ? "yes" : "no");
+	return AskFormatted(
+	    L"(function(){ var d = kag.currentDialog;"
+	    L"d.processLink(d.names['%hs'].linkNum); return 1; })()",
+	    tag, confirm ? "yes" : "no");
 }
