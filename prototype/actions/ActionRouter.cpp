@@ -59,7 +59,17 @@ std::atomic<bool> g_TitleLoadingNoticeSent(false);
 // still be connecting.
 std::atomic<bool> g_LanguageNoticeSent(false);
 constexpr int kCapabilityStateUnknown = -1;
+// The title screen. Four entries are always usable -- new game, load, settings,
+// quit -- and three follow the profile. What is registered follows what is on
+// screen: Continue and Extra are offered while they are drawn, greyed or not,
+// and refused on press with the reason; the True End is not drawn until it is
+// unlocked, so it is not offered at all.
 constexpr int kCapabilityStateTitle = 0;
+constexpr int kTitleFlagShowsContinue = 1 << 0;
+constexpr int kTitleFlagCanContinue = 1 << 1;
+constexpr int kTitleFlagShowsExtra = 1 << 2;
+constexpr int kTitleFlagCanOpenExtra = 1 << 3;
+constexpr int kTitleFlagShowsTrueEnd = 1 << 4;
 constexpr int kCapabilityStateMenu = 2;
 // Startup and the title screen are distinct capability states. The plugin
 // initialises long before the title exists -- splashes run for roughly 24s --
@@ -98,9 +108,9 @@ constexpr int kPlayFlagSaveVoice = 1 << 9;
 // that is left on screen, the hide button itself goes enabled = 0, and a click
 // brings the window back instead of advancing. Only one action can apply.
 constexpr int kCapabilityStateTextHidden = 8;
-// The title screen with no suspend-save to continue from. Loading a save is
-// still possible there, so it cannot be folded into title-loading.
-constexpr int kCapabilityStateTitleNoSave = 9;
+// 9 was a second title state, for a title with nothing to continue. Three of
+// its entries turned out to be conditional, not one, so they are flags on the
+// one title state instead.
 // Any screen that is not the title and not play. Which actions apply is
 // decided by the controls the screen actually carries rather than by a list of
 // state names: the backlog has a "back" control but no "title" one, and states
@@ -169,13 +179,10 @@ constexpr int kGalleryPageShift = 11;
 constexpr int kGalleryPageMask = 0x1f;
 constexpr int kGalleryTrackShift = 16;
 constexpr int kGalleryTrackMask = 0x3f;
-// The language screen the game opens once, on the very first launch, before the
-// title has ever existed. It reports itself as "option" -- the same state
-// string as the settings screen -- and carries the same "back" control, so it
-// used to resolve as a settings screen: go_back was registered, the context
-// announced "a settings screen", and nothing said the game was standing there
-// waiting to be let past. The control is not a way back to anywhere; it is the
-// OK button of a prompt with nothing behind it yet.
+// The language screen the game opens once, on the very first launch. It reports
+// itself as "option" like the settings screen and carries the same "back"
+// control, but that control is the OK of a first-run prompt, not a way back to
+// a screen that does not exist yet.
 constexpr int kCapabilityStateLanguageSelect = 18;
 
 // How many saves the entering context lists before it just gives the total.
@@ -219,7 +226,11 @@ void HandleContinueAction(std::string const &id, std::string const &data) {
 	                DispatchScreenButton("cont", "continue dispatch");
 	if (!ok) {
 		g_ContinueActionInFlight.store(false, std::memory_order_release);
-		NeuroSendActionResult(id.c_str(), false, "Continue is unavailable.");
+		// The button is on the title whether or not it can be used, so this is
+		// the ordinary answer for pressing a greyed-out entry, not an edge case.
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Continue is greyed out: there is no game in "
+		                      "progress. A save has to be loaded instead.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Continue started.");
@@ -1223,9 +1234,8 @@ void HandleConfirmLanguageAction(std::string const &id,
 		return;
 	}
 
-	// Same "back" control as every other menu screen, and the same press: on
-	// this screen it is the OK of the first-run prompt, and the game goes on to
-	// the title behind it.
+	// The same "back" control as every other menu screen, pressed the same way;
+	// here it is the OK of the first-run prompt.
 	bool const ok = ProbeLanguageScreen("confirm_language screen") &&
 	                ProbeScreenButtonReady("back", "confirm_language button") &&
 	                DispatchScreenButton("back", "confirm_language dispatch");
@@ -1379,9 +1389,9 @@ void HandleNeuroAction(std::string const &id,
 	} else if (name == "play_music") {
 		HandlePlayMusicAction(id, data);
 	} else if (name == "open_extra") {
-		HandleScreenButtonAction(id, data, "open_extra", "title", "extra",
-		                         "Opened the Extra screen.",
-		                         "Opening Extra is unavailable.");
+		HandleScreenButtonAction(
+		    id, data, "open_extra", "title", "extra", "Opened the Extra screen.",
+		    "Extra is greyed out: nothing has been unlocked for it yet.");
 	} else if (name == "read_current_line") {
 		HandleReadCurrentLineAction(id, data);
 	} else if (name == "read_backlog") {
@@ -1524,7 +1534,6 @@ int SyncedCapabilityKind() {
 char const *ScreenName(int kind) {
 	switch (kind) {
 		case kCapabilityStateTitle:
-		case kCapabilityStateTitleNoSave:
 			return "the title screen";
 		case kCapabilityStatePlay:
 			return "the story";
@@ -1569,51 +1578,57 @@ void SyncCapabilities(int kind, int payload = 0) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: title-loading (none)\n");
 	} else if (kind == kCapabilityStateTitle) {
-		NeuroRegisteredAction const actions[] = {
-		    // Listed in the order the buttons sit on screen, so the set reads
-		    // like the menu it mirrors.
-		    {"start_true_end", "Start the True End route from the beginning.",
-		     kStartTrueEndSchema},
-		    {"continue_game", "Continue the current game.", kContinueGameSchema},
-		    {"start_new_game", "Start a new game from the beginning.",
-		     kStartNewGameSchema},
-		    {"open_load", "Open the load screen to pick a saved game.",
-		     kOpenLoadSchema},
-		    {"open_settings", "Open the settings screen.", kOpenSettingsSchema},
-		    {"open_extra",
-		     "Open the Extra screen: the picture gallery and the music list.",
-		     kOpenExtraSchema},
-		    {"exit_game", "Quit the game. Asks for confirmation first.",
-		     kExitGameSchema},
-		};
-		NeuroSetRegisteredActions(
-		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
+		// In the order the buttons sit on screen, so the set reads like the menu
+		// it mirrors, with the three conditional entries in their own places
+		// rather than appended at the end.
+		std::vector<NeuroRegisteredAction> actions;
+		if ((payload & kTitleFlagShowsTrueEnd) != 0) {
+			actions.push_back({"start_true_end",
+			                   "Start the True End route from the beginning.",
+			                   kStartTrueEndSchema});
+		}
+		if ((payload & kTitleFlagShowsContinue) != 0) {
+			actions.push_back(
+			    {"continue_game", "Continue the current game.", kContinueGameSchema});
+		}
+		actions.push_back({"start_new_game", "Start a new game from the beginning.",
+		                   kStartNewGameSchema});
+		actions.push_back({"open_load",
+		                   "Open the load screen to pick a saved game.",
+		                   kOpenLoadSchema});
+		actions.push_back(
+		    {"open_settings", "Open the settings screen.", kOpenSettingsSchema});
+		if ((payload & kTitleFlagShowsExtra) != 0) {
+			actions.push_back(
+			    {"open_extra",
+			     "Open the Extra screen: the picture gallery and the music list.",
+			     kOpenExtraSchema});
+		}
+		actions.push_back({"exit_game",
+		                   "Quit the game. Asks for confirmation first.",
+		                   kExitGameSchema});
+		NeuroSetRegisteredActions(actions.data(), static_cast<int>(actions.size()));
 		// Not silent: the menu becoming usable is the moment there is finally
-		// something to do.
-		NeuroSendContext("The main menu is ready.", false);
-		Log("[Action] Capabilities: title (continue_game, open_load)\n");
-	} else if (kind == kCapabilityStateTitleNoSave) {
-		NeuroRegisteredAction const actions[] = {
-		    {"start_true_end", "Start the True End route from the beginning.",
-		     kStartTrueEndSchema},
-		    {"start_new_game", "Start a new game from the beginning.",
-		     kStartNewGameSchema},
-		    {"open_load", "Open the load screen to pick a saved game.",
-		     kOpenLoadSchema},
-		    {"open_settings", "Open the settings screen.", kOpenSettingsSchema},
-		    {"open_extra",
-		     "Open the Extra screen: the picture gallery and the music list.",
-		     kOpenExtraSchema},
-		    {"exit_game", "Quit the game. Asks for confirmation first.",
-		     kExitGameSchema},
-		};
-		NeuroSetRegisteredActions(
-		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		NeuroSendContext(
-		    "The main menu is ready. There is no game in progress to "
-		    "continue, so a save has to be loaded.",
-		    false);
-		Log("[Action] Capabilities: title-no-save (open_load)\n");
+		// something to do. The greyed-out entries are named rather than left to
+		// be discovered by pressing them -- they are registered because they are
+		// on screen, and only this says they cannot be used yet.
+		std::string message = "The main menu is ready.";
+		if ((payload & kTitleFlagShowsContinue) != 0 &&
+		    (payload & kTitleFlagCanContinue) == 0) {
+			message +=
+			    " Continue is greyed out: there is no game in progress, so "
+			    "a save has to be loaded.";
+		}
+		if ((payload & kTitleFlagShowsExtra) != 0 &&
+		    (payload & kTitleFlagCanOpenExtra) == 0) {
+			message +=
+			    " Extra is greyed out: nothing has been unlocked for it "
+			    "yet.";
+		}
+		NeuroSendContext(message.c_str(), false);
+		Log(("[Action] Capabilities: title (" + std::to_string(actions.size()) +
+		     " entries)\n")
+		        .c_str());
 	} else if (kind == kCapabilityStatePlay) {
 		bool const choice = (payload & kPlayFlagChoice) != 0;
 		bool const panelOut = (payload & kPlayFlagPanelOut) != 0;
@@ -2245,22 +2260,27 @@ void RefreshPrototypeActionState() {
 
 	if (screen.state == "title") {
 		// Readiness is the Load button, not Continue: it is on the title screen
-		// whether or not a suspend-save exists, so gating on Continue alone left
-		// a fresh install stuck in title-loading with nothing registered.
-		// Re-probed only until a title set is registered; the steady state costs
-		// nothing, and coming back from play re-enters through another state.
-		int const synced = SyncedCapabilityKind();
-		if (synced == kCapabilityStateTitle ||
-		    synced == kCapabilityStateTitleNoSave) {
-			SyncCapabilities(synced);
-		} else if (!ProbeScreenButtonReady("load", "title load button")) {
+		// whether or not a suspend-save exists. All the readings come from the
+		// snapshot rather than from probes of their own, so the set keeps
+		// following the buttons for as long as the title is up.
+		if (screen.titleReady) {
+			int title = 0;
+			if (screen.titleShowsContinue)
+				title |= kTitleFlagShowsContinue;
+			if (screen.titleCanContinue)
+				title |= kTitleFlagCanContinue;
+			if (screen.titleShowsExtra)
+				title |= kTitleFlagShowsExtra;
+			if (screen.titleCanOpenExtra)
+				title |= kTitleFlagCanOpenExtra;
+			if (screen.titleShowsTrueEnd)
+				title |= kTitleFlagShowsTrueEnd;
+			SyncCapabilities(kCapabilityStateTitle, title);
+		} else if (SyncedCapabilityKind() != kCapabilityStateTitle) {
+			// Only before the title has resolved. Once it has, a stray
+			// not-ready reading holds the set rather than revoking it.
 			SyncCapabilities(kCapabilityStateTitleLoading);
 			TrySendTitleLoadingNotice();
-		} else if (ProbeCanContinue("title canContinue") &&
-		           ProbeScreenButtonReady("cont", "title button")) {
-			SyncCapabilities(kCapabilityStateTitle);
-		} else {
-			SyncCapabilities(kCapabilityStateTitleNoSave);
 		}
 	} else if (screen.state.empty()) {
 		// Still in the startup splashes: SystemHook.currentState is genuinely an

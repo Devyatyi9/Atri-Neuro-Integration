@@ -44,6 +44,17 @@ struct ScreenSnapshot {
 	bool canQuickSave = false;
 	bool canQuickLoad = false;
 	bool canSaveVoice = false;
+	// The title's own buttons. Visibility and usability are kept apart because
+	// the game uses both: Continue and Extra are drawn greyed out until they
+	// apply, while the True End is not drawn at all until it is unlocked.
+	// `titleReady` is the Load button, the one entry always there, so it marks a
+	// title that is built rather than one still building.
+	bool titleReady = false;
+	bool titleShowsContinue = false;
+	bool titleCanContinue = false;
+	bool titleShowsExtra = false;
+	bool titleCanOpenExtra = false;
+	bool titleShowsTrueEnd = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -54,10 +65,8 @@ bool ProbeScreenButtonReady(char const *button, char const *tag);
 bool DispatchScreenButton(char const *button, char const *tag);
 
 // The language screen the game opens once, on the very first launch. It reports
-// itself as "option", the same state string as the settings screen, so the
-// state name cannot tell them apart; the controls can. Verified live on a
-// first-run launch (2026-08-21): back, lang_text, lang_ui, lang_sub and four
-// disabled decorations, with no "title" control and no page tabs.
+// itself as "option" like the settings screen, so only the controls tell them
+// apart: it carries lang_text and no "title".
 bool ProbeLanguageScreen(char const *tag);
 
 // A suspend-save tagged "continue" exists.

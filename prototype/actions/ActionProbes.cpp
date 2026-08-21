@@ -115,6 +115,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0, v = 0, b = 0, n = 0;"
 	    L"var qs = 0, ql = 0, vs = 0;"
+	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0;"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
@@ -132,10 +133,27 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"if (typeof q['qload'] == 'Object' && q['qload'].enabled) ql = 1;"
 	    L"if (typeof q['vsave'] == 'Object' && q['vsave'].enabled) vs = 1;"
 	    L"}"
+	    // The title's buttons, visibility and usability separately. Neither
+	    // reading includes the controlOwner pair ProbeScreenButtonReady also
+	    // checks: these only decide what to advertise, and the handlers run the
+	    // full probe before pressing anything.
+	    L"if (typeof kag.current == 'Object' && typeof kag.current.names != "
+	    L"'undefined') {"
+	    L"var t = kag.current.names;"
+	    L"if (typeof t['load'] == 'Object' && t['load'].visible && "
+	    L"t['load'].enabled) tr = 1;"
+	    L"if (typeof t['cont'] == 'Object' && t['cont'].visible) {"
+	    L"cv = 1; if (t['cont'].enabled) ce = 1; }"
+	    L"if (typeof t['extra'] == 'Object' && t['extra'].visible) {"
+	    L"xv = 1; if (t['extra'].enabled) xe = 1; }"
+	    L"if (typeof t['tend'] == 'Object' && t['tend'].visible) ev = 1;"
+	    L"}"
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 "
 	    L"+ "
-	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs; })()",
+	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs"
+	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev; "
+	    L"})()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -149,10 +167,12 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>|<d>|<c>|<p>|<h>|<a>|<s>": the state can be empty but never
-	// contains a bar, so flags are read off the tail by offset from the first.
+	// "<state>" followed by eighteen single-digit flags, each behind a bar. The
+	// state can be empty but never contains a bar, so the flags are read off the
+	// tail by offset from the first one. The length check is what catches a
+	// field added to the expression and not here.
 	size_t const separator = probe.find('|');
-	if (separator == std::string::npos || probe.size() != separator + 24) {
+	if (separator == std::string::npos || probe.size() != separator + 36) {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
 		return false;
 	}
@@ -169,6 +189,12 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.canQuickSave = probe[separator + 19] == '1';
 	out.canQuickLoad = probe[separator + 21] == '1';
 	out.canSaveVoice = probe[separator + 23] == '1';
+	out.titleReady = probe[separator + 25] == '1';
+	out.titleShowsContinue = probe[separator + 27] == '1';
+	out.titleCanContinue = probe[separator + 29] == '1';
+	out.titleShowsExtra = probe[separator + 31] == '1';
+	out.titleCanOpenExtra = probe[separator + 33] == '1';
+	out.titleShowsTrueEnd = probe[separator + 35] == '1';
 	return true;
 }
 
