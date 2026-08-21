@@ -124,6 +124,11 @@ bool ProbeFreeSlots(int limit, std::string &out, int &total);
 // rows do -- speaker, scene and the line itself -- through the store's own
 // getItemInfo, which is why these do not go through the bookmark calls.
 bool ProbeVoiceExists(int index, char const *tag);
+// Which way the voice collection was opened: keeping the current line, or
+// browsing what is already kept. The screen is the same either way, and the
+// slots do opposite things -- vsave leaves the line in tf.VoiceSave, vload
+// deletes it.
+bool ProbeVoiceSaveMode(char const *tag);
 // "<slot>	<speaker>	<scene title>" lines, slot numbered from 1.
 bool ProbeVoiceList(int limit, std::string &out, int &total);
 

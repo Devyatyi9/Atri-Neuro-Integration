@@ -1119,6 +1119,33 @@ void HandleSaveGameAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Saved the game to that slot.");
 }
 
+// The collection screen opened to keep a line: the same grid as browsing, but a
+// slot stores instead of playing.
+void HandleSaveVoiceToSlotAction(std::string const &id,
+                                 std::string const &data) {
+	int bookmark = -1;
+	if (!ParseSlot(id, data, "save_voice_to_slot", bookmark)) {
+		return;
+	}
+	if (!ProbeStateIs("voice", "save_voice_to_slot state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the voice collection screen.");
+		return;
+	}
+	int const position = MoveToBookmark(
+	    id, bookmark,
+	    "That slot is on the first page, which the page buttons cannot reach.");
+	if (position < 0) {
+		return;
+	}
+	if (!PressSlot(position, "save_voice_to_slot slot")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That slot is not selectable right now.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Kept the line in that slot.");
+}
+
 void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
 	int bookmark = -1;
 	if (!ParseSlot(id, data, "play_voice", bookmark)) {
@@ -1220,6 +1247,8 @@ void HandleNeuroAction(std::string const &id,
 		HandleOpenLoadAction(id, data);
 	} else if (name == "load_save") {
 		HandleLoadSaveAction(id, data);
+	} else if (name == "save_voice_to_slot") {
+		HandleSaveVoiceToSlotAction(id, data);
 	} else if (name == "play_voice") {
 		HandlePlayVoiceAction(id, data);
 	} else if (name == "save_game") {
@@ -1449,8 +1478,29 @@ int SyncedCapabilityKind() {
 	return key < 0 ? kCapabilityStateUnknown : static_cast<int>(key >> 32);
 }
 
+// Names the screen for the context feed. Neuro is otherwise navigating blind:
+// the action set changes, but nothing says what is now in front of her.
+char const *ScreenName(int kind) {
+	switch (kind) {
+		case kCapabilityStateTitle:
+		case kCapabilityStateTitleNoSave: return "the title screen";
+		case kCapabilityStatePlay: return "the story";
+		case kCapabilityStateLoad: return "the load screen";
+		case kCapabilityStateSave: return "the save screen";
+		case kCapabilityStateBacklog: return "the backlog";
+		case kCapabilityStateGallery: return "the Extra screen";
+		case kCapabilityStateVoice: return "the voice collection";
+		case kCapabilityStateMenu:
+		case kCapabilityStateMenuBackOnly: return "a settings screen";
+		case kCapabilityStateDialog: return "a confirmation dialog";
+		case kCapabilityStateTextHidden: return "the story with the interface hidden";
+		default: return nullptr;
+	}
+}
+
 void SyncCapabilities(int kind, int payload = 0) {
 	long long const key = CapabilityKey(kind, payload);
+	int const previousKind = SyncedCapabilityKind();
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
@@ -1958,18 +2008,41 @@ void SyncCapabilities(int kind, int payload = 0) {
 		    {"go_back",
 		     "Leave the current screen and return to the one it was opened from.",
 		     kGoBackSchema},
-		    {"play_voice",
-		     "Replay a recorded line by its slot number, as listed when this "
-		     "screen opened.",
-		     kPlayVoiceSchema},
 		};
-		NeuroSetRegisteredActions(
-		    actions, static_cast<int>(sizeof(actions) / sizeof(actions[0])));
-		SendVoiceListContext();
-		Log("[Action] Capabilities: voice (go_back, play_voice)\n");
+		std::vector<NeuroRegisteredAction> voiceActions(
+		    actions, actions + sizeof(actions) / sizeof(actions[0]));
+		// The same grid, opposite meanings: opened to keep the current line, a
+		// slot stores it; opened from Extra, a slot plays what is already kept.
+		bool const keeping = ProbeVoiceSaveMode("voice mode");
+		if (keeping) {
+			voiceActions.push_back(
+			    {"save_voice_to_slot",
+			     "Keep the line in one of the collection slots, by its number.",
+			     kPlayVoiceSchema});
+		} else {
+			voiceActions.push_back(
+			    {"play_voice",
+			     "Replay a recorded line by its slot number, as listed when this "
+			     "screen opened.",
+			     kPlayVoiceSchema});
+			SendVoiceListContext();
+		}
+		NeuroSetRegisteredActions(voiceActions.data(),
+		                          static_cast<int>(voiceActions.size()));
+		Log(keeping ? "[Action] Capabilities: voice-keep (go_back, "
+		              "save_voice_to_slot)\n"
+		            : "[Action] Capabilities: voice (go_back, play_voice)\n");
 	} else if (kind == kCapabilityStateBare) {
 		NeuroSetRegisteredActions(nullptr, 0);
 		Log("[Action] Capabilities: bare (none)\n");
+	}
+	// Only when the screen itself changed, not when its actions merely shifted:
+	// the quick menu sliding in and out must not narrate itself.
+	if (previousKind != kind) {
+		char const *const name = ScreenName(kind);
+		if (name) {
+			NeuroSendContext((std::string("Now on ") + name + ".").c_str(), true);
+		}
 	}
 	g_SyncedCapabilityState.store(key, std::memory_order_release);
 }

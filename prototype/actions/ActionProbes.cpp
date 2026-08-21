@@ -349,6 +349,12 @@ bool ProbeFreeSlots(int limit, std::string &out, int &total) {
 	return true;
 }
 
+bool ProbeVoiceSaveMode(char const *tag) {
+	return Ask(L"(function(){ try { return typeof tf.VoiceSave == 'Object' "
+	           L"? 1 : 0; } catch (e) { return 0; } })()",
+	           tag);
+}
+
 bool ProbeVoiceExists(int index, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof global.__cm_saveStore != 'Object') return 0;"
