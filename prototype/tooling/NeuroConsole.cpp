@@ -23,6 +23,7 @@
 #include "GameDebugLog.h"
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
+#include "ThreadGuard.h"
 
 // Flag for enabling or disabling debug output.
 static std::atomic<bool> g_DebugOutputEnabled(true);
@@ -791,7 +792,8 @@ void InitNeuroConsole() {
 	}
 
 	g_ConsoleThreadRunning.store(true);
-	g_ConsoleThread = std::thread(ConsoleThreadProc);
+	g_ConsoleThread =
+	    std::thread([] { RunThreadGuarded("console", ConsoleThreadProc); });
 
 	// Wait for the console to become ready, up to two seconds.
 	for (int i = 0; i < 20 && !g_ConsoleReady.load(); i++) {

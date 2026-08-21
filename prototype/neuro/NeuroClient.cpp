@@ -15,6 +15,7 @@
 #include <neurosdk.h>
 
 #include "Logging.h"
+#include "ThreadGuard.h"
 
 namespace {
 constexpr unsigned int kReconnectInitialMs = 500;
@@ -354,7 +355,8 @@ bool NeuroConnect(char const *url, char const *gameName) {
 			g_NeuroGameName = gameName;
 		}
 	}
-	g_NeuroPollThread = std::thread(NeuroPollThread);
+	g_NeuroPollThread =
+	    std::thread([] { RunThreadGuarded("neuro poll", NeuroPollThread); });
 	return true;
 }
 

@@ -11,6 +11,7 @@
 #include "Logging.h"
 #include "NeuroTCPServer.h"
 #include "TJSExecutor.h"
+#include "ThreadGuard.h"
 #include "UtfConversion.h"
 
 // For tTJSVariant and ttstr.
@@ -291,7 +292,11 @@ static void TCPServerThread() {
 			auto finished = std::make_shared<std::atomic<bool>>(false);
 			auto exitAfterResponse = std::make_shared<std::atomic<bool>>(false);
 			g_ClientThreads.push_back(
-			    {std::thread(HandleClient, clientSock, finished, exitAfterResponse),
+			    {std::thread([clientSock, finished, exitAfterResponse] {
+				     RunThreadGuarded("tcp client", [&] {
+					     HandleClient(clientSock, finished, exitAfterResponse);
+				     });
+			     }),
 			     finished, exitAfterResponse});
 		}
 	}
@@ -319,7 +324,8 @@ bool StartTCPServer() {
 		g_TCPServerThread.join();
 	}
 	g_TCPServerRunning.store(true);
-	g_TCPServerThread = std::thread(TCPServerThread);
+	g_TCPServerThread =
+	    std::thread([] { RunThreadGuarded("tcp server", TCPServerThread); });
 	return true;
 }
 

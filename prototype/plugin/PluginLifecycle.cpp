@@ -12,6 +12,7 @@
 #include "NeuroTCPServer.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
+#include "ThreadGuard.h"
 
 #pragma warning(push)
 #pragma warning(disable : 26495)  // Uninitialized member variable (tp_stub)
@@ -119,7 +120,8 @@ static void StartDeferredTJSInit() {
 		g_InitThread.join();
 	}
 	g_InitThreadStopRequested.store(false);
-	g_InitThread = std::thread(DeferredTJSInitThread);
+	g_InitThread = std::thread(
+	    [] { RunThreadGuarded("deferred init", DeferredTJSInitThread); });
 }
 
 static void StopDeferredTJSInit() {
@@ -148,7 +150,8 @@ static void StartHotkeyThread() {
 	if (g_HotkeyThreadRunning.exchange(true)) {
 		return;
 	}
-	g_HotkeyThread = std::thread(HotkeyThread);
+	g_HotkeyThread =
+	    std::thread([] { RunThreadGuarded("hotkey", HotkeyThread); });
 }
 
 static void StopHotkeyThread() {

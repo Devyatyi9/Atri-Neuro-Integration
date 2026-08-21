@@ -10,6 +10,7 @@
 #include "NeuroClient.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
+#include "ThreadGuard.h"
 #include "UtfConversion.h"
 
 #pragma warning(push)
@@ -103,7 +104,8 @@ bool StartContextMonitor() {
 	if (g_MonitorThread.joinable())
 		g_MonitorThread.join();
 	g_MonitorRunning.store(true);
-	g_MonitorThread = std::thread(ContextMonitorThread);
+	g_MonitorThread = std::thread(
+	    [] { RunThreadGuarded("context monitor", ContextMonitorThread); });
 	return true;
 }
 
