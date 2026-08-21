@@ -1745,28 +1745,62 @@ void SyncCapabilities(int kind, int payload = 0) {
 		// own option button, so offering it while the bar is retracted meant an
 		// action with nothing on screen behind it.
 		if (panelOut) {
+			// The bar itself first, then its buttons in the order they sit on it:
+			// three icons across the top, then five rows of two. A set that
+			// mirrors the panel reads like the panel.
 			actions.push_back({"close_quick_menu", "Retract the quick menu bar.",
 			                   kCloseQuickMenuSchema});
-			actions.push_back(
-			    {"open_settings", "Open the settings screen.", kOpenSettingsSchema});
-			// Always available while a line is on screen: it is how the same line is
-			// re-read in the original Japanese, which the context feed never carries.
-
 			actions.push_back({"hide_ui",
 			                   "Hide the text window so only the artwork is on "
 			                   "screen.",
 			                   kHideUiSchema});
-			actions.push_back({"open_load",
-			                   "Open the load screen to pick a saved game.",
-			                   kOpenLoadSchema});
+			// The game already decides when these apply -- a voice to replay, a
+			// line worth keeping, a scene history to step back into, a next stop
+			// to jump to -- and the bar shows it in the buttons. Offering them
+			// otherwise would advertise a dead press.
+			if (canReplayVoice) {
+				actions.push_back({"replay_voice",
+				                   "Play the current line's voice again.",
+				                   kReplayVoiceSchema});
+			}
+			if ((payload & kPlayFlagSaveVoice) != 0) {
+				actions.push_back({"save_voice_line",
+				                   "Add the current line's voice to the voice "
+				                   "collection, on the Extra screen.",
+				                   kSaveVoiceSchema});
+			}
 			actions.push_back({"open_save",
 			                   "Open the save screen to store progress in a slot.",
 			                   kOpenSaveSchema});
-			actions.push_back({"open_backlog",
-			                   "Open the backlog to re-read earlier lines.",
-			                   kOpenBacklogSchema});
-			// Both are the same bar button pressed twice, so only the direction
-			// that would actually change something is offered.
+			actions.push_back({"open_load",
+			                   "Open the load screen to pick a saved game.",
+			                   kOpenLoadSchema});
+			if ((payload & kPlayFlagQuickSave) != 0) {
+				actions.push_back({"quick_save",
+				                   "Save straight into the quick slot, without "
+				                   "opening the save screen.",
+				                   kQuickSaveSchema});
+			}
+			if ((payload & kPlayFlagQuickLoad) != 0) {
+				actions.push_back({"quick_load",
+				                   "Load the most recent quick save. Asks for "
+				                   "confirmation first.",
+				                   kQuickLoadSchema});
+			}
+			if (canGoPrevious) {
+				actions.push_back({"previous_scene",
+				                   "Go back to the previous scene break.",
+				                   kPreviousSceneSchema});
+			}
+			if (canGoNext) {
+				actions.push_back(
+				    {"next_scene",
+				     "Jump ahead to the next scene break, the same place skipping "
+				     "would stop at.",
+				     kNextSceneSchema});
+			}
+			// Auto and skip are each one bar button pressed twice, so only the
+			// direction that would change something is offered.
 			if (autoMode) {
 				actions.push_back({"stop_auto_mode",
 				                   "Turn off auto mode so the text stops advancing on "
@@ -1786,46 +1820,12 @@ void SyncCapabilities(int kind, int payload = 0) {
 				                   "Skip quickly through the text until it is turned "
 				                   "off or a choice appears.",
 				                   kStartSkipModeSchema});
-				// The game already decides when these apply -- a voice to replay, a
-				// scene history to step back into, a next stop to jump to -- and the
-				// bar shows it in the buttons. Offering them otherwise would advertise
-				// a dead press.
-				if (canReplayVoice) {
-					actions.push_back({"replay_voice",
-					                   "Play the current line's voice again.",
-					                   kReplayVoiceSchema});
-				}
-				if (canGoPrevious) {
-					actions.push_back({"previous_scene",
-					                   "Go back to the previous scene break.",
-					                   kPreviousSceneSchema});
-				}
-				if ((payload & kPlayFlagQuickSave) != 0) {
-					actions.push_back({"quick_save",
-					                   "Save straight into the quick slot, without "
-					                   "opening the save screen.",
-					                   kQuickSaveSchema});
-				}
-				if ((payload & kPlayFlagQuickLoad) != 0) {
-					actions.push_back({"quick_load",
-					                   "Load the most recent quick save. Asks for "
-					                   "confirmation first.",
-					                   kQuickLoadSchema});
-				}
-				if ((payload & kPlayFlagSaveVoice) != 0) {
-					actions.push_back({"save_voice_line",
-					                   "Add the current line's voice to the voice "
-					                   "collection, on the Extra screen.",
-					                   kSaveVoiceSchema});
-				}
-				if (canGoNext) {
-					actions.push_back(
-					    {"next_scene",
-					     "Jump ahead to the next scene break, the same place "
-					     "skipping would stop at.",
-					     kNextSceneSchema});
-				}
 			}
+			actions.push_back({"open_backlog",
+			                   "Open the backlog to re-read earlier lines.",
+			                   kOpenBacklogSchema});
+			actions.push_back(
+			    {"open_settings", "Open the settings screen.", kOpenSettingsSchema});
 		} else {
 			actions.push_back(
 			    {"open_quick_menu",
