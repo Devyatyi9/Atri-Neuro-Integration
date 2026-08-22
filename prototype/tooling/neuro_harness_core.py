@@ -85,6 +85,9 @@ class Harness:
         # discards a result that arrives afterwards, so a game that answers
         # slower than that is silently broken rather than merely slow.
         self._pending_actions: dict[str, float] = {}
+        # Names of an outstanding actions/force, or None when none is pending.
+        # The force is satisfied once one of its actions is dispatched.
+        self._forced_names: list[str] | None = None
         threading.Thread(target=self._accept_loop, daemon=True).start()
 
     def _apply_action_timing(self, message: dict[str, Any]) -> None:
@@ -138,6 +141,26 @@ class Harness:
                         f"unregister of already-inactive action: {name}")
                 else:
                     existing["active"] = False
+        elif command == "actions/force":
+            # The server handles one thing at a time: it refuses a force while
+            # an action result is still owed, and it handles one force at a
+            # time. Both were caught by Gary before this harness could see
+            # them, which is the gap these notes close.
+            if self._pending_actions:
+                owed = ", ".join(sorted(self._pending_actions))
+                self._protocol_notes.append(
+                    f"actions/force while a result is still owed: {owed}")
+            if self._forced_names is not None:
+                self._protocol_notes.append(
+                    "actions/force while an earlier force is unanswered: "
+                    f"{', '.join(self._forced_names)}")
+            self._forced_names = list(data.get("action_names") or [])
+            for name in self._forced_names:
+                entry = self._actions.get(name)
+                if entry is None or not entry["active"]:
+                    self._protocol_notes.append(
+                        f"actions/force names an action that is not "
+                        f"registered: {name}")
 
     def actions(self) -> dict[str, Any]:
         """Current server-side view: which actions the game could actually call."""
@@ -236,6 +259,13 @@ class Harness:
                     # actions as callable while nothing is connected.
                     self._actions.clear()
                     self._protocol_notes.clear()
+                    # A force and an owed result belong to the connection that
+                    # carried them; test-gary clears its force queue and its
+                    # pending actions in onclose for the same reason. Keeping
+                    # them would blame the next session's first force for a
+                    # dialog the previous one left open.
+                    self._pending_actions.clear()
+                    self._forced_names = None
 
     def send(self, message: dict[str, Any]) -> None:
         payload = json.dumps(message, separators=(",", ":")).encode("utf-8")
@@ -246,6 +276,9 @@ class Harness:
                 action_id = (message.get("data") or {}).get("id")
                 if action_id:
                     self._pending_actions[action_id] = time.time()
+                name = (message.get("data") or {}).get("name")
+                if self._forced_names is not None and name in self._forced_names:
+                    self._forced_names = None
             _send_frame(self._connection, 1, payload)
         self._record("server_to_client", message)
 
