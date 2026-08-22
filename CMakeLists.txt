@@ -93,30 +93,30 @@ endif()
 if(ATRI_BUILD_PROTOTYPE)
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
-        prototype/actions/ActionCommon.cpp
-        prototype/actions/ActionCommon.h
-        prototype/actions/ActionJson.cpp
-        prototype/actions/ActionJson.h
-        prototype/actions/ActionProbes.cpp
-        prototype/actions/ActionProbes.h
-        prototype/actions/ActionSchemas.h
-        prototype/actions/ActionSet.h
         prototype/actions/ActionRouter.cpp
         prototype/actions/ActionRouter.h
-        prototype/actions/ScreenBacklog.cpp
-        prototype/actions/ScreenBacklog.h
-        prototype/actions/ScreenGallery.cpp
-        prototype/actions/ScreenGallery.h
-        prototype/actions/ScreenMenu.cpp
-        prototype/actions/ScreenMenu.h
-        prototype/actions/ScreenPlay.cpp
-        prototype/actions/ScreenPlay.h
-        prototype/actions/ScreenSlots.cpp
-        prototype/actions/ScreenSlots.h
-        prototype/actions/ScreenTitle.cpp
-        prototype/actions/ScreenTitle.h
-        prototype/actions/TJSQuery.cpp
-        prototype/actions/TJSQuery.h
+        prototype/actions/common/ActionCommon.cpp
+        prototype/actions/common/ActionCommon.h
+        prototype/actions/common/ActionJson.cpp
+        prototype/actions/common/ActionJson.h
+        prototype/actions/common/ActionSchemas.h
+        prototype/actions/common/ActionSet.h
+        prototype/actions/probes/ActionProbes.cpp
+        prototype/actions/probes/ActionProbes.h
+        prototype/actions/probes/TJSQuery.cpp
+        prototype/actions/probes/TJSQuery.h
+        prototype/actions/screens/ScreenBacklog.cpp
+        prototype/actions/screens/ScreenBacklog.h
+        prototype/actions/screens/ScreenGallery.cpp
+        prototype/actions/screens/ScreenGallery.h
+        prototype/actions/screens/ScreenMenu.cpp
+        prototype/actions/screens/ScreenMenu.h
+        prototype/actions/screens/ScreenPlay.cpp
+        prototype/actions/screens/ScreenPlay.h
+        prototype/actions/screens/ScreenSlots.cpp
+        prototype/actions/screens/ScreenSlots.h
+        prototype/actions/screens/ScreenTitle.cpp
+        prototype/actions/screens/ScreenTitle.h
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextMonitor.cpp
         prototype/neuro/ContextPayload.cpp
@@ -147,6 +147,9 @@ if(ATRI_BUILD_PROTOTYPE)
     target_include_directories(atri_neuro_prototype PRIVATE
         prototype
         prototype/actions
+        prototype/actions/common
+        prototype/actions/probes
+        prototype/actions/screens
         prototype/plugin
         prototype/neuro
         prototype/tooling
