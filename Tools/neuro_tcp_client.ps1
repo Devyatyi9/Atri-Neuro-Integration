@@ -16,7 +16,12 @@ param(
     [switch]$Restart,
     [switch]$Kill,
     [int]$Port = 18700,
-    [string]$WsUrl = "ws://127.0.0.1:8000"
+    [string]$WsUrl = "ws://127.0.0.1:8000",
+    # procdump watches for the game and writes a full dump on an unhandled
+    # exception. Two crashes were lost before this was wired in, because the
+    # tool has to be running *before* the fault, and remembering it by hand does
+    # not work. -NoDump opts out.
+    [switch]$NoDump
 )
 
 $GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
@@ -24,6 +29,23 @@ $GameProcessName = "ATRI-MyDearMoments-"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $PluginDll = Join-Path $RepoRoot "build\prototype\Debug\Neuro-Integration.dll"
 $GameDir = "D:\Games\ATRI-TestVersion"
+$ProcDump = "C:\ProgramData\procdump\procdump.exe"
+$DumpDir = "C:\Temp\dumps"
+
+function Start-CrashWatcher {
+    if (-not (Test-Path $ProcDump)) {
+        Write-Host "procdump not found at $ProcDump; crashes will leave no dump."
+        return
+    }
+    # One watcher at a time: procdump exits with the process it watched, so a
+    # stale one from a previous run would sit waiting and catch nothing.
+    Get-Process -Name procdump -ErrorAction SilentlyContinue | Stop-Process -Force
+    New-Item -ItemType Directory -Force -Path $DumpDir | Out-Null
+    Start-Process -FilePath $ProcDump -WindowStyle Hidden -ArgumentList @(
+        "-accepteula", "-e", "-ma", "-n", "5", "-w", "$GameProcessName.exe", $DumpDir
+    ) -RedirectStandardOutput (Join-Path $DumpDir "procdump.log")
+    Write-Host "Crash watcher armed: dumps go to $DumpDir"
+}
 
 function Restart-Game {
     $procs = Get-Process -Name $GameProcessName -ErrorAction SilentlyContinue
@@ -43,6 +65,12 @@ function Restart-Game {
     if (Test-Path $PluginDll) {
         Copy-Item -LiteralPath $PluginDll -Destination $targetDll -Force
         Write-Host "DLL updated: $PluginDll -> $targetDll"
+    }
+
+    if (-not $NoDump) {
+        # Before the game starts: -w waits for the next launch, so arming it
+        # afterwards would watch nothing.
+        Start-CrashWatcher
     }
 
     Write-Host "Starting game..."
