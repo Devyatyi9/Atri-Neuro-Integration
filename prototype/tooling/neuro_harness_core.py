@@ -254,13 +254,13 @@ class Harness:
                 if self._connection is connection:
                     self._connection = None
                     # Drop the action registry on disconnect, matching the
-                    # reference server (test-gary removes the game entirely and
+                    # reference server (gary removes the game entirely and
                     # emits api/registry/game_removed). Keeping it would report
                     # actions as callable while nothing is connected.
                     self._actions.clear()
                     self._protocol_notes.clear()
                     # A force and an owed result belong to the connection that
-                    # carried them; test-gary clears its force queue and its
+                    # carried them; gary clears its force queue and its
                     # pending actions in onclose for the same reason. Keeping
                     # them would blame the next session's first force for a
                     # dialog the previous one left open.
