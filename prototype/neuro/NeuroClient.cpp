@@ -222,7 +222,8 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 					}
 					break;
 				case NeuroSDK_MessageKind_StartupAcknowledgement:
-					g_NeuroReady.store(true, std::memory_order_release);
+					// Nothing to gate on it; it names the character the socket was
+					// attached to, which is worth seeing in the log.
 					Log("[Neuro] Startup acknowledged\n");
 					break;
 				default:
@@ -277,7 +278,13 @@ bool CreateSession() {
 	}
 
 	g_NeuroConnected.store(true, std::memory_order_release);
-	Log("[Neuro] Connected; awaiting startup acknowledgement\n");
+	// Ready as soon as the startup message and the current set are out. The
+	// acknowledgement is optional -- the specification says Neuro "may" send it
+	// in response to startup -- so waiting for it before talking leaves the game
+	// mute against a server that never sends one: actions arrive and no result,
+	// context or force ever goes back.
+	g_NeuroReady.store(true, std::memory_order_release);
+	Log("[Neuro] Connected\n");
 	return true;
 }
 
