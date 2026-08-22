@@ -4,9 +4,16 @@
 //
 // Kept apart from the router because they are data Neuro reads, not logic: the
 // schema and the action description are the whole contract she sees, so they
-// are worth reviewing as a set rather than hunting through handlers. Only the
-// keywords the API specification lists as well-supported are used here (see
-// neuro-sdk/API/SPECIFICATION.md).
+// are worth reviewing as a set rather than hunting through handlers.
+//
+// `additionalProperties` is deliberate, and deliberately an exception: the API
+// specification lists it among the keywords Neuro probably does not support,
+// and Tony warns about it on every register. It is kept because the tooling
+// this is tested with does use it -- Gary refuses to put anything in the body
+// of an action whose schema forbids extra properties, by hand or through the
+// randomiser -- and because it costs nothing where it is ignored (Randy feeds
+// the schema to json-schema-faker, which never invents extra fields anyway).
+// Do not remove it to silence the warning.
 
 // Actions with no parameters. Neuro omits `data` entirely for these, which
 // reaches the plugin as an empty string; see IsEmptyJsonObject.
