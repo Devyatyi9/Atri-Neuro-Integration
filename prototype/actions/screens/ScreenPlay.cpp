@@ -178,7 +178,7 @@ void HandleQuickMenuToggle(std::string const &id,
 	NeuroSendActionResult(id.c_str(), true, okMessage);
 }
 
-// Stepping between scene breaks asks first (asknextscn / askprevscn), the way
+// Stepping between choice points asks first (asknextscn / askprevscn), the way
 // returning to the title does -- so the result says the question was raised,
 // not that the jump happened. The confirmation is configurable, so whether it
 // actually appeared is read back rather than assumed.
@@ -299,15 +299,15 @@ bool Handle(std::string const &id,
 		                      "Opening the save screen is unavailable.");
 	} else if (name == "previous_scene") {
 		HandleSceneStepAction(id, data, "previous_scene", "xprev",
-		                      "Asked to go back to the previous scene break; "
+		                      "Asked to go back to the previous choice point; "
 		                      "confirm or cancel the dialog.",
-		                      "Went back to the previous scene break.",
+		                      "Went back to the previous choice point.",
 		                      "There is nothing to go back to.");
 	} else if (name == "next_scene") {
 		HandleSceneStepAction(id, data, "next_scene", "next",
-		                      "Asked to jump ahead to the next scene break; "
+		                      "Asked to jump ahead to the next choice point; "
 		                      "confirm or cancel the dialog.",
-		                      "Jumped ahead to the next scene break.",
+		                      "Jumped ahead to the next choice point.",
 		                      "There is nothing to jump ahead to.");
 	} else {
 		return false;
@@ -368,11 +368,12 @@ void AppendActions(ActionSet &set, int payload) {
 	set.add("quick_load",
 	        "Load the most recent quick save. Asks for confirmation first.",
 	        kQuickLoadSchema);
-	set.add("previous_scene", "Go back to the previous scene break.",
+	set.add("previous_scene",
+	        "Go back to the previous choice point. Asks for confirmation first.",
 	        kPreviousSceneSchema);
 	set.add("next_scene",
-	        "Jump ahead to the next scene break, the same place skipping would "
-	        "stop at.",
+	        "Jump ahead to the next choice point, the same place skipping stops "
+	        "at. Asks for confirmation first.",
 	        kNextSceneSchema);
 	// Auto and skip are each one bar button pressed twice, so only the direction
 	// that would change something is offered.
