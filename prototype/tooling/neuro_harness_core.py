@@ -64,7 +64,11 @@ def _send_frame(connection: socket.socket, opcode: int, payload: bytes = b"") ->
 
 
 class Harness:
-    def __init__(self) -> None:
+    def __init__(self, port: int | None = None) -> None:
+        # The port is per-instance so a caller can put the harness somewhere
+        # else and leave the default free for another server -- Gary and Randy
+        # both want 8000 and neither offers a way to move.
+        self._port = PORT if port is None else port
         self._connection: socket.socket | None = None
         self._events: deque[dict[str, Any]] = deque(maxlen=MAX_EVENTS)
         self._next_sequence = 1
@@ -72,7 +76,7 @@ class Harness:
         self._event_ready = threading.Condition(self._lock)
         self._listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._listener.bind((HOST, PORT))
+        self._listener.bind((HOST, self._port))
         self._listener.listen(1)
         # Server-side action registry, mirroring what a real server maintains.
         # Recording raw messages is not enough to catch protocol-state bugs: a
@@ -284,7 +288,7 @@ class Harness:
 
     def status(self) -> dict[str, Any]:
         with self._lock:
-            return {"host": HOST, "port": PORT, "connected": self._connection is not None,
+            return {"host": HOST, "port": self._port, "connected": self._connection is not None,
                     "last_sequence": self._next_sequence - 1}
 
     def events(self, after: int) -> list[dict[str, Any]]:

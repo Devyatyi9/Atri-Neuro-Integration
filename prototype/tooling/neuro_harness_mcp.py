@@ -101,25 +101,41 @@ def harness_disconnect_game() -> str:
     return json.dumps({"disconnected": True})
 
 
-def _delayed_restart() -> None:
+def _delayed_restart(port: int | None) -> None:
     # Give the MCP transport time to flush this tool's response before the
     # process image is replaced; os.execv never returns on success.
     time.sleep(0.3)
+    if port is not None:
+        # execv keeps the current environment, and the port is read from it at
+        # import time, so the replacement process comes up on the new port.
+        os.environ["NEURO_HARNESS_PORT"] = str(port)
     HARNESS.prepare_restart()
     sys.stdout.flush()
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 @MCP.tool()
-def harness_restart() -> str:
+def harness_restart(port: int = 0) -> str:
     """Restart this harness process (re-exec), reloading the script from disk
     and resetting all in-memory state (events, sequence, game connection).
-    The listener rebinds to the same port. On Windows, os.execv reuses the
-    calling process's inherited stdio handles but does not keep the same
-    PID, so the MCP stdio session stays connected without a manual
-    reconnect even though the reported PID changes after this call."""
-    threading.Thread(target=_delayed_restart, daemon=True).start()
-    return json.dumps({"restarting": True, "pid": os.getpid()})
+
+    port: rebind the listener to this port instead of the current one; 0 keeps
+    it where it is. Use it to move the harness off 8000 and hand that port to
+    another server -- Gary and Randy both hardcode it. The game then has to be
+    pointed at whichever one you want:
+    `.\Tools
+euro_tcp_client.ps1 -Restart -WsUrl "ws://127.0.0.1:<port>"`.
+
+    On Windows, os.execv reuses the calling process's inherited stdio handles
+    but does not keep the same PID, so the MCP stdio session stays connected
+    without a manual reconnect even though the reported PID changes after this
+    call."""
+    if port and not (1 <= port <= 65535):
+        return json.dumps({"error": f"port out of range: {port}"})
+    threading.Thread(target=_delayed_restart,
+                     args=(port or None,), daemon=True).start()
+    return json.dumps({"restarting": True, "pid": os.getpid(),
+                       "port": port or HARNESS.status()["port"]})
 
 
 if __name__ == "__main__":
