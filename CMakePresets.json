@@ -27,6 +27,15 @@
       "cacheVariables": {
         "ATRI_BUILD_PROTOTYPE": "ON"
       }
+    },
+    {
+      "name": "win32-prototype-asan",
+      "inherits": "win32-base",
+      "binaryDir": "${sourceDir}/build/prototype-asan",
+      "cacheVariables": {
+        "ATRI_BUILD_PROTOTYPE": "ON",
+        "ATRI_SANITIZE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -53,6 +62,15 @@
       "name": "win32-prototype-release",
       "configurePreset": "win32-prototype",
       "configuration": "Release",
+      "targets": [
+        "atri_version_proxy",
+        "atri_neuro_prototype"
+      ]
+    },
+    {
+      "name": "win32-prototype-asan-debug",
+      "configurePreset": "win32-prototype-asan",
+      "configuration": "Debug",
       "targets": [
         "atri_version_proxy",
         "atri_neuro_prototype"

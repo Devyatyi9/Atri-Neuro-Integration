@@ -12,6 +12,12 @@ endif()
 
 option(ATRI_BUILD_PROTOTYPE "Build the legacy integration prototype" OFF)
 option(ATRI_CONFIGURE_ALL_TARGETS "Configure clean and prototype targets together" OFF)
+# AddressSanitizer for the prototype only, and only in its own build directory:
+# the instrumented DLL is for hunting memory corruption inside the game, not for
+# everyday runs. The x86 runtime lives beside the x86 compiler
+# (VC/Tools/MSVC/<ver>/bin/Hostx64/x86/clang_rt.asan_dynamic-i386.dll) and has to
+# sit next to the game executable, which Tools/deploy-asan-runtime.ps1 does.
+option(ATRI_SANITIZE "Build the prototype with AddressSanitizer" OFF)
 
 function(atri_add_version_resource target original_filename file_description product_name version)
 	set(ATRI_ORIGINAL_FILENAME "${original_filename}")
@@ -91,6 +97,11 @@ if(NOT ATRI_BUILD_PROTOTYPE OR ATRI_CONFIGURE_ALL_TARGETS)
 endif()
 
 if(ATRI_BUILD_PROTOTYPE)
+    if(ATRI_SANITIZE AND MSVC)
+        add_compile_options(/fsanitize=address /Zi)
+        add_link_options(/DEBUG /INCREMENTAL:NO)
+        message(STATUS "Prototype: AddressSanitizer enabled")
+    endif()
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
         prototype/actions/ActionRouter.cpp

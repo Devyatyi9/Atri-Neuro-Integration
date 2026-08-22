@@ -20,6 +20,7 @@ from typing import Any
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEURO_HARNESS_PORT", "8000"))
+ACTION_RESULT_LIMIT_S = 20.0
 MAX_EVENTS = 256
 
 
@@ -79,7 +80,29 @@ class Harness:
         # full day while the action stayed live on the real server.
         self._actions: dict[str, dict[str, Any]] = {}
         self._protocol_notes: deque[str] = deque(maxlen=MAX_EVENTS)
+        # Action id -> when it was sent, so a late result can be named. The real
+        # server gives up after about 20 seconds, treats the action as failed and
+        # discards a result that arrives afterwards, so a game that answers
+        # slower than that is silently broken rather than merely slow.
+        self._pending_actions: dict[str, float] = {}
         threading.Thread(target=self._accept_loop, daemon=True).start()
+
+    def _apply_action_timing(self, message: dict[str, Any]) -> None:
+        """Flag results the real server would already have given up on."""
+        data = message.get("data") or {}
+        action_id = data.get("id")
+        if not action_id:
+            return
+        sent_at = self._pending_actions.pop(action_id, None)
+        if sent_at is None:
+            self._protocol_notes.append(
+                f"result for an action nobody sent: {action_id}")
+            return
+        elapsed = time.time() - sent_at
+        if elapsed > ACTION_RESULT_LIMIT_S:
+            self._protocol_notes.append(
+                f"action/result after {elapsed:.1f}s, past the server's "
+                f"~{ACTION_RESULT_LIMIT_S:.0f}s limit: {action_id}")
 
     def _apply_action_registry(self, message: dict[str, Any]) -> None:
         """Track the action set the way the reference server does.
@@ -191,6 +214,8 @@ class Harness:
                 message = json.loads(payload.decode("utf-8"))
                 with self._lock:
                     self._apply_action_registry(message)
+                    if message.get("command") == "action/result":
+                        self._apply_action_timing(message)
                 self._record("client_to_server", message)
                 if message.get("command") == "startup":
                     self.send({"command": "startup", "data": {"session": {
@@ -217,6 +242,10 @@ class Harness:
         with self._lock:
             if not self._connection:
                 raise RuntimeError("No game client is connected")
+            if message.get("command") == "action":
+                action_id = (message.get("data") or {}).get("id")
+                if action_id:
+                    self._pending_actions[action_id] = time.time()
             _send_frame(self._connection, 1, payload)
         self._record("server_to_client", message)
 
