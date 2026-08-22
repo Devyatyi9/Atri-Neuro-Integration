@@ -93,13 +93,28 @@ endif()
 if(ATRI_BUILD_PROTOTYPE)
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
+        prototype/actions/ActionCommon.cpp
+        prototype/actions/ActionCommon.h
         prototype/actions/ActionJson.cpp
         prototype/actions/ActionJson.h
         prototype/actions/ActionProbes.cpp
         prototype/actions/ActionProbes.h
         prototype/actions/ActionSchemas.h
+        prototype/actions/ActionSet.h
         prototype/actions/ActionRouter.cpp
         prototype/actions/ActionRouter.h
+        prototype/actions/ScreenBacklog.cpp
+        prototype/actions/ScreenBacklog.h
+        prototype/actions/ScreenGallery.cpp
+        prototype/actions/ScreenGallery.h
+        prototype/actions/ScreenMenu.cpp
+        prototype/actions/ScreenMenu.h
+        prototype/actions/ScreenPlay.cpp
+        prototype/actions/ScreenPlay.h
+        prototype/actions/ScreenSlots.cpp
+        prototype/actions/ScreenSlots.h
+        prototype/actions/ScreenTitle.cpp
+        prototype/actions/ScreenTitle.h
         prototype/actions/TJSQuery.cpp
         prototype/actions/TJSQuery.h
         prototype/plugin/PluginLifecycle.cpp
