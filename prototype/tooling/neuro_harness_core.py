@@ -85,9 +85,11 @@ class Harness:
         """Track the action set the way the reference server does.
 
         actions/register is additive and never implies removal; only
-        actions/unregister deactivates. Mirrors test-gary's
-        registerActions/unregisterActions, including its duplicate and
-        unknown/inactive diagnostics.
+        actions/unregister deactivates. Re-registering a name that is already
+        active is legitimate and replaces its definition -- the specification
+        changed on 2026-08-22, from "it will be ignored" to "the new definition
+        replaces the old one" -- so that is not flagged; a re-register that
+        changes nothing is, because it is traffic for nothing.
         """
         command = message.get("command")
         data = message.get("data") or {}
@@ -97,9 +99,10 @@ class Harness:
                 if not name:
                     continue
                 existing = self._actions.get(name)
-                if existing and existing["active"]:
+                if (existing and existing["active"]
+                        and existing["action"] == action):
                     self._protocol_notes.append(
-                        f"register of already-active action: {name}")
+                        f"re-register with no change: {name}")
                 self._actions[name] = {"action": action, "active": True}
         elif command == "actions/unregister":
             for name in data.get("action_names") or []:

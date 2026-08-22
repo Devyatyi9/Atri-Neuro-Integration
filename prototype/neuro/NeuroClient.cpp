@@ -418,19 +418,17 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 	bool identical = false;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		// The set is replaced whole rather than diffed name by name. Two reasons,
-		// and the second is the one that forced it:
+		// The whole set is sent on every change, but only the names that actually
+		// left it are unregistered.
 		//
-		// A name whose description or schema changed has to be revoked before it
-		// can be re-registered at all -- the server ignores a register for a name
-		// it already knows (neuro-sdk/API/SPECIFICATION.md), so an updated
-		// description would never arrive.
+		// Sending the whole set is what carries the order: it is built to mirror
+		// the screen, and a client that renders the register payload can only
+		// show that order if every entry is in it. Registering a name that is
+		// already registered is legitimate and replaces its definition, so the
+		// ones that stay need no unregister first -- which is also why an
+		// updated description now arrives without one.
 		//
-		// And a name that survives keeps the place it was first given, because
-		// register only appends. Adding one action to a set therefore puts it at
-		// the end of the list a client shows, wherever it belongs in the set we
-		// built. The quick menu is ordered to mirror the bar on screen, and that
-		// order only survives if every entry is re-sent together.
+		// Removal still has to be explicit: register never implies it.
 		identical = g_RegisteredActions.size() == static_cast<size_t>(actionCount);
 		for (int index = 0; identical && index < actionCount; ++index) {
 			RegisteredAction const &existing = g_RegisteredActions[index];
@@ -442,13 +440,20 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 			            existing.jsonSchema == (schema ? schema : "{}");
 		}
 		// Nothing to say when the set is the same one, down to the order. This is
-		// the common case at 5 Hz, and re-sending it only produced "register of
-		// already-active action" noise in the viewers.
+		// the common case at 5 Hz, and re-sending it would be traffic for
+		// nothing.
 		if (identical) {
 			return true;
 		}
 		for (RegisteredAction const &existing : g_RegisteredActions) {
-			droppedNames.push_back(existing.name);
+			bool stays = false;
+			for (int index = 0; index < actionCount && !stays; ++index) {
+				char const *const name = actions[index].name;
+				stays = name != nullptr && existing.name == name;
+			}
+			if (!stays) {
+				droppedNames.push_back(existing.name);
+			}
 		}
 		g_RegisteredActions.clear();
 		for (int index = 0; index < actionCount; ++index) {
