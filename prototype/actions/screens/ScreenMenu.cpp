@@ -87,7 +87,20 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeDialogLinkReady(confirm, "answer_dialog ready") &&
 	                DispatchDialogLink(confirm, "answer_dialog dispatch");
 	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, "No dialog is waiting.");
+		// A failure is a request to try again: the specification has Neuro retry
+		// a forced action that failed, and the server puts the force back in its
+		// queue. That is right while the dialog stands and something went wrong
+		// with the press, and wrong once the dialog is gone -- retrying then can
+		// never succeed, and the pair loops. So a dialog that is no longer there
+		// is reported as nothing left to do rather than as a failure.
+		if (!ProbeDialogVisible("answer_dialog gone")) {
+			NeuroSendActionResult(
+			    id.c_str(), true,
+			    "The dialog is already closed; there is nothing to answer.");
+			return;
+		}
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The dialog is up but its buttons did not answer.");
 		return;
 	}
 	NeuroSendActionResult(
