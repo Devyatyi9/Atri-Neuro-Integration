@@ -806,6 +806,18 @@ bool ProbeDialogVisible(char const *tag) {
 	    tag);
 }
 
+bool ProbeDialogTextPart(std::string &part) {
+	std::string raw;
+	if (!QueryString(L"(function(){ try { return '' + "
+	                 L"MyYesNoDialog.currentTextPart; } catch(e) { return ''; "
+	                 L"} })()",
+	                 raw, "dialog text part")) {
+		return false;
+	}
+	part = raw;
+	return !part.empty();
+}
+
 bool ProbeDialogLinkReady(bool confirm, char const *tag) {
 	// 'Object', not 'undefined': kag.currentDialog holds void when no dialog is
 	// up, and typeof reports "void" for that, so an "undefined" test would pass

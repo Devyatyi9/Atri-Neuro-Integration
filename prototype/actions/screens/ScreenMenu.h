@@ -19,8 +19,9 @@ bool Handle(std::string const &id,
 void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle);
 
 // The modal dialog owns the screen while it is up: answering it is the only
-// thing that can succeed.
+// thing that can succeed, so the answer is forced rather than merely offered.
 void AppendDialogActions(ActionSet &set);
+void ForceDialogAnswer();
 
 // The first-run language screen, and the notice that explains it. The notice is
 // retried because that screen is up while the SDK may still be connecting.

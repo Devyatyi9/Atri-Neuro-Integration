@@ -231,6 +231,11 @@ int ProbeTabCount();
 // Whether a modal confirmation is on screen right now.
 bool ProbeDialogVisible(char const *tag);
 
+// What the dialog on screen is asking, as the engine's own tag: "AskTitle",
+// "AskExit", "AskJump", "AskLoad", and so on. The field keeps its last value
+// after the dialog closes, so only read it while one is up.
+bool ProbeDialogTextPart(std::string &part);
+
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);
 bool DispatchDialogLink(bool confirm, char const *tag);

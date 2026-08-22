@@ -33,6 +33,26 @@ std::deque<std::string> g_ActionIds;
 std::unordered_set<std::string> g_ActionIdSet;
 constexpr size_t kMaxRememberedActionIds = 256;
 
+// An action of Neuro's is being answered right now. The server takes one
+// action at a time and refuses a force while a result is still owed, so the
+// force below waits for this to clear.
+std::atomic<bool> g_ActionInFlight(false);
+
+// A dialog appeared and its force has not gone out yet. Set when the dialog
+// state is entered, cleared when it is sent or when any other screen takes
+// over.
+std::atomic<bool> g_DialogForcePending(false);
+
+// A force of ours the server has not worked through yet. It takes one at a
+// time and warns that a second while the first is in progress causes problems,
+// and there is no message to cancel one. The dialog closing is not enough to
+// call it done: a dialog dismissed by hand leaves the force sitting in the
+// server's queue, and piling a second one on top is exactly what the
+// specification warns against. Only the arrival of the forced action itself
+// clears this -- including a late one, answered with a failure because the
+// dialog is long gone, which is what drains the queue on the server side.
+std::atomic<bool> g_ForceOutstanding(false);
+
 // Kind in the high half, payload in the low half. They were packed into one
 // int before, and the payloads collided with the kind constants: the
 // backlog's voice mask reached the gallery's base bit, so a backlog with a
@@ -140,9 +160,29 @@ void HandleNeuroAction(std::string const &id,
 		Log("[Action] Ignoring duplicate action ID\n");
 		return;
 	}
-	// Screens that own their actions answer for them. Each returns false for a
-	// name that is not its own, so the chain below only carries what has not
-	// been moved out yet.
+	// The force is retired when the answer has been carried out, not when it
+	// arrives: the server retires its own only once the action is complete, and
+	// clearing on arrival let a fast open-close-open send the next force while
+	// the server still held the first.
+	bool const answersForce = name == "answer_dialog";
+	struct ForceGuard {
+		bool active;
+		~ForceGuard() {
+			if (active) {
+				g_ForceOutstanding.store(false, std::memory_order_release);
+			}
+		}
+	} forceGuard{answersForce};
+
+	// Handlers answer before returning, so the flag covers exactly the window
+	// in which a result is owed. The refresh reads it to hold back a force.
+	g_ActionInFlight.store(true, std::memory_order_release);
+	struct InFlightGuard {
+		~InFlightGuard() {
+			g_ActionInFlight.store(false, std::memory_order_release);
+		}
+	} guard;
+
 	// Every action belongs to the screen that offers it, and each module answers
 	// for its own names. An action nobody claims is answered here rather than
 	// left silent: the specification asks for a failing result on an unknown
@@ -204,6 +244,8 @@ void SyncCapabilities(int kind, int payload = 0) {
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
+	g_DialogForcePending.store(kind == kCapabilityStateDialog,
+	                           std::memory_order_release);
 	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
 		// is not sent here: this state is entered during plugin init, before the
@@ -236,6 +278,10 @@ void SyncCapabilities(int kind, int payload = 0) {
 		ActionSet set;
 		ScreenMenu::AppendDialogActions(set);
 		NeuroSetRegisteredActions(set.data(), set.count());
+		// A confirmation is modal: the game stands still and offers nothing
+		// else on screen, so the answer is forced rather than merely offered.
+		// The force itself is left to the refresh, which waits until no action
+		// result is owed.
 		Log(("[Action] Capabilities: dialog (" + set.names() + ")\n").c_str());
 	} else if (kind == kCapabilityStateMenu ||
 	           kind == kCapabilityStateMenuBackOnly) {
@@ -316,6 +362,10 @@ void ShutdownPrototypeActionRouter() {
 	                              std::memory_order_release);
 	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
 	g_LanguageNoticeSent.store(false, std::memory_order_release);
+	// A reconnect starts a server that knows nothing of our earlier force.
+	g_DialogForcePending.store(false, std::memory_order_release);
+	g_ForceOutstanding.store(false, std::memory_order_release);
+	g_ActionInFlight.store(false, std::memory_order_release);
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	g_ActionIds.clear();
 	g_ActionIdSet.clear();
@@ -416,6 +466,22 @@ void RefreshPrototypeActionState() {
 
 	if (screen.dialogVisible) {
 		SyncCapabilities(kCapabilityStateDialog);
+		// A tick after the set changed, not in the same breath. The dialog is
+		// usually raised by an action of Neuro's own, and the server refuses a
+		// force while that action's result is still owed; deferring puts the
+		// force behind the result without having to guess at thread timing.
+		if (g_DialogForcePending.load(std::memory_order_acquire) &&
+		    !g_ActionInFlight.load(std::memory_order_acquire) &&
+		    !g_ForceOutstanding.load(std::memory_order_acquire)) {
+			g_DialogForcePending.store(false, std::memory_order_release);
+			g_ForceOutstanding.store(true, std::memory_order_release);
+			ScreenMenu::ForceDialogAnswer();
+		} else if (g_DialogForcePending.load(std::memory_order_acquire) &&
+		           g_ForceOutstanding.load(std::memory_order_acquire)) {
+			g_DialogForcePending.store(false, std::memory_order_release);
+			Log("[Action] Dialog not forced: an earlier force is still "
+			    "unanswered\n");
+		}
 		return;
 	}
 

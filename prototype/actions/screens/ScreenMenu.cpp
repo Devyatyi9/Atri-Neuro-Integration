@@ -196,6 +196,42 @@ void AppendDialogActions(ActionSet &set) {
 	        kAnswerDialogSchema);
 }
 
+void ForceDialogAnswer() {
+	std::string part;
+	char const *subject = "The game is asking for a confirmation.";
+	// The tags come from MyYesNoDialog's own yesnoMap, which keys the dialog's
+	// Japanese question text to these names; modules may add their own, as the
+	// backlog does with AskJump.
+	if (ProbeDialogTextPart(part)) {
+		if (part == "AskTitle") {
+			subject = "The game is asking whether to return to the title screen.";
+		} else if (part == "AskExit") {
+			subject = "The game is asking whether to quit.";
+		} else if (part == "AskLoad") {
+			subject = "The game is asking whether to load that save.";
+		} else if (part == "AskQLoad") {
+			subject = "The game is asking whether to load the quick save.";
+		} else if (part == "AskQSave") {
+			subject = "The game is asking whether to write the quick save.";
+		} else if (part == "AskOverwrite") {
+			subject = "The game is asking whether to overwrite that slot.";
+		} else if (part == "AskNext") {
+			subject = "The game is asking whether to go on to the next choice.";
+		} else if (part == "AskBackTo") {
+			subject = "The game is asking whether to go back to the previous choice.";
+		} else if (part == "AskJump") {
+			subject = "The game is asking whether to jump back to that line.";
+		} else if (part == "AskInit") {
+			subject = "The game is asking whether to reset it to defaults.";
+		}
+	}
+	char const *names[] = {"answer_dialog"};
+	// Ephemeral: the question holds only while the dialog stands, and it is
+	// answered within moments either way.
+	NeuroForceAction(subject, "Answer it: confirm to accept, cancel to decline.",
+	                 names, 1, true);
+}
+
 void AppendLanguageActions(ActionSet &set) {
 	set.add("confirm_language",
 	        "Accept the languages the game is offering and go on to the title "
