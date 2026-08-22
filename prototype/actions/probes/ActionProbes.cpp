@@ -123,8 +123,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // member and simply holds void when no dialog is up, and typeof reports
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
-	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0, v = 0, b = 0, n = 0;"
-	    L"var qs = 0, ql = 0, vs = 0;"
+	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
 	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0;"
 	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
@@ -138,15 +137,6 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // ordinary click, and only 3 (SKIP_STOP) and above are the mode a player
 	    // turns on. The quick menu bar tests it the same way.
 	    L"if (kag.skipMode >= 3) s2 = 1;"
-	    L"if (typeof kag.QuickMenu == 'Object') {"
-	    L"var q = kag.QuickMenu.names;"
-	    L"if (typeof q['vreplay'] == 'Object' && q['vreplay'].enabled) v = 1;"
-	    L"if (typeof q['xprev'] == 'Object' && q['xprev'].enabled) b = 1;"
-	    L"if (typeof q['next'] == 'Object' && q['next'].enabled) n = 1;"
-	    L"if (typeof q['qsave'] == 'Object' && q['qsave'].enabled) qs = 1;"
-	    L"if (typeof q['qload'] == 'Object' && q['qload'].enabled) ql = 1;"
-	    L"if (typeof q['vsave'] == 'Object' && q['vsave'].enabled) vs = 1;"
-	    L"}"
 	    // The title's buttons, visibility and usability separately. Neither
 	    // reading includes the controlOwner pair ProbeScreenButtonReady also
 	    // checks: these only decide what to advertise, and the handlers run the
@@ -167,9 +157,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // extra conductor, and currentStorage keeps naming the scene behind it.
 	    L"try { sg = '' + kag.conductor.curStorage; } catch (e) { sg = ''; }"
 	    L"}"
-	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2 "
-	    L"+ "
-	    L"'|' + v + '|' + b + '|' + n + '|' + qs + '|' + ql + '|' + vs"
+	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
 	    L"+ '|' + sg; })()",
 	    &result, 5000, TJSExecMode::Expression);
@@ -185,12 +173,12 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>", then eighteen single-digit flags each behind a bar, then the
+	// "<state>", then twelve single-digit flags each behind a bar, then the
 	// scenario storage. Neither string contains a bar, so the flags sit at fixed
 	// offsets from the first one and the storage is whatever follows them. The
 	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	size_t const flagsEnd = separator + 36;
+	size_t const flagsEnd = separator + 24;
 	if (separator == std::string::npos || probe.size() <= flagsEnd ||
 	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
@@ -203,18 +191,12 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.textWindowHidden = probe[separator + 7] == '1';
 	out.autoMode = probe[separator + 9] == '1';
 	out.skipMode = probe[separator + 11] == '1';
-	out.canReplayVoice = probe[separator + 13] == '1';
-	out.canGoPrevious = probe[separator + 15] == '1';
-	out.canGoNext = probe[separator + 17] == '1';
-	out.canQuickSave = probe[separator + 19] == '1';
-	out.canQuickLoad = probe[separator + 21] == '1';
-	out.canSaveVoice = probe[separator + 23] == '1';
-	out.titleReady = probe[separator + 25] == '1';
-	out.titleShowsContinue = probe[separator + 27] == '1';
-	out.titleCanContinue = probe[separator + 29] == '1';
-	out.titleShowsExtra = probe[separator + 31] == '1';
-	out.titleCanOpenExtra = probe[separator + 33] == '1';
-	out.titleShowsTrueEnd = probe[separator + 35] == '1';
+	out.titleReady = probe[separator + 13] == '1';
+	out.titleShowsContinue = probe[separator + 15] == '1';
+	out.titleCanContinue = probe[separator + 17] == '1';
+	out.titleShowsExtra = probe[separator + 19] == '1';
+	out.titleCanOpenExtra = probe[separator + 21] == '1';
+	out.titleShowsTrueEnd = probe[separator + 23] == '1';
 	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }

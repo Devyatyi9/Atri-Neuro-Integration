@@ -13,11 +13,16 @@
 
 namespace {
 
-// Play is not one state but a screen carrying several independent booleans: a
-// choice is up, the quick menu bar is out, auto runs, skipping runs, and the
-// bar's own buttons come and go with what the game allows. Enumerating the
-// combinations would mean a constant per pair, so it is a base plus flags; the
-// value only has to be distinct per action set.
+// Play is not one state but a screen carrying a few independent booleans: a
+// choice is up, the quick menu bar is out, auto runs, skipping runs.
+// Enumerating the combinations would mean a constant per pair, so it is a base
+// plus flags; the value only has to be distinct per action set.
+//
+// What the bar's buttons currently allow is deliberately not among them. Every
+// button on the bar is on screen at all times -- the game greys the ones that
+// do not apply -- so they are offered whenever the bar is out. Folding
+// availability in here instead changed the set on almost every line of
+// dialogue, as a voice or a scene break came and went.
 //
 // Choice versus text is a disposable action window in the sense of the SDK's
 // own guidance: while the select layer is up, advancing does nothing, and
@@ -26,12 +31,6 @@ constexpr int kFlagChoice = 1 << 0;
 constexpr int kFlagPanelOut = 1 << 1;
 constexpr int kFlagAuto = 1 << 2;
 constexpr int kFlagSkip = 1 << 3;
-constexpr int kFlagVoice = 1 << 4;
-constexpr int kFlagPrevious = 1 << 5;
-constexpr int kFlagNext = 1 << 6;
-constexpr int kFlagQuickSave = 1 << 7;
-constexpr int kFlagQuickLoad = 1 << 8;
-constexpr int kFlagSaveVoice = 1 << 9;
 
 void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
@@ -269,9 +268,10 @@ bool Handle(std::string const &id,
 		                      "Auto mode is off.",
 		                      "Turning auto mode off is unavailable.");
 	} else if (name == "start_skip_mode") {
-		HandleQuickMenuToggle(id, data, "start_skip_mode", "skip",
-		                      "Skipping through the text.",
-		                      "Turning skip mode on is unavailable.");
+		HandleQuickMenuToggle(
+		    id, data, "start_skip_mode", "skip", "Skipping through the text.",
+		    "Skip is greyed out: the game only skips text that has already "
+		    "been read.");
 	} else if (name == "stop_skip_mode") {
 		HandleQuickMenuToggle(id, data, "stop_skip_mode", "skip",
 		                      "Stopped skipping.",
@@ -279,15 +279,16 @@ bool Handle(std::string const &id,
 	} else if (name == "quick_save") {
 		HandleQuickMenuToggle(id, data, "quick_save", "qsave",
 		                      "Saved to the quick slot.",
-		                      "Quick saving is unavailable.");
+		                      "Quick save is greyed out right now.");
 	} else if (name == "quick_load") {
 		HandleQuickMenuToggle(id, data, "quick_load", "qload",
 		                      "Loading the quick save.",
 		                      "There is no quick save to load.");
 	} else if (name == "save_voice_line") {
-		HandleQuickMenuToggle(id, data, "save_voice_line", "vsave",
-		                      "Opened the voice collection to keep this line.",
-		                      "Keeping this line is unavailable.");
+		HandleQuickMenuToggle(
+		    id, data, "save_voice_line", "vsave",
+		    "Opened the voice collection to keep this line.",
+		    "The keep button is greyed out: this line has no voice.");
 	} else if (name == "replay_voice") {
 		HandleQuickMenuToggle(id, data, "replay_voice", "vreplay",
 		                      "Playing that line again.",
@@ -348,45 +349,31 @@ void AppendActions(ActionSet &set, int payload) {
 	        kCloseQuickMenuSchema);
 	set.add("hide_ui", "Hide the text window so only the artwork is on screen.",
 	        kHideUiSchema);
-	// The game already decides when these apply -- a voice to replay, a line
-	// worth keeping, a scene history to step back into, a next stop to jump to --
-	// and the bar shows it in the buttons. Offering them otherwise would
-	// advertise a dead press.
-	if ((payload & kFlagVoice) != 0) {
-		set.add("replay_voice", "Play the current line's voice again.",
-		        kReplayVoiceSchema);
-	}
-	if ((payload & kFlagSaveVoice) != 0) {
-		set.add("save_voice_line",
-		        "Add the current line's voice to the voice collection, on the "
-		        "Extra screen.",
-		        kSaveVoiceSchema);
-	}
+	// Offered whether or not the game will take them right now, because that is
+	// what the bar shows: every button is on it, greyed when it does not apply.
+	// Pressing a greyed one is answered with what is missing.
+	set.add("replay_voice", "Play the current line's voice again.",
+	        kReplayVoiceSchema);
+	set.add("save_voice_line",
+	        "Add the current line's voice to the voice collection, on the Extra "
+	        "screen.",
+	        kSaveVoiceSchema);
 	set.add("open_save", "Open the save screen to store progress in a slot.",
 	        kOpenSaveSchema);
 	set.add("open_load", "Open the load screen to pick a saved game.",
 	        kOpenLoadSchema);
-	if ((payload & kFlagQuickSave) != 0) {
-		set.add("quick_save",
-		        "Save straight into the quick slot, without opening the save "
-		        "screen.",
-		        kQuickSaveSchema);
-	}
-	if ((payload & kFlagQuickLoad) != 0) {
-		set.add("quick_load",
-		        "Load the most recent quick save. Asks for confirmation first.",
-		        kQuickLoadSchema);
-	}
-	if ((payload & kFlagPrevious) != 0) {
-		set.add("previous_scene", "Go back to the previous scene break.",
-		        kPreviousSceneSchema);
-	}
-	if ((payload & kFlagNext) != 0) {
-		set.add("next_scene",
-		        "Jump ahead to the next scene break, the same place skipping "
-		        "would stop at.",
-		        kNextSceneSchema);
-	}
+	set.add("quick_save",
+	        "Save straight into the quick slot, without opening the save screen.",
+	        kQuickSaveSchema);
+	set.add("quick_load",
+	        "Load the most recent quick save. Asks for confirmation first.",
+	        kQuickLoadSchema);
+	set.add("previous_scene", "Go back to the previous scene break.",
+	        kPreviousSceneSchema);
+	set.add("next_scene",
+	        "Jump ahead to the next scene break, the same place skipping would "
+	        "stop at.",
+	        kNextSceneSchema);
 	// Auto and skip are each one bar button pressed twice, so only the direction
 	// that would change something is offered.
 	if ((payload & kFlagAuto) != 0) {
@@ -432,18 +419,6 @@ int ReadPayload(ScreenSnapshot const &screen) {
 			payload |= kFlagAuto;
 		if (screen.skipMode)
 			payload |= kFlagSkip;
-		if (screen.canReplayVoice)
-			payload |= kFlagVoice;
-		if (screen.canGoPrevious)
-			payload |= kFlagPrevious;
-		if (screen.canGoNext)
-			payload |= kFlagNext;
-		if (screen.canQuickSave)
-			payload |= kFlagQuickSave;
-		if (screen.canQuickLoad)
-			payload |= kFlagQuickLoad;
-		if (screen.canSaveVoice)
-			payload |= kFlagSaveVoice;
 	}
 	return payload;
 }

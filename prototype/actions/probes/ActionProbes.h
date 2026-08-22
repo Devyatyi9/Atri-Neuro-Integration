@@ -44,18 +44,6 @@ struct ScreenSnapshot {
 	bool textWindowHidden = false;
 	bool autoMode = false;
 	bool skipMode = false;
-	// The bar's own enabled flags for the three buttons whose availability the
-	// game computes from state we would otherwise have to mirror: a current
-	// voice to replay, a scene history to step back into, a next stop to jump
-	// to. Reading the buttons keeps that logic in one place -- the game's.
-	bool canReplayVoice = false;
-	bool canGoPrevious = false;
-	bool canGoNext = false;
-	// The rest of the bar: quick save and quick load follow
-	// canStore/canQuickLoad, and the voice-collection button is always live.
-	bool canQuickSave = false;
-	bool canQuickLoad = false;
-	bool canSaveVoice = false;
 	// The title's own buttons. Visibility and usability are kept apart because
 	// the game uses both: Continue and Extra are drawn greyed out until they
 	// apply, while the True End is not drawn at all until it is unlocked.
