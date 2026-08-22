@@ -134,7 +134,10 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
 	    L"if (kag.messageLayerHiding) h = 1;"
 	    L"if (kag.autoMode) a = 1;"
-	    L"if (kag.skipMode) s2 = 1;"
+	    // skipMode is a level, not a flag: 1 and 2 are the momentary states of an
+	    // ordinary click, and only 3 (SKIP_STOP) and above are the mode a player
+	    // turns on. The quick menu bar tests it the same way.
+	    L"if (kag.skipMode >= 3) s2 = 1;"
 	    L"if (typeof kag.QuickMenu == 'Object') {"
 	    L"var q = kag.QuickMenu.names;"
 	    L"if (typeof q['vreplay'] == 'Object' && q['vreplay'].enabled) v = 1;"

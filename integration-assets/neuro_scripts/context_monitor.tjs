@@ -185,6 +185,9 @@
 
     // --- Modes ---
     var autoMode = kag._autoMode;
+    // Reported as the raw level, not as on/off: 0 none, 1 click, 2 page,
+    // 3 to next stop, 4 fast, 5 to label, 6 cancel, 7 force. Only 3 and above
+    // are the mode a player turns on; 1 and 2 pass through on ordinary clicks.
     var skipMode = kag._skipMode;
 
     // --- Conductor ---
