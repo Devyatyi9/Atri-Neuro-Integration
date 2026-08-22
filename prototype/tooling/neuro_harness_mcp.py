@@ -8,6 +8,7 @@ standalone assert-based regression script neuro_harness_test.py.
 import json
 import os
 import sys
+import tempfile
 import threading
 import time
 from typing import Any
@@ -20,9 +21,35 @@ if sys.platform == "win32":
 
 from mcp.server.fastmcp import FastMCP
 
-from neuro_harness_core import Harness
+from neuro_harness_core import PORT as DEFAULT_PORT, Harness
 
-HARNESS = Harness()
+# Where a chosen port is remembered between runs. Neither arguments nor the
+# environment can carry it: the restart ends this process, and the MCP host
+# brings the server back with its own configured command line, so whatever this
+# process was told is gone. A file outlives that.
+PORT_FILE = os.path.join(tempfile.gettempdir(), "atri-neuro-harness-port")
+
+
+def _remembered_port() -> int | None:
+    try:
+        with open(PORT_FILE, encoding="utf-8") as handle:
+            return int(handle.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _remember_port(port: int | None) -> None:
+    if port is None:
+        try:
+            os.remove(PORT_FILE)
+        except OSError:
+            pass
+        return
+    with open(PORT_FILE, "w", encoding="utf-8") as handle:
+        handle.write(str(port))
+
+
+HARNESS = Harness(port=_remembered_port())
 MCP = FastMCP("atri-neuro-harness", log_level="ERROR")
 
 
@@ -106,9 +133,7 @@ def _delayed_restart(port: int | None) -> None:
     # process image is replaced; os.execv never returns on success.
     time.sleep(0.3)
     if port is not None:
-        # execv keeps the current environment, and the port is read from it at
-        # import time, so the replacement process comes up on the new port.
-        os.environ["NEURO_HARNESS_PORT"] = str(port)
+        _remember_port(None if port == DEFAULT_PORT else port)
     HARNESS.prepare_restart()
     sys.stdout.flush()
     os.execv(sys.executable, [sys.executable] + sys.argv)
