@@ -63,6 +63,18 @@ bool ProbeScreen(ScreenSnapshot &out);
 // rather than calling SystemAction directly keeps the action visible on screen.
 bool ProbeScreenButtonReady(char const *button, char const *tag);
 bool DispatchScreenButton(char const *button, char const *tag);
+// Runs the button's own enter or leave handler, so the game reacts as it does
+// to a cursor arriving or departing: the button lights up and shows whatever it
+// reveals -- the title's Continue shows a preview of the save it would resume.
+// Only visibility is required: a greyed button can still be pointed at, the
+// same as with a mouse. `on` false is the departure, which has to be sent
+// explicitly because no cursor ever moves away on its own.
+bool DispatchScreenButtonHover(char const *button, bool on, char const *tag);
+// Whether the cursor is resting on the button as far as the game is concerned.
+bool ProbeScreenButtonHovered(char const *button, char const *tag);
+// The chapter and date of the save the title's Continue would resume, empty
+// when there is none. What the hover preview draws, in words.
+bool ProbeContinueSave(std::string &chapter, std::string &date);
 
 // The language screen the game opens once, on the very first launch. It reports
 // itself as "option" like the settings screen, so only the controls tell them

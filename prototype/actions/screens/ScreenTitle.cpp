@@ -238,6 +238,7 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	set.add("exit_game", "Quit the game. Asks for confirmation first.",
 	        kExitGameSchema);
+
 }
 
 void SendEnteringContext(int payload) {
@@ -252,6 +253,20 @@ void SendEnteringContext(int payload) {
 	}
 	if ((payload & kFlagShowsExtra) != 0 && (payload & kFlagCanOpenExtra) == 0) {
 		message += " Extra is greyed out: it is not unlocked yet.";
+	}
+	// Where Continue would pick up. Hovering the button shows this on screen, but
+	// only as a drawn thumbnail with no text on it, so saying it is the only way
+	// it reaches her at all.
+	if ((payload & kFlagCanContinue) != 0) {
+		std::string chapter;
+		std::string date;
+		if (ProbeContinueSave(chapter, date) && !chapter.empty()) {
+			message += " Continue would resume in " + chapter;
+			if (!date.empty()) {
+				message += ", saved " + date;
+			}
+			message += ".";
+		}
 	}
 	NeuroSendContext(message.c_str(), false);
 }

@@ -9,6 +9,7 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
+#include "ActionCommon.h"
 #include "Logging.h"
 #include "TJSExecutor.h"
 #include "TJSQuery.h"
@@ -52,6 +53,22 @@ wchar_t const *const kScreenButtonReady =
     L"button.controlOwner.onButtonClick != 'Object') return 0;"
     L"return 1; })()";
 
+// The button's own enter handler, which is what the game runs when a cursor
+// arrives: it lights the button up and evaluates the link's onenter expression,
+// so the hover sound plays and whatever that button reveals appears.
+//
+// Not setFocusToLink: that moves the real system cursor, which only registers
+// while the game window is active and fights whoever else is using the mouse.
+// Calling the handler works with the window in the background and leaves the
+// cursor where it is.
+wchar_t const *const kScreenButtonHover =
+    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+    L"'Object' || typeof kag.current.names == 'undefined') return 0;"
+    L"var button = kag.current.names['%hs'];"
+    L"if (typeof button != 'Object' || !isvalid button || !button.visible) "
+    L"return 0;"
+    L"button.%hs(); return 1; })()";
+
 wchar_t const *const kScreenButtonDispatch =
     L"(function(){ var button = kag.current.names['%hs'];"
     L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()";
@@ -65,6 +82,13 @@ wchar_t const *const kQuickMenuButtonReady =
     L"if (typeof button.controlOwner == 'undefined' || typeof "
     L"button.controlOwner.onButtonClick != 'Object') return 0;"
     L"return 1; })()";
+
+wchar_t const *const kQuickMenuButtonHover =
+    L"(function(){ if (typeof kag == 'undefined' || typeof kag.QuickMenu != "
+    L"'Object') return 0;"
+    L"var button = kag.QuickMenu.names['%hs'];"
+    L"if (typeof button != 'Object' || !isvalid button) return 0;"
+    L"button.%hs(); return 1; })()";
 
 wchar_t const *const kQuickMenuButtonDispatch =
     L"(function(){ var button = kag.QuickMenu.names['%hs'];"
@@ -205,7 +229,56 @@ bool ProbeScreenButtonReady(char const *button, char const *tag) {
 	return AskFormatted(kScreenButtonReady, tag, button);
 }
 
+bool DispatchScreenButtonHover(char const *button, bool on, char const *tag) {
+	return AskFormatted(kScreenButtonHover, tag, button,
+	                    on ? "onMouseEnter" : "onMouseLeave");
+}
+
+bool ProbeScreenButtonHovered(char const *button, char const *tag) {
+	// Whether the game actually took the cursor onto the button. Moving it is not
+	// enough on its own: the hit test runs on the game's own mouse handling, and
+	// with its window in the background nothing registers.
+	return AskFormatted(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+	    L"'Object' || typeof kag.current.names == 'undefined') return 0;"
+	    L"var button = kag.current.names['%hs'];"
+	    L"if (typeof button != 'Object' || !isvalid button) return 0;"
+	    L"return button.Butt_mouseOn ? 1 : 0; })()",
+	    tag, button);
+}
+
+bool ProbeContinueSave(std::string &chapter, std::string &date) {
+	// The record the title's Continue resumes from. Its tag is configurable, so
+	// it is read rather than spelled out; the popup that appears on hover draws
+	// this same record as a picture, with none of it as text.
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ try {"
+	        L"if (!SystemAction.hasSuspendSaveData()) return '';"
+	        L"var tag = SystemConfig.gameContSuspendSaveFileTag;"
+	        L"return kag.getBookMarkPageName(tag) + '|' + "
+	        L"kag.getBookMarkDate(tag);"
+	        L"} catch (e) { return ''; } })()",
+	        raw, "continue save")) {
+		return false;
+	}
+	size_t const separator = raw.find('|');
+	if (separator == std::string::npos) {
+		return false;
+	}
+	chapter = raw.substr(0, separator);
+	date = raw.substr(separator + 1);
+	return true;
+}
+
 bool DispatchScreenButton(char const *button, char const *tag) {
+	// A press a player makes is always preceded by the cursor arriving: the
+	// button lights up, its hover sound plays, and whatever it reveals appears
+	// for a moment before it is pressed. Doing the same here is what makes the
+	// press look like a press rather than a value changing on its own.
+	if (AskFormatted(kScreenButtonHover, tag, button, "onMouseEnter")) {
+		Sleep(kHoverPreviewMs);
+	}
 	return AskFormatted(kScreenButtonDispatch, tag, button);
 }
 
@@ -312,6 +385,11 @@ bool ProbeQuickMenuButtonReady(char const *button, char const *tag) {
 }
 
 bool DispatchQuickMenuButton(char const *button, char const *tag) {
+	// Same as the screen buttons: the bar's own hover sound is se901, which is
+	// the sound the bar has always seemed to make when it slides out.
+	if (AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseEnter")) {
+		Sleep(kHoverPreviewMs);
+	}
 	return AskFormatted(kQuickMenuButtonDispatch, tag, button);
 }
 
