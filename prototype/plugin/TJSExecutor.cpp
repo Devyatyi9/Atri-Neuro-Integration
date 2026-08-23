@@ -28,6 +28,10 @@ static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
 static std::atomic<bool> g_HoldTJSSyncCallsForStressTest(false);
+static std::atomic<bool> g_TJSContinuousEventHookRegistered(false);
+static std::atomic<unsigned long long> g_TJSContinuousCallbackCount(0);
+static std::atomic<tjs_uint64> g_TJSLastContinuousTick(0);
+static DWORD g_TJSContinuousHookThreadId = 0;
 
 struct TJSSyncCallData {
 	std::wstring code;
@@ -63,6 +67,26 @@ struct TJSAsyncCall {
 static std::mutex g_TJSAsyncCallsMutex;
 static std::unordered_map<UINT_PTR, TJSAsyncCall> g_TJSAsyncCalls;
 static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
+
+class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
+ public:
+	void TJS_INTF_METHOD OnContinuousCallback(tjs_uint64 tick) override {
+		unsigned long long const count =
+		    g_TJSContinuousCallbackCount.fetch_add(1, std::memory_order_relaxed) +
+		    1;
+		g_TJSLastContinuousTick.store(tick, std::memory_order_relaxed);
+		if (count == 1 || count % 300 == 0) {
+			char message[192];
+			sprintf_s(message,
+			          "[TJS continuous probe] count=%llu tick=%llu thread=%lu\n",
+			          count, static_cast<unsigned long long>(tick),
+			          static_cast<unsigned long>(GetCurrentThreadId()));
+			Log(message);
+		}
+	}
+};
+
+static TJSContinuousEventHook g_TJSContinuousEventHook;
 
 static TJSAsyncCall TakeTJSAsyncCall(UINT_PTR id) {
 	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
@@ -337,6 +361,24 @@ bool InitializeTJSExecutor() {
 	return SubclassGameWindow();
 }
 
+bool InitializeTJSContinuousEventHook() {
+	if (g_TJSContinuousEventHookRegistered.exchange(true,
+	                                                std::memory_order_acq_rel)) {
+		return true;
+	}
+	g_TJSContinuousHookThreadId = GetCurrentThreadId();
+	g_TJSContinuousCallbackCount.store(0, std::memory_order_relaxed);
+	g_TJSLastContinuousTick.store(0, std::memory_order_relaxed);
+	TVPAddContinuousEventHook(&g_TJSContinuousEventHook);
+	char message[128];
+	sprintf_s(message,
+	          "TJS continuous event hook registered (observation only), "
+	          "registration thread=%lu\n",
+	          static_cast<unsigned long>(g_TJSContinuousHookThreadId));
+	Log(message);
+	return true;
+}
+
 constexpr DWORD kShutdownCheckMs = 50;
 std::atomic<bool> g_TJSShuttingDown(false);
 
@@ -346,6 +388,11 @@ void BeginTJSExecutorShutdown() {
 
 void ShutdownTJSExecutor() {
 	UnsubclassGameWindow();
+	if (g_TJSContinuousEventHookRegistered.exchange(false,
+	                                                std::memory_order_acq_rel)) {
+		TVPRemoveContinuousEventHook(&g_TJSContinuousEventHook);
+		Log("TJS continuous event hook removed\n");
+	}
 	if (g_ScriptDispatch) {
 		g_ScriptDispatch->Release();
 		g_ScriptDispatch = nullptr;

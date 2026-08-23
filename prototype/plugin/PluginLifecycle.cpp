@@ -176,6 +176,9 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
 		return E_FAIL;
 	}
 	Log("TVPInitImportStub OK\n");
+	if (!InitializeTJSContinuousEventHook()) {
+		Log("ERROR: TJS continuous event hook registration failed\n");
+	}
 
 	Log("Starting deferred TJS initialization...\n");
 	StartDeferredTJSInit();
