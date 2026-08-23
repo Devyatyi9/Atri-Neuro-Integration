@@ -252,14 +252,13 @@ bool ProbeContinueSave(std::string &chapter, std::string &date) {
 	// it is read rather than spelled out; the popup that appears on hover draws
 	// this same record as a picture, with none of it as text.
 	std::string raw;
-	if (!QueryString(
-	        L"(function(){ try {"
-	        L"if (!SystemAction.hasSuspendSaveData()) return '';"
-	        L"var tag = SystemConfig.gameContSuspendSaveFileTag;"
-	        L"return kag.getBookMarkPageName(tag) + '|' + "
-	        L"kag.getBookMarkDate(tag);"
-	        L"} catch (e) { return ''; } })()",
-	        raw, "continue save")) {
+	if (!QueryString(L"(function(){ try {"
+	                 L"if (!SystemAction.hasSuspendSaveData()) return '';"
+	                 L"var tag = SystemConfig.gameContSuspendSaveFileTag;"
+	                 L"return kag.getBookMarkPageName(tag) + '|' + "
+	                 L"kag.getBookMarkDate(tag);"
+	                 L"} catch (e) { return ''; } })()",
+	                 raw, "continue save")) {
 		return false;
 	}
 	size_t const separator = raw.find('|');

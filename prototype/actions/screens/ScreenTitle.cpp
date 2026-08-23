@@ -238,7 +238,6 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	set.add("exit_game", "Quit the game. Asks for confirmation first.",
 	        kExitGameSchema);
-
 }
 
 void SendEnteringContext(int payload) {
