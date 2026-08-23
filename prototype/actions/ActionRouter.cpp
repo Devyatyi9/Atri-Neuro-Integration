@@ -71,9 +71,6 @@ long long CapabilityKey(int kind, int payload) {
 // SDK connects.
 std::atomic<bool> g_TitleLoadingNoticeSent(false);
 // The same problem for the first-run language screen, which comes up in the
-// same window: it is on screen seconds after the splashes, while the SDK may
-// still be connecting.
-std::atomic<bool> g_LanguageNoticeSent(false);
 constexpr int kCapabilityStateUnknown = -1;
 // The title screen. What it offers lives in ScreenTitle; only its identity
 // is needed here.
@@ -361,7 +358,7 @@ void ShutdownPrototypeActionRouter() {
 	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
 	                              std::memory_order_release);
 	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
-	g_LanguageNoticeSent.store(false, std::memory_order_release);
+	ScreenMenu::ResetLanguageNotice();
 	// A reconnect starts a server that knows nothing of our earlier force.
 	g_DialogForcePending.store(false, std::memory_order_release);
 	g_ForceOutstanding.store(false, std::memory_order_release);
@@ -382,23 +379,6 @@ void TrySendTitleLoadingNotice() {
 	        "The game is starting up. The main menu is not available yet.",
 	        true)) {
 		g_TitleLoadingNoticeSent.store(true, std::memory_order_release);
-	}
-}
-
-// Same retry, for the screen that is on the other side of that same wait. Not
-// silent: this one is a question the game is holding still for, and nothing
-// else can happen until it is answered.
-void TrySendLanguageNotice() {
-	if (g_LanguageNoticeSent.load(std::memory_order_acquire)) {
-		return;
-	}
-	if (NeuroSendContext(
-	        "The game is asking which languages to use. It only asks this once, "
-	        "on the very first launch, and it will not go any further until the "
-	        "question is answered. The languages already selected are the ones "
-	        "it will use; confirming them is what gets past this screen.",
-	        false)) {
-		g_LanguageNoticeSent.store(true, std::memory_order_release);
 	}
 }
 
@@ -429,7 +409,7 @@ void SyncScreenByControls(bool stateChanged) {
 		// Sitting on the first-run screen. Nothing about it can change without
 		// leaving it, and leaving changes the state string, so the only work
 		// left here is landing the notice if the SDK was not ready for it yet.
-		TrySendLanguageNotice();
+		ScreenMenu::TrySendLanguageNotice();
 		return;
 	}
 	if (settled && !stateChanged) {
@@ -440,7 +420,7 @@ void SyncScreenByControls(bool stateChanged) {
 		// apart from the backlog: both carry "back" and neither carries
 		// "title".
 		SyncCapabilities(kCapabilityStateLanguageSelect);
-		TrySendLanguageNotice();
+		ScreenMenu::TrySendLanguageNotice();
 	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
 		SyncCapabilities(kCapabilityStateBare);
 	} else if (ProbeScreenButtonReady("title", "screen title button")) {
