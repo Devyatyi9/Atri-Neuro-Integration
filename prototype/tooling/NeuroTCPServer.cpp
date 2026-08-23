@@ -89,15 +89,6 @@ static void ReapFinishedClientThreads() {
 
 	for (ClientThread &clientThread : finishedThreads) {
 		clientThread.thread.join();
-		scheduleExit = scheduleExit || clientThread.exitAfterResponse->load(
-		                                   std::memory_order_acquire);
-	}
-	if (scheduleExit) {
-		ExecuteTJSAsync(
-		    L"(function(){ if (MyYesNoDialog.currentTextPart == 'AskExit' && "
-		    L"kag.currentDialog && kag.currentDialog.names.yes) { "
-		    L"kag.currentDialog.processLink(kag.currentDialog.names.yes.linkNum); "
-		    L"} })()");
 	}
 }
 

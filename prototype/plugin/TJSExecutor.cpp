@@ -173,7 +173,8 @@ static std::shared_ptr<TJSSyncCallData> TakeNextTJSSyncCall() {
 			continue;
 		}
 		// Return a copy: the caller will execute and signal, but the original
-		// shared_ptr stays alive in the map until ExecuteTJSSync completes its wait.
+		// shared_ptr stays alive in the map until ExecuteTJSSync completes its
+		// wait.
 		return it->second;
 	}
 	return nullptr;

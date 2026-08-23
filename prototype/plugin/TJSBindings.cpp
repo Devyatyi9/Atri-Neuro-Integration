@@ -72,17 +72,7 @@ NeuroBeginExitShutdown(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-static tjs_error TJS_INTF_METHOD NeuroConfirmExit(tTJSVariant *result,
-                                                  tjs_int numparams,
-                                                  tTJSVariant **param,
-                                                  iTJSDispatch2 *objthis) {
-	// TCP queues the final main-thread callback only after it sends this result.
-	ScheduleExitAfterTCPResponse();
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
+
 
 static tjs_error TJS_INTF_METHOD
 NeuroStressBlockNextSyncCall(tTJSVariant *result,
@@ -770,7 +760,6 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 NCB_REGISTER_FUNCTION(neuroTest, NeuroTestFunction);
 NCB_REGISTER_FUNCTION(neuroGetVersion, NeuroGetVersion);
 NCB_REGISTER_FUNCTION(neuroBeginExitShutdown, NeuroBeginExitShutdown);
-NCB_REGISTER_FUNCTION(neuroConfirmExit, NeuroConfirmExit);
 NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
                       NeuroStressBlockNextSyncCall);
 NCB_REGISTER_FUNCTION(neuroStressHoldSyncCalls, NeuroStressHoldSyncCalls);
@@ -813,11 +802,9 @@ void RetryInstallExitHookIfReady() {
 		return;
 	Log("[ExitHook] installing hook\n");
 	// Use the synchronous form and confirm the assignment actually landed
-	// before flipping g_ExitHookInstalled. The previous ExecuteTJSAsync call
-	// posts the TJS code and returns immediately -- the flag was being set
-	// true as soon as the message was queued, not once the game thread had
-	// actually run it, leaving a window where callers trusted an exit hook
-	// that was not live on the TJS side yet.
+	// before flipping g_ExitHookInstalled. Sync execution waits for the game
+	// thread to complete the call and returns the result, ensuring the hook
+	// is live before the flag is set.
 	tTJSVariant installed;
 	bool const installExecuted = ExecuteTJSSync(
 	    L"(function(){ "
