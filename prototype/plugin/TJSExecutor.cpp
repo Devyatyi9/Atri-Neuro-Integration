@@ -21,9 +21,6 @@
 
 static std::atomic<bool> g_TJSReady(false);
 static iTJSDispatch2 *g_ScriptDispatch = nullptr;
-static DWORD g_MainThreadId = 0;
-static HWND g_GameWindow = nullptr;
-static WNDPROC g_OriginalWndProc = nullptr;
 static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
 static std::atomic<bool> g_HoldTJSSyncCallsForStressTest(false);
@@ -200,7 +197,7 @@ static void CancelTJSSyncCalls() {
 }
 
 bool IsMainThread() {
-	return GetCurrentThreadId() == g_MainThreadId;
+	return GetCurrentThreadId() == g_TJSContinuousHookThreadId;
 }
 
 // The single place that hands code to the engine. TJS exposes two entry points
@@ -255,137 +252,6 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 // Defined below, next to the top-level separator scan it builds on.
 static bool ResolveUseScriptApi(std::wstring const &code, TJSExecMode mode);
 
-static std::atomic<int> g_SubclassCallCount(0);
-
-static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
-                                          UINT msg,
-                                          WPARAM wParam,
-                                          LPARAM lParam) {
-	g_SubclassCallCount++;
-
-	switch (msg) {
-		case WM_CLOSE: {
-			// Defensive fallback for forced window close or abnormal exit; normal
-			// System.exit() flow invokes V2Unlink through the manager.
-			WNDPROC const originalWndProc = g_OriginalWndProc;
-			ShutdownPluginWorkers();
-			return CallWindowProc(originalWndProc, hwnd, msg, wParam, lParam);
-		}
-		default:
-			return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
-	}
-}
-
-struct EnumWindowsData {
-	HWND foundWindow;
-	HWND kirikiriWindow;
-};
-
-static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
-	DWORD windowPid;
-	GetWindowThreadProcessId(hwnd, &windowPid);
-
-	if (windowPid == GetCurrentProcessId()) {
-		if (IsWindowVisible(hwnd) && GetParent(hwnd) == NULL) {
-			wchar_t className[256] = {0};
-			GetClassNameW(hwnd, className, 256);
-
-			// NOLINTNEXTLINE(performance-no-int-to-ptr): EnumWindows API payload.
-			auto *data = reinterpret_cast<EnumWindowsData *>(lParam);
-			if (wcscmp(className, L"#32770") == 0) {
-				return TRUE;
-			}
-
-			if (wcsstr(className, L"TTVPWindowForm") != nullptr ||
-			    wcsstr(className, L"TVPMainWindow") != nullptr) {
-				data->kirikiriWindow = hwnd;
-				return FALSE;
-			}
-
-			if (!data->foundWindow) {
-				data->foundWindow = hwnd;
-			}
-		}
-	}
-	return TRUE;
-}
-
-static bool SubclassGameWindow() {
-	Log("Waiting for game window...\n");
-
-	// The script engine can be ready before the visible game window exists.
-	for (int attempt = 0; attempt < 300; attempt++) {
-		EnumWindowsData enumData = {nullptr, nullptr};
-		EnumWindows(EnumWindowsCallback, (LPARAM)&enumData);
-
-		g_GameWindow = enumData.kirikiriWindow ? enumData.kirikiriWindow
-		                                       : enumData.foundWindow;
-
-		if (g_GameWindow) {
-			char buf[128];
-			sprintf_s(buf, "  Found window on attempt %d\n", attempt + 1);
-			Log(buf);
-			break;
-		}
-
-		Sleep(100);
-	}
-
-	if (!g_GameWindow) {
-		Log("ERROR: Could not find game window after 30 seconds\n");
-		return false;
-	}
-
-	char buf[512];
-	sprintf_s(buf, "Found game window: HWND=%p\n", g_GameWindow);
-	Log(buf);
-
-	wchar_t className[256] = {0};
-	wchar_t windowTitle[256] = {0};
-	GetClassNameW(g_GameWindow, className, 256);
-	GetWindowTextW(g_GameWindow, windowTitle, 256);
-
-	char diagBuf[1024];
-	sprintf_s(diagBuf, "  Window class: %ls\n  Window title: %ls\n", className,
-	          windowTitle);
-	Log(diagBuf);
-
-	g_MainThreadId = GetWindowThreadProcessId(g_GameWindow, NULL);
-	DWORD currentThreadId = GetCurrentThreadId();
-	sprintf_s(diagBuf, "  Window thread (main): %lu, Current thread: %lu\n",
-	          g_MainThreadId, currentThreadId);
-	Log(diagBuf);
-
-	LONG_PTR originalWndProc =
-	    SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC,
-	                     reinterpret_cast<LONG_PTR>(SubclassedWndProc));
-	g_OriginalWndProc = reinterpret_cast<WNDPROC>(
-	    originalWndProc);  // NOLINT(performance-no-int-to-ptr): SetWindowLongPtr
-	                       // stores WNDPROC as LONG_PTR.
-
-	if (!g_OriginalWndProc) {
-		DWORD err = GetLastError();
-		sprintf_s(diagBuf, "ERROR: SetWindowLongPtr failed, error=%lu\n", err);
-		Log(diagBuf);
-		g_GameWindow = nullptr;
-		return false;
-	}
-
-	Log("Game window subclassed successfully\n");
-	g_AcceptTJSCalls.store(true, std::memory_order_release);
-	return true;
-}
-
-static void UnsubclassGameWindow() {
-	StopAcceptingTJSCalls();
-	if (g_GameWindow && g_OriginalWndProc) {
-		SetWindowLongPtr(g_GameWindow, GWLP_WNDPROC, (LONG_PTR)g_OriginalWndProc);
-		Log("Game window unsubclassed\n");
-	}
-	g_GameWindow = nullptr;
-	g_OriginalWndProc = nullptr;
-}
-
 void StopAcceptingTJSCalls() {
 	g_AcceptTJSCalls.store(false, std::memory_order_release);
 	g_HoldTJSSyncCallsForStressTest.store(false, std::memory_order_release);
@@ -402,7 +268,9 @@ void HoldTJSSyncCallsForStressTest() {
 }
 
 bool InitializeTJSExecutor() {
-	return SubclassGameWindow();
+	// TJS executor initialization is now handled entirely by the continuous event
+	// hook; this function remains as a no-op for API compatibility.
+	return true;
 }
 
 bool InitializeTJSContinuousEventHook() {
@@ -417,6 +285,7 @@ bool InitializeTJSContinuousEventHook() {
 	g_TJSAsyncDroppedCount.store(0, std::memory_order_relaxed);
 	g_TJSSyncExecutedCount.store(0, std::memory_order_relaxed);
 	TVPAddContinuousEventHook(&g_TJSContinuousEventHook);
+	g_AcceptTJSCalls.store(true, std::memory_order_release);
 	char message[128];
 	sprintf_s(message,
 	          "TJS continuous event hook registered (async+sync queue), "
@@ -434,7 +303,7 @@ void BeginTJSExecutorShutdown() {
 }
 
 void ShutdownTJSExecutor() {
-	UnsubclassGameWindow();
+	StopAcceptingTJSCalls();
 	if (g_TJSContinuousEventHookRegistered.exchange(false,
 	                                                std::memory_order_acq_rel)) {
 		TVPRemoveContinuousEventHook(&g_TJSContinuousEventHook);
@@ -448,8 +317,7 @@ void ShutdownTJSExecutor() {
 }
 
 void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode) {
-	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
-	    !IsWindow(g_GameWindow) || !code || !*code) {
+	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code || !*code) {
 		return;
 	}
 
@@ -645,8 +513,7 @@ bool ExecuteTJSSync(wchar_t const *code,
                     tTJSVariant *result,
                     DWORD timeoutMs,
                     TJSExecMode mode) {
-	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !g_GameWindow ||
-	    !IsWindow(g_GameWindow) || !code)
+	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code)
 		return false;
 
 	bool const useScriptApi = ResolveUseScriptApi(code, mode);

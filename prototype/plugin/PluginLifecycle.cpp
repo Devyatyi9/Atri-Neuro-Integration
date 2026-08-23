@@ -87,15 +87,21 @@ static void DeferredTJSInitThread() {
 		tTJSVariant result;
 		char buf[256];
 
-		TVPExecuteExpression(TJS_W("neuroGetVersion()"), &result);
-		sprintf_s(buf, "  neuroGetVersion() returned: %d\n",
-		          (int)(tTVInteger)result);
-		Log(buf);
+		if (ExecuteTJSSync(L"neuroGetVersion()", &result, 5000)) {
+			sprintf_s(buf, "  neuroGetVersion() returned: %d\n",
+			          (int)(tTVInteger)result);
+			Log(buf);
+		} else {
+			Log("  ERROR: neuroGetVersion() timed out\n");
+		}
 
-		TVPExecuteExpression(TJS_W("neuroIsTJSReady()"), &result);
-		sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n",
-		          (int)(tTVInteger)result);
-		Log(buf);
+		if (ExecuteTJSSync(L"neuroIsTJSReady()", &result, 5000)) {
+			sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n",
+			          (int)(tTVInteger)result);
+			Log(buf);
+		} else {
+			Log("  ERROR: neuroIsTJSReady() timed out\n");
+		}
 
 		Log("Basic tests completed!\n");
 

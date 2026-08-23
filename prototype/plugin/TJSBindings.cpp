@@ -72,8 +72,6 @@ NeuroBeginExitShutdown(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-
-
 static tjs_error TJS_INTF_METHOD
 NeuroStressBlockNextSyncCall(tTJSVariant *result,
                              tjs_int numparams,
