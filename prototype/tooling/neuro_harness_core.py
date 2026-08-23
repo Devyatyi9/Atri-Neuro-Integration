@@ -248,6 +248,11 @@ class Harness:
                     self.send({"command": "startup", "data": {"session": {
                         "sessionId": "neuro-harness", "characterId": "test", "displayName": "Harness"
                     }}})
+                    # Gary and Randy both ask for the set again right after the
+                    # connection is up, and the difference showed: a duplicate
+                    # register on reconnect was invisible here for as long as
+                    # this harness stayed silent about it.
+                    self.send({"command": "actions/reregister_all"})
         except (ConnectionError, OSError, ValueError, json.JSONDecodeError) as error:
             with self._lock:
                 server_closed = self._connection is None
