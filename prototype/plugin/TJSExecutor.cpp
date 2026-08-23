@@ -24,7 +24,6 @@ static iTJSDispatch2 *g_ScriptDispatch = nullptr;
 static DWORD g_MainThreadId = 0;
 static HWND g_GameWindow = nullptr;
 static WNDPROC g_OriginalWndProc = nullptr;
-static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
 static std::atomic<bool> g_HoldTJSSyncCallsForStressTest(false);
@@ -173,9 +172,9 @@ static std::shared_ptr<TJSSyncCallData> TakeNextTJSSyncCall() {
 		if (it == g_TJSSyncCalls.end()) {
 			continue;
 		}
-		auto call = std::move(it->second);
-		g_TJSSyncCalls.erase(it);
-		return call;
+		// Return a copy: the caller will execute and signal, but the original
+		// shared_ptr stays alive in the map until ExecuteTJSSync completes its wait.
+		return it->second;
 	}
 	return nullptr;
 }
@@ -265,29 +264,11 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 
 	switch (msg) {
 		case WM_CLOSE: {
-			// The host does not call V2Unlink during normal process exit.
+			// Defensive fallback for forced window close or abnormal exit; normal
+			// System.exit() flow invokes V2Unlink through the manager.
 			WNDPROC const originalWndProc = g_OriginalWndProc;
 			ShutdownPluginWorkers();
 			return CallWindowProc(originalWndProc, hwnd, msg, wParam, lParam);
-		}
-
-		case WM_TJS_EXECUTE_SYNC: {
-			if (g_HoldTJSSyncCallsForStressTest.load(std::memory_order_acquire)) {
-				Log("[Stress] Holding TJS sync dispatch pending unload\n");
-				return 0;
-			}
-			if (g_BlockNextTJSSyncCall.exchange(false, std::memory_order_acq_rel)) {
-				Log("[Stress] Blocking next TJS sync dispatch\n");
-				while (g_AcceptTJSCalls.load(std::memory_order_acquire)) {
-					Sleep(10);
-				}
-				Log("[Stress] TJS sync dispatch unblocked by shutdown\n");
-			}
-			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
-			if (data) {
-				ExecuteTJSSyncCall(data);
-			}
-			return 0;
 		}
 		default:
 			return CallWindowProc(g_OriginalWndProc, hwnd, msg, wParam, lParam);
@@ -732,7 +713,6 @@ bool ExecuteTJSSync(wchar_t const *code,
 	}
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);
-		TakeTJSSyncCall(callId);
 		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
 	} else if (!executed) {
 		// The game thread answered but skipped the call (cancelled, or TJS not
@@ -740,6 +720,9 @@ bool ExecuteTJSSync(wchar_t const *code,
 		// cause of dropped polls from every caller.
 		Log("  [ExecuteTJSSync] Game thread skipped the call (not executed)\n");
 	}
+	// Remove from map now that wait is complete: keeps the shared_ptr alive until
+	// after WaitForSingleObject finishes, preventing use-after-free on the event.
+	TakeTJSSyncCall(callId);
 	return executed;
 }
 
