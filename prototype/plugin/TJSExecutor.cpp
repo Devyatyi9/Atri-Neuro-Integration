@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cwctype>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -23,7 +24,6 @@ static iTJSDispatch2 *g_ScriptDispatch = nullptr;
 static DWORD g_MainThreadId = 0;
 static HWND g_GameWindow = nullptr;
 static WNDPROC g_OriginalWndProc = nullptr;
-static const UINT WM_TJS_EXECUTE = WM_USER + 100;
 static const UINT WM_TJS_EXECUTE_SYNC = WM_USER + 101;
 static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
@@ -66,7 +66,14 @@ struct TJSAsyncCall {
 
 static std::mutex g_TJSAsyncCallsMutex;
 static std::unordered_map<UINT_PTR, TJSAsyncCall> g_TJSAsyncCalls;
+static std::deque<UINT_PTR> g_TJSAsyncCallOrder;
 static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
+constexpr size_t kMaxTJSAsyncCalls = 256;
+static std::atomic<unsigned long long> g_TJSAsyncExecutedCount(0);
+static std::atomic<unsigned long long> g_TJSAsyncDroppedCount(0);
+
+static void ExecuteTJSAsyncCall(TJSAsyncCall const &call);
+static bool TakeNextTJSAsyncCall(TJSAsyncCall &call);
 
 class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
  public:
@@ -75,11 +82,23 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		    g_TJSContinuousCallbackCount.fetch_add(1, std::memory_order_relaxed) +
 		    1;
 		g_TJSLastContinuousTick.store(tick, std::memory_order_relaxed);
+		constexpr int kMaxCallsPerCallback = 32;
+		for (int processed = 0; processed < kMaxCallsPerCallback; ++processed) {
+			TJSAsyncCall call;
+			if (!TakeNextTJSAsyncCall(call)) {
+				break;
+			}
+			ExecuteTJSAsyncCall(call);
+			g_TJSAsyncExecutedCount.fetch_add(1, std::memory_order_relaxed);
+		}
 		if (count == 1 || count % 300 == 0) {
-			char message[192];
+			char message[256];
 			sprintf_s(message,
-			          "[TJS continuous probe] count=%llu tick=%llu thread=%lu\n",
+			          "[TJS continuous] callbacks=%llu async=%llu dropped=%llu "
+			          "tick=%llu thread=%lu\n",
 			          count, static_cast<unsigned long long>(tick),
+			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
+			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
 			          static_cast<unsigned long>(GetCurrentThreadId()));
 			Log(message);
 		}
@@ -88,20 +107,26 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 
 static TJSContinuousEventHook g_TJSContinuousEventHook;
 
-static TJSAsyncCall TakeTJSAsyncCall(UINT_PTR id) {
+static bool TakeNextTJSAsyncCall(TJSAsyncCall &call) {
 	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
-	auto it = g_TJSAsyncCalls.find(id);
-	if (it == g_TJSAsyncCalls.end()) {
-		return {};
+	while (!g_TJSAsyncCallOrder.empty()) {
+		UINT_PTR const id = g_TJSAsyncCallOrder.front();
+		g_TJSAsyncCallOrder.pop_front();
+		auto it = g_TJSAsyncCalls.find(id);
+		if (it == g_TJSAsyncCalls.end()) {
+			continue;
+		}
+		call = std::move(it->second);
+		g_TJSAsyncCalls.erase(it);
+		return true;
 	}
-	auto call = std::move(it->second);
-	g_TJSAsyncCalls.erase(it);
-	return call;
+	return false;
 }
 
 static void CancelTJSAsyncCalls() {
 	std::lock_guard<std::mutex> lock(g_TJSAsyncCallsMutex);
 	g_TJSAsyncCalls.clear();
+	g_TJSAsyncCallOrder.clear();
 }
 
 static std::shared_ptr<TJSSyncCallData> TakeTJSSyncCall(UINT_PTR id) {
@@ -197,16 +222,6 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 			WNDPROC const originalWndProc = g_OriginalWndProc;
 			ShutdownPluginWorkers();
 			return CallWindowProc(originalWndProc, hwnd, msg, wParam, lParam);
-		}
-
-		case WM_TJS_EXECUTE: {
-			Log("  [Subclass] WM_TJS_EXECUTE received!\n");
-			auto call = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
-			if (!call.code.empty()) {
-				Log("  [Subclass] Executing TJS async\n");
-				ExecuteTJSAsyncCall(call);
-			}
-			return 0;
 		}
 
 		case WM_TJS_EXECUTE_SYNC: {
@@ -369,10 +384,12 @@ bool InitializeTJSContinuousEventHook() {
 	g_TJSContinuousHookThreadId = GetCurrentThreadId();
 	g_TJSContinuousCallbackCount.store(0, std::memory_order_relaxed);
 	g_TJSLastContinuousTick.store(0, std::memory_order_relaxed);
+	g_TJSAsyncExecutedCount.store(0, std::memory_order_relaxed);
+	g_TJSAsyncDroppedCount.store(0, std::memory_order_relaxed);
 	TVPAddContinuousEventHook(&g_TJSContinuousEventHook);
 	char message[128];
 	sprintf_s(message,
-	          "TJS continuous event hook registered (observation only), "
+	          "TJS continuous event hook registered (async queue), "
 	          "registration thread=%lu\n",
 	          static_cast<unsigned long>(g_TJSContinuousHookThreadId));
 	Log(message);
@@ -416,17 +433,17 @@ void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode) {
 		if (!g_AcceptTJSCalls.load(std::memory_order_acquire)) {
 			return;
 		}
+		if (g_TJSAsyncCalls.size() >= kMaxTJSAsyncCalls) {
+			g_TJSAsyncDroppedCount.fetch_add(1, std::memory_order_relaxed);
+			Log("  [ExecuteTJSAsync] Queue full; dropping request\n");
+			return;
+		}
 		do {
 			callId = g_NextTJSAsyncCallId.fetch_add(1, std::memory_order_relaxed);
 		} while (callId == 0 ||
 		         g_TJSAsyncCalls.find(callId) != g_TJSAsyncCalls.end());
 		g_TJSAsyncCalls.emplace(callId, std::move(call));
-	}
-
-	if (!PostMessage(g_GameWindow, WM_TJS_EXECUTE, static_cast<WPARAM>(callId),
-	                 0)) {
-		TakeTJSAsyncCall(callId);
-		Log("  [ExecuteTJSAsync] Failed to post to the game window\n");
+		g_TJSAsyncCallOrder.push_back(callId);
 	}
 }
 
