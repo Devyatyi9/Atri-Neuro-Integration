@@ -121,6 +121,41 @@ static void RunThroughEngine(std::wstring const &code,
 	}
 }
 
+static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
+	if (call.code.empty() || !g_TJSReady.load(std::memory_order_acquire)) {
+		return;
+	}
+
+	tTJSVariant dummy;
+	try {
+		RunThroughEngine(call.code, &dummy, call.useScriptApi);
+	} catch (...) {
+		Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
+		std::string utf8Code;
+		if (Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
+			Log(utf8Code.c_str());
+		}
+		Log("\n");
+	}
+}
+
+static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
+	if (!data) {
+		return;
+	}
+
+	try {
+		if (!data->cancelled.load(std::memory_order_acquire) &&
+		    !data->code.empty() && g_TJSReady.load(std::memory_order_acquire)) {
+			RunThroughEngine(data->code, &data->result, data->useScriptApi);
+			data->executed = true;
+		}
+	} catch (...) {
+		Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
+	}
+	SetEvent(data->completedEvent);
+}
+
 // Defined below, next to the top-level separator scan it builds on.
 static bool ResolveUseScriptApi(std::wstring const &code, TJSExecMode mode);
 
@@ -143,19 +178,9 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 		case WM_TJS_EXECUTE: {
 			Log("  [Subclass] WM_TJS_EXECUTE received!\n");
 			auto call = TakeTJSAsyncCall(static_cast<UINT_PTR>(wParam));
-			if (!call.code.empty() && g_TJSReady.load()) {
+			if (!call.code.empty()) {
 				Log("  [Subclass] Executing TJS async\n");
-				tTJSVariant dummy;
-				try {
-					RunThroughEngine(call.code, &dummy, call.useScriptApi);
-				} catch (...) {
-					Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
-					std::string utf8Code;
-					if (Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
-						Log(utf8Code.c_str());
-					}
-					Log("\n");
-				}
+				ExecuteTJSAsyncCall(call);
 			}
 			return 0;
 		}
@@ -174,16 +199,7 @@ static LRESULT CALLBACK SubclassedWndProc(HWND hwnd,
 			}
 			auto data = TakeTJSSyncCall(static_cast<UINT_PTR>(wParam));
 			if (data) {
-				try {
-					if (!data->cancelled.load(std::memory_order_acquire) &&
-					    !data->code.empty() && g_TJSReady.load()) {
-						RunThroughEngine(data->code, &data->result, data->useScriptApi);
-						data->executed = true;
-					}
-				} catch (...) {
-					Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
-				}
-				SetEvent(data->completedEvent);
+				ExecuteTJSSyncCall(data);
 			}
 			return 0;
 		}
