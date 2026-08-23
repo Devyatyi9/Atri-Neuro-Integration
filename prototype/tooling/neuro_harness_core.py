@@ -89,6 +89,8 @@ class Harness:
         # discards a result that arrives afterwards, so a game that answers
         # slower than that is silently broken rather than merely slow.
         self._pending_actions: dict[str, float] = {}
+        # Every action id sent on this connection, to catch a reuse.
+        self._sent_action_ids: set[str] = set()
         # Names of an outstanding actions/force, or None when none is pending.
         # The force is satisfied once one of its actions is dispatched.
         self._forced_names: list[str] | None = None
@@ -169,12 +171,23 @@ class Harness:
     def actions(self) -> dict[str, Any]:
         """Current server-side view: which actions the game could actually call."""
         with self._lock:
+            now = time.time()
+            overdue = sorted(action_id for action_id, sent_at
+                             in self._pending_actions.items()
+                             if now - sent_at > ACTION_RESULT_LIMIT_S)
+            notes = list(self._protocol_notes)
+            for action_id in overdue:
+                # Reported on every read rather than recorded once: the result
+                # may still turn up, and the point is that right now it is owed.
+                notes.append(
+                    f"no action/result yet, past the ~{ACTION_RESULT_LIMIT_S:.0f}s "
+                    f"limit: {action_id}")
             return {
                 "active": sorted(name for name, entry in self._actions.items()
                                  if entry["active"]),
                 "inactive": sorted(name for name, entry in self._actions.items()
                                    if not entry["active"]),
-                "protocol_notes": list(self._protocol_notes),
+                "protocol_notes": notes,
             }
 
     def _record(self, direction: str, message: dict[str, Any]) -> None:
@@ -274,6 +287,7 @@ class Harness:
                     # them would blame the next session's first force for a
                     # dialog the previous one left open.
                     self._pending_actions.clear()
+                    self._sent_action_ids.clear()
                     self._forced_names = None
 
     def send(self, message: dict[str, Any]) -> None:
@@ -284,6 +298,15 @@ class Harness:
             if message.get("command") == "action":
                 action_id = (message.get("data") or {}).get("id")
                 if action_id:
+                    # The game keeps a window of the ids it has already handled
+                    # and drops a repeat silently, so a reused id looks exactly
+                    # like a hung action from here. Flagging it at send time is
+                    # what turns that into an answer.
+                    if action_id in self._sent_action_ids:
+                        self._protocol_notes.append(
+                            f"action id reused: {action_id}; the game drops a "
+                            "repeated id without answering")
+                    self._sent_action_ids.add(action_id)
                     self._pending_actions[action_id] = time.time()
                 name = (message.get("data") or {}).get("name")
                 if self._forced_names is not None and name in self._forced_names:
