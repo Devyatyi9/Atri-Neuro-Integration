@@ -293,14 +293,6 @@ bool ProbeQuickMenuHasUpdown(char const *tag) {
 	    tag);
 }
 
-bool ProbeQuickMenuIsOut(char const *tag) {
-	return Ask(
-	    L"(function(){ if (typeof kag == 'undefined' || typeof "
-	    L"kag.QuickMenu != 'Object') return 0;"
-	    L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
-	    tag);
-}
-
 bool DispatchQuickMenuOpen(char const *tag) {
 	return Ask(
 	    L"(function(){ kag.QuickMenu.updown(1); return "

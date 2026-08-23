@@ -87,7 +87,6 @@ bool DispatchChoice(int index, char const *tag);
 // retracted, so _dropdown is the only usable position flag.
 bool ProbeQuickMenuCanDropDown(char const *tag);
 bool ProbeQuickMenuHasUpdown(char const *tag);
-bool ProbeQuickMenuIsOut(char const *tag);
 // Both report whether the bar actually ended up in the requested position.
 // Retracting is not symmetric with opening: updown(0) only takes effect while
 // canDropDown holds, and the bar re-drops on its own whenever the cursor is

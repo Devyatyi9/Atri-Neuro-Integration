@@ -139,8 +139,7 @@ void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 		ok = ProbeScreenButtonReady("load", "open_load title button") &&
 		     DispatchScreenButton("load", "open_load title dispatch");
 	} else if (ProbeStateIs("game", "open_load state")) {
-		ok = ProbeQuickMenuIsOut("open_load dropdown") &&
-		     ProbeQuickMenuButtonReady("load", "open_load bar button") &&
+		ok = ProbeQuickMenuButtonReady("load", "open_load bar button") &&
 		     DispatchQuickMenuButton("load", "open_load bar dispatch");
 	}
 	if (!ok) {
@@ -177,7 +176,6 @@ void HandleOpenSettingsAction(std::string const &id, std::string const &data) {
 	// Pressing the bar's own control rather than calling SystemAction.option()
 	// is what keeps the action visible; same destination either way.
 	bool const ok = ProbeStateIs("game", "open_settings state") &&
-	                ProbeQuickMenuIsOut("open_settings dropdown") &&
 	                ProbeQuickMenuButtonReady("option", "open_settings button") &&
 	                DispatchQuickMenuButton("option", "open_settings dispatch");
 	if (!ok) {

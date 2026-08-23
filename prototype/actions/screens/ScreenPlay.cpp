@@ -118,7 +118,6 @@ void HandleHideUiAction(std::string const &id, std::string const &data) {
 	}
 
 	bool const ok = ProbeStateIs("game", "hide_ui state") &&
-	                ProbeQuickMenuIsOut("hide_ui dropdown") &&
 	                ProbeQuickMenuButtonReady("hide", "hide_ui button") &&
 	                DispatchQuickMenuButton("hide", "hide_ui dispatch");
 	if (!ok) {
@@ -168,7 +167,6 @@ void HandleQuickMenuToggle(std::string const &id,
 	std::string const tag(action);
 	bool const ok =
 	    ProbeStateIs("game", (tag + " state").c_str()) &&
-	    ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
 	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
 	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
 	if (!ok) {
@@ -199,7 +197,6 @@ void HandleSceneStepAction(std::string const &id,
 	std::string const tag(action);
 	bool const ok =
 	    ProbeStateIs("game", (tag + " state").c_str()) &&
-	    ProbeQuickMenuIsOut((tag + " dropdown").c_str()) &&
 	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
 	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
 	if (!ok) {
@@ -335,6 +332,12 @@ void AppendActions(ActionSet &set, int payload) {
 
 	// The quick menu is reachable during a choice too, so it is offered in every
 	// play state -- only its direction follows the bar's position.
+	//
+	// What is registered still mirrors the bar: with it retracted, its buttons
+	// are not on screen and are not offered. Reaching them is a separate matter
+	// -- the handlers no longer require the bar to be out, so a call that arrives
+	// for a button the bar is currently hiding is carried out rather than
+	// refused.
 	if ((payload & kFlagPanelOut) == 0) {
 		set.add("open_quick_menu",
 		        "Slide out the quick menu bar so its buttons are visible.",

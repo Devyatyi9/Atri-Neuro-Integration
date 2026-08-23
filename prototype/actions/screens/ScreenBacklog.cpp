@@ -175,7 +175,6 @@ void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	// is still "game", and the poll picks up "backlog" on a later tick. Nothing
 	// here waits for it -- the result says what was pressed, not what arrived.
 	bool const ok = ProbeStateIs("game", "open_backlog state") &&
-	                ProbeQuickMenuIsOut("open_backlog dropdown") &&
 	                ProbeQuickMenuButtonReady("log", "open_backlog button") &&
 	                DispatchQuickMenuButton("log", "open_backlog dispatch");
 	if (!ok) {
