@@ -52,6 +52,29 @@ struct OutboundContext {
 constexpr size_t kMaxQueuedContext = 64;
 std::vector<OutboundContext> g_OutboundContext;
 std::mutex g_OutboundContextMutex;
+
+// All protocol messages (action results, force actions, register/unregister)
+// are queued and sent by the poll thread. Callers return immediately without
+// blocking on g_ContextMutex.
+struct OutboundMessage {
+	bool isActionsSnapshot;
+	neurosdk_message_kind_e kind;
+	std::string id;
+	std::string name;
+	std::string description;
+	std::string jsonSchema;
+	std::string message;
+	std::string state;
+	std::string query;
+	std::vector<std::string> actionNames;
+	std::vector<RegisteredAction> actions;
+	bool success;
+	bool ephemeral;
+};
+constexpr size_t kMaxQueuedMessages = 128;
+std::vector<OutboundMessage> g_OutboundMessages;
+std::mutex g_OutboundMessagesMutex;
+
 NeuroActionHandler g_ActionHandler = nullptr;
 std::mutex g_ActionHandlerMutex;
 
@@ -115,52 +138,38 @@ neurosdk_error_e SendStartup() {
 	return SendMessage(&startup);
 }
 
-neurosdk_error_e SendRegisteredActions() {
+struct ActionSnapshot {
 	std::vector<RegisteredAction> actions;
-	{
-		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		actions = g_RegisteredActions;
-	}
-	if (actions.empty()) {
-		return NeuroSDK_None;
-	}
+	std::vector<std::string> previousNames;
+};
 
-	std::vector<neurosdk_action_t> sdkActions;
-	sdkActions.reserve(actions.size());
-	for (RegisteredAction &action : actions) {
-		sdkActions.push_back({const_cast<char *>(action.name.c_str()),
-		                      const_cast<char *>(action.description.c_str()),
-		                      const_cast<char *>(action.jsonSchema.c_str())});
+void QueueActionsSnapshot(ActionSnapshot snapshot) {
+	OutboundMessage message = {};
+	message.isActionsSnapshot = true;
+	message.actionNames = std::move(snapshot.previousNames);
+	message.actions = std::move(snapshot.actions);
+	std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+	for (size_t index = 0; index < g_OutboundMessages.size(); ++index) {
+		if (!g_OutboundMessages[index].isActionsSnapshot) {
+			continue;
+		}
+		// Keep the names from the first pending snapshot: they represent the
+		// server-visible set, while the replacement carries only the newest state.
+		message.actionNames = g_OutboundMessages[index].actionNames;
+		g_OutboundMessages[index] = std::move(message);
+		g_OutboundMessages.erase(
+		    std::remove_if(g_OutboundMessages.begin() + index + 1,
+		                   g_OutboundMessages.end(),
+		                   [](OutboundMessage const &entry) {
+			                   return entry.isActionsSnapshot;
+		                   }),
+		    g_OutboundMessages.end());
+		return;
 	}
-	neurosdk_message_t message = {};
-	message.kind = NeuroSDK_MessageKind_ActionsRegister;
-	message.value.actions_register.actions = sdkActions.data();
-	message.value.actions_register.actions_len =
-	    static_cast<int>(sdkActions.size());
-	return SendMessage(&message);
-}
-
-// `actions/register` is additive on the server: it adds to whatever the server
-// already knows and never implies removal. Dropping an action therefore needs
-// an explicit `actions/unregister`, exactly as the SDK's own reference client
-// does (lib/neurosdk/examples/rock_paper_scissors.c uses both messages).
-// Re-sending a shorter register list is not enough -- the server keeps the
-// stale action.
-neurosdk_error_e SendUnregisterActions(std::vector<std::string> const &names) {
-	if (names.empty()) {
-		return NeuroSDK_None;
+	if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
+		g_OutboundMessages.erase(g_OutboundMessages.begin());
 	}
-	std::vector<char *> sdkNames;
-	sdkNames.reserve(names.size());
-	for (std::string const &name : names) {
-		sdkNames.push_back(const_cast<char *>(name.c_str()));
-	}
-	neurosdk_message_t message = {};
-	message.kind = NeuroSDK_MessageKind_ActionsUnregister;
-	message.value.actions_unregister.action_names = sdkNames.data();
-	message.value.actions_unregister.action_names_len =
-	    static_cast<int>(sdkNames.size());
-	return SendMessage(&message);
+	g_OutboundMessages.push_back(std::move(message));
 }
 
 // Runs on the poll thread, which owns the SDK context.
@@ -178,6 +187,98 @@ void FlushOutboundContext() {
 		neurosdk_error_e const error = SendMessage(&message);
 		if (error != NeuroSDK_None) {
 			LogError("Send context failed", error);
+			return;
+		}
+	}
+}
+
+void FlushOutboundMessages() {
+	std::vector<OutboundMessage> pending;
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		pending.swap(g_OutboundMessages);
+	}
+
+	for (OutboundMessage const &entry : pending) {
+		if (entry.isActionsSnapshot) {
+			if (!entry.actionNames.empty()) {
+				std::vector<char *> names;
+				names.reserve(entry.actionNames.size());
+				for (std::string const &name : entry.actionNames) {
+					names.push_back(const_cast<char *>(name.c_str()));
+				}
+				neurosdk_message_t unregisterMessage = {};
+				unregisterMessage.kind = NeuroSDK_MessageKind_ActionsUnregister;
+				unregisterMessage.value.actions_unregister.action_names = names.data();
+				unregisterMessage.value.actions_unregister.action_names_len =
+				    static_cast<int>(names.size());
+				neurosdk_error_e const error = SendMessage(&unregisterMessage);
+				if (error != NeuroSDK_None) {
+					LogError("Send queued unregister failed", error);
+					return;
+				}
+			}
+
+			if (!entry.actions.empty()) {
+				std::vector<neurosdk_action_t> actions;
+				actions.reserve(entry.actions.size());
+				for (RegisteredAction const &action : entry.actions) {
+					actions.push_back({const_cast<char *>(action.name.c_str()),
+					                   const_cast<char *>(action.description.c_str()),
+					                   const_cast<char *>(action.jsonSchema.c_str())});
+				}
+				neurosdk_message_t registerMessage = {};
+				registerMessage.kind = NeuroSDK_MessageKind_ActionsRegister;
+				registerMessage.value.actions_register.actions = actions.data();
+				registerMessage.value.actions_register.actions_len =
+				    static_cast<int>(actions.size());
+				neurosdk_error_e const error = SendMessage(&registerMessage);
+				if (error != NeuroSDK_None) {
+					LogError("Send queued register failed", error);
+					return;
+				}
+			}
+			continue;
+		}
+
+		// Send non-batched messages immediately
+		neurosdk_message_t message = {};
+		message.kind = entry.kind;
+		neurosdk_error_e error = NeuroSDK_None;
+
+		switch (entry.kind) {
+			case NeuroSDK_MessageKind_ActionResult:
+				message.value.action_result.id = const_cast<char *>(entry.id.c_str());
+				message.value.action_result.success = entry.success;
+				message.value.action_result.message =
+				    const_cast<char *>(entry.message.c_str());
+				break;
+
+			case NeuroSDK_MessageKind_ActionsForce: {
+				std::vector<char *> names;
+				names.reserve(entry.actionNames.size());
+				for (std::string const &name : entry.actionNames) {
+					names.push_back(const_cast<char *>(name.c_str()));
+				}
+				message.value.actions_force.state =
+				    const_cast<char *>(entry.state.c_str());
+				message.value.actions_force.query =
+				    const_cast<char *>(entry.query.c_str());
+				message.value.actions_force.ephemeral_context = entry.ephemeral;
+				message.value.actions_force.action_names = names.data();
+				message.value.actions_force.action_names_len =
+				    static_cast<int>(names.size());
+				message.value.actions_force.priority = NeuroSDK_Priority_Medium;
+				break;
+			}
+
+			default:
+				continue;
+		}
+
+		error = SendMessage(&message);
+		if (error != NeuroSDK_None) {
+			LogError("Send queued message failed", error);
 			return;
 		}
 	}
@@ -216,9 +317,9 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 				}
 				case NeuroSDK_MessageKind_ActionsReregisterAll:
 					Log("[Neuro] Re-registering current actions\n");
-					result = SendRegisteredActions();
-					if (result != NeuroSDK_None) {
-						LogError("Re-register actions failed", result);
+					{
+						std::lock_guard<std::mutex> lock(g_ActionsMutex);
+						QueueActionsSnapshot({g_RegisteredActions, {}});
 					}
 					break;
 				case NeuroSDK_MessageKind_StartupAcknowledgement:
@@ -239,6 +340,17 @@ void DestroyContext() {
 	std::lock_guard<std::mutex> lock(g_ContextMutex);
 	if (g_NeuroContext) {
 		neurosdk_context_destroy(&g_NeuroContext);
+	}
+}
+
+void ClearOutboundQueues() {
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
+		g_OutboundContext.clear();
+	}
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		g_OutboundMessages.clear();
 	}
 }
 
@@ -268,13 +380,16 @@ bool CreateSession() {
 	}
 
 	neurosdk_error_e error = SendStartup();
-	if (error == NeuroSDK_None) {
-		error = SendRegisteredActions();
-	}
 	if (error != NeuroSDK_None) {
 		LogError("Session initialization failed", error);
 		DestroyContext();
 		return false;
+	}
+
+	// Queue the current action snapshot to be sent by the poll thread.
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		QueueActionsSnapshot({g_RegisteredActions, {}});
 	}
 
 	g_NeuroConnected.store(true, std::memory_order_release);
@@ -321,9 +436,13 @@ void NeuroPollThread() {
 			if (error == NeuroSDK_None) {
 				FlushOutboundContext();
 			}
+			if (error == NeuroSDK_None) {
+				FlushOutboundMessages();
+			}
 		}
 
 		DestroyContext();
+		ClearOutboundQueues();
 		g_NeuroConnected.store(false, std::memory_order_release);
 		g_NeuroReady.store(false, std::memory_order_release);
 		if (g_NeuroPollThreadRunning.load(std::memory_order_acquire)) {
@@ -335,6 +454,7 @@ void NeuroPollThread() {
 		}
 	}
 	DestroyContext();
+	ClearOutboundQueues();
 	g_NeuroConnected.store(false, std::memory_order_release);
 	g_NeuroReady.store(false, std::memory_order_release);
 	Log("[Neuro] Poll thread stopped\n");
@@ -425,17 +545,14 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 	bool identical = false;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
-		// The whole set is sent on every change, but only the names that actually
-		// left it are unregistered.
+		// The whole set is sent on every change, and the previous names are
+		// unregistered first so the server sees an exact replacement.
 		//
 		// Sending the whole set is what carries the order: it is built to mirror
 		// the screen, and a client that renders the register payload can only
 		// show that order if every entry is in it. Registering a name that is
 		// already registered is legitimate and replaces its definition, so the
-		// ones that stay need no unregister first -- which is also why an
-		// updated description now arrives without one.
-		//
-		// Removal still has to be explicit: register never implies it.
+		// This also preserves the order represented by the new register payload.
 		identical = g_RegisteredActions.size() == static_cast<size_t>(actionCount);
 		for (int index = 0; identical && index < actionCount; ++index) {
 			RegisteredAction const &existing = g_RegisteredActions[index];
@@ -453,14 +570,7 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 			return true;
 		}
 		for (RegisteredAction const &existing : g_RegisteredActions) {
-			bool stays = false;
-			for (int index = 0; index < actionCount && !stays; ++index) {
-				char const *const name = actions[index].name;
-				stays = name != nullptr && existing.name == name;
-			}
-			if (!stays) {
-				droppedNames.push_back(existing.name);
-			}
+			droppedNames.push_back(existing.name);
 		}
 		g_RegisteredActions.clear();
 		for (int index = 0; index < actionCount; ++index) {
@@ -473,17 +583,13 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 	if (!NeuroIsConnected()) {
 		return true;
 	}
-	// Unregister first: the server then never observes a superset of both the
-	// outgoing and incoming action sets.
-	neurosdk_error_e const unregisterError = SendUnregisterActions(droppedNames);
-	if (unregisterError != NeuroSDK_None) {
-		LogError("Unregister dropped actions failed", unregisterError);
+
+	std::vector<RegisteredAction> snapshot;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		snapshot = g_RegisteredActions;
 	}
-	neurosdk_error_e const error = SendRegisteredActions();
-	if (error != NeuroSDK_None) {
-		LogError("Set actions failed", error);
-		return false;
-	}
+	QueueActionsSnapshot({snapshot, droppedNames});
 	return true;
 }
 
@@ -493,19 +599,24 @@ bool NeuroRegisterAction(char const *name,
 	if (!name || !*name || !description) {
 		return false;
 	}
+	std::vector<std::string> previousNames;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		for (RegisteredAction const &action : g_RegisteredActions) {
+			previousNames.push_back(action.name);
+		}
 		g_RegisteredActions.push_back(
 		    {name, description, jsonSchema ? jsonSchema : "{}"});
 	}
 	if (!NeuroIsConnected()) {
 		return true;
 	}
-	neurosdk_error_e const error = SendRegisteredActions();
-	if (error != NeuroSDK_None) {
-		LogError("Register action failed", error);
-		return false;
+	std::vector<RegisteredAction> snapshot;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		snapshot = g_RegisteredActions;
 	}
+	QueueActionsSnapshot({snapshot, previousNames});
 	return true;
 }
 
@@ -513,9 +624,13 @@ bool NeuroUnregisterAction(char const *name) {
 	if (!name || !*name) {
 		return false;
 	}
+	std::vector<std::string> previousNames;
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
 		auto &actions = g_RegisteredActions;
+		for (RegisteredAction const &action : actions) {
+			previousNames.push_back(action.name);
+		}
 		actions.erase(std::remove_if(actions.begin(), actions.end(),
 		                             [&](RegisteredAction const &action) {
 			                             return action.name == name;
@@ -525,13 +640,12 @@ bool NeuroUnregisterAction(char const *name) {
 	if (!NeuroIsConnected()) {
 		return true;
 	}
-	// Revoke it on the server as well; re-sending the shorter register list
-	// alone would leave the action live there (see SendUnregisterActions).
-	neurosdk_error_e const error = SendUnregisterActions({name});
-	if (error != NeuroSDK_None) {
-		LogError("Unregister action failed", error);
-		return false;
+	std::vector<RegisteredAction> snapshot;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		snapshot = g_RegisteredActions;
 	}
+	QueueActionsSnapshot({snapshot, previousNames});
 	return true;
 }
 
@@ -539,11 +653,12 @@ bool NeuroReregisterActions() {
 	if (!NeuroIsConnected()) {
 		return true;
 	}
-	neurosdk_error_e const error = SendRegisteredActions();
-	if (error != NeuroSDK_None) {
-		LogError("Re-register actions failed", error);
-		return false;
+	std::vector<RegisteredAction> snapshot;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionsMutex);
+		snapshot = g_RegisteredActions;
 	}
+	QueueActionsSnapshot({snapshot, {}});
 	return true;
 }
 
@@ -551,16 +666,17 @@ bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 	if (!id || !NeuroIsReady()) {
 		return false;
 	}
-	neurosdk_message_t result = {};
-	result.kind = NeuroSDK_MessageKind_ActionResult;
-	result.value.action_result.id = const_cast<char *>(id);
-	result.value.action_result.success = success;
-	result.value.action_result.message =
-	    const_cast<char *>(message ? message : "");
-	neurosdk_error_e const error = SendMessage(&result);
-	if (error != NeuroSDK_None) {
-		LogError("Send action result failed", error);
-		return false;
+	OutboundMessage msg = {};
+	msg.kind = NeuroSDK_MessageKind_ActionResult;
+	msg.id = id;
+	msg.success = success;
+	msg.message = message ? message : "";
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
+			g_OutboundMessages.erase(g_OutboundMessages.begin());
+		}
+		g_OutboundMessages.push_back(msg);
 	}
 	return true;
 }
@@ -573,18 +689,20 @@ bool NeuroForceAction(char const *state,
 	if (!NeuroIsReady()) {
 		return false;
 	}
-	neurosdk_message_t request = {};
-	request.kind = NeuroSDK_MessageKind_ActionsForce;
-	request.value.actions_force.state = const_cast<char *>(state ? state : "");
-	request.value.actions_force.query = const_cast<char *>(query ? query : "");
-	request.value.actions_force.ephemeral_context = ephemeral;
-	request.value.actions_force.action_names = const_cast<char **>(actionNames);
-	request.value.actions_force.action_names_len = actionCount;
-	request.value.actions_force.priority = NeuroSDK_Priority_Medium;
-	neurosdk_error_e const error = SendMessage(&request);
-	if (error != NeuroSDK_None) {
-		LogError("Force action failed", error);
-		return false;
+	OutboundMessage msg = {};
+	msg.kind = NeuroSDK_MessageKind_ActionsForce;
+	msg.state = state ? state : "";
+	msg.query = query ? query : "";
+	msg.ephemeral = ephemeral;
+	for (int i = 0; i < actionCount; ++i) {
+		msg.actionNames.push_back(actionNames[i]);
+	}
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
+			g_OutboundMessages.erase(g_OutboundMessages.begin());
+		}
+		g_OutboundMessages.push_back(msg);
 	}
 	return true;
 }

@@ -120,8 +120,8 @@ class Harness:
         actions/unregister deactivates. Re-registering a name that is already
         active is legitimate and replaces its definition -- the specification
         changed on 2026-08-22, from "it will be ignored" to "the new definition
-        replaces the old one" -- so that is not flagged; a re-register that
-        changes nothing is, because it is traffic for nothing.
+        replaces the old one" -- so that is not flagged, including the complete
+        snapshot sent after actions/reregister_all during reconnect.
         """
         command = message.get("command")
         data = message.get("data") or {}
@@ -130,11 +130,6 @@ class Harness:
                 name = action.get("name")
                 if not name:
                     continue
-                existing = self._actions.get(name)
-                if (existing and existing["active"]
-                        and existing["action"] == action):
-                    self._protocol_notes.append(
-                        f"re-register with no change: {name}")
                 self._actions[name] = {"action": action, "active": True}
         elif command == "actions/unregister":
             for name in data.get("action_names") or []:

@@ -102,6 +102,36 @@ def check_action_registry_consistent(harness: Harness) -> None:
         f"protocol violations observed: {registry['protocol_notes']}")
 
 
+def check_register_payload_is_ordered(harness: Harness, after: int) -> int:
+    """Each registration payload must be one complete, ordered snapshot."""
+    events = harness.events(after)
+    register_events = [
+        event for event in events
+        if event["message"].get("command") == "actions/register"
+    ]
+    assert register_events, "no actions/register snapshot observed"
+    previous_names: list[str] | None = None
+    saw_unregister = False
+    for event in events:
+        command = event["message"].get("command")
+        if command == "actions/unregister":
+            saw_unregister = True
+        if command != "actions/register":
+            continue
+        actions = event["message"]["data"].get("actions") or []
+        names = [action.get("name") for action in actions]
+        assert all(names), f"actions/register contains an unnamed action: {actions}"
+        assert len(names) == len(set(names)), (
+            f"actions/register contains duplicate names: {names}")
+        if previous_names is not None and names != previous_names:
+            assert saw_unregister, (
+                "changed actions/register arrived without a preceding "
+                "actions/unregister")
+        previous_names = names
+        saw_unregister = False
+    return register_events[-1]["sequence"]
+
+
 def check_unknown_action(harness: Harness, after: int) -> int:
     """An unregistered action name must fail gracefully, not hang or crash."""
     action_id = f"regress-unknown-{uuid.uuid4().hex[:8]}"
@@ -177,6 +207,9 @@ def main() -> int:
 
         check_action_registry_consistent(harness)
         print("PASS: server-side action registry consistent", flush=True)
+
+        after = check_register_payload_is_ordered(harness, 0)
+        print("PASS: actions/register is a complete ordered snapshot", flush=True)
 
         after = check_unknown_action(harness, after)
         print("PASS: unknown action name rejected", flush=True)

@@ -18,8 +18,8 @@
     24s here, so 30 is the practical ceiling with headroom; raise it only if the
     game grows a much heavier plugin set.
 .EXAMPLE
-    .\Tools\wait-for-title.ps1
-    .\Tools\wait-for-title.ps1 -Button start -TimeoutSeconds 45
+    .\Tools\runtime\wait-for-title.ps1
+    .\Tools\runtime\wait-for-title.ps1 -Button start -TimeoutSeconds 45
 #>
 param(
     [string]$Button = "cont",

@@ -1,6 +1,6 @@
 param(
     [string]$SoundListPath = 'D:\Games\ATRI-TestVersion\extract_dataxp3\main\soundlist.csv',
-    [string]$OutputDirectory = "$PSScriptRoot\..\docs-local\research\audio"
+    [string]$OutputDirectory = "$PSScriptRoot\..\..\docs-local\research\audio"
 )
 
 $ErrorActionPreference = 'Stop'

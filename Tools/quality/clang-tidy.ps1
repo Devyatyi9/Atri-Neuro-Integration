@@ -2,7 +2,7 @@
 param()
 
 $ErrorActionPreference = "Stop"
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $compileCommandsDir = Join-Path $repoRoot "build\clangd"
 $compileCommandsPath = Join-Path $compileCommandsDir "compile_commands.json"
 
