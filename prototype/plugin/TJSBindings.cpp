@@ -13,6 +13,7 @@
 #include "ncbind.hpp"
 
 #include "ContextMonitor.h"
+#include "ContextPayload.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroClient.h"
@@ -349,6 +350,45 @@ NeuroIsContextMonitorRunning(tTJSVariant *result,
                              iTJSDispatch2 *objthis) {
 	if (result) {
 		*result = IsContextMonitorRunning() ? (tTVInteger)1 : (tTVInteger)0;
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD
+NeuroSendContextFromTJS(tTJSVariant *result,
+                        tjs_int numparams,
+                        tTJSVariant **param,
+                        iTJSDispatch2 *objthis) {
+	if (numparams < 1 || !param || !param[0]) {
+		return TJS_E_BADPARAMCOUNT;
+	}
+
+	ttstr monitorOutput = *param[0];
+	if (monitorOutput.IsEmpty()) {
+		if (result) {
+			*result = (tTVInteger)0;
+		}
+		return TJS_S_OK;
+	}
+
+	std::string utf8Output;
+	if (!Utf16ToUtf8(monitorOutput.c_str(), monitorOutput.GetLen(), utf8Output) ||
+	    utf8Output.empty()) {
+		if (result) {
+			*result = (tTVInteger)0;
+		}
+		return TJS_S_OK;
+	}
+
+	LogTagFile(utf8Output.c_str());
+
+	ContextPayload const payload = BuildContextPayload(utf8Output);
+	if (!payload.Empty()) {
+		NeuroSendContext(payload.message.c_str(), payload.silent);
+	}
+
+	if (result) {
+		*result = (tTVInteger)1;
 	}
 	return TJS_S_OK;
 }
@@ -815,6 +855,7 @@ NCB_REGISTER_FUNCTION(neuroStopContextMonitor, NeuroStopContextMonitor);
 NCB_REGISTER_FUNCTION(neuroStartContextMonitor, NeuroStartContextMonitor);
 NCB_REGISTER_FUNCTION(neuroIsContextMonitorRunning,
                       NeuroIsContextMonitorRunning);
+NCB_REGISTER_FUNCTION(neuroSendContextFromTJS, NeuroSendContextFromTJS);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
 NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);

@@ -108,7 +108,15 @@ static void DeferredTJSInitThread() {
 		if (tjsDispatcherReady) {
 			StartTCPServer();
 		}
-		StartContextMonitor();
+
+		// Install event-driven context monitor hook instead of polling thread.
+		// The hook is called by conductor.onTag after each tag is processed,
+		// ensuring safe state for context monitoring without race conditions.
+		Log("Installing context monitor hook via conductor.onTag...\n");
+		ExecuteTJSAsync(
+		    L"neuroExecFile('neuro_scripts/install_context_hook.tjs', 1)",
+		    TJSExecMode::Expression);
+
 		StartHotkeyThread();
 		NeuroAutoConnect();
 	} else {

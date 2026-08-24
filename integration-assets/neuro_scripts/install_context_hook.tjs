@@ -1,0 +1,21 @@
+(function() {
+    if (typeof kag == "undefined" || typeof kag.conductor == "undefined") {
+        return 0;
+    }
+    
+    if (typeof kag.conductor.__neuronOrigOnTag != "undefined") {
+        return 1;
+    }
+    
+    kag.conductor.__neuronOrigOnTag = kag.conductor.onTag;
+    kag.conductor.onTag = function(tag) {
+        var result = this.__neuronOrigOnTag(tag);
+        try {
+            var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
+            if (data != '') neuroSendContextFromTJS(data);
+        } catch(e) {}
+        return result;
+    };
+    
+    return 1;
+})();

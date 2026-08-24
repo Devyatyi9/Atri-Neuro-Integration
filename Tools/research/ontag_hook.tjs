@@ -1,0 +1,32 @@
+/*
+ * Context monitor hook prototype: event-driven via conductor.onTag
+ * This is called after each tag is processed, in a safe state.
+ *
+ * Usage:
+ *   1. Stop the C++ thread: neuroStopContextMonitor()
+ *   2. Load this script: neuroExecFile('Tools/research/ontag_hook.tjs')
+ *   3. Test with advance_text actions
+ *
+ * To remove:
+ *   kag.conductor.onTag = kag.conductor.__neuronOrigOnTag;
+ *   delete kag.conductor.__neuronOrigOnTag;
+ */
+
+if (typeof kag.conductor.__neuronOrigOnTag == "undefined") {
+    kag.conductor.__neuronOrigOnTag = kag.conductor.onTag;
+    kag.conductor.onTag = function(tag) {
+        var result = this.__neuronOrigOnTag(tag);
+        
+        /* After tag processing - safe window for context monitoring */
+        try {
+            var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
+            if (data != '') neuroSendContextFromTJS(data);
+        } catch(e) {
+            /* Silence errors to avoid breaking conductor */
+        }
+        
+        return result;
+    };
+}
+
+1;
