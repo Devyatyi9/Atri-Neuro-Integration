@@ -75,6 +75,15 @@
         "atri_version_proxy",
         "atri_neuro_prototype"
       ]
+    },
+    {
+      "name": "win32-prototype-asan-release",
+      "configurePreset": "win32-prototype-asan",
+      "configuration": "Release",
+      "targets": [
+        "atri_version_proxy",
+        "atri_neuro_prototype"
+      ]
     }
   ]
 }
