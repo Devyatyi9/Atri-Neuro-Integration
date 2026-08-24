@@ -13,7 +13,8 @@
 //   Client → Server: [4-byte LE length][UTF-8 TJS code]
 //   Server → Client: [4-byte LE length][UTF-8 result]
 //
-// Thread safety: uses ExecuteTJSSync() through PostMessage/subclassing.
+// Thread safety: uses ExecuteTJSSync(), which hands the call to the game's own
+// continuous event hook and waits for the main thread to run it.
 
 constexpr int NEURO_TCP_PORT = 18700;
 constexpr int NEURO_TCP_MAX_CLIENTS = 4;
