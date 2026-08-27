@@ -153,6 +153,16 @@ wchar_t const *const kEditMenuItemDispatch =
     L"item.controlOwner.onButtonClick != 'Object') return 0;"
     L"item.controlOwner.onButtonClick(item.linkNum); return 1; })()";
 
+// The dialog's own buttons. Same shape as everywhere else, but reached through
+// kag.currentDialog rather than the screen.
+wchar_t const *const kDialogLinkHover =
+    L"(function(){ var d = kag.currentDialog;"
+    L"if (typeof d != 'Object' || !d) return 0;"
+    L"var b = d.names['%hs'];"
+    L"if (typeof b != 'Object' || !isvalid b || !b.visible) return 0;"
+    L"if (typeof b.%hs != 'Object') return 0;"
+    L"b.%hs(); return 1; })()";
+
 wchar_t const *const kQuickMenuButtonDispatch =
     L"(function(){ var button = kag.QuickMenu.names['%hs'];"
     L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()";
@@ -1159,8 +1169,19 @@ bool ProbeDialogLinkReady(bool confirm, char const *tag) {
 }
 
 bool DispatchDialogLink(bool confirm, char const *tag) {
+	char const *const button = confirm ? "yes" : "no";
+	// The one press that had no cursor arriving before it. Every screen got the
+	// hover; the dialog was answered by reaching straight for processLink, so
+	// the answer appeared with nothing lighting up -- and the game's own default
+	// focus sits on No, which made every answer look like No.
+	// The handler name appears twice in the expression: once to test that the
+	// button has it, once to call it.
+	if (AskFormatted(kDialogLinkHover, tag, button, "onMouseEnter",
+	                 "onMouseEnter")) {
+		Sleep(kHoverPreviewMs);
+	}
 	return AskFormatted(
 	    L"(function(){ var d = kag.currentDialog;"
 	    L"d.processLink(d.names['%hs'].linkNum); return 1; })()",
-	    tag, confirm ? "yes" : "no");
+	    tag, button);
 }
