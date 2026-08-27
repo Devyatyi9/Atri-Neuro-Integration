@@ -15,26 +15,43 @@ constexpr std::size_t kMaxLogCharacters = 200000;
 FILE *g_LogFile = nullptr;
 FILE *g_TagLogFile = nullptr;
 std::mutex g_LogMutex;
+// Separate from the ring's lock so writing to disk never blocks a reader.
+std::mutex g_LogFileMutex;
+ULONGLONG g_LastLogFlush = 0;
+constexpr ULONGLONG kLogFlushIntervalMs = 200;
 std::deque<std::string> g_LogLines;
 std::size_t g_LogCharacters = 0;
 }  // namespace
 
 void Log(char const *message) {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (g_LogFile) {
-		fprintf(g_LogFile, "%s", message);
-		fflush(g_LogFile);
-	} else {
-		g_LogFile = fopen("plugin_log.txt", "a");
+	// The file is written outside the ring's lock, and flushed on a timer
+	// rather than per line. Both mattered: this runs on the game's main thread
+	// for every synchronous TJS call, and a per-line fflush there put the game
+	// into disk waits -- a flood of probes hung it outright, with the main
+	// thread parked in this path. Holding the ring's lock across the write also
+	// blocked anyone reading the log back, exactly when it was most wanted.
+	{
+		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
+		if (!g_LogFile) {
+			g_LogFile = fopen("plugin_log.txt", "a");
+		}
 		if (g_LogFile) {
 			fprintf(g_LogFile, "%s", message);
-			fflush(g_LogFile);
+			// A hard crash can still lose what is inside this window, which is
+			// the price for not stalling the thread that produces the lines.
+			ULONGLONG const now = GetTickCount64();
+			if (now - g_LastLogFlush >= kLogFlushIntervalMs) {
+				fflush(g_LogFile);
+				g_LastLogFlush = now;
+			}
 		}
 	}
 
 	if (!message || !*message) {
 		return;
 	}
+
+	std::lock_guard<std::mutex> lock(g_LogMutex);
 
 	std::string line(message);
 	g_LogCharacters += line.size();

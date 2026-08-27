@@ -75,6 +75,8 @@ static std::atomic<unsigned long long> g_TJSAsyncDroppedCount(0);
 // How often upkeep found the engine mid-tag and stood aside. Counted because a
 // guard that never fires looks exactly like a guard that works.
 static std::atomic<unsigned long long> g_TJSUpkeepSkippedCount(0);
+// Sync calls that were already on the main thread and ran without queueing.
+static std::atomic<unsigned long long> g_TJSInlineMainThreadCount(0);
 
 static void ExecuteTJSAsyncCall(TJSAsyncCall const &call);
 static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data);
@@ -546,7 +548,18 @@ bool ExecuteTJSSync(wchar_t const *code,
 	std::wstring wrappedCode = WrapTJSProbe(code, useScriptApi);
 
 	if (IsMainThread()) {
-		Log("[ExecuteTJSSync] Running on main thread\n");
+		// Counted, not logged per call. This path runs for every probe -- about
+		// sixty a second under load -- and a line each drowned the log so
+		// thoroughly that the periodic summaries could not be found in it, on
+		// top of the disk traffic it caused.
+		unsigned long long const inline_count =
+		    g_TJSInlineMainThreadCount.fetch_add(1, std::memory_order_relaxed) + 1;
+		if (inline_count == 1 || inline_count % 500 == 0) {
+			char message[96];
+			sprintf_s(message, "[ExecuteTJSSync] Ran inline on main thread x%llu\n",
+			          inline_count);
+			Log(message);
+		}
 		if (g_TJSReady.load()) {
 			try {
 				RunThroughEngine(wrappedCode, result, useScriptApi);

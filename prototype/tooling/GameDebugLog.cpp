@@ -12,6 +12,10 @@ constexpr std::size_t kMaxDebugLogLines = 1000;
 constexpr std::size_t kMaxDebugLogCharacters = 100000;
 
 std::mutex g_DebugLogMutex;
+// Separate from the ring's lock: writing to disk must not block a reader.
+std::mutex g_DebugLogFileMutex;
+ULONGLONG g_LastDebugLogFlush = 0;
+constexpr ULONGLONG kDebugLogFlushIntervalMs = 200;
 std::deque<std::wstring> g_DebugLogLines;
 std::size_t g_DebugLogCharacters = 0;
 FILE *g_DebugLogFile = nullptr;
@@ -36,7 +40,14 @@ void AppendGameDebugLogFile(std::wstring const &line) {
 	                    &utf8[0], size, nullptr, nullptr);
 	fwrite(utf8.data(), 1, utf8.size(), g_DebugLogFile);
 	fwrite("\r\n", 1, 2, g_DebugLogFile);
-	fflush(g_DebugLogFile);
+	// Flushed on a timer, not per line: this runs on the game's main thread
+	// through Debug.addLoggingHandler, and a flush per line turned every logged
+	// line into a disk wait for the game itself.
+	ULONGLONG const now = GetTickCount64();
+	if (now - g_LastDebugLogFlush >= kDebugLogFlushIntervalMs) {
+		fflush(g_DebugLogFile);
+		g_LastDebugLogFlush = now;
+	}
 }
 }  // namespace
 
@@ -45,8 +56,14 @@ void AppendGameDebugLog(std::wstring const &line) {
 		return;
 	}
 
+	// The file first, under its own lock, so the ring stays readable while the
+	// disk is busy; the ring is updated after, under the ring's lock.
+	{
+		std::lock_guard<std::mutex> fileLock(g_DebugLogFileMutex);
+		AppendGameDebugLogFile(line);
+	}
+
 	std::lock_guard<std::mutex> lock(g_DebugLogMutex);
-	AppendGameDebugLogFile(line);
 	if (line.size() > kMaxDebugLogCharacters) {
 		g_DebugLogLines.clear();
 		g_DebugLogCharacters = 0;
