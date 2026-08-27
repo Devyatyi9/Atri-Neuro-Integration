@@ -72,6 +72,9 @@ static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
 constexpr size_t kMaxTJSAsyncCalls = 256;
 static std::atomic<unsigned long long> g_TJSAsyncExecutedCount(0);
 static std::atomic<unsigned long long> g_TJSAsyncDroppedCount(0);
+// How often upkeep found the engine mid-tag and stood aside. Counted because a
+// guard that never fires looks exactly like a guard that works.
+static std::atomic<unsigned long long> g_TJSUpkeepSkippedCount(0);
 
 static void ExecuteTJSAsyncCall(TJSAsyncCall const &call);
 static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data);
@@ -124,6 +127,8 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 					// Safe to run upkeep: not inside tag processing.
 					tTJSVariant upkeepResult;
 					TVPExecuteExpression(TJS_W("neuroPrototypeUpkeep()"), &upkeepResult);
+				} else {
+					g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
 				}
 			} catch (...) {
 				// Ignore upkeep failures; they should not crash the continuous hook.
@@ -134,10 +139,11 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 			char message[256];
 			sprintf_s(message,
 			          "[TJS continuous] callbacks=%llu sync=%llu async=%llu "
-			          "dropped=%llu tick=%llu thread=%lu\n",
+			          "dropped=%llu upkeepSkipped=%llu tick=%llu thread=%lu\n",
 			          count, g_TJSSyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
+			          g_TJSUpkeepSkippedCount.load(std::memory_order_relaxed),
 			          static_cast<unsigned long long>(tick),
 			          static_cast<unsigned long>(GetCurrentThreadId()));
 			Log(message);
