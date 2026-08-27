@@ -67,6 +67,24 @@ function Restart-Game {
         Write-Host "DLL updated: $PluginDll -> $targetDll"
     }
 
+    # The TJS the plugin loads at run time lives beside the game, not in the
+    # DLL, so a restart has to bring it along the way it brings the build.
+    # Editing these in the repository alone changed nothing in the game, and
+    # that cost a full session before anyone noticed the deployed copy was days
+    # old.
+    $scriptSource = Join-Path $RepoRoot "integration-assets\neuro_scripts"
+    if (Test-Path $scriptSource) {
+        $scriptTarget = Join-Path $GameDir "neuro_scripts"
+        if (-not (Test-Path $scriptTarget)) {
+            New-Item -ItemType Directory -Path $scriptTarget | Out-Null
+        }
+        $scripts = Get-ChildItem -Path $scriptSource -Filter *.tjs -File
+        foreach ($script in $scripts) {
+            Copy-Item -LiteralPath $script.FullName -Destination $scriptTarget -Force
+        }
+        Write-Host "TJS scripts updated: $($scripts.Count) file(s) -> $scriptTarget"
+    }
+
     if (-not $NoDump) {
         # Before the game starts: -w waits for the next launch, so arming it
         # afterwards would watch nothing.

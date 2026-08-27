@@ -110,6 +110,26 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 			ExecuteTJSAsyncCall(call);
 			g_TJSAsyncExecutedCount.fetch_add(1, std::memory_order_relaxed);
 		}
+
+		// Periodic upkeep: action registration and exit hook retry.
+		// Run only when outside tag processing to avoid race conditions.
+		// Check every ~10 callbacks (~6 times/second at 60fps).
+		if (count % 10 == 0) {
+			try {
+				tTJSVariant insideTag;
+				TVPExecuteExpression(
+				    TJS_W("(function(){ return global.__neuroInsideTag === true; })()"),
+				    &insideTag);
+				if (!(tTVInteger)insideTag) {
+					// Safe to run upkeep: not inside tag processing.
+					tTJSVariant upkeepResult;
+					TVPExecuteExpression(TJS_W("neuroPrototypeUpkeep()"), &upkeepResult);
+				}
+			} catch (...) {
+				// Ignore upkeep failures; they should not crash the continuous hook.
+			}
+		}
+
 		if (count == 1 || count % 300 == 0) {
 			char message[256];
 			sprintf_s(message,

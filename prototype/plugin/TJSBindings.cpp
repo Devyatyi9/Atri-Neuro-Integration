@@ -12,6 +12,7 @@
 
 #include "ncbind.hpp"
 
+#include "ActionRouter.h"
 #include "ContextMonitor.h"
 #include "ContextPayload.h"
 #include "GameDebugLog.h"
@@ -860,6 +861,22 @@ NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
 NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);
 NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
+
+static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
+                                                      tjs_int numparams,
+                                                      tTJSVariant **param,
+                                                      iTJSDispatch2 *objthis) {
+	// Periodic upkeep: refresh action registration and retry exit hook.
+	// Called from continuous hook when safe (outside tag processing).
+	RefreshPrototypeActionState();
+	RetryInstallExitHookIfReady();
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
+NCB_REGISTER_FUNCTION(neuroPrototypeUpkeep, NeuroPrototypeUpkeep);
 
 static bool g_ExitHookInstalled = false;
 

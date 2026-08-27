@@ -2,20 +2,41 @@
     if (typeof kag == "undefined" || typeof kag.conductor == "undefined") {
         return 0;
     }
-    
-    if (typeof kag.conductor.__neuronOrigOnTag != "undefined") {
+
+    if (typeof kag.conductor.__neuroOrigOnTag != "undefined") {
         return 1;
     }
-    
-    kag.conductor.__neuronOrigOnTag = kag.conductor.onTag;
+
+    // Install 'inside tag' flag mechanism for safe upkeep timing.
+    // The flag prevents external TJS calls during tag processing.
+    global.__neuroInsideTag = false;
+
+    // The conductor calls this on its owner, not on itself:
+    // Conductor.tjs does `owner.onConductorBeforeTag(...)`, and the method is
+    // defined in MainWindow.tjs. Wrapping kag.conductor here would never fire.
+    kag.__neuroOrigOnBeforeTag = kag.onConductorBeforeTag;
+    kag.onConductorBeforeTag = function(tag, arg) {
+        // The engine calls this directly, past our own try/catch, so an
+        // exception here would reach it as a fatal dialog.
+        try {
+            global.__neuroInsideTag = true;
+        } catch(e) {}
+        if (typeof this.__neuroOrigOnBeforeTag == "Object") {
+            return this.__neuroOrigOnBeforeTag(tag, arg);
+        }
+        return true;
+    };
+
+    kag.conductor.__neuroOrigOnTag = kag.conductor.onTag;
     kag.conductor.onTag = function(tag) {
-        var result = this.__neuronOrigOnTag(tag);
+        var result = this.__neuroOrigOnTag(tag);
         try {
             var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
             if (data != '') neuroSendContextFromTJS(data);
         } catch(e) {}
+        global.__neuroInsideTag = false;
         return result;
     };
-    
+
     return 1;
 })();
