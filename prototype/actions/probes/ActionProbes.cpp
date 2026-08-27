@@ -2,6 +2,9 @@
 
 #include <windows.h>
 
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <string>
 
 #pragma warning(push)
@@ -16,6 +19,42 @@
 #include "UtfConversion.h"
 
 namespace {
+
+// Every number in this file comes from a TJS expression, and zero is a
+// meaningful answer wherever it lands: "no tabs", "empty mask", "no pages".
+// atoi returned zero for a malformed answer too, so a probe that failed to
+// produce a number was indistinguishable from one that honestly counted none.
+// The game tolerates a slow answer far better than a wrong one, so the caller
+// is told instead.
+bool ParseProbeInt(std::string const &text, int &out, char const *tag) {
+	size_t const first = text.find_first_not_of(" \t");
+	if (first == std::string::npos) {
+		Log(("[Action] " + std::string(tag) + " expected a number, got nothing\n")
+		        .c_str());
+		return false;
+	}
+	char const *const start = text.c_str() + first;
+	char *end = nullptr;
+	errno = 0;
+	long const value = strtol(start, &end, 10);
+	if (end == start || errno == ERANGE || value < INT_MIN || value > INT_MAX) {
+		Log(("[Action] " + std::string(tag) + " expected a number, got '" + text +
+		     "'\n")
+		        .c_str());
+		return false;
+	}
+	while (*end == ' ' || *end == '\t') {
+		++end;
+	}
+	if (*end != '\0') {
+		Log(("[Action] " + std::string(tag) +
+		     " has trailing text after the number: '" + text + "'\n")
+		        .c_str());
+		return false;
+	}
+	out = static_cast<int>(value);
+	return true;
+}
 
 // The recurring shape: run one probe, and treat "could not ask" the same as
 // "the answer is no".
@@ -447,9 +486,8 @@ bool ProbeSaveTabs(int &visibleMask, int &enabledMask) {
 	if (separator == std::string::npos) {
 		return false;
 	}
-	visibleMask = atoi(raw.substr(0, separator).c_str());
-	enabledMask = atoi(raw.substr(separator + 1).c_str());
-	return true;
+	return ParseProbeInt(raw.substr(0, separator), visibleMask, "save tabs") &&
+	       ParseProbeInt(raw.substr(separator + 1), enabledMask, "save tabs");
 }
 
 bool ProbeSaveWindow(int &offset, int &page) {
@@ -468,9 +506,8 @@ bool ProbeSaveWindow(int &offset, int &page) {
 	if (separator == std::string::npos) {
 		return false;
 	}
-	offset = atoi(raw.substr(0, separator).c_str());
-	page = atoi(raw.substr(separator + 1).c_str());
-	return true;
+	return ParseProbeInt(raw.substr(0, separator), offset, "save window") &&
+	       ParseProbeInt(raw.substr(separator + 1), page, "save window");
 }
 
 bool ProbeVoiceSaveMode(char const *tag) {
@@ -531,8 +568,11 @@ bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out) {
 	    separator > firstLine) {
 		return false;
 	}
-	base = atoi(raw.substr(0, separator).c_str());
-	page = atoi(raw.substr(separator + 1, firstLine - separator - 1).c_str());
+	if (!ParseProbeInt(raw.substr(0, separator), base, "slot window") ||
+	    !ParseProbeInt(raw.substr(separator + 1, firstLine - separator - 1), page,
+	                   "slot window")) {
+		return false;
+	}
 	out = raw.substr(firstLine + 1);
 	return true;
 }
@@ -550,7 +590,8 @@ int ProbeSavePageCount() {
 	        raw, "save page count")) {
 		return 0;
 	}
-	return atoi(raw.c_str());
+	int count = 0;
+	return ParseProbeInt(raw, count, "save page count") ? count : 0;
 }
 
 bool ProbeBacklogButtons(int &flags) {
@@ -636,8 +677,7 @@ bool ProbeHistoryCount(int &total) {
 	    raw.empty()) {
 		return false;
 	}
-	total = atoi(raw.c_str());
-	return true;
+	return ParseProbeInt(raw, total, "history count");
 }
 
 bool ProbeCurrentLine(int langType, std::string &out) {
@@ -761,7 +801,10 @@ bool ProbeGallery(int &page,
 		if (bar == std::string::npos) {
 			return false;
 		}
-		values[field] = atoi(raw.substr(cursor, bar - cursor).c_str());
+		if (!ParseProbeInt(raw.substr(cursor, bar - cursor), values[field],
+		                   "gallery")) {
+			return false;
+		}
 		cursor = bar + 1;
 	}
 	if (raw.size() < cursor + 4) {
@@ -783,8 +826,13 @@ bool ProbeGallery(int &page,
 	}
 	viewOpen = raw[cursor] == '1';
 	size_t const last = raw.find('|', cursor);
-	variantsLeft =
-	    last == std::string::npos ? 0 : atoi(raw.substr(last + 1).c_str());
+	// No trailing field at all is a legitimate "none left"; a field that is
+	// there but unreadable is not, and must not be reported as zero.
+	variantsLeft = 0;
+	if (last != std::string::npos &&
+	    !ParseProbeInt(raw.substr(last + 1), variantsLeft, "gallery")) {
+		return false;
+	}
 	return true;
 }
 
@@ -864,7 +912,8 @@ int ProbeTabCount() {
 	        raw, "tab count")) {
 		return 0;
 	}
-	return atoi(raw.c_str());
+	int count = 0;
+	return ParseProbeInt(raw, count, "tab count") ? count : 0;
 }
 
 bool ProbeDialogVisible(char const *tag) {
