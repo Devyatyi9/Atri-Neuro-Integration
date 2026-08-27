@@ -55,7 +55,8 @@
       "configuration": "Debug",
       "targets": [
         "atri_version_proxy",
-        "atri_neuro_prototype"
+        "atri_neuro_prototype",
+        "atri_prototype_tests"
       ]
     },
     {
@@ -64,7 +65,8 @@
       "configuration": "Release",
       "targets": [
         "atri_version_proxy",
-        "atri_neuro_prototype"
+        "atri_neuro_prototype",
+        "atri_prototype_tests"
       ]
     },
     {

@@ -112,6 +112,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ActionJson.h
         prototype/actions/common/ActionSchemas.h
         prototype/actions/common/ActionSet.h
+        prototype/actions/common/ParseNumber.cpp
+        prototype/actions/common/ParseNumber.h
         prototype/actions/probes/ActionProbes.cpp
         prototype/actions/probes/ActionProbes.h
         prototype/actions/probes/TJSQuery.cpp
@@ -181,4 +183,28 @@ if(ATRI_BUILD_PROTOTYPE)
         "ATRI Neuro Integration Prototype"
         "0.1.0.0"
     )
+
+    # Only the parts that need neither the game nor the engine are tested here.
+    # That is the whole point of keeping them apart: these run in milliseconds
+    # from a plain build, with no install, no window, and no waiting, which is
+    # what makes it reasonable to run them on every change. Anything that talks
+    # to the game is checked by prototype/tooling/neuro_harness_test.py against
+    # a running install instead.
+    enable_testing()
+    add_executable(atri_prototype_tests
+        prototype/actions/common/ActionJson.cpp
+        prototype/actions/common/ParseNumber.cpp
+        prototype/tests/ActionJsonTests.cpp
+        prototype/tests/ParseNumberTests.cpp
+        prototype/tests/TestMain.cpp
+        prototype/tests/TestMain.h
+    )
+    set_target_properties(atri_prototype_tests PROPERTIES
+        OUTPUT_NAME prototype-tests
+    )
+    target_include_directories(atri_prototype_tests PRIVATE
+        prototype/actions/common
+        prototype/tests
+    )
+    add_test(NAME prototype-units COMMAND atri_prototype_tests)
 endif()

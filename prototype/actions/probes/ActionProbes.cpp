@@ -2,9 +2,6 @@
 
 #include <windows.h>
 
-#include <cerrno>
-#include <climits>
-#include <cstdlib>
 #include <string>
 
 #pragma warning(push)
@@ -14,6 +11,7 @@
 
 #include "ActionCommon.h"
 #include "Logging.h"
+#include "ParseNumber.h"
 #include "TJSExecutor.h"
 #include "TJSQuery.h"
 #include "UtfConversion.h"
@@ -25,35 +23,16 @@ namespace {
 // atoi returned zero for a malformed answer too, so a probe that failed to
 // produce a number was indistinguishable from one that honestly counted none.
 // The game tolerates a slow answer far better than a wrong one, so the caller
-// is told instead.
+// is told instead. The rules themselves live in ParseNumber, away from the
+// game, where they can be tested.
 bool ParseProbeInt(std::string const &text, int &out, char const *tag) {
-	size_t const first = text.find_first_not_of(" \t");
-	if (first == std::string::npos) {
-		Log(("[Action] " + std::string(tag) + " expected a number, got nothing\n")
-		        .c_str());
-		return false;
+	if (ParseWholeInt(text, out)) {
+		return true;
 	}
-	char const *const start = text.c_str() + first;
-	char *end = nullptr;
-	errno = 0;
-	long const value = strtol(start, &end, 10);
-	if (end == start || errno == ERANGE || value < INT_MIN || value > INT_MAX) {
-		Log(("[Action] " + std::string(tag) + " expected a number, got '" + text +
-		     "'\n")
-		        .c_str());
-		return false;
-	}
-	while (*end == ' ' || *end == '\t') {
-		++end;
-	}
-	if (*end != '\0') {
-		Log(("[Action] " + std::string(tag) +
-		     " has trailing text after the number: '" + text + "'\n")
-		        .c_str());
-		return false;
-	}
-	out = static_cast<int>(value);
-	return true;
+	Log(("[Action] " + std::string(tag) + " expected a number, got '" + text +
+	     "'\n")
+	        .c_str());
+	return false;
 }
 
 // The recurring shape: run one probe, and treat "could not ask" the same as

@@ -1,10 +1,9 @@
 #include "ActionJson.h"
 
 #include <cctype>
-#include <cerrno>
-#include <climits>
-#include <cstdlib>
 #include <cstring>
+
+#include "ParseNumber.h"
 
 namespace {
 
@@ -64,16 +63,7 @@ bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
 		return false;
 	}
 
-	std::string const token = json.substr(start, end - start);
-	char *stop = nullptr;
-	errno = 0;
-	long const value = strtol(token.c_str(), &stop, 10);
-	if (stop != token.c_str() + token.size() || errno == ERANGE ||
-	    value < INT_MIN || value > INT_MAX) {
-		return false;
-	}
-	out = static_cast<int>(value);
-	return true;
+	return ParseIntToken(json.substr(start, end - start), out);
 }
 
 bool ParseJsonBoolean(std::string const &json, char const *key, int &out) {
