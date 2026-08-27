@@ -164,9 +164,28 @@ bool DispatchEditButton(int position, char const *tag);
 // different thing to say than "not there at all".
 bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag);
 bool DispatchEditMenuItem(char const *item, char const *tag);
+// The cursor arriving at an entry, without pressing it. Wanted for the comment
+// entry, which is chosen but never pressed: without this it is the only choice
+// on any screen that happens with nothing lighting up.
+bool DispatchEditMenuItemHover(char const *item, bool on, char const *tag);
 // Closing without choosing. The game's own gesture is a click outside the
 // panel, which its mouse handler turns into exactly this call.
 bool DispatchCloseEditMenu(char const *tag);
+
+// The slot the open edit menu belongs to, 0-based over the ten on screen. The
+// game puts it in a temporary variable when the menu opens, and that is the
+// only place it is written down.
+bool ProbeEditMenuSlot(int &position, char const *tag);
+
+// True while the game's own comment window is up. It is a native Win32 dialog:
+// TJS calls still get through it, but the engine is inside that window's own
+// message loop, so nothing of the game's own runs until it closes.
+bool ProbeCommentWindowOpen(char const *tag);
+
+// Writes the comment the game keeps beside a save, and redraws the slot. This
+// is what the game itself does once its comment window returns a string; we do
+// it without the window, which cannot be typed into from here.
+bool DispatchSetComment(int position, std::string const &text, char const *tag);
 
 // After Copy or Move the screen enters a mode: the next slot pressed is the
 // destination, and until one is, every Edit button is gone. Comes back as 0 for

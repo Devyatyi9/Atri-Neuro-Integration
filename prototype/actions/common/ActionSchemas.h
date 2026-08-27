@@ -161,6 +161,15 @@ constexpr char const *const kSlotSchema =
 // everything else on this screen. Its four entries take nothing: which slot
 // they act on was decided when the menu was opened.
 constexpr char const *const kEditMenuSchema = kSlotSchema;
+// The comment is written from here rather than typed into the game's own
+// window, so the text is the action's parameter. The cap is ours: the slot
+// shows one short line, and refusing is better than storing something that
+// cannot be read back off the screen.
+constexpr char const *const kEditCommentSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"text\":{\"type\":\"string\",\"maxLength\":120}},"
+    "\"required\":[\"text\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kEditMenuItemSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

@@ -322,6 +322,82 @@ void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
 	        .c_str());
 }
 
+constexpr int kEditCommentLimit = 120;
+
+void HandleEditCommentAction(std::string const &id, std::string const &data) {
+	std::string text;
+	if (!ParseJsonString(data, "\"text\"", text)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "edit_comment requires a \"text\" string.");
+		return;
+	}
+	if (text.size() > kEditCommentLimit) {
+		// Refused rather than cut: a comment that comes back shorter than it was
+		// sent is a quiet lie about what the save now says.
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    ("That comment is longer than the " + std::to_string(kEditCommentLimit) +
+		     " characters a slot holds.")
+		        .c_str());
+		return;
+	}
+
+	int shown = 0;
+	int items = 0;
+	if (!ProbeEditMenuItems(shown, items, "edit_comment items")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The edit menu is no longer open.");
+		return;
+	}
+	if ((items & 1) == 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That entry is greyed out for this slot: comment.");
+		return;
+	}
+	int position = 0;
+	if (!ProbeEditMenuSlot(position, "edit_comment slot")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Could not tell which save the menu belongs to.");
+		return;
+	}
+
+	// The entry lights up all the same. It is not pressed -- pressing it opens
+	// the window we cannot use -- but it is what was chosen, and every other
+	// choice on every screen shows the cursor arriving before anything happens.
+	// Left lit on purpose: the panel is about to close and take the entry with
+	// it, which is what a real cursor resting on Comment would look like. Taking
+	// the highlight off first only made it harder to see that anything was
+	// chosen at all.
+	if (DispatchEditMenuItemHover("comment", true, "edit_comment hover")) {
+		Sleep(kHoverPreviewMs);
+	}
+
+	// The menu is dismissed the way cancelling dismisses it, because the entry
+	// itself is not pressed.
+	if (!DispatchCloseEditMenu("edit_comment close")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The edit menu is no longer open.");
+		return;
+	}
+	Sleep(kPageChangeSettleMs);
+
+	if (ProbeCommentWindowOpen("edit_comment window")) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "The game's own comment window is open; it has to be closed first.");
+		return;
+	}
+	if (!DispatchSetComment(position, text, "edit_comment set")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The comment could not be written.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      text.empty()
+	                          ? "Cleared the comment on that save."
+	                          : "Wrote that comment on the save.");
+}
+
 void HandleEditMenuItemAction(std::string const &id, int item) {
 	int shown = 0;
 	int items = 0;
@@ -622,7 +698,7 @@ bool Handle(std::string const &id,
 	} else if (name == "close_edit_menu") {
 		HandleCloseEditMenuAction(id);
 	} else if (name == "edit_comment") {
-		HandleEditMenuItemAction(id, 0);
+		HandleEditCommentAction(id, data);
 	} else if (name == "edit_copy") {
 		HandleEditMenuItemAction(id, 1);
 	} else if (name == "edit_move") {
@@ -642,9 +718,14 @@ bool Handle(std::string const &id,
 void AppendEditMenuActions(ActionSet &set, int payload) {
 	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
 	if ((items & 1) != 0) {
+		// The one entry that is not a press. The game's own comment window is a
+		// native dialog: it cannot be typed into from here, and the game does
+		// not hand out a handle to it, so the text comes with the action and is
+		// written the same way the game writes it once its window closes.
 		set.add("edit_comment",
-		        "Edit the comment kept with this save. Opens a text entry.",
-		        kEditMenuItemSchema);
+		        "Set the comment kept with this save, up to 120 characters. It "
+		        "replaces whatever comment the save has now.",
+		        kEditCommentSchema);
 	}
 	if ((items & 2) != 0) {
 		set.add("edit_copy", "Copy this save into another slot, chosen next.",

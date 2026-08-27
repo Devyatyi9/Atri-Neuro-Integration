@@ -18,5 +18,12 @@ bool IsEmptyJsonObject(std::string const &data);
 // `key` must include its quotes, e.g. "\"index\"".
 bool ParseJsonInteger(std::string const &json, char const *key, int &out);
 
+// A string value, unescaped into UTF-8. The whole escape set JSON defines is
+// accepted -- including \uXXXX and surrogate pairs -- and anything outside it
+// is refused rather than guessed at, because the result is text a person will
+// read back off the screen.
+bool ParseJsonString(std::string const &json, char const *key,
+                     std::string &out);
+
 // Accepts only the JSON literals true/false; `out` is 1 or 0.
 bool ParseJsonBoolean(std::string const &json, char const *key, int &out);

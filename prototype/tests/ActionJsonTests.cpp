@@ -34,6 +34,18 @@ void ExpectBooleanRefused(char const *json, char const *key) {
 	ReportCheck(!ok && out == -999, __FILE__, __LINE__, json);
 }
 
+void ExpectString(char const *json, char const *key, char const *expected) {
+	std::string out("untouched");
+	bool const ok = ParseJsonString(json, key, out);
+	ReportCheck(ok && out == expected, __FILE__, __LINE__, json);
+}
+
+void ExpectStringRefused(char const *json, char const *key) {
+	std::string out("untouched");
+	bool const ok = ParseJsonString(json, key, out);
+	ReportCheck(!ok && out == "untouched", __FILE__, __LINE__, json);
+}
+
 }  // namespace
 
 void RunActionJsonTests() {
@@ -68,6 +80,28 @@ void RunActionJsonTests() {
 	ExpectBooleanRefused(R"({"confirm": 1})", "\"confirm\"");
 	ExpectBooleanRefused(R"({"confirm": "true"})", "\"confirm\"");
 	ExpectBooleanRefused(R"({"other": true})", "\"confirm\"");
+
+	ExpectString(R"({"text": "hello"})", "\"text\"", "hello");
+	ExpectString(R"({"text": ""})", "\"text\"", "");
+	ExpectString(R"({"text": "a b, c"})", "\"text\"", "a b, c");
+	ExpectString("{\"text\": \"he said \\\"hi\\\" back\"}", "\"text\"", "he said \"hi\" back");
+	ExpectString("{\"text\": \"a \\\\ b\"}", "\"text\"", "a \\ b");
+	ExpectString("{\"text\": \"line\\nbreak\"}", "\"text\"", "line\nbreak");
+	// Escaped and raw non-ASCII have to land on the same bytes: which one
+	// arrives depends on the encoder at the other end, not on the text.
+	ExpectString("{\"text\": \"\\u0416\"}", "\"text\"", "\xd0\x96");
+	ExpectString("{\"text\": \"\xd0\x96\"}", "\"text\"", "\xd0\x96");
+	ExpectString("{\"text\": \"\\ud83d\\ude00\"}", "\"text\"", "\xf0\x9f\x98\x80");
+	ExpectString(R"({"other": "x", "text": "y"})", "\"text\"", "y");
+
+	ExpectStringRefused(R"({"text": 5})", "\"text\"");
+	ExpectStringRefused(R"({"text": "unclosed})", "\"text\"");
+	ExpectStringRefused("{\"text\": \"bad\\q\"}", "\"text\"");
+	ExpectStringRefused("{\"text\": \"\\u04\"}", "\"text\"");
+	// A lone half of a surrogate pair is not a character.
+	ExpectStringRefused("{\"text\": \"\\ud83d\"}", "\"text\"");
+	ExpectStringRefused("{\"text\": \"\\ude00\"}", "\"text\"");
+	ExpectStringRefused(R"({"other": "x"})", "\"text\"");
 
 	// An action whose schema has no properties arrives with no data at all,
 	// which reaches the plugin as an empty string.

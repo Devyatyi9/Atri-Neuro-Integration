@@ -537,9 +537,11 @@ bool ProbeEditButtonReady(int position, char const *tag) {
 
 bool DispatchEditButton(int position, char const *tag) {
 	// Hovering first, the way every other press on every screen does it: the
-	// button lights up and its enter handler runs before the click. And leaving
-	// after, so nothing stays lit once the press is done.
-	AskFormatted(kEditButtonHover, tag, position, "onMouseEnter");
+	// button lights up, and it stays lit long enough to be seen before the
+	// click. And leaving after, so nothing stays lit once the press is done.
+	if (AskFormatted(kEditButtonHover, tag, position, "onMouseEnter")) {
+		Sleep(kHoverPreviewMs);
+	}
 	bool const pressed = AskFormatted(kEditButtonDispatch, tag, position);
 	AskFormatted(kEditButtonHover, tag, position, "onMouseLeave");
 	return pressed;
@@ -569,9 +571,18 @@ bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag) {
 	       ParseProbeInt(raw.substr(separator + 1), enabledMask, tag);
 }
 
+bool DispatchEditMenuItemHover(char const *item, bool on, char const *tag) {
+	return AskFormatted(kEditMenuItemHover, tag, item,
+	                    on ? "onMouseEnter" : "onMouseLeave");
+}
+
 bool DispatchEditMenuItem(char const *item, char const *tag) {
-	AskFormatted(kEditMenuItemHover, tag, item, "onMouseEnter");
+	if (AskFormatted(kEditMenuItemHover, tag, item, "onMouseEnter")) {
+		Sleep(kHoverPreviewMs);
+	}
 	bool const pressed = AskFormatted(kEditMenuItemDispatch, tag, item);
+	// Choosing takes the whole panel away, so this only matters when the press
+	// did not land and the entry is still there to be left.
 	AskFormatted(kEditMenuItemHover, tag, item, "onMouseLeave");
 	return pressed;
 }
@@ -581,6 +592,76 @@ bool DispatchCloseEditMenu(char const *tag) {
 	           L"'Object' || !kag.panelLayer) return 0;"
 	           L"kag.panelLayer.close(); return 1; })()",
 	           tag);
+}
+
+bool ProbeEditMenuSlot(int &position, char const *tag) {
+	std::string raw;
+	if (!QueryString(L"(function(){ try { return '' + (int)tf.SaveDataEdit; }"
+	                 L"catch (e) { return ''; } })()",
+	                 raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	return ParseProbeInt(raw, position, tag);
+}
+
+bool ProbeCommentWindowOpen(char const *tag) {
+	return Ask(L"(function(){ var s = global.__cm_saveStore;"
+	           L"if (typeof s != 'Object' || !isvalid s) return 0;"
+	           L"try { return s._inEditComment ? 1 : 0; } catch (e) { return 0; }"
+	           L"})()",
+	           tag);
+}
+
+namespace {
+
+// The text goes into a TJS string literal, so everything TJS would read as
+// something other than a character has to be spelled out. Newlines included:
+// the literal cannot span lines, and a comment arriving with one would
+// otherwise break the whole expression rather than the one field.
+std::wstring EscapeForTJSLiteral(std::wstring const &text) {
+	std::wstring escaped;
+	escaped.reserve(text.size() + 8);
+	for (wchar_t const character : text) {
+		switch (character) {
+			case L'\"': escaped += L"\\\""; break;
+			case L'\\': escaped += L"\\\\"; break;
+			case L'\n': escaped += L"\\n"; break;
+			case L'\r': escaped += L"\\r"; break;
+			case L'\t': escaped += L"\\t"; break;
+			default: escaped += character; break;
+		}
+	}
+	return escaped;
+}
+
+}  // namespace
+
+bool DispatchSetComment(int position, std::string const &text,
+                        char const *tag) {
+	std::wstring wide;
+	if (!Utf8ToUtf16(text.c_str(), text.size(), wide)) {
+		Log(("[Action] " + std::string(tag) + " could not convert the text\n")
+		        .c_str());
+		return false;
+	}
+
+	// Everything the game does after its own comment window returns a string:
+	// store the text, redraw the slot, and tell the screen it changed. Leaving
+	// any of the three out shows stale text until something else redraws.
+	std::wstring code =
+	    L"(function(){ var s = global.__cm_saveStore;"
+	    L"if (typeof s != 'Object' || !isvalid s) return 0;"
+	    L"try { var num = s.withOffset(";
+	code += std::to_wstring(position);
+	code += L"); var info = s.getItemInfo(num);"
+	        L"if (info === void) return 0;"
+	        L"s.setCommentText(num, \"";
+	code += EscapeForTJSLiteral(wide);
+	code += L"\"); s.forceRedrawItem(num);"
+	        L"s.onStateChanged('comment', num, info); return 1; }"
+	        L"catch (e) { return 0; } })()";
+	return Ask(code.c_str(), tag);
 }
 
 bool ProbeCopyMode(int &mode, char const *tag) {
