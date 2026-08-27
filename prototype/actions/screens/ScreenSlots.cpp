@@ -388,7 +388,11 @@ int ReadPayloadValue() {
 	}
 	int base = 0;
 	int page = 0;
-	ProbeSaveWindow(base, page);
+	// Same treatment as the tab bar above: a window that cannot be read is not
+	// a window on page zero, and must not be folded into the payload as one.
+	if (!ProbeSaveWindow(base, page)) {
+		return 0;
+	}
 	int const pages = ProbeSavePageCount();
 	return (visible & kSaveTabMask) |
 	       ((enabled & kSaveTabMask) << kSaveTabEnabledShift) |

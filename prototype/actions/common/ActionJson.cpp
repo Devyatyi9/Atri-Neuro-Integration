@@ -1,6 +1,8 @@
 #include "ActionJson.h"
 
 #include <cctype>
+#include <cerrno>
+#include <climits>
 #include <cstdlib>
 #include <cstring>
 
@@ -33,20 +35,44 @@ bool IsEmptyJsonObject(std::string const &data) {
 	return last != std::string::npos && last == first + 1 && data[last] == '}';
 }
 
+// A JSON number token is only accepted here when it is a whole integer that
+// fits, and when the value really ends where the integer ends. The old scan
+// took any run of digits and minus signs and handed it to atoi, so "2.9"
+// arrived as slot 2, "1-2" as page 1, and an overflowing literal as whatever
+// atoi happened to produce -- each of them a number in range, accepted by the
+// caller, and pointing at the wrong thing. A malformed value has to be
+// refused, not rounded.
 bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
 	size_t const start = FindValueStart(json, key);
 	if (start == std::string::npos) {
 		return false;
 	}
 	size_t end = start;
-	while (end < json.size() &&
-	       (isdigit(static_cast<unsigned char>(json[end])) || json[end] == '-')) {
+	if (end < json.size() && json[end] == '-') {
 		++end;
 	}
-	if (end == start) {
+	size_t const digits = end;
+	while (end < json.size() && isdigit(static_cast<unsigned char>(json[end]))) {
+		++end;
+	}
+	if (end == digits) {
 		return false;
 	}
-	out = atoi(json.substr(start, end - start).c_str());
+	// Anything but a delimiter here means the value was not an integer:
+	// a fraction, an exponent, a second sign, or a quoted string.
+	if (end < json.size() && strchr(",}] \t\r\n", json[end]) == nullptr) {
+		return false;
+	}
+
+	std::string const token = json.substr(start, end - start);
+	char *stop = nullptr;
+	errno = 0;
+	long const value = strtol(token.c_str(), &stop, 10);
+	if (stop != token.c_str() + token.size() || errno == ERANGE ||
+	    value < INT_MIN || value > INT_MAX) {
+		return false;
+	}
+	out = static_cast<int>(value);
 	return true;
 }
 
@@ -55,11 +81,20 @@ bool ParseJsonBoolean(std::string const &json, char const *key, int &out) {
 	if (start == std::string::npos) {
 		return false;
 	}
-	if (json.compare(start, 4, "true") == 0) {
+	// The literal has to end where it ends: "truthy" is not true.
+	auto const literal = [&json, start](char const *text, size_t size) {
+		if (json.compare(start, size, text) != 0) {
+			return false;
+		}
+		size_t const after = start + size;
+		return after >= json.size() ||
+		       strchr(",}] \t\r\n", json[after]) != nullptr;
+	};
+	if (literal("true", 4)) {
 		out = 1;
 		return true;
 	}
-	if (json.compare(start, 5, "false") == 0) {
+	if (literal("false", 5)) {
 		out = 0;
 		return true;
 	}
