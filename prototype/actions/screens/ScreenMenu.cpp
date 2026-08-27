@@ -75,6 +75,42 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	    "Asked to return to the title screen; confirm or cancel the dialog.");
 }
 
+// What each confirmation is about, as the outcome of answering it rather than
+// as the question. Used for the result of answer_dialog: "Confirmed the dialog"
+// leaves the caller to work out what was just agreed to from the screen that
+// follows, which for an erase means reading a slot list to notice a save is
+// gone. `nullptr` for a question with no wording of its own.
+char const *ConfirmedOutcome(std::string const &part) {
+	if (part == "AskDelete") {
+		return "Confirmed: the save was erased.";
+	}
+	if (part == "AskLoad" || part == "AskQLoad") {
+		return "Confirmed: loading that save.";
+	}
+	if (part == "AskSave" || part == "AskQSave") {
+		return "Confirmed: writing that save.";
+	}
+	if (part == "AskOverwrite") {
+		return "Confirmed: that slot was overwritten.";
+	}
+	if (part == "AskCopy") {
+		return "Confirmed: the save was copied into that slot.";
+	}
+	if (part == "AskMove") {
+		return "Confirmed: the save was moved into that slot.";
+	}
+	if (part == "AskTitle") {
+		return "Confirmed: going back to the title screen.";
+	}
+	if (part == "AskExit") {
+		return "Confirmed: the game is quitting.";
+	}
+	if (part == "AskInit") {
+		return "Confirmed: the settings were reset to defaults.";
+	}
+	return nullptr;
+}
+
 void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	int confirmValue = 0;
 	if (!ParseJsonBoolean(data, "\"confirm\"", confirmValue)) {
@@ -83,6 +119,13 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	bool const confirm = confirmValue != 0;
+
+	// Read before the press, not after: answering closes the dialog, and with it
+	// goes the only thing that says what was being asked.
+	std::string part;
+	if (!confirm || !ProbeDialogTextPart(part)) {
+		part.clear();
+	}
 
 	bool const ok = ProbeDialogLinkReady(confirm, "answer_dialog ready") &&
 	                DispatchDialogLink(confirm, "answer_dialog dispatch");
@@ -103,9 +146,11 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 		                      "The dialog is up but its buttons did not answer.");
 		return;
 	}
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    confirm ? "Confirmed the dialog." : "Cancelled the dialog.");
+	char const *const outcome = part.empty() ? nullptr : ConfirmedOutcome(part);
+	NeuroSendActionResult(id.c_str(), true,
+	                      outcome                 ? outcome
+	                      : confirm ? "Confirmed the dialog."
+	                                : "Cancelled the dialog.");
 }
 
 void HandleGoBackAction(std::string const &id, std::string const &data) {
@@ -236,6 +281,26 @@ void ForceDialogAnswer() {
 			subject = "The game is asking whether to jump back to that line.";
 		} else if (part == "AskInit") {
 			subject = "The game is asking whether to reset it to defaults.";
+		} else if (part == "AskSave") {
+			subject = "The game is asking whether to write that save.";
+		} else if (part == "AskDelete") {
+			subject = "The game is asking whether to erase that save.";
+		} else if (part == "AskCopy") {
+			subject = "The game is asking whether to copy that save into the slot "
+			          "chosen.";
+		} else if (part == "AskMove") {
+			subject = "The game is asking whether to move that save into the slot "
+			          "chosen.";
+		} else if (part == "AskAllRemove1" || part == "AskAllRemove2") {
+			// Two questions in a row for the same thing, the second one a second
+			// chance to back out. Nothing we register raises them; they are named
+			// so that a stray one does not reach Neuro as an unlabelled question.
+			subject = "The game is asking whether to erase every save. It asks "
+			          "this twice.";
+		} else if (part == "AskPrevScn") {
+			subject = "The game is asking whether to go back to the previous scene.";
+		} else if (part == "AskNextScn") {
+			subject = "The game is asking whether to go on to the next scene.";
 		}
 	}
 	char const *names[] = {"answer_dialog"};
