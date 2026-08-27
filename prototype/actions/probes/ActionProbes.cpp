@@ -605,6 +605,19 @@ bool ProbeEditMenuSlot(int &position, char const *tag) {
 	return ParseProbeInt(raw, position, tag);
 }
 
+bool ProbeSlotComment(int position, std::string &out, char const *tag) {
+	std::wstring code = L"(function(){ var s = global.__cm_saveStore;"
+	                    L"if (typeof s != 'Object' || !isvalid s) return '';"
+	                    L"try { var num = s.withOffset(";
+	code += std::to_wstring(position);
+	code += L"); var text = s.getCommentText(num, null, 1);"
+	        L"return (text === void) ? '' : '' + text; }"
+	        L"catch (e) { return ''; } })()";
+	// An empty answer is a save with no comment, which is a real answer and not
+	// a failed probe -- QueryString says which by its return value.
+	return QueryString(code.c_str(), out, tag);
+}
+
 bool ProbeCommentWindowOpen(char const *tag) {
 	return Ask(L"(function(){ var s = global.__cm_saveStore;"
 	           L"if (typeof s != 'Object' || !isvalid s) return 0;"
@@ -659,7 +672,16 @@ bool DispatchSetComment(int position, std::string const &text,
 	        L"s.setCommentText(num, \"";
 	code += EscapeForTJSLiteral(wide);
 	code += L"\"); s.forceRedrawItem(num);"
-	        L"s.onStateChanged('comment', num, info); return 1; }"
+	        L"s.onStateChanged('comment', num, info);"
+	        // Read back rather than assume. kag.writeBookMarkInfo, which is where
+	        // this ends up, checks the save file before touching it and does
+	        // nothing at all when the check fails -- silently, with no error to
+	        // catch. Without this, a comment that was never written would still
+	        // be reported as written.
+	        L"var back = s.getCommentText(num, null, 1);"
+	        L"return back == \"";
+	code += EscapeForTJSLiteral(wide);
+	code += L"\" ? 1 : 0; }"
 	        L"catch (e) { return 0; } })()";
 	return Ask(code.c_str(), tag);
 }

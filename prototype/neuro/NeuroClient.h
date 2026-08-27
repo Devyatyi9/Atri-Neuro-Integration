@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <string>
 
 // Action handlers run synchronously on the Neuro polling thread. The string
@@ -34,6 +36,9 @@ bool NeuroRegisterAction(char const *name,
 bool NeuroUnregisterAction(char const *name);
 bool NeuroReregisterActions();
 bool NeuroSendActionResult(char const *id, bool success, char const *message);
+// Set by the call above. One action is handled at a time, so this describes the
+// action that has just been answered.
+extern std::atomic<bool> g_LastActionResultSucceeded;
 bool NeuroForceAction(char const *state,
                       char const *query,
                       char const **actionNames,

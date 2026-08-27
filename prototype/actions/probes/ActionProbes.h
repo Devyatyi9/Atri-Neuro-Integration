@@ -182,6 +182,11 @@ bool ProbeEditMenuSlot(int &position, char const *tag);
 // message loop, so nothing of the game's own runs until it closes.
 bool ProbeCommentWindowOpen(char const *tag);
 
+// The comment a save carries now, empty when it has none. Wanted because the
+// game's own window opens with this text already in it: editing is what a
+// player does there, and without it the only thing Neuro can do is replace.
+bool ProbeSlotComment(int position, std::string &out, char const *tag);
+
 // Writes the comment the game keeps beside a save, and redraws the slot. This
 // is what the game itself does once its comment window returns a string; we do
 // it without the window, which cannot be typed into from here.

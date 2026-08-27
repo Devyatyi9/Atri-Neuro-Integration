@@ -665,7 +665,15 @@ bool NeuroReregisterActions() {
 	return true;
 }
 
+// Whether the last result sent said the action succeeded. Read by the router to
+// decide whether a forced action has actually been carried out: the server
+// keeps a force alive through a failed answer and asks again, so retiring ours
+// on the failure would let the next force go out while the server still held
+// the first -- which is exactly what the reference server refuses.
+std::atomic<bool> g_LastActionResultSucceeded(false);
+
 bool NeuroSendActionResult(char const *id, bool success, char const *message) {
+	g_LastActionResultSucceeded.store(success, std::memory_order_release);
 	if (!id || !NeuroIsReady()) {
 		return false;
 	}

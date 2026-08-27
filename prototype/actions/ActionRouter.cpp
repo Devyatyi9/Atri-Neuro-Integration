@@ -173,11 +173,20 @@ void HandleNeuroAction(std::string const &id,
 	struct ForceGuard {
 		bool active;
 		~ForceGuard() {
-			if (active) {
+			// Only a successful answer retires it. A forced action that fails
+			// leaves the server's force standing -- the specification has it ask
+			// again -- so treating the failure as an answer let the next force go
+			// out while the server still held the first, which is what it
+			// reports as "Multiple actions/force at once".
+			if (active &&
+			    g_LastActionResultSucceeded.load(std::memory_order_acquire)) {
 				g_ForceOutstanding.store(false, std::memory_order_release);
 			}
 		}
 	} forceGuard{answersForce};
+	// Cleared before the handler runs so a handler that answers nothing at all
+	// cannot be read as a success left over from the previous action.
+	g_LastActionResultSucceeded.store(false, std::memory_order_release);
 
 	// Handlers answer before returning, so the flag covers exactly the window
 	// in which a result is owed. The refresh reads it to hold back a force.

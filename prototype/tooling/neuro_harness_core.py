@@ -94,6 +94,9 @@ class Harness:
         # Names of an outstanding actions/force, or None when none is pending.
         # The force is satisfied once one of its actions is dispatched.
         self._forced_names: list[str] | None = None
+        # The id of the action sent to answer the outstanding force, if one has
+        # been sent. The force is not retired until its result arrives.
+        self._forced_action_id: str | None = None
         threading.Thread(target=self._accept_loop, daemon=True).start()
 
     def _apply_action_timing(self, message: dict[str, Any]) -> None:
@@ -102,6 +105,12 @@ class Harness:
         action_id = data.get("id")
         if not action_id:
             return
+        if action_id == self._forced_action_id:
+            # A forced action that failed leaves the force standing: the server
+            # puts it back and asks again. Only a success completes it.
+            if data.get("success"):
+                self._forced_names = None
+            self._forced_action_id = None
         sent_at = self._pending_actions.pop(action_id, None)
         if sent_at is None:
             self._protocol_notes.append(
@@ -296,6 +305,7 @@ class Harness:
                     self._pending_actions.clear()
                     self._sent_action_ids.clear()
                     self._forced_names = None
+                    self._forced_action_id = None
 
     def send(self, message: dict[str, Any]) -> None:
         payload = json.dumps(message, separators=(",", ":")).encode("utf-8")
@@ -316,8 +326,16 @@ class Harness:
                     self._sent_action_ids.add(action_id)
                     self._pending_actions[action_id] = time.time()
                 name = (message.get("data") or {}).get("name")
-                if self._forced_names is not None and name in self._forced_names:
-                    self._forced_names = None
+                if (self._forced_names is not None
+                        and name in self._forced_names
+                        and self._forced_action_id is None):
+                    # Not retired here. gary sets forceActive in takeForce and
+                    # clears it only in completeForce, so the force outlives the
+                    # dispatch and lives until the result is in. Clearing at
+                    # send time made this harness more permissive than the real
+                    # server, and it missed a "Multiple actions/force at once"
+                    # that gary caught.
+                    self._forced_action_id = action_id
             _send_frame(self._connection, 1, payload)
         self._record("server_to_client", message)
 

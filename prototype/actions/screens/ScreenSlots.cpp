@@ -724,7 +724,8 @@ void AppendEditMenuActions(ActionSet &set, int payload) {
 		// written the same way the game writes it once its window closes.
 		set.add("edit_comment",
 		        "Set the comment kept with this save, up to 120 characters. It "
-		        "replaces whatever comment the save has now.",
+		        "replaces the whole comment rather than adding to it; what the "
+		        "save says now was given with the menu.",
 		        kEditCommentSchema);
 	}
 	if ((items & 2) != 0) {
@@ -782,6 +783,25 @@ void SendEditMenuContext(int payload) {
 	std::string message = "The edit menu for that save is open.";
 	message += offered.empty() ? " None of its entries can be used for this slot."
 	                           : " Available: " + offered + ".";
+	// What the comment says now. The game's own window opens with this text
+	// already in it, so a player edits; without it here, the only thing that can
+	// be done from outside is replace, and replacing what you cannot see means
+	// wiping it by accident.
+	if ((items & 1) != 0) {
+		int position = 0;
+		std::string comment;
+		if (ProbeEditMenuSlot(position, "edit menu comment slot") &&
+		    ProbeSlotComment(position, comment, "edit menu comment")) {
+			message += comment.empty()
+			               ? " It has no comment yet."
+			               : " Its comment now reads: " + comment;
+			if (!comment.empty()) {
+				message +=
+				    ". edit_comment replaces it whole, so send it back with the "
+				    "change in it to keep the rest.";
+			}
+		}
+	}
 	if (!refused.empty()) {
 		// Said plainly, because the entries are on screen: without this, an
 		// entry the game draws and refuses is indistinguishable from one that
