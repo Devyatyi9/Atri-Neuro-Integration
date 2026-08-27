@@ -17,7 +17,9 @@ FILE *g_TagLogFile = nullptr;
 std::mutex g_LogMutex;
 // Separate from the ring's lock so writing to disk never blocks a reader.
 std::mutex g_LogFileMutex;
+std::mutex g_TagLogFileMutex;
 ULONGLONG g_LastLogFlush = 0;
+ULONGLONG g_LastTagLogFlush = 0;
 constexpr ULONGLONG kLogFlushIntervalMs = 200;
 std::deque<std::string> g_LogLines;
 std::size_t g_LogCharacters = 0;
@@ -108,7 +110,11 @@ std::wstring GetPluginLogFile(std::size_t offset,
 }
 
 void LogTagFile(char const *text) {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
+	// The hottest of the three log paths: this runs from the onTag hook, on the
+	// game's main thread, around fourteen times per line of dialogue. It used to
+	// flush per call and to take the ring's mutex, so it blocked the game on the
+	// disk and blocked anyone reading the plugin log at the same time.
+	std::lock_guard<std::mutex> lock(g_TagLogFileMutex);
 	if (!g_TagLogFile) {
 		g_TagLogFile = fopen("neuro_tag_log.txt", "a");
 		if (!g_TagLogFile) {
@@ -116,11 +122,17 @@ void LogTagFile(char const *text) {
 		}
 	}
 	fprintf(g_TagLogFile, "%s", text);
-	fflush(g_TagLogFile);
+	ULONGLONG const now = GetTickCount64();
+	if (now - g_LastTagLogFlush >= kLogFlushIntervalMs) {
+		fflush(g_TagLogFile);
+		g_LastTagLogFlush = now;
+	}
 }
 
 void CloseTagLogFile() {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
+	// The file's own lock, matching LogTagFile: the ring's mutex no longer
+	// guards it. fclose flushes what the throttle has not written yet.
+	std::lock_guard<std::mutex> lock(g_TagLogFileMutex);
 	if (g_TagLogFile) {
 		fclose(g_TagLogFile);
 		g_TagLogFile = nullptr;
