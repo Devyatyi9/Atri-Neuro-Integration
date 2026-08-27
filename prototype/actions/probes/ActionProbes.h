@@ -168,6 +168,13 @@ bool DispatchEditMenuItem(char const *item, char const *tag);
 // panel, which its mouse handler turns into exactly this call.
 bool DispatchCloseEditMenu(char const *tag);
 
+// After Copy or Move the screen enters a mode: the next slot pressed is the
+// destination, and until one is, every Edit button is gone. Comes back as 0 for
+// no mode, or the router's copy/move/swap values. The mode belongs to the
+// store, not to the tab, so it survives switching tabs and pages -- the
+// destination may be anywhere.
+bool ProbeCopyMode(int &mode, char const *tag);
+
 // Whether the ten slots on screen are the ten bookmarks starting at `base`,
 // checked by comparing each slot's enabled flag against whether that bookmark
 // exists. There is no readable page indicator, and a page button press does not

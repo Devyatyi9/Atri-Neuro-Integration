@@ -53,6 +53,14 @@ constexpr int kEditItemsMask = 0xf;
 // Drawn but refused is its own state here: the game greys an entry out for the
 // slot rather than leaving it off the menu, and Neuro is told which is which.
 constexpr int kEditItemsShownShift = 25;
+// Copy, Move and Swap all put the screen into the same shape: the next slot
+// pressed is the destination. Two bits, because which of the three it is has to
+// be said out loud -- the slot press means something different in each.
+constexpr int kCopyModeShift = 29;
+constexpr int kCopyModeMask = 0x3;
+
+// In the order the probe reports them.
+char const *const kCopyModeVerbs[] = {"", "copied", "moved", "swapped with"};
 
 // The menu's entries, in the order of their bits. `delete` is the name the
 // panel gives the entry the screen labels Erase.
@@ -252,6 +260,38 @@ void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
 
 // The tab name, as its index into kSaveTabNames, or -1. The value is quoted in
 // the payload, so matching the quoted form cannot collide with the key.
+void HandleChooseDestinationAction(std::string const &id,
+                                   std::string const &data) {
+	int position = 0;
+	if (!ParseSlot(id, data, "choose_destination", position)) {
+		return;
+	}
+	if (!PressSlot(position, "choose_destination")) {
+		// The source slot itself is the one the game refuses: a save cannot be
+		// copied onto where it already is.
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "That slot cannot be the destination. The save being copied is "
+		    "already in one of the slots, and that one is refused.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Chose that slot. The game is asking to confirm it.");
+}
+
+void HandleCancelCopyAction(std::string const &id) {
+	// The Back button, which in this mode cancels and stays on the screen
+	// rather than leaving it -- the same press the player uses, and the same
+	// one Escape and a right click are wired to.
+	if (!ProbeScreenButtonReady("back", "cancel_copy button") ||
+	    !DispatchScreenButton("back", "cancel_copy dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "Could not cancel it.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true,
+	                      "Cancelled it. The save stays where it was.");
+}
+
 void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
 	int position = 0;
 	if (!ParseSlot(id, data, "open_edit_menu", position)) {
@@ -481,6 +521,10 @@ int ReadPayloadValue(bool editMenuOpen) {
 	if (!ProbeSaveTabs(visible, enabled)) {
 		return 0;
 	}
+	int copyMode = 0;
+	if (!ProbeCopyMode(copyMode, "copy mode")) {
+		return 0;
+	}
 	int base = 0;
 	int page = 0;
 	// Same treatment as the tab bar above: a window that cannot be read is not
@@ -492,7 +536,8 @@ int ReadPayloadValue(bool editMenuOpen) {
 	return (visible & kSaveTabMask) |
 	       ((enabled & kSaveTabMask) << kSaveTabEnabledShift) |
 	       ((pages & kSavePageMask) << kSavePageCountShift) |
-	       ((page & kSavePageMask) << kSavePageShift);
+	       ((page & kSavePageMask) << kSavePageShift) |
+	       ((copyMode & kCopyModeMask) << kCopyModeShift);
 }
 
 // The tab bar is the same on all three modes, so its action is built in one
@@ -568,6 +613,10 @@ bool Handle(std::string const &id,
 		HandleSwitchTabAction(id, data);
 	} else if (name == "switch_page") {
 		HandleSwitchPageAction(id, data);
+	} else if (name == "choose_destination") {
+		HandleChooseDestinationAction(id, data);
+	} else if (name == "cancel_copy") {
+		HandleCancelCopyAction(id);
 	} else if (name == "open_edit_menu") {
 		HandleOpenEditMenuAction(id, data);
 	} else if (name == "close_edit_menu") {
@@ -663,6 +712,32 @@ void SendEditMenuContext(int payload) {
 }
 
 void AppendActions(ActionSet &set, Mode mode, int payload) {
+	int const copyMode = (payload >> kCopyModeShift) & kCopyModeMask;
+	if (copyMode != 0) {
+		// The screen keeps its grid but every press means something else: the
+		// slot is the destination now, not a save to load or a place to write.
+		// Registering the ordinary slot action here would name the wrong deed.
+		std::string const verb(kCopyModeVerbs[copyMode]);
+		// Built, not literal, so the set has to own them: the registration call
+		// reads these pointers after this function has returned.
+		set.add("choose_destination",
+		        set.keep("Choose the slot the save is " + verb +
+		                 " into, by its number on screen. The game asks to "
+		                 "confirm, and asks again if the slot already holds a "
+		                 "save."),
+		        kSlotSchema);
+		set.add("cancel_copy",
+		        set.keep("Cancel it: the save is not " + verb +
+		                 " anywhere, and the screen goes back to normal."),
+		        kGoBackSchema);
+		// The destination may be on any page of any tab, so both stay. Moving to
+		// the Voice tab is the one that does not: the game cancels the operation
+		// when it opens.
+		AppendSwitchTabAction(set, payload);
+		AppendSwitchPageAction(set, payload);
+		return;
+	}
+
 	set.add("go_back",
 	        "Leave the current screen and return to the one it was opened from.",
 	        kGoBackSchema);
@@ -705,6 +780,22 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 }
 
 void SendEnteringContext(Mode mode, int payload) {
+	int const copyMode = (payload >> kCopyModeShift) & kCopyModeMask;
+	if (copyMode != 0) {
+		std::string const verb(kCopyModeVerbs[copyMode]);
+		// What the game itself puts in its help window at this moment is one
+		// line: "Please choose a location to copy to." The rest of this is what
+		// the screen shows but does not say -- the Edit buttons are gone, the
+		// source slot refuses to be the destination, and the Voice tab cancels.
+		NeuroSendContext(
+		    ("A save is waiting to be " + verb +
+		     ": choose the slot it goes into, on any page of any tab. The slot it "
+		     "is already in cannot be chosen, and the edit menus are away until "
+		     "this is settled. Opening the Voice tab cancels it.")
+		        .c_str(),
+		    false);
+		return;
+	}
 
 	// Page 0 is the quick tab: the same screen holding the ten quick saves
 	// instead of the numbered list.

@@ -128,7 +128,7 @@ wchar_t const *const kEditButtonHover =
     L"var button = kag.current.buttons['edit%d'];"
     L"if (typeof button != 'Object' || !isvalid button || !button.visible) "
     L"return 0;"
-    L"button.onMouseEnter(); return 1; })()";
+    L"button.%hs(); return 1; })()";
 
 wchar_t const *const kEditButtonDispatch =
     L"(function(){ var button = kag.current.buttons['edit%d'];"
@@ -141,7 +141,7 @@ wchar_t const *const kEditMenuItemHover =
     L"|| !kag.panelLayer) return 0;"
     L"var item = kag.panelLayer.names['%hs'];"
     L"if (typeof item != 'Object' || !isvalid item || !item.visible) return 0;"
-    L"item.onMouseEnter(); return 1; })()";
+    L"item.%hs(); return 1; })()";
 
 wchar_t const *const kEditMenuItemDispatch =
     L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
@@ -350,7 +350,13 @@ bool DispatchScreenButton(char const *button, char const *tag) {
 	if (AskFormatted(kScreenButtonHover, tag, button, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	return AskFormatted(kScreenButtonDispatch, tag, button);
+	bool const pressed = AskFormatted(kScreenButtonDispatch, tag, button);
+	// And the cursor leaves again. A press that changes the screen takes the
+	// button with it, but one that leaves the screen standing -- Back cancelling
+	// a copy, a tab that stays -- left the button lit for good, because nothing
+	// here has a cursor that moves away on its own.
+	AskFormatted(kScreenButtonHover, tag, button, "onMouseLeave");
+	return pressed;
 }
 
 bool ProbeLanguageScreen(char const *tag) {
@@ -461,7 +467,9 @@ bool DispatchQuickMenuButton(char const *button, char const *tag) {
 	if (AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	return AskFormatted(kQuickMenuButtonDispatch, tag, button);
+	bool const pressed = AskFormatted(kQuickMenuButtonDispatch, tag, button);
+	AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseLeave");
+	return pressed;
 }
 
 bool DispatchShowTextWindow(char const *tag) {
@@ -529,9 +537,12 @@ bool ProbeEditButtonReady(int position, char const *tag) {
 
 bool DispatchEditButton(int position, char const *tag) {
 	// Hovering first, the way every other press on every screen does it: the
-	// button lights up and its enter handler runs before the click.
-	AskFormatted(kEditButtonHover, tag, position);
-	return AskFormatted(kEditButtonDispatch, tag, position);
+	// button lights up and its enter handler runs before the click. And leaving
+	// after, so nothing stays lit once the press is done.
+	AskFormatted(kEditButtonHover, tag, position, "onMouseEnter");
+	bool const pressed = AskFormatted(kEditButtonDispatch, tag, position);
+	AskFormatted(kEditButtonHover, tag, position, "onMouseLeave");
+	return pressed;
 }
 
 bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag) {
@@ -559,8 +570,10 @@ bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag) {
 }
 
 bool DispatchEditMenuItem(char const *item, char const *tag) {
-	AskFormatted(kEditMenuItemHover, tag, item);
-	return AskFormatted(kEditMenuItemDispatch, tag, item);
+	AskFormatted(kEditMenuItemHover, tag, item, "onMouseEnter");
+	bool const pressed = AskFormatted(kEditMenuItemDispatch, tag, item);
+	AskFormatted(kEditMenuItemHover, tag, item, "onMouseLeave");
+	return pressed;
 }
 
 bool DispatchCloseEditMenu(char const *tag) {
@@ -568,6 +581,20 @@ bool DispatchCloseEditMenu(char const *tag) {
 	           L"'Object' || !kag.panelLayer) return 0;"
 	           L"kag.panelLayer.close(); return 1; })()",
 	           tag);
+}
+
+bool ProbeCopyMode(int &mode, char const *tag) {
+	std::string raw;
+	if (!QueryString(L"(function(){ var s = global.__cm_saveStore;"
+	                 L"if (typeof s != 'Object' || !isvalid s) return '';"
+	                 L"try { var m = '' + s._iscopy;"
+	                 L"return m == 'copy' ? '1' : m == 'move' ? '2' : "
+	                 L"m == 'swap' ? '3' : '0'; } catch (e) { return ''; } })()",
+	                 raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	return ParseProbeInt(raw, mode, tag);
 }
 
 bool ProbeSaveWindow(int &offset, int &page) {
