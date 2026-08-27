@@ -245,6 +245,10 @@ void FlushOutboundMessages() {
 		neurosdk_message_t message = {};
 		message.kind = entry.kind;
 		neurosdk_error_e error = NeuroSDK_None;
+		// Lives out here, not inside the case that fills it: the message holds
+		// bare pointers into this buffer and is sent after the switch, so a
+		// vector scoped to the case would already be freed by then.
+		std::vector<char *> forceNames;
 
 		switch (entry.kind) {
 			case NeuroSDK_MessageKind_ActionResult:
@@ -255,19 +259,18 @@ void FlushOutboundMessages() {
 				break;
 
 			case NeuroSDK_MessageKind_ActionsForce: {
-				std::vector<char *> names;
-				names.reserve(entry.actionNames.size());
+				forceNames.reserve(entry.actionNames.size());
 				for (std::string const &name : entry.actionNames) {
-					names.push_back(const_cast<char *>(name.c_str()));
+					forceNames.push_back(const_cast<char *>(name.c_str()));
 				}
 				message.value.actions_force.state =
 				    const_cast<char *>(entry.state.c_str());
 				message.value.actions_force.query =
 				    const_cast<char *>(entry.query.c_str());
 				message.value.actions_force.ephemeral_context = entry.ephemeral;
-				message.value.actions_force.action_names = names.data();
+				message.value.actions_force.action_names = forceNames.data();
 				message.value.actions_force.action_names_len =
-				    static_cast<int>(names.size());
+				    static_cast<int>(forceNames.size());
 				message.value.actions_force.priority = NeuroSDK_Priority_Medium;
 				break;
 			}
