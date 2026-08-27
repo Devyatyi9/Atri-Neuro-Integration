@@ -128,6 +128,11 @@ constexpr int kCapabilityStateGallery = 16;
 // a screen that does not exist yet.
 constexpr int kCapabilityStateLanguageSelect = 18;
 
+// The per-slot edit menu on a save screen. A state of its own rather than a
+// flag on the slot screens: it takes the screen the way a dialog does, so it
+// carries its own set and its choice is forced.
+constexpr int kCapabilityStateEditMenu = 19;
+
 bool ClaimActionId(std::string const &id) {
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	if (!g_ActionIdSet.insert(id).second) {
@@ -161,7 +166,10 @@ void HandleNeuroAction(std::string const &id,
 	// arrives: the server retires its own only once the action is complete, and
 	// clearing on arrival let a fast open-close-open send the next force while
 	// the server still held the first.
-	bool const answersForce = name == "answer_dialog";
+	bool const answersForce =
+	    name == "answer_dialog" || name == "close_edit_menu" ||
+	    name == "edit_comment" || name == "edit_copy" || name == "edit_move" ||
+	    name == "edit_erase";
 	struct ForceGuard {
 		bool active;
 		~ForceGuard() {
@@ -227,6 +235,7 @@ char const *ScreenName(int kind) {
 		// it sends its own line, which has to say what the screen wants rather
 		// than only where we are.
 		case kCapabilityStateLanguageSelect:
+		case kCapabilityStateEditMenu:
 			return nullptr;
 		case kCapabilityStateTextHidden:
 			return "the story with the interface hidden";
@@ -241,7 +250,8 @@ void SyncCapabilities(int kind, int payload = 0) {
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
-	g_DialogForcePending.store(kind == kCapabilityStateDialog,
+	g_DialogForcePending.store(kind == kCapabilityStateDialog ||
+	                               kind == kCapabilityStateEditMenu,
 	                           std::memory_order_release);
 	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
@@ -280,6 +290,15 @@ void SyncCapabilities(int kind, int payload = 0) {
 		// The force itself is left to the refresh, which waits until no action
 		// result is owed.
 		Log(("[Action] Capabilities: dialog (" + set.names() + ")\n").c_str());
+	} else if (kind == kCapabilityStateEditMenu) {
+		ActionSet set;
+		ScreenSlots::AppendEditMenuActions(set, payload);
+		NeuroSetRegisteredActions(set.data(), set.count());
+		ScreenSlots::SendEditMenuContext(payload);
+		// Like the dialog: the force itself is left to the refresh, which waits
+		// until no action result is owed. The menu is usually opened by an
+		// action of Neuro's own, so one always is at this moment.
+		Log(("[Action] Capabilities: edit menu (" + set.names() + ")\n").c_str());
 	} else if (kind == kCapabilityStateMenu ||
 	           kind == kCapabilityStateMenuBackOnly) {
 		// The settings screen carries tabs and a way back to the title; the
@@ -430,6 +449,29 @@ void SyncScreenByControls(bool stateChanged) {
 	}
 }
 
+// A tick after the set changed, not in the same breath. What raises a modal --
+// a confirmation, or the per-slot edit menu -- is usually an action of Neuro's
+// own, and the server refuses a force while that action's result is still owed;
+// deferring puts the force behind the result without having to guess at thread
+// timing.
+template <typename Send>
+void TryIssuePendingForce(Send send) {
+	if (!g_DialogForcePending.load(std::memory_order_acquire)) {
+		return;
+	}
+	if (g_ForceOutstanding.load(std::memory_order_acquire)) {
+		g_DialogForcePending.store(false, std::memory_order_release);
+		Log("[Action] Not forced: an earlier force is still unanswered\n");
+		return;
+	}
+	if (g_ActionInFlight.load(std::memory_order_acquire)) {
+		return;
+	}
+	g_DialogForcePending.store(false, std::memory_order_release);
+	g_ForceOutstanding.store(true, std::memory_order_release);
+	send();
+}
+
 void RefreshPrototypeActionState() {
 	// One probe per poll: this runs at 5 Hz against the game main thread, so
 	// extra round trips here would be pure contention for no new information.
@@ -442,26 +484,28 @@ void RefreshPrototypeActionState() {
 	// succeed, and leaving the other actions registered would invite calls that
 	// are certain to fail. Checked before the state branches for that reason.
 	ScreenSlots::Mode mode = ScreenSlots::Mode::Load;
-	bool const slotMode = ScreenSlots::ModeForScenario(screen.storage, mode);
+	bool slotMode = ScreenSlots::ModeForScenario(screen.storage, mode);
+	// The per-slot edit menu runs its own scenario, so while it is up the
+	// storage names custom.ks and the screen underneath stops being
+	// recognisable. The mode it was entered with is what still applies.
+	static ScreenSlots::Mode lastSlotMode = ScreenSlots::Mode::Load;
+	static bool lastSlotModeKnown = false;
+	if (slotMode) {
+		lastSlotMode = mode;
+		lastSlotModeKnown = true;
+	} else if (screen.editMenuReady && lastSlotModeKnown) {
+		mode = lastSlotMode;
+		slotMode = true;
+	} else if (screen.panelShowing && lastSlotModeKnown) {
+		// The panel is up but has not finished building. Rebuilding the set from
+		// this reading describes neither the screen nor the menu -- it briefly
+		// announced a settings screen -- so the previous set is held instead.
+		return;
+	}
 
 	if (screen.dialogVisible) {
 		SyncCapabilities(kCapabilityStateDialog);
-		// A tick after the set changed, not in the same breath. The dialog is
-		// usually raised by an action of Neuro's own, and the server refuses a
-		// force while that action's result is still owed; deferring puts the
-		// force behind the result without having to guess at thread timing.
-		if (g_DialogForcePending.load(std::memory_order_acquire) &&
-		    !g_ActionInFlight.load(std::memory_order_acquire) &&
-		    !g_ForceOutstanding.load(std::memory_order_acquire)) {
-			g_DialogForcePending.store(false, std::memory_order_release);
-			g_ForceOutstanding.store(true, std::memory_order_release);
-			ScreenMenu::ForceDialogAnswer();
-		} else if (g_DialogForcePending.load(std::memory_order_acquire) &&
-		           g_ForceOutstanding.load(std::memory_order_acquire)) {
-			g_DialogForcePending.store(false, std::memory_order_release);
-			Log("[Action] Dialog not forced: an earlier force is still "
-			    "unanswered\n");
-		}
+		TryIssuePendingForce([]() { ScreenMenu::ForceDialogAnswer(); });
 		return;
 	}
 
@@ -517,11 +561,18 @@ void RefreshPrototypeActionState() {
 		// the tabs move between the scenarios while the state keeps naming the
 		// first one entered.
 		int payload = 0;
-		ScreenSlots::ReadPayload(payload);
-		SyncCapabilities(mode == ScreenSlots::Mode::Load   ? kCapabilityStateLoad
-		                 : mode == ScreenSlots::Mode::Save ? kCapabilityStateSave
-		                                                   : kCapabilityStateVoice,
-		                 payload);
+		ScreenSlots::ReadPayload(screen, payload);
+		if (ScreenSlots::PayloadHasEditMenu(payload)) {
+			SyncCapabilities(kCapabilityStateEditMenu, payload);
+			TryIssuePendingForce(
+			    [payload]() { ScreenSlots::ForceEditMenuChoice(payload); });
+		} else {
+			SyncCapabilities(mode == ScreenSlots::Mode::Load ? kCapabilityStateLoad
+			                 : mode == ScreenSlots::Mode::Save
+			                     ? kCapabilityStateSave
+			                     : kCapabilityStateVoice,
+			                 payload);
+		}
 	} else if (screen.state == "cgmode") {
 		int payload = 0;
 		if (ScreenGallery::ReadPayload(payload)) {

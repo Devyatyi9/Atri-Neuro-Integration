@@ -157,6 +157,13 @@ constexpr char const *const kSlotSchema =
     "\"slot\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":10}},"
     "\"required\":[\"slot\"],"
     "\"additionalProperties\":false}";
+// The per-slot edit menu is opened by slot number, the same numbering as
+// everything else on this screen. Its four entries take nothing: which slot
+// they act on was decided when the menu was opened.
+constexpr char const *const kEditMenuSchema = kSlotSchema;
+constexpr char const *const kEditMenuItemSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kSelectChoiceSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"index\":{\"type\":\"integer\",\"minimum\":1}},"

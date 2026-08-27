@@ -55,6 +55,16 @@ struct ScreenSnapshot {
 	bool titleShowsExtra = false;
 	bool titleCanOpenExtra = false;
 	bool titleShowsTrueEnd = false;
+	// A panel layer is up over the screen. Read here rather than by a probe of
+	// its own: the per-slot edit menu runs its own scenario, so while it stands
+	// the storage names custom.ks and the screen underneath stops being
+	// recognisable.
+	bool panelShowing = false;
+	// That panel is the edit menu and has finished building. The two are kept
+	// apart because there is a window between them -- the panel exists before
+	// its entries do -- and a set rebuilt inside that window describes neither
+	// the screen nor the menu.
+	bool editMenuReady = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -136,6 +146,27 @@ bool ProbeSaveWindow(int &offset, int &page);
 // can be pressed, as the bit flags the router defines. The tab that is open has
 // no button of its own, so it is absent from both masks.
 bool ProbeSaveTabs(int &visibleMask, int &enabledMask);
+
+// The per-slot Edit button, `position` counting from 0 over the ten slots on
+// screen. These live in kag.current.buttons, a different collection from the
+// kag.current.names every other screen control comes from, and their state is
+// per slot: only slots holding a save carry a usable one.
+bool ProbeEditButtonReady(int position, char const *tag);
+bool DispatchEditButton(int position, char const *tag);
+
+// The menu that Edit opens. It is neither a dialog nor part of the screen: the
+// game runs a scenario that raises a panel layer over it, so kag.panelShowing
+// is what says it is up, and the conductor sleeps until it closes. The four
+// entries come back as bits in the order the router names them.
+//
+// Both readings are wanted, not just the usable one: the game draws an entry it
+// will not accept rather than hiding it, and "greyed out for this slot" is a
+// different thing to say than "not there at all".
+bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag);
+bool DispatchEditMenuItem(char const *item, char const *tag);
+// Closing without choosing. The game's own gesture is a click outside the
+// panel, which its mouse handler turns into exactly this call.
+bool DispatchCloseEditMenu(char const *tag);
 
 // Whether the ten slots on screen are the ten bookmarks starting at `base`,
 // checked by comparing each slot's enabled flag against whether that bookmark

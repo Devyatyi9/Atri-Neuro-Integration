@@ -108,6 +108,51 @@ wchar_t const *const kQuickMenuButtonHover =
     L"if (typeof button != 'Object' || !isvalid button) return 0;"
     L"button.%hs(); return 1; })()";
 
+// The edit buttons come from kag.current.buttons, not kag.current.names, and
+// they are clicked differently as well: they carry no linkNum, so the call that
+// works everywhere else -- controlOwner.onButtonClick(linkNum) -- reaches them
+// as a press of nothing. Their own onButtonClick, with no argument, is the one
+// that opens the menu.
+wchar_t const *const kEditButtonReady =
+    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+    L"'Object' || typeof kag.current.buttons == 'undefined') return 0;"
+    L"var button = kag.current.buttons['edit%d'];"
+    L"if (typeof button != 'Object' || !isvalid button || !button.visible || "
+    L"!button.enabled) return 0;"
+    L"if (typeof button.onButtonClick != 'Object') return 0;"
+    L"return 1; })()";
+
+wchar_t const *const kEditButtonHover =
+    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
+    L"'Object' || typeof kag.current.buttons == 'undefined') return 0;"
+    L"var button = kag.current.buttons['edit%d'];"
+    L"if (typeof button != 'Object' || !isvalid button || !button.visible) "
+    L"return 0;"
+    L"button.onMouseEnter(); return 1; })()";
+
+wchar_t const *const kEditButtonDispatch =
+    L"(function(){ var button = kag.current.buttons['edit%d'];"
+    L"button.onButtonClick(); return 1; })()";
+
+// The menu's entries live on the panel layer instead, but are pressed the same
+// way. `delete` is the entry the screen labels Erase.
+wchar_t const *const kEditMenuItemHover =
+    L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
+    L"|| !kag.panelLayer) return 0;"
+    L"var item = kag.panelLayer.names['%hs'];"
+    L"if (typeof item != 'Object' || !isvalid item || !item.visible) return 0;"
+    L"item.onMouseEnter(); return 1; })()";
+
+wchar_t const *const kEditMenuItemDispatch =
+    L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
+    L"|| !kag.panelLayer) return 0;"
+    L"var item = kag.panelLayer.names['%hs'];"
+    L"if (typeof item != 'Object' || !isvalid item || !item.visible || "
+    L"!item.enabled) return 0;"
+    L"if (typeof item.controlOwner == 'undefined' || typeof "
+    L"item.controlOwner.onButtonClick != 'Object') return 0;"
+    L"item.controlOwner.onButtonClick(item.linkNum); return 1; })()";
+
 wchar_t const *const kQuickMenuButtonDispatch =
     L"(function(){ var button = kag.QuickMenu.names['%hs'];"
     L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()";
@@ -166,7 +211,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // "void" for that -- an "undefined" test passes and the following
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
-	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0;"
+	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0, pn = 0, em = 0;"
 	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
@@ -194,6 +239,13 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"xv = 1; if (t['extra'].enabled) xe = 1; }"
 	    L"if (typeof t['tend'] == 'Object' && t['tend'].visible) ev = 1;"
 	    L"}"
+	    // A panel over the screen, and separately whether it is the per-slot edit
+	    // menu with its entries built. Other screens raise panels of their own,
+	    // so the entry test is what identifies this one.
+	    L"if (kag.panelShowing) { pn = 1;"
+	    L"if (typeof kag.panelLayer == 'Object' && kag.panelLayer) {"
+	    L"try { if (typeof kag.panelLayer.names.comment == 'Object') em = 1; }"
+	    L"catch (e) { } } }"
 	    // Which scenario the screen is running. Read from the active conductor,
 	    // not from kag.currentStorage: a menu opened during play runs on the
 	    // extra conductor, and currentStorage keeps naming the scene behind it.
@@ -201,7 +253,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
-	    L"+ '|' + sg; })()",
+	    L"+ '|' + pn + '|' + em + '|' + sg; })()",
 	    &result, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
@@ -215,12 +267,12 @@ bool ProbeScreen(ScreenSnapshot &out) {
 		return false;
 	}
 
-	// "<state>", then twelve single-digit flags each behind a bar, then the
+	// "<state>", then fourteen single-digit flags each behind a bar, then the
 	// scenario storage. Neither string contains a bar, so the flags sit at fixed
 	// offsets from the first one and the storage is whatever follows them. The
 	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	size_t const flagsEnd = separator + 24;
+	size_t const flagsEnd = separator + 28;
 	if (separator == std::string::npos || probe.size() <= flagsEnd ||
 	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
@@ -239,6 +291,8 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.titleShowsExtra = probe[separator + 19] == '1';
 	out.titleCanOpenExtra = probe[separator + 21] == '1';
 	out.titleShowsTrueEnd = probe[separator + 23] == '1';
+	out.panelShowing = probe[separator + 25] == '1';
+	out.editMenuReady = probe[separator + 27] == '1';
 	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }
@@ -467,6 +521,53 @@ bool ProbeSaveTabs(int &visibleMask, int &enabledMask) {
 	}
 	return ParseProbeInt(raw.substr(0, separator), visibleMask, "save tabs") &&
 	       ParseProbeInt(raw.substr(separator + 1), enabledMask, "save tabs");
+}
+
+bool ProbeEditButtonReady(int position, char const *tag) {
+	return AskFormatted(kEditButtonReady, tag, position);
+}
+
+bool DispatchEditButton(int position, char const *tag) {
+	// Hovering first, the way every other press on every screen does it: the
+	// button lights up and its enter handler runs before the click.
+	AskFormatted(kEditButtonHover, tag, position);
+	return AskFormatted(kEditButtonDispatch, tag, position);
+}
+
+bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != "
+	        L"'Object' || !kag.panelLayer) return '';"
+	        L"var names = ['comment', 'copy', 'move', 'delete'];"
+	        L"var v = 0, e = 0;"
+	        L"for (var i = 0; i < 4; i++) {"
+	        L"var item = kag.panelLayer.names[names[i]];"
+	        L"if (typeof item == 'Object' && isvalid item && item.visible) {"
+	        L"v = v | (1 << i); if (item.enabled) e = e | (1 << i); } }"
+	        L"return v + '|' + e; })()",
+	        raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	size_t const separator = raw.find('|');
+	if (separator == std::string::npos) {
+		return false;
+	}
+	return ParseProbeInt(raw.substr(0, separator), visibleMask, tag) &&
+	       ParseProbeInt(raw.substr(separator + 1), enabledMask, tag);
+}
+
+bool DispatchEditMenuItem(char const *item, char const *tag) {
+	AskFormatted(kEditMenuItemHover, tag, item);
+	return AskFormatted(kEditMenuItemDispatch, tag, item);
+}
+
+bool DispatchCloseEditMenu(char const *tag) {
+	return Ask(L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != "
+	           L"'Object' || !kag.panelLayer) return 0;"
+	           L"kag.panelLayer.close(); return 1; })()",
+	           tag);
 }
 
 bool ProbeSaveWindow(int &offset, int &page) {

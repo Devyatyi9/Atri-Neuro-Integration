@@ -44,6 +44,24 @@ constexpr int kSaveTabEnabledShift = 4;
 constexpr int kSavePageCountShift = 8;
 constexpr int kSavePageShift = 14;
 constexpr int kSavePageMask = 0x3f;
+// The per-slot edit menu: whether it is up, and which of its four entries can
+// be pressed. Both belong in the payload because both change what the screen
+// offers -- while the menu stands, nothing else on the screen can be used.
+constexpr int kEditMenuOpen = 1 << 20;
+constexpr int kEditItemsShift = 21;
+constexpr int kEditItemsMask = 0xf;
+// Drawn but refused is its own state here: the game greys an entry out for the
+// slot rather than leaving it off the menu, and Neuro is told which is which.
+constexpr int kEditItemsShownShift = 25;
+
+// The menu's entries, in the order of their bits. `delete` is the name the
+// panel gives the entry the screen labels Erase.
+char const *const kEditItemControls[] = {"comment", "copy", "move", "delete"};
+char const *const kEditItemActions[] = {"edit_comment", "edit_copy",
+                                        "edit_move", "edit_erase"};
+// What the entries are called on screen. Only the last differs from the control
+// name: the panel calls it `delete` and the screen labels it Erase.
+char const *const kEditItemLabels[] = {"comment", "copy", "move", "erase"};
 
 // The four tabs, in the order of their bits, which is the order they sit on
 // screen from the left.
@@ -234,6 +252,71 @@ void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
 
 // The tab name, as its index into kSaveTabNames, or -1. The value is quoted in
 // the payload, so matching the quoted form cannot collide with the key.
+void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
+	int position = 0;
+	if (!ParseSlot(id, data, "open_edit_menu", position)) {
+		return;
+	}
+	if (!ProbeEditButtonReady(position, "open_edit_menu button")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That slot has no edit menu: it is empty, or the "
+		                      "menu cannot be opened for it.");
+		return;
+	}
+	if (!DispatchEditButton(position, "open_edit_menu dispatch")) {
+		NeuroSendActionResult(id.c_str(), false, "The edit menu did not open.");
+		return;
+	}
+	// The menu is raised by a scenario jump, so it is not up the instant the
+	// press returns; where it ended up is read back rather than assumed.
+	Sleep(kPageChangeSettleMs);
+	int shown = 0;
+	int items = 0;
+	if (!ProbeEditMenuItems(shown, items, "open_edit_menu items")) {
+		NeuroSendActionResult(id.c_str(), false, "The edit menu did not open.");
+		return;
+	}
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    ("Opened the edit menu for slot " + std::to_string(position + 1) + ".")
+	        .c_str());
+}
+
+void HandleEditMenuItemAction(std::string const &id, int item) {
+	int shown = 0;
+	int items = 0;
+	if (!ProbeEditMenuItems(shown, items, "edit menu items")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The edit menu is no longer open.");
+		return;
+	}
+	if ((items & (1 << item)) == 0) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    (std::string((shown & (1 << item)) != 0
+		                     ? "That entry is greyed out for this slot: "
+		                     : "The edit menu has no such entry for this slot: ") +
+		     kEditItemLabels[item] + ".")
+		        .c_str());
+		return;
+	}
+	if (!DispatchEditMenuItem(kEditItemControls[item], "edit menu dispatch")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That entry of the edit menu did not respond.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Chose it from the edit menu.");
+}
+
+void HandleCloseEditMenuAction(std::string const &id) {
+	if (!DispatchCloseEditMenu("close_edit_menu dispatch")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The edit menu is no longer open.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Closed the edit menu.");
+}
+
 int ParseSaveTab(std::string const &data) {
 	for (int index = 0; index < 4; ++index) {
 		if (data.find(std::string("\"") + kSaveTabNames[index] + "\"") !=
@@ -380,7 +463,19 @@ void SendWindowContext(std::string const &opening,
 
 // Read every poll while a save screen is up: switching tabs is what changes the
 // bar, and it happens while the screen stays open.
-int ReadPayloadValue() {
+int ReadPayloadValue(bool editMenuOpen) {
+	// While the menu stands, the screen behind it is asleep and its own reading
+	// says nothing about what can be pressed. The menu is the whole payload.
+	if (editMenuOpen) {
+		int shown = 0;
+		int items = 0;
+		if (!ProbeEditMenuItems(shown, items, "edit menu payload")) {
+			return 0;
+		}
+		return kEditMenuOpen | ((items & kEditItemsMask) << kEditItemsShift) |
+		       ((shown & kEditItemsMask) << kEditItemsShownShift);
+	}
+
 	int visible = 0;
 	int enabled = 0;
 	if (!ProbeSaveTabs(visible, enabled)) {
@@ -473,10 +568,98 @@ bool Handle(std::string const &id,
 		HandleSwitchTabAction(id, data);
 	} else if (name == "switch_page") {
 		HandleSwitchPageAction(id, data);
+	} else if (name == "open_edit_menu") {
+		HandleOpenEditMenuAction(id, data);
+	} else if (name == "close_edit_menu") {
+		HandleCloseEditMenuAction(id);
+	} else if (name == "edit_comment") {
+		HandleEditMenuItemAction(id, 0);
+	} else if (name == "edit_copy") {
+		HandleEditMenuItemAction(id, 1);
+	} else if (name == "edit_move") {
+		HandleEditMenuItemAction(id, 2);
+	} else if (name == "edit_erase") {
+		HandleEditMenuItemAction(id, 3);
 	} else {
 		return false;
 	}
 	return true;
+}
+
+// The menu takes the screen the way a confirmation dialog does: while it
+// stands, the conductor sleeps and the controls behind it stop answering even
+// to the cursor. So it gets its own set, and the choice is forced rather than
+// merely offered.
+void AppendEditMenuActions(ActionSet &set, int payload) {
+	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
+	if ((items & 1) != 0) {
+		set.add("edit_comment",
+		        "Edit the comment kept with this save. Opens a text entry.",
+		        kEditMenuItemSchema);
+	}
+	if ((items & 2) != 0) {
+		set.add("edit_copy", "Copy this save into another slot, chosen next.",
+		        kEditMenuItemSchema);
+	}
+	if ((items & 4) != 0) {
+		set.add("edit_move", "Move this save into another slot, chosen next.",
+		        kEditMenuItemSchema);
+	}
+	if ((items & 8) != 0) {
+		set.add("edit_erase", "Erase this save. Asks for confirmation first.",
+		        kEditMenuItemSchema);
+	}
+	set.add("close_edit_menu", "Close the edit menu without choosing.",
+	        kGoBackSchema);
+}
+
+void ForceEditMenuChoice(int payload) {
+	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
+	char const *names[5] = {};
+	int count = 0;
+	for (int index = 0; index < 4; ++index) {
+		if ((items & (1 << index)) != 0) {
+			names[count++] = kEditItemActions[index];
+		}
+	}
+	names[count++] = "close_edit_menu";
+	// Ephemeral: the menu stands only until something is chosen, and closing it
+	// is always one of the choices.
+	NeuroForceAction("The edit menu for that save is open, and nothing else on "
+	                 "the screen answers while it stands.",
+	                 "Choose one of its entries, or close it.", names, count,
+	                 true);
+}
+
+void SendEditMenuContext(int payload) {
+	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
+	int const shown = (payload >> kEditItemsShownShift) & kEditItemsMask;
+	std::string offered;
+	std::string refused;
+	for (int index = 0; index < 4; ++index) {
+		int const bit = 1 << index;
+		std::string &list = (items & bit) != 0 ? offered : refused;
+		if ((items & bit) == 0 && (shown & bit) == 0) {
+			// Not on the menu at all for this slot; nothing to say about it.
+			continue;
+		}
+		if (!list.empty()) {
+			list += ", ";
+		}
+		list += kEditItemLabels[index];
+	}
+
+	std::string message = "The edit menu for that save is open.";
+	message += offered.empty() ? " None of its entries can be used for this slot."
+	                           : " Available: " + offered + ".";
+	if (!refused.empty()) {
+		// Said plainly, because the entries are on screen: without this, an
+		// entry the game draws and refuses is indistinguishable from one that
+		// was never offered.
+		message += " Also on the menu but greyed out for this slot: " + refused +
+		           ".";
+	}
+	NeuroSendContext(message.c_str(), false);
 }
 
 void AppendActions(ActionSet &set, Mode mode, int payload) {
@@ -512,9 +695,17 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	}
 	AppendSwitchTabAction(set, payload);
 	AppendSwitchPageAction(set, payload);
+	// Offered on every tab: the menu belongs to the slot, not to what the
+	// screen was opened for. Which of its entries apply is decided when it
+	// opens, so nothing about the slot is checked here.
+	set.add("open_edit_menu",
+	        "Open the edit menu of a saved slot, by its slot number on screen: "
+	        "comment, copy, move or erase.",
+	        kEditMenuSchema);
 }
 
 void SendEnteringContext(Mode mode, int payload) {
+
 	// Page 0 is the quick tab: the same screen holding the ten quick saves
 	// instead of the numbered list.
 	bool const quick = ((payload >> kSavePageShift) & kSavePageMask) == 0;
@@ -533,8 +724,12 @@ void SendEnteringContext(Mode mode, int payload) {
 	}
 }
 
-bool ReadPayload(int &payload) {
-	payload = ReadPayloadValue();
+bool PayloadHasEditMenu(int payload) {
+	return (payload & kEditMenuOpen) != 0;
+}
+
+bool ReadPayload(ScreenSnapshot const &screen, int &payload) {
+	payload = ReadPayloadValue(screen.editMenuReady);
 	return true;
 }
 

@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "ActionProbes.h"
 #include "ActionSet.h"
 
 // The save screen and its four tabs: Save, Load, Q.load and Voice. One screen
@@ -27,7 +28,18 @@ bool Handle(std::string const &id,
 void AppendActions(ActionSet &set, Mode mode, int payload);
 void SendEnteringContext(Mode mode, int payload);
 
-// The tab bar and the page buttons, read into the capability value.
-bool ReadPayload(int &payload);
+// The per-slot edit menu, which takes the screen the way a dialog does: its own
+// set, its own line, and a forced choice, because nothing else answers while it
+// stands. `payload` carries which of its entries can be used.
+void AppendEditMenuActions(ActionSet &set, int payload);
+void SendEditMenuContext(int payload);
+void ForceEditMenuChoice(int payload);
+
+// True when the payload says the edit menu is what the screen is showing.
+bool PayloadHasEditMenu(int payload);
+
+// The tab bar and the page buttons, read into the capability value -- or, while
+// the per-slot edit menu is up, that menu and its usable entries instead.
+bool ReadPayload(ScreenSnapshot const &screen, int &payload);
 
 }  // namespace ScreenSlots
