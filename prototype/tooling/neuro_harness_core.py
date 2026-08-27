@@ -185,6 +185,18 @@ class Harness:
                 "protocol_notes": notes,
             }
 
+    def action_schemas(self) -> dict[str, Any]:
+        """Schema of every currently callable action, by name.
+
+        The registry already keeps each action's whole definition; this exposes
+        the schema half so a test can derive its cases from what the game says
+        it accepts, instead of from a list that has to be kept in step by hand.
+        """
+        with self._lock:
+            return {name: (entry["action"].get("schema") or {})
+                    for name, entry in self._actions.items()
+                    if entry["active"]}
+
     def _record(self, direction: str, message: dict[str, Any]) -> None:
         with self._event_ready:
             self._events.append({

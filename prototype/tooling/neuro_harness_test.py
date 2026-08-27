@@ -16,10 +16,16 @@ then runs a fixed sequence of protocol-level checks and prints PASS/FAIL
 for each. Exits 0 if every check passes, 1 on the first failure or timeout.
 
 Scope: protocol-layer correctness only (registration shape, malformed
-payload handling, duplicate-ID suppression, reconnect) -- not game-state
-navigation (menu transitions, dialogue advance, choices), which
-neuro_harness_mcp.py already covers interactively and does not need
+payload handling, parameter typing, duplicate-ID suppression, reconnect) --
+not game-state navigation (menu transitions, dialogue advance, choices),
+which neuro_harness_mcp.py already covers interactively and does not need
 scripted assertions for.
+
+The parameter check drives whatever the game has registered at that moment,
+so it reads better on a screen with parameterised actions (a save or load
+list, the gallery) than on the title screen. It only ever sends payloads
+that must be refused; if one were wrongly accepted, the game would act on
+it, which is the point of running this against a test install.
 """
 
 import sys
@@ -74,6 +80,7 @@ def check_startup_and_register(harness: Harness) -> int:
     register_event = wait_for_event(
         harness, startup_event["sequence"],
         lambda e: e["message"].get("command") == "actions/register",
+        timeout_s=60.0,
         label="actions/register",
     )
     actions = register_event["message"]["data"]["actions"]
@@ -158,6 +165,111 @@ def check_malformed_action_data(harness: Harness, after: int) -> int:
     return result["sequence"]
 
 
+def _has_typed_parameter(harness: Harness) -> bool:
+    return any((schema or {}).get("properties")
+               for schema in harness.action_schemas().values())
+
+
+def _run_action(harness: Harness, name: str, after: int,
+                data: str = "{}") -> tuple[int, bool]:
+    """Send one well-formed action and report whether it succeeded."""
+    action_id = f"regress-nav-{uuid.uuid4().hex[:8]}"
+    harness.send({
+        "command": "action",
+        "data": {"id": action_id, "name": name, "data": data},
+    })
+    result = harness.wait_for_result(action_id, after, timeout_ms=8000)
+    return result["sequence"], bool(result["message"]["data"]["success"])
+
+
+# Values that are not a valid instance of the declared type, by what the schema
+# says the property is. They are written as raw JSON text rather than encoded
+# from Python values on purpose: some of the interesting cases -- a bare
+# fraction where an integer belongs, two signs, a literal that overflows int --
+# are exactly what a JSON encoder would refuse to produce, and they are what a
+# hand-rolled reader gets wrong.
+BAD_VALUES_BY_TYPE: dict[str, list[str]] = {
+    "integer": ["2.9", "1-2", "--3", "99999999999", '"3"', "true", "null"],
+    "number": ["1-2", '"3"', "true", "null"],
+    "boolean": ['"true"', "1", "truthy", "null"],
+    "string": ["7", "true", "null"],
+}
+
+
+def check_typed_parameters_rejected(harness: Harness, after: int) -> tuple[int, int]:
+    """A value of the wrong type must be refused, not coerced into a valid one.
+
+    This is the check that the parameter readers cannot be talked into acting on
+    something Neuro did not ask for. It matters because the failure it guards
+    against is invisible from the outside: before the readers were tightened,
+    `{"slot": 2.9}` became slot 2 and `{"page": 1-2}` became page 1 -- values
+    that pass every range check the handlers do, so the action succeeded and
+    moved the game somewhere real, just not where it was told to.
+
+    The cases come from the schemas the game itself registered, so an action
+    that gains a parameter is covered without touching this file, and an action
+    that is not on screen right now is simply not among them.
+
+    A refusal for the wrong reason still counts as a pass here -- an action can
+    reject a payload because another required property is missing -- so this
+    check proves the negative only. What keeps it honest is the registry
+    comparison at the end: if any of these payloads had been acted on, the game
+    would have moved and the callable set would have changed with it.
+    """
+    # The suite otherwise takes the game as it finds it, but a screen with no
+    # parameterised action leaves this check with nothing to prove. Opening the
+    # load list is the cheapest way to get one, and it is put back afterwards.
+    opened = False
+    if not _has_typed_parameter(harness) and "open_load" in harness.actions()["active"]:
+        after, opened = _run_action(harness, "open_load", after)
+        time.sleep(1.0)
+
+    try:
+        after, tested = _check_typed_parameters(harness, after)
+    finally:
+        if opened:
+            after, _ = _run_action(harness, "go_back", after)
+            time.sleep(1.0)
+    return after, tested
+
+
+def _check_typed_parameters(harness: Harness, after: int) -> tuple[int, int]:
+    schemas = harness.action_schemas()
+    before = harness.actions()["active"]
+    tested = 0
+
+    for name in sorted(schemas):
+        properties = (schemas[name] or {}).get("properties") or {}
+        for prop, definition in sorted(properties.items()):
+            declared = (definition or {}).get("type")
+            for literal in BAD_VALUES_BY_TYPE.get(declared, []):
+                action_id = f"regress-typed-{uuid.uuid4().hex[:8]}"
+                harness.send({
+                    "command": "action",
+                    "data": {
+                        "id": action_id,
+                        "name": name,
+                        "data": f'{{"{prop}": {literal}}}',
+                    },
+                })
+                result = harness.wait_for_result(action_id, after, timeout_ms=8000)
+                after = result["sequence"]
+                assert result["message"]["data"]["success"] is False, (
+                    f"{name} accepted {prop}={literal}, which is not "
+                    f"{declared}: {result['message']['data'].get('message')}")
+                tested += 1
+
+    assert tested, (
+        "no registered action declares a typed parameter right now, so this "
+        "check proved nothing -- run it on a screen that has one")
+
+    unchanged = harness.actions()["active"]
+    assert unchanged == before, (
+        "the callable action set moved while only malformed payloads were "
+        f"sent, so one of them was acted on: {before} -> {unchanged}")
+    return after, tested
+
+
 def check_duplicate_id_suppressed(harness: Harness, after: int) -> int:
     """Sending the same action ID twice must produce at most one action/result."""
     action_id = f"regress-dup-{uuid.uuid4().hex[:8]}"
@@ -216,6 +328,10 @@ def main() -> int:
 
         after = check_malformed_action_data(harness, after)
         print("PASS: malformed action data rejected (no hang/crash)", flush=True)
+
+        after, typed_cases = check_typed_parameters_rejected(harness, after)
+        print(f"PASS: {typed_cases} wrongly-typed parameters refused, not coerced",
+              flush=True)
 
         after = check_duplicate_id_suppressed(harness, after)
         print("PASS: duplicate action ID produced no second result", flush=True)
