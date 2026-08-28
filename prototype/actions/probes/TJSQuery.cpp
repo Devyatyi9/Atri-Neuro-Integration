@@ -10,6 +10,7 @@
 #pragma warning(pop)
 
 #include "Logging.h"
+#include "ParseNumber.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
 
@@ -30,8 +31,22 @@ bool QueryBool(wchar_t const *expr, bool &out, char const *tag) {
 		Log(("[Action] " + std::string(tag) + " probe failed\n").c_str());
 		return false;
 	}
-	// The probes answer with 0 or 1; anything else, an empty answer included, is
-	// read as false rather than guessed at.
-	out = answer == "1";
+	// An empty answer is what a probe gives when the thing it asks about is not
+	// there, and that reads as false.
+	if (answer.empty()) {
+		out = false;
+		return true;
+	}
+	// Otherwise it is a number, and any non-zero is true. Every probe today
+	// answers 0 or 1, but comparing against "1" alone would read a future 2 as
+	// false -- quietly, which is the one outcome worth ruling out.
+	int value = 0;
+	if (!ParseWholeInt(answer, value)) {
+		Log(("[Action] " + std::string(tag) + " expected 0 or 1, got '" + answer +
+		     "'\n")
+		        .c_str());
+		return false;
+	}
+	out = value != 0;
 	return true;
 }
