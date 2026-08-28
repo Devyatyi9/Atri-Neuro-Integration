@@ -279,6 +279,22 @@ bool ProbeGallery(int &page,
                   int &scrollMask,
                   bool &viewOpen,
                   int &variantsLeft);
+// The open picture's scrolling. Only the first record opens at full size, and
+// only on its second view: the picture is larger than the frame and the player
+// moves it with the wheel, the arrow keys or by dragging. `canScroll` carries
+// the axes the game will actually move -- bit 0 horizontal, bit 1 vertical --
+// and comes back 0 for every view that fits, which is most of them.
+bool ProbeCgScroll(int &canScroll,
+                   int &left,
+                   int &maxLeft,
+                   int &top,
+                   int &maxTop,
+                   char const *tag);
+// Moves it by whole steps, the way the arrow keys do: the game multiplies each
+// by its own step and clamps to the edges, so a step past the end simply stops
+// there.
+bool DispatchCgScroll(int horizontal, int vertical, char const *tag);
+
 // Presses a track in the music list. The picture squares go through the
 // screen's own button dispatch instead: Current.cmd does nothing for them.
 bool DispatchGalleryItem(char const *verb, int index, char const *tag);

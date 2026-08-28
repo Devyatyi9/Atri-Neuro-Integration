@@ -30,6 +30,11 @@ constexpr int kSquareShift = 6;
 constexpr int kSquareMask = 0xf;
 constexpr int kPageShift = 11;
 constexpr int kPageMask = 0x1f;
+// Which axes the open picture will move along -- bit 0 horizontal, bit 1
+// vertical. Zero for every view that fits the frame, which is nearly all of
+// them: only the first record's second view is larger than the window.
+constexpr int kCanScrollShift = 22;
+constexpr int kCanScrollMask = 0x3;
 constexpr int kTrackShift = 16;
 constexpr int kTrackMask = 0x3f;
 
@@ -108,6 +113,69 @@ void HandleNextCgViewAction(std::string const &id, std::string const &data) {
 	}
 	NeuroSendActionResult(id.c_str(), true,
 	                      "Moved to the next view of that picture.");
+}
+
+void HandleScrollCgAction(std::string const &id, std::string const &data) {
+	int horizontal = 0;
+	int vertical = 0;
+	bool const hasH = ParseJsonInteger(data, "\"horizontal\"", horizontal);
+	bool const hasV = ParseJsonInteger(data, "\"vertical\"", vertical);
+	if (!hasH && !hasV) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "scroll_cg needs \"horizontal\" or \"vertical\", in steps.");
+		return;
+	}
+	if (horizontal == 0 && vertical == 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That would not move the picture anywhere.");
+		return;
+	}
+
+	int axes = 0, left = 0, maxLeft = 0, top = 0, maxTop = 0;
+	if (!ProbeCgScroll(axes, left, maxLeft, top, maxTop, "scroll_cg before") ||
+	    axes == 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "This picture fits the frame; there is nothing to "
+		                      "move.");
+		return;
+	}
+	if (horizontal != 0 && (axes & 1) == 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "This picture does not move sideways.");
+		return;
+	}
+	if (vertical != 0 && (axes & 2) == 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "This picture does not move up or down.");
+		return;
+	}
+
+	if (!DispatchCgScroll(horizontal, vertical, "scroll_cg")) {
+		NeuroSendActionResult(id.c_str(), false, "The picture did not move.");
+		return;
+	}
+
+	// Read back rather than assume: the game stops at the edges, so asking for
+	// ten steps near the border moves fewer, and the answer should say where the
+	// picture actually ended up.
+	int after = 0, newLeft = left, newTop = top;
+	if (!ProbeCgScroll(after, newLeft, maxLeft, newTop, maxTop,
+	                   "scroll_cg after")) {
+		NeuroSendActionResult(id.c_str(), true, "Moved the picture.");
+		return;
+	}
+	if (newLeft == left && newTop == top) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The picture is already at that edge.");
+		return;
+	}
+	std::string message = "Moved the picture. It now sits " +
+	                      std::to_string(newLeft) + " of " +
+	                      std::to_string(maxLeft) + " across and " +
+	                      std::to_string(newTop) + " of " +
+	                      std::to_string(maxTop) + " down.";
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
 void HandleCloseCgAction(std::string const &id, std::string const &data) {
@@ -189,6 +257,8 @@ bool Handle(std::string const &id,
 		HandleViewCgAction(id, data);
 	} else if (name == "next_cg_view") {
 		HandleNextCgViewAction(id, data);
+	} else if (name == "scroll_cg") {
+		HandleScrollCgAction(id, data);
 	} else if (name == "close_cg") {
 		HandleCloseCgAction(id, data);
 	} else if (name == "gallery_page") {
@@ -220,6 +290,21 @@ void AppendActions(ActionSet &set, int payload) {
 		if ((payload & kMoreViewsFlag) != 0) {
 			set.add("next_cg_view", "Show the next view of the open picture.",
 			        kGalleryViewSchema);
+		}
+		int const axes = (payload >> kCanScrollShift) & kCanScrollMask;
+		if (axes != 0) {
+			// Only this view is bigger than the frame, so this is the only place
+			// the picture can be moved at all.
+			set.add("scroll_cg",
+			        axes == 3 ? "Move the picture inside the frame: horizontal is "
+			                    "positive to the right, vertical positive down, "
+			                    "each in steps."
+			        : axes == 1
+			            ? "Move the picture left or right inside the frame, in "
+			              "steps; positive is to the right."
+			            : "Move the picture up or down inside the frame, in "
+			              "steps; positive is down.",
+			        kScrollCgSchema);
 		}
 		return;
 	}
@@ -264,9 +349,19 @@ bool ReadPayload(int &payload) {
 	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
 		return false;
 	}
+	// Asked only while a picture is up: with the grid on screen there is no
+	// layer to ask about, and this runs several times a second.
+	int canScroll = 0;
+	if (open) {
+		int left = 0, maxLeft = 0, top = 0, maxTop = 0;
+		if (!ProbeCgScroll(canScroll, left, maxLeft, top, maxTop, "cg scroll")) {
+			canScroll = 0;
+		}
+	}
 	payload = scroll | (open ? kViewOpenFlag : 0) |
 	          (variants > 0 ? kMoreViewsFlag : 0) | (squares << kSquareShift) |
-	          (pages << kPageShift) | (tracks << kTrackShift);
+	          (pages << kPageShift) | (tracks << kTrackShift) |
+	          ((canScroll & kCanScrollMask) << kCanScrollShift);
 	return true;
 }
 

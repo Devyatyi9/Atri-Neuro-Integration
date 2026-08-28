@@ -75,6 +75,17 @@ constexpr char const *const kReadBacklogSchema =
 constexpr char const *const kGalleryViewSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+// Moving the open picture, in whole steps of the game's own size. Both axes are
+// optional: a move along one is as ordinary as a move along both. The bound is
+// ours and generous -- the game clamps at the edges anyway, so a step too far
+// simply stops there.
+constexpr char const *const kScrollCgSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"horizontal\":{\"type\":\"integer\","
+    "\"minimum\":-64,\"maximum\":64},"
+    "\"vertical\":{\"type\":\"integer\","
+    "\"minimum\":-64,\"maximum\":64}},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kMusicScrollSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

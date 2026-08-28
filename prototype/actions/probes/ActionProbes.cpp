@@ -1069,6 +1069,62 @@ bool ProbeGallery(int &page,
 	return true;
 }
 
+bool ProbeCgScroll(int &canScroll,
+                   int &left,
+                   int &maxLeft,
+                   int &top,
+                   int &maxTop,
+                   char const *tag) {
+	std::string raw;
+	if (!QueryString(
+	        L"(function(){ var g = global.__cm_gallery;"
+	        L"if (typeof g != 'Object' || !g) return '';"
+	        L"var l = g.cglayer;"
+	        L"if (typeof l != 'Object' || !isvalid l) return '';"
+	        L"try { return l.canScroll + '|' + l.scrollLeft + '|' + l.scrollMaxLeft"
+	        L" + '|' + l.scrollTop + '|' + l.scrollMaxTop; }"
+	        L"catch (e) { return ''; } })()",
+	        raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+
+	int values[5] = {0, 0, 0, 0, 0};
+	size_t cursor = 0;
+	for (int field = 0; field < 5; ++field) {
+		size_t const bar = raw.find('|', cursor);
+		std::string const piece =
+		    bar == std::string::npos ? raw.substr(cursor) : raw.substr(cursor, bar - cursor);
+		if (!ParseProbeInt(piece, values[field], tag)) {
+			return false;
+		}
+		if (bar == std::string::npos) {
+			if (field != 4) {
+				return false;
+			}
+			break;
+		}
+		cursor = bar + 1;
+	}
+	canScroll = values[0];
+	left = values[1];
+	maxLeft = values[2];
+	top = values[3];
+	maxTop = values[4];
+	return true;
+}
+
+bool DispatchCgScroll(int horizontal, int vertical, char const *tag) {
+	return AskFormatted(
+	    L"(function(){ var g = global.__cm_gallery;"
+	    L"if (typeof g != 'Object' || !g) return 0;"
+	    L"var l = g.cglayer;"
+	    L"if (typeof l != 'Object' || !isvalid l) return 0;"
+	    L"if (typeof l.scrollByKey != 'Object') return 0;"
+	    L"l.scrollByKey(%d, %d); return 1; })()",
+	    tag, horizontal, vertical);
+}
+
 bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof Current != 'Object') return 0;"
