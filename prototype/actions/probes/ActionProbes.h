@@ -323,6 +323,12 @@ bool DispatchMusicScroll(int position, char const *tag);
 // exist as text nowhere in the data.
 bool ProbeMusicList(std::string &rows, char const *tag);
 
+// Which track the player is on: its sound file name and the title the game
+// keeps for it. Empty when nothing is playing.
+bool ProbeMusicPlaying(std::string &storage,
+                       std::string &title,
+                       char const *tag);
+
 // Presses a track in the music list. The picture squares go through the
 // screen's own button dispatch instead: Current.cmd does nothing for them.
 bool DispatchGalleryItem(char const *verb, int index, char const *tag);

@@ -153,6 +153,58 @@ void HandleMusicVolumeAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
+// What the buttons in the music list say. The game stores only the Japanese
+// titles, and the English on screen is baked into the interface pictures, so
+// the two are joined here by sound file name -- the one handle both sides
+// share.
+//
+// Only the twenty numbered tracks are here. The four at the end of the list
+// -- the opening and ending themes -- are drawn from the stored titles
+// themselves, in Japanese, so those fall through to the fallback and match
+// the screen that way.
+//
+// Where the two disagree the screen wins: BGM11 is Working on the album and
+// in the game's own data, and Get Working! on the button.
+struct TrackName {
+	char const *storage;
+	char const *english;
+};
+constexpr TrackName kTrackNames[] = {
+    {"BGM01", "The Sunken City"},
+    {"BGM02", "Hope's Light"},
+    {"BGM03", "Tranquil Moments"},
+    {"BGM04", "Vertigo"},
+    {"BGM05", "The Face I See When I Close My Eyes"},
+    {"BGM06", "The Happy Little Killer Robot"},
+    {"BGM07", "Good Morning, Sunshine"},
+    {"BGM08", "The Brink Of Death"},
+    {"BGM09", "Walking In The Twilight"},
+    {"BGM10", "A Soothing Breeze"},
+    {"BGM11", "Get Working!"},
+    {"BGM12", "Halation"},
+    {"BGM13", "Dumb Heap Of Scrap!"},
+    {"BGM14", "The Children Play"},
+    {"BGM15", "A Lull In The Sea"},
+    {"BGM16", "Weigh Anchor!"},
+    {"BGM17", "Shadowy Footsteps"},
+    {"BGM18", "Sunshine On Deck"},
+    {"BGM19", "When I See The Sparkle Of Your Tears"},
+    {"BGM20", "Days Of Love"},
+};
+
+// Falls back to whatever the game itself calls the track, so a save that
+// unlocks something this table has never seen is still described -- in
+// Japanese -- rather than left as a bare file name.
+std::string TrackTitle(std::string const &storage,
+                       std::string const &fallback) {
+	for (TrackName const &name : kTrackNames) {
+		if (storage == name.storage) {
+			return name.english;
+		}
+	}
+	return fallback;
+}
+
 // Turns the probe's rows into the sentence Neuro reads. The list is worth
 // spelling out because only part of it is on screen at a time, and because the
 // words on the buttons are pictures: nothing about them can be read back.
@@ -188,16 +240,15 @@ std::string DescribeMusicList() {
 		if (third == std::string::npos) {
 			continue;
 		}
+		std::string const storage = line.substr(first + 1, second - first - 1);
 		text += "\n" + line.substr(0, first) + ". " +
-		        line.substr(first + 1, second - first - 1) + " " +
-		        line.substr(second + 1, third - second - 1);
+		        TrackTitle(storage, line.substr(second + 1, third - second - 1)) +
+		        " (" + storage + ")";
 		if (line.compare(third + 1, std::string::npos, "1") == 0) {
 			text += " (playing)";
 		}
 	}
-	text +=
-	    "\nThose numbers are what play_music takes. The titles are the game's "
-	    "own Japanese ones; the buttons show them in English.";
+	text += "\nThose numbers are what switch_track takes.";
 	return text;
 }
 
@@ -360,14 +411,14 @@ void HandleGalleryPageAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Switched the gallery page.");
 }
 
-void HandlePlayMusicAction(std::string const &id, std::string const &data) {
+void HandleSwitchTrackAction(std::string const &id, std::string const &data) {
 	int number = -1;
 	if (!ParseJsonInteger(data, "\"track\"", number) || number < 1) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "play_music requires a \"track\" of 1 or more.");
+		                      "switch_track requires a \"track\" of 1 or more.");
 		return;
 	}
-	if (!ProbeStateIs("cgmode", "play_music state")) {
+	if (!ProbeStateIs("cgmode", "switch_track state")) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "That only works on the Extra screen.");
 		return;
@@ -379,12 +430,23 @@ void HandlePlayMusicAction(std::string const &id, std::string const &data) {
 		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
 		return;
 	}
-	HoverGalleryItem("sitem", number - 1, "play_music hover");
-	if (!DispatchGalleryItem("mselect", number - 1, "play_music dispatch")) {
+	HoverGalleryItem("sitem", number - 1, "switch_track hover");
+	if (!DispatchGalleryItem("mselect", number - 1, "switch_track dispatch")) {
 		NeuroSendActionResult(id.c_str(), false, "That track did not respond.");
 		return;
 	}
-	NeuroSendActionResult(id.c_str(), true, "Playing that track.");
+	// Read back which track the player landed on rather than trusting the
+	// press: the answer names it, and naming the wrong one would be worse
+	// than naming none.
+	std::string storage;
+	std::string title;
+	if (!ProbeMusicPlaying(storage, title, "switch_track playing")) {
+		NeuroSendActionResult(id.c_str(), true, "Switched to that track.");
+		return;
+	}
+	std::string const message =
+	    "Now playing " + TrackTitle(storage, title) + " (" + storage + ").";
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
 }  // namespace
@@ -408,8 +470,8 @@ bool Handle(std::string const &id,
 		HandleCloseCgAction(id, data);
 	} else if (name == "gallery_page") {
 		HandleGalleryPageAction(id, data);
-	} else if (name == "play_music") {
-		HandlePlayMusicAction(id, data);
+	} else if (name == "switch_track") {
+		HandleSwitchTrackAction(id, data);
 	} else {
 		for (int index = 0; index < 4; ++index) {
 			if (name != kScrollNames[index]) {
@@ -496,9 +558,13 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	int const tracks = (payload >> kTrackShift) & kTrackMask;
 	if (tracks > 0) {
-		set.add("play_music",
-		        set.keep("Play one of the " + std::to_string(tracks) +
-		                 " tracks in the music list beside the grid."),
+		// Not "play": the player is never silent, so the only thing a number
+		// here can do is move it off whatever is already going.
+		set.add("switch_track",
+		        set.keep("Switch the music player to one of the " +
+		                 std::to_string(tracks) +
+		                 " tracks the list beside the grid is showing. "
+		                 "Something is always playing; this changes which."),
 		        set.keep(BoundedIntSchema("track", tracks)));
 	}
 	int const scrollMask = payload & kScrollMask;

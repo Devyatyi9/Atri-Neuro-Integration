@@ -1195,6 +1195,31 @@ bool ProbeMusicList(std::string &rows, char const *tag) {
 	    rows, tag);
 }
 
+bool ProbeMusicPlaying(std::string &storage,
+                       std::string &title,
+                       char const *tag) {
+	std::string raw;
+	if (!QueryString(L"(function(){ try { var s = global.SoundModeInstance;"
+	                 L"if (typeof s != 'Object' || !isvalid s) return '';"
+	                 L"var p = s.playing;"
+	                 L"if (p === void || p == '') return '';"
+	                 L"var i = s.findStorageNumber(p);"
+	                 L"var t = i >= 0 ? s.getTitle(i) : void;"
+	                 L"return '' + p + '|' + (t === void ? '' : t);"
+	                 L"} catch (e) { return ''; } })()",
+	                 raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	std::string::size_type const bar = raw.find('|');
+	if (bar == std::string::npos) {
+		return false;
+	}
+	storage = raw.substr(0, bar);
+	title = raw.substr(bar + 1);
+	return !storage.empty();
+}
+
 bool ProbeMusicScroll(int &position, int &limit, char const *tag) {
 	std::string raw;
 	if (!QueryString(L"(function(){ try { var s = global.SoundModeInstance;"
