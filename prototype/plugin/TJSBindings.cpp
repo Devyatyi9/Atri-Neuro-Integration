@@ -883,25 +883,26 @@ static bool g_ExitHookInstalled = false;
 void RetryInstallExitHookIfReady() {
 	if (g_ExitHookInstalled)
 		return;
-	tTJSVariant ready;
+	std::string ready;
 	bool const executed = ExecuteTJSSync(
 	    L"(function(){ return typeof MyYesNoDialogLayer == 'Object' && "
 	    L"typeof MyYesNoDialog != 'undefined'; })()",
 	    &ready, 5000, TJSExecMode::Expression);
 	{
 		char msg[128];
-		_snprintf_s(msg, sizeof(msg), "[ExitHook] retry executed=%d ready=%lld\n",
-		            executed ? 1 : 0, (long long)(tTVInteger)ready);
+		_snprintf_s(msg, sizeof(msg), "[ExitHook] retry executed=%d ready=%s\n",
+		            executed ? 1 : 0, ready.c_str());
 		Log(msg);
 	}
-	if (!executed || !(tTVInteger)ready)
+	// The probe answers with the engine's own rendering of true, which is "1".
+	if (!executed || ready != "1")
 		return;
 	Log("[ExitHook] installing hook\n");
 	// Use the synchronous form and confirm the assignment actually landed
 	// before flipping g_ExitHookInstalled. Sync execution waits for the game
 	// thread to complete the call and returns the result, ensuring the hook
 	// is live before the flag is set.
-	tTJSVariant installed;
+	std::string installed;
 	bool const installExecuted = ExecuteTJSSync(
 	    L"(function(){ "
 	    L"MyYesNoDialogLayer.onItemClick = function(itemName) { "
@@ -914,7 +915,7 @@ void RetryInstallExitHookIfReady() {
 	    L"return typeof MyYesNoDialogLayer.onItemClick == 'Object'; "
 	    L"})()",
 	    &installed, 5000, TJSExecMode::Expression);
-	if (!installExecuted || !(tTVInteger)installed) {
+	if (!installExecuted || installed != "1") {
 		Log("[ExitHook] installation failed or unconfirmed, will retry\n");
 		return;
 	}

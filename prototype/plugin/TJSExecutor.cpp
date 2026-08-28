@@ -31,7 +31,13 @@ static DWORD g_TJSContinuousHookThreadId = 0;
 
 struct TJSSyncCallData {
 	std::wstring code;
-	tTJSVariant result;
+	// The answer as plain text, converted on the game's main thread before the
+	// waiting thread is woken. Not a tTJSVariant: that would be an engine object
+	// constructed on one thread, filled on another and destroyed back on the
+	// first, and those are reference-counted over a string pool shared with the
+	// engine and locked by nothing.
+	std::string resultUtf8;
+	std::string resultType;
 	HANDLE completedEvent;
 	std::atomic<bool> cancelled;
 	bool executed;
@@ -286,6 +292,33 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 	}
 }
 
+// Engine variant to plain UTF-8. Must run on the game's main thread: building a
+// ttstr from a variant touches the engine's string pool.
+static char const *VariantTypeName(tTJSVariant const &value) {
+	switch (value.Type()) {
+		case tvtVoid: return "Void";
+		case tvtObject: return "Object";
+		case tvtString: return "String";
+		case tvtInteger: return "Integer";
+		case tvtReal: return "Real";
+		case tvtOctet: return "Octet";
+		default: return "Unknown";
+	}
+}
+
+static void VariantToUtf8(tTJSVariant const &value, std::string &out) {
+	out.clear();
+	try {
+		ttstr const text(value);
+		if (text.GetLen() > 0) {
+			Utf16ToUtf8(text.c_str(), text.GetLen(), out);
+		}
+	} catch (...) {
+		// A variant that will not become a string is an empty answer, not a
+		// failure of the call: the caller already knows whether it executed.
+	}
+}
+
 static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 	if (!data) {
 		return;
@@ -294,7 +327,12 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 	try {
 		if (!data->cancelled.load(std::memory_order_acquire) &&
 		    !data->code.empty() && g_TJSReady.load(std::memory_order_acquire)) {
-			RunThroughEngine(data->code, &data->result, data->useScriptApi);
+			// The variant and the string built from it live and die inside this
+			// scope, on this thread, which is the game's own.
+			tTJSVariant result;
+			RunThroughEngine(data->code, &result, data->useScriptApi);
+			VariantToUtf8(result, data->resultUtf8);
+			data->resultType = VariantTypeName(result);
 			data->executed = true;
 		}
 	} catch (...) {
@@ -564,9 +602,10 @@ static std::wstring WrapTJSProbe(std::wstring const &code, bool useScriptApi) {
 }
 
 bool ExecuteTJSSync(wchar_t const *code,
-                    tTJSVariant *result,
+                    std::string *result,
                     DWORD timeoutMs,
-                    TJSExecMode mode) {
+                    TJSExecMode mode,
+                    std::string *typeName) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code)
 		return false;
 
@@ -588,7 +627,14 @@ bool ExecuteTJSSync(wchar_t const *code,
 		}
 		if (g_TJSReady.load()) {
 			try {
-				RunThroughEngine(wrappedCode, result, useScriptApi);
+				tTJSVariant value;
+				RunThroughEngine(wrappedCode, &value, useScriptApi);
+				if (result) {
+					VariantToUtf8(value, *result);
+				}
+				if (typeName) {
+					*typeName = VariantTypeName(value);
+				}
 				return true;
 			} catch (...) {
 				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
@@ -642,7 +688,10 @@ bool ExecuteTJSSync(wchar_t const *code,
 	bool completed = waitResult == WAIT_OBJECT_0;
 	bool executed = completed && data->executed;
 	if (executed && result) {
-		*result = data->result;
+		*result = data->resultUtf8;
+	}
+	if (executed && typeName) {
+		*typeName = data->resultType;
 	}
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);

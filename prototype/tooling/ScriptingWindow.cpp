@@ -20,6 +20,7 @@
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
 #include "TJSExecutor.h"
+#include "UtfConversion.h"
 
 // Global variables.
 std::atomic<ScriptingWindow *> g_ScriptingWindow{nullptr};
@@ -199,47 +200,27 @@ void ScriptingWindow::ExecuteScript() {
 	// This window is for multi-line scripts, so ask for the script entry point
 	// (TVPExecuteScript) explicitly instead of letting Auto guess: statements
 	// then run natively and a top-level `return` still yields a value.
-	tTJSVariant result;
-	if (ExecuteTJSSync(script.c_str(), &result, 5000, TJSExecMode::Script)) {
-		// Check for an exception.
-		if (result.Type() == tvtString) {
-			std::wstring strVal = result.GetString();
-			if (strVal.find(L"!!!TJS_EXCEPTION!!!") == 0) {
-				std::wstring errMsg = strVal.substr(20);
-				AppendResult((L"TJS Error: " + errMsg + L"\n").c_str(),
-				             RGB(255, 50, 50));
-				return;
-			}
-		}
-
-		// Determine the result type.
-		std::wstring typeStr = L"Unknown";
-		switch (result.Type()) {
-			case tvtVoid:
-				typeStr = L"Void";
-				break;
-			case tvtObject:
-				typeStr = L"Object";
-				break;
-			case tvtString:
-				typeStr = L"String";
-				break;
-			case tvtInteger:
-				typeStr = L"Integer";
-				break;
-			case tvtReal:
-				typeStr = L"Real";
-				break;
-			case tvtOctet:
-				typeStr = L"Octet";
-				break;
-		}
-
+	// Text and type, both read on the game's main thread inside the call: this
+	// runs on the scripting window's own thread.
+	std::string result;
+	std::string typeName;
+	if (ExecuteTJSSync(script.c_str(), &result, 5000, TJSExecMode::Script,
+	                   &typeName)) {
 		std::wstring valStr;
-		if (result.Type() == tvtVoid) {
+		if (!Utf8ToUtf16(result.c_str(), result.size(), valStr)) {
+			valStr = L"<result could not be converted>";
+		}
+		if (valStr.find(L"!!!TJS_EXCEPTION!!!") == 0) {
+			AppendResult((L"TJS Error: " + valStr.substr(20) + L"\n").c_str(),
+			             RGB(255, 50, 50));
+			return;
+		}
+		std::wstring typeStr;
+		if (!Utf8ToUtf16(typeName.c_str(), typeName.size(), typeStr)) {
+			typeStr = L"Unknown";
+		}
+		if (typeStr == L"Void") {
 			valStr = L"void";
-		} else {
-			valStr = ttstr(result).c_str();
 		}
 
 		std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";

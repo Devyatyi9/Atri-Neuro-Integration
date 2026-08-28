@@ -39,7 +39,7 @@ static void ContextMonitorThread() {
 			break;
 
 		ULONGLONG const iterationStarted = GetTickCount64();
-		tTJSVariant result;
+		std::string result;
 		// Run the external TJS script.
 		// neuroExecFile returns the result of the final expression.
 		// silent=true: do not log to plugin_log.txt.
@@ -75,14 +75,12 @@ static void ContextMonitorThread() {
 		if (!ok)
 			continue;
 
-		ttstr resultStr(result);
-		if (resultStr.IsEmpty())
+		if (result.empty())
 			continue;
 
 		// Write changes to neuro_tag_log.txt.
-		std::string utf8Result;
-		if (Utf16ToUtf8(resultStr.c_str(), resultStr.GetLen(), utf8Result) &&
-		    !utf8Result.empty()) {
+		std::string const &utf8Result = result;
+		{
 			LogTagFile(utf8Result.c_str());
 
 			// Everything above stays research output; only the curated semantic

@@ -24,6 +24,7 @@
 #include "NeuroConsole.h"
 #include "ScriptingWindow.h"
 #include "ThreadGuard.h"
+#include "UtfConversion.h"
 
 // Flag for enabling or disabling debug output.
 static std::atomic<bool> g_DebugOutputEnabled(true);
@@ -367,52 +368,28 @@ class NeuroConsole {
 		TJSExecMode const mode =
 		    scriptModeChecked ? TJSExecMode::Script : TJSExecMode::Expression;
 
-		tTJSVariant result;
-		// Call the synchronous function from dllmain.
-		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode)) {
-			// 1. Check for an exception from our !!!TJS_EXCEPTION!!! wrapper.
-			if (result.Type() == tvtString) {
-				// Use .GetString() to access the internal string.
-				std::wstring strVal = result.GetString();
-				if (strVal.find(L"!!!TJS_EXCEPTION!!!") == 0) {
-					std::wstring errMsg = strVal.substr(20);
-					AppendOutput((L"TJS Error: " + errMsg + L"\n").c_str(),
-					             RGB(255, 50, 50));
-					return;
-				}
-			}
-
-			// 2. Determine the type for output.
-			std::wstring typeStr = L"Unknown";
-			switch (result.Type()) {
-				case tvtVoid:
-					typeStr = L"Void";
-					break;
-				case tvtObject:
-					typeStr = L"Object";
-					break;
-				case tvtString:
-					typeStr = L"String";
-					break;
-				case tvtInteger:
-					typeStr = L"Integer";
-					break;
-				case tvtReal:
-					typeStr = L"Real";
-					break;
-				case tvtOctet:
-					typeStr = L"Octet";
-					break;
-			}
-
-			// 3. Safely convert the result to a string.
-			// Explicitly cast to ttstr, then call c_str().
+		// Text and type, both read on the game's main thread inside the call:
+		// this runs on the console's own thread, and an engine value must not
+		// come back here.
+		std::string result;
+		std::string typeName;
+		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode, &typeName)) {
 			std::wstring valStr;
-			if (result.Type() == tvtVoid) {
+			if (!Utf8ToUtf16(result.c_str(), result.size(), valStr)) {
+				valStr = L"<result could not be converted>";
+			}
+			// The wrapper marks a thrown exception in the text itself.
+			if (valStr.find(L"!!!TJS_EXCEPTION!!!") == 0) {
+				AppendOutput((L"TJS Error: " + valStr.substr(20) + L"\n").c_str(),
+				             RGB(255, 50, 50));
+				return;
+			}
+			std::wstring typeStr;
+			if (!Utf8ToUtf16(typeName.c_str(), typeName.size(), typeStr)) {
+				typeStr = L"Unknown";
+			}
+			if (typeStr == L"Void") {
 				valStr = L"void";
-			} else {
-				// Most reliable conversion method in the KiriKiri SDK.
-				valStr = ttstr(result).c_str();
 			}
 
 			std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";

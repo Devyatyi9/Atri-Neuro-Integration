@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <windows.h>
 
 class tTJSVariant;
@@ -33,7 +35,15 @@ bool IsMainThread();
 enum class TJSExecMode { Auto, Expression, Script };
 
 void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode = TJSExecMode::Auto);
+// The answer comes back as UTF-8 text, converted on the game's main thread.
+// Deliberately not a tTJSVariant: engine objects are reference-counted over a
+// string pool shared with the engine and locked by nothing, so constructing,
+// copying or destroying one off the main thread races it. What crosses a thread
+// boundary here is plain data.
+// `typeName` is optional and receives what TJS calls the result -- "String",
+// "Integer", "Object" and so on -- read on the main thread with the value.
 bool ExecuteTJSSync(wchar_t const *code,
-                    tTJSVariant *result,
+                    std::string *result,
                     DWORD timeoutMs = 5000,
-                    TJSExecMode mode = TJSExecMode::Auto);
+                    TJSExecMode mode = TJSExecMode::Auto,
+                    std::string *typeName = nullptr);

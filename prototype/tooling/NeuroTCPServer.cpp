@@ -153,20 +153,15 @@ static void HandleClient(SOCKET clientSock,
 			continue;
 		}
 
-		// Execute TJS code synchronously, with a 10-second timeout.
-		tTJSVariant tjsResult;
-		bool ok = ExecuteTJSSync(wideCode.c_str(), &tjsResult, 10000);
-
+		// Execute TJS code synchronously, with a 10-second timeout. The answer
+		// arrives as text: this is a client thread, and an engine value must not
+		// be built or destroyed here.
 		std::string response;
-		if (ok) {
-			ttstr resultStr(tjsResult);
-			if (!Utf16ToUtf8(resultStr.c_str(), resultStr.GetLen(), response)) {
-				response = "error: invalid UTF-16 result";
-			} else if (response.empty()) {
-				response = "(empty)";
-			}
-		} else {
+		bool const ok = ExecuteTJSSync(wideCode.c_str(), &response, 10000);
+		if (!ok) {
 			response = "error: execution timeout or failed";
+		} else if (response.empty()) {
+			response = "(empty)";
 		}
 
 		bool const scheduleExitAfterResponse =

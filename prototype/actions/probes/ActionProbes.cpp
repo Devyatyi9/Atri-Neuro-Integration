@@ -212,7 +212,7 @@ bool ProbeStateIsMenuScreen(char const *tag) {
 }
 
 bool ProbeScreen(ScreenSnapshot &out) {
-	tTJSVariant result;
+	std::string probe;
 	bool const executed = ExecuteTJSSync(
 	    L"(function(){ var s = typeof SystemHook != 'undefined' ? "
 	    L"SystemHook.currentState : '';"
@@ -264,16 +264,9 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
 	    L"+ '|' + pn + '|' + em + '|' + sg; })()",
-	    &result, 5000, TJSExecMode::Expression);
+	    &probe, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
-		return false;
-	}
-
-	ttstr value(result);
-	std::string probe;
-	if (!Utf16ToUtf8(value.c_str(), value.GetLen(), probe)) {
-		Log("[Action] Refresh state conversion failed\n");
 		return false;
 	}
 

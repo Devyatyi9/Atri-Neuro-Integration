@@ -87,20 +87,20 @@ static void DeferredTJSInitThread() {
 
 		Log("Testing registered functions from C++...\n");
 
-		tTJSVariant result;
+		std::string result;
 		char buf[256];
 
 		if (ExecuteTJSSync(L"neuroGetVersion()", &result, 5000)) {
-			sprintf_s(buf, "  neuroGetVersion() returned: %d\n",
-			          (int)(tTVInteger)result);
+			sprintf_s(buf, "  neuroGetVersion() returned: %s\n",
+			          result.c_str());
 			Log(buf);
 		} else {
 			Log("  ERROR: neuroGetVersion() timed out\n");
 		}
 
 		if (ExecuteTJSSync(L"neuroIsTJSReady()", &result, 5000)) {
-			sprintf_s(buf, "  neuroIsTJSReady() returned: %d\n",
-			          (int)(tTVInteger)result);
+			sprintf_s(buf, "  neuroIsTJSReady() returned: %s\n",
+			          result.c_str());
 			Log(buf);
 		} else {
 			Log("  ERROR: neuroIsTJSReady() timed out\n");
