@@ -79,6 +79,13 @@ constexpr char const *const kGalleryViewSchema =
 // optional: a move along one is as ordinary as a move along both. The bound is
 // ours and generous -- the game clamps at the edges anyway, so a step too far
 // simply stops there.
+// The music player's volume, as the slider reads it.
+constexpr char const *const kMusicVolumeSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"volume\":{\"type\":\"integer\","
+    "\"minimum\":0,\"maximum\":100}},"
+    "\"required\":[\"volume\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kScrollCgSchema =
     "{\"type\":\"object\",\"properties\":{"
     "\"horizontal\":{\"type\":\"integer\","

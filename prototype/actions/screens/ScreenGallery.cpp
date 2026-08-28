@@ -115,6 +115,41 @@ void HandleNextCgViewAction(std::string const &id, std::string const &data) {
 	                      "Moved to the next view of that picture.");
 }
 
+void HandleMusicVolumeAction(std::string const &id, std::string const &data) {
+	int wanted = 0;
+	if (!ParseJsonInteger(data, "\"volume\"", wanted) || wanted < 0 ||
+	    wanted > 100) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "set_music_volume needs a \"volume\" from 0 to 100.");
+		return;
+	}
+
+	int before = -1;
+	ProbeMusicVolume(before, "music volume before");
+	if (!DispatchMusicVolume(wanted, "music volume")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The volume slider did not answer.");
+		return;
+	}
+
+	// Read back, because writing only the knob would move the picture of the
+	// volume without moving the volume, and that is exactly the mistake this
+	// action exists to avoid.
+	int after = -1;
+	if (!ProbeMusicVolume(after, "music volume after") || after != wanted) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The volume did not take that value.");
+		return;
+	}
+	std::string message = "Music volume is now " + std::to_string(after) +
+	                      " of 100";
+	message += before >= 0 && before != after
+	               ? ", was " + std::to_string(before) + "."
+	               : ".";
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
+}
+
 void HandleScrollCgAction(std::string const &id, std::string const &data) {
 	int horizontal = 0;
 	int vertical = 0;
@@ -257,6 +292,8 @@ bool Handle(std::string const &id,
 		HandleViewCgAction(id, data);
 	} else if (name == "next_cg_view") {
 		HandleNextCgViewAction(id, data);
+	} else if (name == "set_music_volume") {
+		HandleMusicVolumeAction(id, data);
 	} else if (name == "scroll_cg") {
 		HandleScrollCgAction(id, data);
 	} else if (name == "close_cg") {
@@ -311,6 +348,12 @@ void AppendActions(ActionSet &set, int payload) {
 
 	set.add("go_back", "Leave the Extra screen and return to the title.",
 	        kGoBackSchema);
+	// The music side of this screen carries a volume slider, and it is there
+	// whether or not anything is playing.
+	set.add("set_music_volume",
+	        "Set how loud the music player is, 0 to 100. It is the slider under "
+	        "the track list.",
+	        kMusicVolumeSchema);
 	// The grid's last page carries fewer squares, so both the wording and the
 	// schema's maximum follow the page rather than assuming nine everywhere.
 	int const squares = (payload >> kSquareShift) & kSquareMask;

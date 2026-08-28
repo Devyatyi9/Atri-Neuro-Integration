@@ -1125,6 +1125,31 @@ bool DispatchCgScroll(int horizontal, int vertical, char const *tag) {
 	    tag, horizontal, vertical);
 }
 
+bool ProbeMusicVolume(int &volume, char const *tag) {
+	std::string raw;
+	if (!QueryString(L"(function(){ try { var c = kag.current.names['volume'];"
+	                 L"if (typeof c != 'Object' || !isvalid c) return '';"
+	                 L"return '' + c.position; } catch (e) { return ''; } })()",
+	                 raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	return ParseProbeInt(raw, volume, tag);
+}
+
+bool DispatchMusicVolume(int volume, char const *tag) {
+	return AskFormatted(
+	    L"(function(){ try {"
+	    L"var c = kag.current.names['volume'];"
+	    L"if (typeof c != 'Object' || !isvalid c) return 0;"
+	    L"sf.musicvolume = %d;"
+	    L"if (kag.bgmenable) kag.bgm.restoreSystemState("
+	    L"%%[ bgm: %%[ globalVolume: %d * 1000 ] ]);"
+	    L"c.position = %d;"
+	    L"return 1; } catch (e) { return 0; } })()",
+	    tag, volume, volume, volume);
+}
+
 bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof Current != 'Object') return 0;"

@@ -295,6 +295,15 @@ bool ProbeCgScroll(int &canScroll,
 // there.
 bool DispatchCgScroll(int horizontal, int vertical, char const *tag);
 
+// The music player's volume slider on the Extra screen, 0 to 100. Three things
+// move together when a player drags it, and all three are read back here: the
+// stored setting, the knob on screen, and the value the sound actually plays at.
+bool ProbeMusicVolume(int &volume, char const *tag);
+// Sets it the way the screen's own handler does -- store, apply, move the knob.
+// Setting only the knob moves the picture of the volume without changing the
+// volume, which is why all three are written rather than the obvious one.
+bool DispatchMusicVolume(int volume, char const *tag);
+
 // Presses a track in the music list. The picture squares go through the
 // screen's own button dispatch instead: Current.cmd does nothing for them.
 bool DispatchGalleryItem(char const *verb, int index, char const *tag);
