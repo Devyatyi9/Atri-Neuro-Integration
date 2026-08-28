@@ -8,9 +8,6 @@
 #include <string>
 #include <vector>
 
-// Forward declarations
-class tTJSVariant;
-
 // ============================================================================
 // ScriptingWindow: multi-line TJS editor.
 // ============================================================================

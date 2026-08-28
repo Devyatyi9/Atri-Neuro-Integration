@@ -14,7 +14,7 @@
 #include "ThreadGuard.h"
 #include "UtfConversion.h"
 
-// For tTJSVariant and ttstr.
+// For the engine headers the plugin lifecycle needs.
 #pragma warning(push)
 #pragma warning(disable : 26495)
 #include "tp_stub.h"

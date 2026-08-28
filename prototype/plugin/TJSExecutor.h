@@ -4,8 +4,6 @@
 
 #include <windows.h>
 
-class tTJSVariant;
-
 bool InitializeTJSExecutor();
 bool InitializeTJSContinuousEventHook();
 // Stops new synchronous calls and releases the ones already waiting. Called
