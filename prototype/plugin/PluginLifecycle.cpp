@@ -1,6 +1,9 @@
 #include "PluginLifecycle.h"
 
 #include <atomic>
+#include <cstdio>
+#include <exception>
+#include <string>
 #include <thread>
 
 #include "ActionRouter.h"
@@ -175,10 +178,70 @@ static void StopHotkeyThread() {
 	}
 }
 
+// The process can die without leaving a word, and twice now it has: procdump
+// recorded `Unhandled: C0000409` -- a fail-fast from terminate() -- and could
+// not write a dump because the process was gone before it got there. These two
+// handlers cost nothing and turn that silence into a line.
+//
+// std::terminate is where an unhandled C++ exception ends up, including one
+// thrown on the game's own main thread, which no thread guard of ours covers.
+// The unhandled-exception filter catches the other family, the access
+// violations, and names the address.
+static LPTOP_LEVEL_EXCEPTION_FILTER g_PreviousExceptionFilter = nullptr;
+
+static void OnTerminate() {
+	// Rethrowing is the only way to see what it was: terminate is called with
+	// the exception still in flight.
+	std::string detail = "no exception in flight";
+	if (std::exception_ptr const current = std::current_exception()) {
+		try {
+			std::rethrow_exception(current);
+		} catch (std::exception const &error) {
+			detail = std::string("std::exception: ") + error.what();
+		} catch (...) {
+			detail = "a non-standard exception";
+		}
+	}
+	Log(("[Fatal] terminate called -- " + detail + "\n").c_str());
+	FlushLogFileIfFree();
+	// Not abort(): in a debug CRT that raises its own modal dialog, and the one
+	// time this fired it stacked on top of the engine's error box on a window
+	// that was already not answering -- there was no way left to dismiss either.
+	// The line is written; ending quietly is the whole remaining job.
+	TerminateProcess(GetCurrentProcess(), 0xC0000409);
+}
+
+static LONG WINAPI OnUnhandledException(EXCEPTION_POINTERS *info) {
+	char line[192] = {};
+	if (info && info->ExceptionRecord) {
+		sprintf_s(line, "[Fatal] unhandled exception 0x%08lX at 0x%p\n",
+		          info->ExceptionRecord->ExceptionCode,
+		          info->ExceptionRecord->ExceptionAddress);
+	} else {
+		sprintf_s(line, "[Fatal] unhandled exception, no record\n");
+	}
+	Log(line);
+	FlushLogFileIfFree();
+	return g_PreviousExceptionFilter ? g_PreviousExceptionFilter(info)
+	                                 : EXCEPTION_CONTINUE_SEARCH;
+}
+
+static void InstallFatalHandlers() {
+	static bool installed = false;
+	if (installed) {
+		return;
+	}
+	installed = true;
+	std::set_terminate(OnTerminate);
+	g_PreviousExceptionFilter = SetUnhandledExceptionFilter(OnUnhandledException);
+	Log("Fatal handlers installed\n");
+}
+
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
     iTVPFunctionExporter *exporter) {
 	OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
 	Log("\n\n=== V2Link called ===\n");
+	InstallFatalHandlers();
 
 	if (!exporter) {
 		Log("ERROR: exporter is NULL!\n");

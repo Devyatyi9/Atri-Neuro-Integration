@@ -85,6 +85,12 @@ static std::shared_ptr<TJSSyncCallData> TakeNextTJSSyncCall();
 
 static std::atomic<unsigned long long> g_TJSSyncExecutedCount(0);
 static std::deque<UINT_PTR> g_TJSSyncCallOrder;
+// Set while the continuous hook is draining the queue, so a nested call of the
+// hook can tell and step aside. Main thread only.
+static bool g_DrainingTJSQueue = false;
+// How often that happened. Zero says the nesting never occurs; anything else
+// says it does, and how much of the traffic it was.
+static std::atomic<unsigned long long> g_TJSDrainReentryCount(0);
 
 class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
  public:
@@ -93,6 +99,24 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		    g_TJSContinuousCallbackCount.fetch_add(1, std::memory_order_relaxed) +
 		    1;
 		g_TJSLastContinuousTick.store(tick, std::memory_order_relaxed);
+
+		// One drain at a time. A queued call runs TJS, TJS can reach code that
+		// pumps messages, and the engine calls this hook from that pump -- so a
+		// drain could start inside a drain, take eight more calls, and do it
+		// again. With a full queue that nests until the main thread stops coming
+		// back: found as a hang whose stack was the same seven interpreter frames
+		// repeating, under load from several outside callers.
+		//
+		// Only the main thread reaches this, so a plain flag is enough; it exists
+		// to stop nesting, not to arbitrate between threads.
+		if (g_DrainingTJSQueue) {
+			g_TJSDrainReentryCount.fetch_add(1, std::memory_order_relaxed);
+			return;
+		}
+		g_DrainingTJSQueue = true;
+		struct DrainGuard {
+			~DrainGuard() { g_DrainingTJSQueue = false; }
+		} drainGuard;
 
 		// Process sync calls first: they block callers.
 		constexpr int kMaxSyncPerCallback = 8;
@@ -141,11 +165,13 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 			char message[256];
 			sprintf_s(message,
 			          "[TJS continuous] callbacks=%llu sync=%llu async=%llu "
-			          "dropped=%llu upkeepSkipped=%llu tick=%llu thread=%lu\n",
+			          "dropped=%llu upkeepSkipped=%llu reentry=%llu tick=%llu "
+		          "thread=%lu\n",
 			          count, g_TJSSyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
 			          g_TJSUpkeepSkippedCount.load(std::memory_order_relaxed),
+			          g_TJSDrainReentryCount.load(std::memory_order_relaxed),
 			          static_cast<unsigned long long>(tick),
 			          static_cast<unsigned long>(GetCurrentThreadId()));
 			Log(message);

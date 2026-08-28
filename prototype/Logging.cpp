@@ -65,12 +65,34 @@ void Log(char const *message) {
 	}
 }
 
-void CloseLogFile() {
-	std::lock_guard<std::mutex> lock(g_LogMutex);
-	if (g_LogFile) {
-		fclose(g_LogFile);
-		g_LogFile = nullptr;
+void FlushLogFileIfFree() {
+	std::unique_lock<std::mutex> fileLock(g_LogFileMutex, std::try_to_lock);
+	if (fileLock.owns_lock() && g_LogFile) {
+		fflush(g_LogFile);
 	}
+}
+
+void CloseLogFile() {
+	// Two locks, one after the other, because this touches both halves and Log
+	// keeps them apart: the file under its own lock, the ring under the ring's.
+	//
+	// Closing the file under the ring's lock was a use-after-free waiting for
+	// load, and it was found by one: with several TCP clients logging at once, a
+	// thread was inside fprintf on the FILE* while this closed it, and the crash
+	// landed in the CRT with the stream already gone. The tag log was given its
+	// own lock when the two were split; this one was missed.
+	//
+	// Never held together, and in this order only: Log takes the file lock and
+	// releases it before taking the ring's, so nothing nests either way.
+	{
+		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
+		if (g_LogFile) {
+			fclose(g_LogFile);
+			g_LogFile = nullptr;
+		}
+	}
+
+	std::lock_guard<std::mutex> lock(g_LogMutex);
 	g_LogLines.clear();
 	g_LogCharacters = 0;
 }
