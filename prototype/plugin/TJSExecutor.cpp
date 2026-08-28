@@ -151,9 +151,15 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		// Check every ~10 callbacks (~6 times/second at 60fps).
 		if (count % 10 == 0) {
 			try {
+				// Re-attach the tag hook first if the game has moved to another
+				// conductor. Without that the flag below can be raised by a
+				// conductor whose matching clear never runs, and upkeep stops for
+				// as long as that screen is open.
 				tTJSVariant insideTag;
 				TVPExecuteExpression(
-				    TJS_W("(function(){ return global.__neuroInsideTag === true; })()"),
+				    TJS_W("(function(){ if (typeof global.__neuroEnsureTagHook == "
+				          "'Object') global.__neuroEnsureTagHook();"
+				          "return global.__neuroInsideTag === true; })()"),
 				    &insideTag);
 				if (!(tTVInteger)insideTag) {
 					// Safe to run upkeep: not inside tag processing.

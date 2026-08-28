@@ -3,40 +3,67 @@
         return 0;
     }
 
-    if (typeof kag.conductor.__neuroOrigOnTag != "undefined") {
-        return 1;
+    // The 'inside tag' flag, set before a tag and cleared after it, so upkeep
+    // can stay out of the way while the engine is mid-tag.
+    //
+    // The two halves live on different objects, and that is the whole
+    // difficulty. The conductor calls onConductorBeforeTag on its *owner*
+    // (Conductor.tjs does `owner.onConductorBeforeTag(...)`, defined in
+    // MainWindow.tjs), so wrapping kag catches every conductor there is. onTag
+    // is a method of the conductor *instance*, so wrapping kag.conductor
+    // catches only the one that was current at the time.
+    //
+    // The game does not keep one conductor. A menu screen runs on another, and
+    // when it does, the owner hook keeps raising the flag while the wrapper
+    // that lowers it sits on a conductor nobody is using. The flag latches, and
+    // upkeep stops for as long as that screen is open -- which is why the
+    // capability set stopped switching once the polling monitor was taken away.
+    //
+    // So the conductor half is installed on whichever conductor is current, and
+    // re-installed whenever that changes.
+    global.__neuroEnsureTagHook = function() {
+        try {
+            if (typeof kag == "undefined" || typeof kag.conductor != "Object") {
+                return 0;
+            }
+            if (typeof kag.conductor.__neuroOrigOnTag != "undefined") {
+                return 1;
+            }
+            kag.conductor.__neuroOrigOnTag = kag.conductor.onTag;
+            kag.conductor.onTag = function(tag) {
+                var result = this.__neuroOrigOnTag(tag);
+                try {
+                    var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
+                    if (data != '') neuroSendContextFromTJS(data);
+                } catch(e) {}
+                global.__neuroInsideTag = false;
+                return result;
+            };
+            // A conductor arriving mid-tag would otherwise inherit a raised flag
+            // from the one it replaced.
+            global.__neuroInsideTag = false;
+            return 2;
+        } catch(e) {
+            return 0;
+        }
+    } incontextof global;
+
+    if (typeof kag.__neuroOrigOnBeforeTag == "undefined") {
+        global.__neuroInsideTag = false;
+
+        kag.__neuroOrigOnBeforeTag = kag.onConductorBeforeTag;
+        kag.onConductorBeforeTag = function(tag, arg) {
+            // The engine calls this directly, past our own try/catch, so an
+            // exception here would reach it as a fatal dialog.
+            try {
+                global.__neuroInsideTag = true;
+            } catch(e) {}
+            if (typeof this.__neuroOrigOnBeforeTag == "Object") {
+                return this.__neuroOrigOnBeforeTag(tag, arg);
+            }
+            return true;
+        };
     }
 
-    // Install 'inside tag' flag mechanism for safe upkeep timing.
-    // The flag prevents external TJS calls during tag processing.
-    global.__neuroInsideTag = false;
-
-    // The conductor calls this on its owner, not on itself:
-    // Conductor.tjs does `owner.onConductorBeforeTag(...)`, and the method is
-    // defined in MainWindow.tjs. Wrapping kag.conductor here would never fire.
-    kag.__neuroOrigOnBeforeTag = kag.onConductorBeforeTag;
-    kag.onConductorBeforeTag = function(tag, arg) {
-        // The engine calls this directly, past our own try/catch, so an
-        // exception here would reach it as a fatal dialog.
-        try {
-            global.__neuroInsideTag = true;
-        } catch(e) {}
-        if (typeof this.__neuroOrigOnBeforeTag == "Object") {
-            return this.__neuroOrigOnBeforeTag(tag, arg);
-        }
-        return true;
-    };
-
-    kag.conductor.__neuroOrigOnTag = kag.conductor.onTag;
-    kag.conductor.onTag = function(tag) {
-        var result = this.__neuroOrigOnTag(tag);
-        try {
-            var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
-            if (data != '') neuroSendContextFromTJS(data);
-        } catch(e) {}
-        global.__neuroInsideTag = false;
-        return result;
-    };
-
-    return 1;
+    return global.__neuroEnsureTagHook();
 })();
