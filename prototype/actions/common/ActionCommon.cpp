@@ -1,10 +1,26 @@
 #include "ActionCommon.h"
 
+#include <atomic>
+
 #include <vector>
 
 #include "ActionJson.h"
 #include "ActionProbes.h"
 #include "NeuroClient.h"
+
+namespace {
+// Read from action handlers on the Neuro polling thread, written from a TJS
+// call on the game's own; an atomic keeps that honest.
+std::atomic<bool> g_PointerFocusEnabled(false);
+}  // namespace
+
+bool PointerFocusEnabled() {
+	return g_PointerFocusEnabled.load(std::memory_order_acquire);
+}
+
+void SetPointerFocusEnabled(bool enabled) {
+	g_PointerFocusEnabled.store(enabled, std::memory_order_release);
+}
 
 void HandleScreenButtonAction(std::string const &id,
                               std::string const &data,

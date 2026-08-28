@@ -12,6 +12,7 @@
 
 #include "ncbind.hpp"
 
+#include "ActionCommon.h"
 #include "ActionRouter.h"
 #include "ContextPayload.h"
 #include "GameDebugLog.h"
@@ -816,6 +817,23 @@ NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
 NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
+static tjs_error TJS_INTF_METHOD
+NeuroSetPointerFocus(tTJSVariant *result,
+                     tjs_int numparams,
+                     tTJSVariant **param,
+                     iTJSDispatch2 *objthis) {
+	// One argument, on or off. Reading it back with no argument is how a test
+	// checks the current setting.
+	if (numparams >= 1 && param && param[0]) {
+		SetPointerFocusEnabled((tTVInteger)*param[0] != 0);
+	}
+	if (result) {
+		*result = PointerFocusEnabled() ? (tTVInteger)1 : (tTVInteger)0;
+	}
+	return TJS_S_OK;
+}
+
+NCB_REGISTER_FUNCTION(neuroSetPointerFocus, NeuroSetPointerFocus);
 NCB_REGISTER_FUNCTION(neuroSendContextFromTJS, NeuroSendContextFromTJS);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
@@ -872,6 +890,16 @@ void RetryInstallExitHookIfReady() {
 	    L"} "
 	    L"return result; "
 	    L"}; "
+	    // The dialog puts the system pointer on its default button the moment it
+	    // opens, which takes the mouse away from whoever is using the machine.
+	    // Wrapped, not disabled: the call goes through when the pointer is meant
+	    // to travel, and is swallowed when it is not.
+	    L"if (typeof MyYesNoDialogLayer.__neuroOrigSetCursorPos == 'undefined') {"
+	    L"MyYesNoDialogLayer.__neuroOrigSetCursorPos = "
+	    L"MyYesNoDialogLayer.setCursorPos;"
+	    L"MyYesNoDialogLayer.setCursorPos = function(x, y) {"
+	    L"if (neuroSetPointerFocus()) "
+	    L"return this.__neuroOrigSetCursorPos(x, y); }; }"
 	    L"return typeof MyYesNoDialogLayer.onItemClick == 'Object'; "
 	    L"})()",
 	    &installed, 5000, TJSExecMode::Expression);
