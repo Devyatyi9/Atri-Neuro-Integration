@@ -131,7 +131,6 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/screens/ScreenTitle.cpp
         prototype/actions/screens/ScreenTitle.h
         prototype/plugin/PluginLifecycle.cpp
-        prototype/neuro/ContextMonitor.cpp
         prototype/neuro/ContextPayload.cpp
         prototype/neuro/ContextPayload.h
         prototype/Logging.cpp

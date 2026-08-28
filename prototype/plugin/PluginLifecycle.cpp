@@ -7,7 +7,6 @@
 #include <thread>
 
 #include "ActionRouter.h"
-#include "ContextMonitor.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroClient.h"
@@ -279,7 +278,6 @@ void ShutdownPluginWorkers() {
 	StopAcceptingTJSCalls();
 	StopDeferredTJSInit();
 	StopHotkeyThread();
-	StopContextMonitor();
 	NeuroDisconnect();
 	ShutdownNeuroConsole();
 	StopTCPServer();

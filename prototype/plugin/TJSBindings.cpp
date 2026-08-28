@@ -13,7 +13,6 @@
 #include "ncbind.hpp"
 
 #include "ActionRouter.h"
-#include "ContextMonitor.h"
 #include "ContextPayload.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
@@ -316,41 +315,6 @@ static tjs_error TJS_INTF_METHOD NeuroClearDebugLog(tTJSVariant *result,
 	ClearGameDebugLog();
 	if (result) {
 		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD
-NeuroStopContextMonitor(tTJSVariant *result,
-                        tjs_int numparams,
-                        tTJSVariant **param,
-                        iTJSDispatch2 *objthis) {
-	StopContextMonitor();
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD
-NeuroStartContextMonitor(tTJSVariant *result,
-                         tjs_int numparams,
-                         tTJSVariant **param,
-                         iTJSDispatch2 *objthis) {
-	bool const started = StartContextMonitor();
-	if (result) {
-		*result = started ? (tTVInteger)1 : (tTVInteger)0;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD
-NeuroIsContextMonitorRunning(tTJSVariant *result,
-                             tjs_int numparams,
-                             tTJSVariant **param,
-                             iTJSDispatch2 *objthis) {
-	if (result) {
-		*result = IsContextMonitorRunning() ? (tTVInteger)1 : (tTVInteger)0;
 	}
 	return TJS_S_OK;
 }
@@ -852,10 +816,6 @@ NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
 NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
-NCB_REGISTER_FUNCTION(neuroStopContextMonitor, NeuroStopContextMonitor);
-NCB_REGISTER_FUNCTION(neuroStartContextMonitor, NeuroStartContextMonitor);
-NCB_REGISTER_FUNCTION(neuroIsContextMonitorRunning,
-                      NeuroIsContextMonitorRunning);
 NCB_REGISTER_FUNCTION(neuroSendContextFromTJS, NeuroSendContextFromTJS);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
