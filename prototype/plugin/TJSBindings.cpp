@@ -817,6 +817,26 @@ NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
 NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
+// Runs on the game's main thread: this is reached from TJS. The game has its own
+// switch for putting the pointer on a dialog's default button -- the options
+// screen calls it automatic cursor placement -- so it is set rather than worked
+// around. "no" parks it; defaultCursorMove is what the dialog uses otherwise.
+static void ApplyPointerFocusToGame(bool enabled) {
+	try {
+		tTJSVariant unused;
+		TVPExecuteExpression(
+		    enabled ? TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
+		                    "MyYesNoDialog.defaultCursorMove); return 1; }"
+		                    " catch (e) { return 0; } })()")
+		            : TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
+		                    "'no'); return 1; } catch (e) { return 0; } })()"),
+		    &unused);
+	} catch (...) {
+		// The dialog class may not be loaded yet; the exit-hook install applies
+		// it again once it is.
+	}
+}
+
 static tjs_error TJS_INTF_METHOD
 NeuroSetPointerFocus(tTJSVariant *result,
                      tjs_int numparams,
@@ -825,7 +845,9 @@ NeuroSetPointerFocus(tTJSVariant *result,
 	// One argument, on or off. Reading it back with no argument is how a test
 	// checks the current setting.
 	if (numparams >= 1 && param && param[0]) {
-		SetPointerFocusEnabled((tTVInteger)*param[0] != 0);
+		bool const enabled = (tTVInteger)*param[0] != 0;
+		SetPointerFocusEnabled(enabled);
+		ApplyPointerFocusToGame(enabled);
 	}
 	if (result) {
 		*result = PointerFocusEnabled() ? (tTVInteger)1 : (tTVInteger)0;
@@ -890,16 +912,6 @@ void RetryInstallExitHookIfReady() {
 	    L"} "
 	    L"return result; "
 	    L"}; "
-	    // The dialog puts the system pointer on its default button the moment it
-	    // opens, which takes the mouse away from whoever is using the machine.
-	    // Wrapped, not disabled: the call goes through when the pointer is meant
-	    // to travel, and is swallowed when it is not.
-	    L"if (typeof MyYesNoDialogLayer.__neuroOrigSetCursorPos == 'undefined') {"
-	    L"MyYesNoDialogLayer.__neuroOrigSetCursorPos = "
-	    L"MyYesNoDialogLayer.setCursorPos;"
-	    L"MyYesNoDialogLayer.setCursorPos = function(x, y) {"
-	    L"if (neuroSetPointerFocus()) "
-	    L"return this.__neuroOrigSetCursorPos(x, y); }; }"
 	    L"return typeof MyYesNoDialogLayer.onItemClick == 'Object'; "
 	    L"})()",
 	    &installed, 5000, TJSExecMode::Expression);
@@ -909,6 +921,9 @@ void RetryInstallExitHookIfReady() {
 	}
 	Log("[ExitHook] hook installed and confirmed\n");
 	g_ExitHookInstalled = true;
+	// The dialog class exists by now, so the pointer setting can be put where
+	// it belongs for this launch.
+	ApplyPointerFocusToGame(PointerFocusEnabled());
 }
 
 void RegisterTJSBindings() {
