@@ -96,6 +96,12 @@ constexpr char const *const kScrollCgSchema =
 constexpr char const *const kMusicScrollSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kMusicScrollBarSchema =
+    "{\"type\":\"object\",\"properties\":{"
+    "\"position\":{\"type\":\"integer\","
+    "\"minimum\":0,\"maximum\":100}},"
+    "\"required\":[\"position\"],"
+    "\"additionalProperties\":false}";
 constexpr char const *const kStartNewGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

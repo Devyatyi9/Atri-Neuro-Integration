@@ -297,12 +297,31 @@ bool DispatchCgScroll(int horizontal, int vertical, char const *tag);
 
 // The music player's volume slider on the Extra screen, 0 to 100. Three things
 // move together when a player drags it, and all three are read back here: the
-// stored setting, the knob on screen, and the value the sound actually plays at.
+// stored setting, the knob on screen, and the value the sound actually plays
+// at.
 bool ProbeMusicVolume(int &volume, char const *tag);
 // Sets it the way the screen's own handler does -- store, apply, move the knob.
 // Setting only the knob moves the picture of the volume without changing the
 // volume, which is why all three are written rather than the obvious one.
 bool DispatchMusicVolume(int volume, char const *tag);
+
+// The scroll bar beside the music list, in the game's own pixels: where it
+// stands now, and how far down it goes. The list is longer than its frame, so
+// the entries below the visible rows are reachable only through this.
+bool ProbeMusicScroll(int &position, int &limit, char const *tag);
+// Moves it the way a drag on the bar does. The game snaps the result to whole
+// rows and animates the move over about 200 ms, so a read-back has to wait or
+// it returns where the bar started.
+bool DispatchMusicScroll(int position, char const *tag);
+
+// The rows the music list is showing, one per line, as slot number, sound file
+// name and title separated by tabs, with a trailing 1 on the one playing. The
+// first line is how many tracks the list holds in all.
+//
+// The titles are the Japanese ones the game stores; the English words on the
+// buttons are pictures out of the interface atlas, keyed by file name, and
+// exist as text nowhere in the data.
+bool ProbeMusicList(std::string &rows, char const *tag);
 
 // Presses a track in the music list. The picture squares go through the
 // screen's own button dispatch instead: Current.cmd does nothing for them.

@@ -817,10 +817,11 @@ NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
 NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
-// Runs on the game's main thread: this is reached from TJS. The game has its own
-// switch for putting the pointer on a dialog's default button -- the options
-// screen calls it automatic cursor placement -- so it is set rather than worked
-// around. "no" parks it; defaultCursorMove is what the dialog uses otherwise.
+// Runs on the game's main thread: this is reached from TJS. The game has its
+// own switch for putting the pointer on a dialog's default button -- the
+// options screen calls it automatic cursor placement -- so it is set rather
+// than worked around. "no" parks it; defaultCursorMove is what the dialog uses
+// otherwise.
 static void ApplyPointerFocusToGame(bool enabled) {
 	try {
 		tTJSVariant unused;
@@ -837,11 +838,10 @@ static void ApplyPointerFocusToGame(bool enabled) {
 	}
 }
 
-static tjs_error TJS_INTF_METHOD
-NeuroSetPointerFocus(tTJSVariant *result,
-                     tjs_int numparams,
-                     tTJSVariant **param,
-                     iTJSDispatch2 *objthis) {
+static tjs_error TJS_INTF_METHOD NeuroSetPointerFocus(tTJSVariant *result,
+                                                      tjs_int numparams,
+                                                      tTJSVariant **param,
+                                                      iTJSDispatch2 *objthis) {
 	// One argument, on or off. Reading it back with no argument is how a test
 	// checks the current setting.
 	if (numparams >= 1 && param && param[0]) {

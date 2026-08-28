@@ -436,8 +436,8 @@ bool DispatchChoiceFocus(int index, char const *tag) {
 bool DispatchChoice(int index, char const *tag) {
 	if (PointerFocusEnabled()) {
 		bool const focused = DispatchChoiceFocus(index, tag);
-		Log(("[Action] " + std::string(tag) + " pointer focus: " +
-		     (focused ? "moved" : "refused") + "\n")
+		Log(("[Action] " + std::string(tag) +
+		     " pointer focus: " + (focused ? "moved" : "refused") + "\n")
 		        .c_str());
 	}
 	return AskFormatted(
@@ -611,10 +611,11 @@ bool DispatchEditMenuItem(char const *item, char const *tag) {
 }
 
 bool DispatchCloseEditMenu(char const *tag) {
-	return Ask(L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != "
-	           L"'Object' || !kag.panelLayer) return 0;"
-	           L"kag.panelLayer.close(); return 1; })()",
-	           tag);
+	return Ask(
+	    L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != "
+	    L"'Object' || !kag.panelLayer) return 0;"
+	    L"kag.panelLayer.close(); return 1; })()",
+	    tag);
 }
 
 bool ProbeEditMenuSlot(int &position, char const *tag) {
@@ -629,24 +630,27 @@ bool ProbeEditMenuSlot(int &position, char const *tag) {
 }
 
 bool ProbeSlotComment(int position, std::string &out, char const *tag) {
-	std::wstring code = L"(function(){ var s = global.__cm_saveStore;"
-	                    L"if (typeof s != 'Object' || !isvalid s) return '';"
-	                    L"try { var num = s.withOffset(";
+	std::wstring code =
+	    L"(function(){ var s = global.__cm_saveStore;"
+	    L"if (typeof s != 'Object' || !isvalid s) return '';"
+	    L"try { var num = s.withOffset(";
 	code += std::to_wstring(position);
-	code += L"); var text = s.getCommentText(num, null, 1);"
-	        L"return (text === void) ? '' : '' + text; }"
-	        L"catch (e) { return ''; } })()";
+	code +=
+	    L"); var text = s.getCommentText(num, null, 1);"
+	    L"return (text === void) ? '' : '' + text; }"
+	    L"catch (e) { return ''; } })()";
 	// An empty answer is a save with no comment, which is a real answer and not
 	// a failed probe -- QueryString says which by its return value.
 	return QueryString(code.c_str(), out, tag);
 }
 
 bool ProbeCommentWindowOpen(char const *tag) {
-	return Ask(L"(function(){ var s = global.__cm_saveStore;"
-	           L"if (typeof s != 'Object' || !isvalid s) return 0;"
-	           L"try { return s._inEditComment ? 1 : 0; } catch (e) { return 0; }"
-	           L"})()",
-	           tag);
+	return Ask(
+	    L"(function(){ var s = global.__cm_saveStore;"
+	    L"if (typeof s != 'Object' || !isvalid s) return 0;"
+	    L"try { return s._inEditComment ? 1 : 0; } catch (e) { return 0; }"
+	    L"})()",
+	    tag);
 }
 
 namespace {
@@ -660,12 +664,24 @@ std::wstring EscapeForTJSLiteral(std::wstring const &text) {
 	escaped.reserve(text.size() + 8);
 	for (wchar_t const character : text) {
 		switch (character) {
-			case L'\"': escaped += L"\\\""; break;
-			case L'\\': escaped += L"\\\\"; break;
-			case L'\n': escaped += L"\\n"; break;
-			case L'\r': escaped += L"\\r"; break;
-			case L'\t': escaped += L"\\t"; break;
-			default: escaped += character; break;
+			case L'\"':
+				escaped += L"\\\"";
+				break;
+			case L'\\':
+				escaped += L"\\\\";
+				break;
+			case L'\n':
+				escaped += L"\\n";
+				break;
+			case L'\r':
+				escaped += L"\\r";
+				break;
+			case L'\t':
+				escaped += L"\\t";
+				break;
+			default:
+				escaped += character;
+				break;
 		}
 	}
 	return escaped;
@@ -673,7 +689,8 @@ std::wstring EscapeForTJSLiteral(std::wstring const &text) {
 
 }  // namespace
 
-bool DispatchSetComment(int position, std::string const &text,
+bool DispatchSetComment(int position,
+                        std::string const &text,
                         char const *tag) {
 	std::wstring wide;
 	if (!Utf8ToUtf16(text.c_str(), text.size(), wide)) {
@@ -690,22 +707,25 @@ bool DispatchSetComment(int position, std::string const &text,
 	    L"if (typeof s != 'Object' || !isvalid s) return 0;"
 	    L"try { var num = s.withOffset(";
 	code += std::to_wstring(position);
-	code += L"); var info = s.getItemInfo(num);"
-	        L"if (info === void) return 0;"
-	        L"s.setCommentText(num, \"";
+	code +=
+	    L"); var info = s.getItemInfo(num);"
+	    L"if (info === void) return 0;"
+	    L"s.setCommentText(num, \"";
 	code += EscapeForTJSLiteral(wide);
-	code += L"\"); s.forceRedrawItem(num);"
-	        L"s.onStateChanged('comment', num, info);"
-	        // Read back rather than assume. kag.writeBookMarkInfo, which is where
-	        // this ends up, checks the save file before touching it and does
-	        // nothing at all when the check fails -- silently, with no error to
-	        // catch. Without this, a comment that was never written would still
-	        // be reported as written.
-	        L"var back = s.getCommentText(num, null, 1);"
-	        L"return back == \"";
+	code +=
+	    L"\"); s.forceRedrawItem(num);"
+	    L"s.onStateChanged('comment', num, info);"
+	    // Read back rather than assume. kag.writeBookMarkInfo, which is where
+	    // this ends up, checks the save file before touching it and does
+	    // nothing at all when the check fails -- silently, with no error to
+	    // catch. Without this, a comment that was never written would still
+	    // be reported as written.
+	    L"var back = s.getCommentText(num, null, 1);"
+	    L"return back == \"";
 	code += EscapeForTJSLiteral(wide);
-	code += L"\" ? 1 : 0; }"
-	        L"catch (e) { return 0; } })()";
+	code +=
+	    L"\" ? 1 : 0; }"
+	    L"catch (e) { return 0; } })()";
 	return Ask(code.c_str(), tag);
 }
 
@@ -1076,15 +1096,15 @@ bool ProbeCgScroll(int &canScroll,
                    int &maxTop,
                    char const *tag) {
 	std::string raw;
-	if (!QueryString(
-	        L"(function(){ var g = global.__cm_gallery;"
-	        L"if (typeof g != 'Object' || !g) return '';"
-	        L"var l = g.cglayer;"
-	        L"if (typeof l != 'Object' || !isvalid l) return '';"
-	        L"try { return l.canScroll + '|' + l.scrollLeft + '|' + l.scrollMaxLeft"
-	        L" + '|' + l.scrollTop + '|' + l.scrollMaxTop; }"
-	        L"catch (e) { return ''; } })()",
-	        raw, tag) ||
+	if (!QueryString(L"(function(){ var g = global.__cm_gallery;"
+	                 L"if (typeof g != 'Object' || !g) return '';"
+	                 L"var l = g.cglayer;"
+	                 L"if (typeof l != 'Object' || !isvalid l) return '';"
+	                 L"try { return l.canScroll + '|' + l.scrollLeft + '|' + "
+	                 L"l.scrollMaxLeft"
+	                 L" + '|' + l.scrollTop + '|' + l.scrollMaxTop; }"
+	                 L"catch (e) { return ''; } })()",
+	                 raw, tag) ||
 	    raw.empty()) {
 		return false;
 	}
@@ -1093,8 +1113,9 @@ bool ProbeCgScroll(int &canScroll,
 	size_t cursor = 0;
 	for (int field = 0; field < 5; ++field) {
 		size_t const bar = raw.find('|', cursor);
-		std::string const piece =
-		    bar == std::string::npos ? raw.substr(cursor) : raw.substr(cursor, bar - cursor);
+		std::string const piece = bar == std::string::npos
+		                              ? raw.substr(cursor)
+		                              : raw.substr(cursor, bar - cursor);
 		if (!ParseProbeInt(piece, values[field], tag)) {
 			return false;
 		}
@@ -1148,6 +1169,63 @@ bool DispatchMusicVolume(int volume, char const *tag) {
 	    L"c.position = %d;"
 	    L"return 1; } catch (e) { return 0; } })()",
 	    tag, volume, volume, volume);
+}
+
+bool ProbeMusicList(std::string &rows, char const *tag) {
+	// The buttons on screen are the visible rows, and the list slides under them:
+	// button i shows track i + offset, which is the same sum the screen's own
+	// select() applies before it plays anything.
+	return QueryString(
+	    L"(function(){ try { var s = global.SoundModeInstance;"
+	    L"if (typeof s != 'Object' || !isvalid s) return '';"
+	    L"var u = s.scutil;"
+	    L"if (typeof u != 'Object' || !isvalid u) return '';"
+	    L"var off = u.offset, out = '';"
+	    L"for (var i = 0; i < 32; i++) {"
+	    L"var b = kag.current.names['sitem' + i];"
+	    L"if (typeof b != 'Object' || !b.visible) continue;"
+	    L"var idx = off + i;"
+	    L"var t = s.getTitle(idx);"
+	    L"if (t === void) continue;"
+	    L"out += '\\n' + (i + 1) + '\\t' + s.storages[idx] + '\\t' + t"
+	    L" + '\\t' + (s.isPlaying(idx) ? '1' : '0'); }"
+	    L"if (out == '') return '';"
+	    L"return '' + s.items.count + out;"
+	    L"} catch (e) { return ''; } })()",
+	    rows, tag);
+}
+
+bool ProbeMusicScroll(int &position, int &limit, char const *tag) {
+	std::string raw;
+	if (!QueryString(L"(function(){ try { var s = global.SoundModeInstance;"
+	                 L"if (typeof s != 'Object' || !isvalid s) return '';"
+	                 L"var u = s.scutil;"
+	                 L"if (typeof u != 'Object' || !isvalid u) return '';"
+	                 L"if (!u.canScroll) return '';"
+	                 L"return '' + u.scroll + '|' + u.scrollMax;"
+	                 L"} catch (e) { return ''; } })()",
+	                 raw, tag) ||
+	    raw.empty()) {
+		return false;
+	}
+	std::string::size_type const bar = raw.find('|');
+	if (bar == std::string::npos) {
+		return false;
+	}
+	return ParseProbeInt(raw.substr(0, bar), position, tag) &&
+	       ParseProbeInt(raw.substr(bar + 1), limit, tag);
+}
+
+bool DispatchMusicScroll(int position, char const *tag) {
+	// The screen's own handler, called the way the bar calls it when it is
+	// released: that path rounds to a whole row and carries the list along.
+	// Writing the knob alone would move the bar and leave the list where it was.
+	return AskFormatted(
+	    L"(function(){ try { var s = global.SoundModeInstance;"
+	    L"if (typeof s != 'Object' || !isvalid s) return 0;"
+	    L"if (typeof s.onSliderChanged != 'Object') return 0;"
+	    L"s.onSliderChanged(%d); return 1; } catch (e) { return 0; } })()",
+	    tag, position);
 }
 
 bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
@@ -1279,8 +1357,8 @@ bool DispatchDialogLink(bool confirm, char const *tag) {
 	char const *const button = confirm ? "yes" : "no";
 	if (PointerFocusEnabled()) {
 		bool const focused = DispatchDialogLinkFocus(confirm, tag);
-		Log(("[Action] " + std::string(tag) + " pointer focus: " +
-		     (focused ? "moved" : "refused") + "\n")
+		Log(("[Action] " + std::string(tag) +
+		     " pointer focus: " + (focused ? "moved" : "refused") + "\n")
 		        .c_str());
 	}
 	// The one press that had no cursor arriving before it. Every screen got the

@@ -178,7 +178,7 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 			sprintf_s(message,
 			          "[TJS continuous] callbacks=%llu sync=%llu async=%llu "
 			          "dropped=%llu upkeepSkipped=%llu reentry=%llu tick=%llu "
-		          "thread=%lu\n",
+			          "thread=%lu\n",
 			          count, g_TJSSyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
@@ -302,13 +302,20 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 // ttstr from a variant touches the engine's string pool.
 static char const *VariantTypeName(tTJSVariant const &value) {
 	switch (value.Type()) {
-		case tvtVoid: return "Void";
-		case tvtObject: return "Object";
-		case tvtString: return "String";
-		case tvtInteger: return "Integer";
-		case tvtReal: return "Real";
-		case tvtOctet: return "Octet";
-		default: return "Unknown";
+		case tvtVoid:
+			return "Void";
+		case tvtObject:
+			return "Object";
+		case tvtString:
+			return "String";
+		case tvtInteger:
+			return "Integer";
+		case tvtReal:
+			return "Real";
+		case tvtOctet:
+			return "Octet";
+		default:
+			return "Unknown";
 	}
 }
 

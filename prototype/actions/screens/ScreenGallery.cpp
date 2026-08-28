@@ -38,6 +38,10 @@ constexpr int kCanScrollMask = 0x3;
 constexpr int kTrackShift = 16;
 constexpr int kTrackMask = 0x3f;
 
+// The list slides to its new place over about 200 ms; reading before it comes
+// to rest gives back where it started.
+constexpr int kMusicScrollSettleMs = 300;
+
 char const *const kScrollNames[] = {"music_line_up", "music_line_down",
                                     "music_page_up", "music_page_down"};
 char const *const kScrollText[] = {
@@ -119,9 +123,8 @@ void HandleMusicVolumeAction(std::string const &id, std::string const &data) {
 	int wanted = 0;
 	if (!ParseJsonInteger(data, "\"volume\"", wanted) || wanted < 0 ||
 	    wanted > 100) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    "set_music_volume needs a \"volume\" from 0 to 100.");
+		NeuroSendActionResult(id.c_str(), false,
+		                      "set_music_volume needs a \"volume\" from 0 to 100.");
 		return;
 	}
 
@@ -142,12 +145,116 @@ void HandleMusicVolumeAction(std::string const &id, std::string const &data) {
 		                      "The volume did not take that value.");
 		return;
 	}
-	std::string message = "Music volume is now " + std::to_string(after) +
-	                      " of 100";
+	std::string message =
+	    "Music volume is now " + std::to_string(after) + " of 100";
 	message += before >= 0 && before != after
 	               ? ", was " + std::to_string(before) + "."
 	               : ".";
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
+}
+
+// Turns the probe's rows into the sentence Neuro reads. The list is worth
+// spelling out because only part of it is on screen at a time, and because the
+// words on the buttons are pictures: nothing about them can be read back.
+std::string DescribeMusicList() {
+	std::string rows;
+	if (!ProbeMusicList(rows, "music list") || rows.empty()) {
+		return std::string();
+	}
+	std::string::size_type cursor = rows.find('\n');
+	if (cursor == std::string::npos) {
+		return std::string();
+	}
+	std::string const total = rows.substr(0, cursor);
+	std::string text = "The music list holds " + total +
+	                   " tracks and shows a few at a time. Showing now:";
+	while (cursor != std::string::npos) {
+		std::string::size_type const end = rows.find('\n', cursor + 1);
+		std::string const line =
+		    rows.substr(cursor + 1, end == std::string::npos ? std::string::npos
+		                                                     : end - cursor - 1);
+		cursor = end;
+		// slot, file name, title, playing -- four fields, and a row missing any of
+		// them is dropped rather than guessed at.
+		std::string::size_type const first = line.find('\t');
+		if (first == std::string::npos) {
+			continue;
+		}
+		std::string::size_type const second = line.find('\t', first + 1);
+		if (second == std::string::npos) {
+			continue;
+		}
+		std::string::size_type const third = line.find('\t', second + 1);
+		if (third == std::string::npos) {
+			continue;
+		}
+		text += "\n" + line.substr(0, first) + ". " +
+		        line.substr(first + 1, second - first - 1) + " " +
+		        line.substr(second + 1, third - second - 1);
+		if (line.compare(third + 1, std::string::npos, "1") == 0) {
+			text += " (playing)";
+		}
+	}
+	text +=
+	    "\nThose numbers are what play_music takes. The titles are the game's "
+	    "own Japanese ones; the buttons show them in English.";
+	return text;
+}
+
+void SendMusicListContext() {
+	std::string const text = DescribeMusicList();
+	if (!text.empty()) {
+		NeuroSendContext(text.c_str(), false);
+	}
+}
+
+void HandleMusicScrollBarAction(std::string const &id,
+                                std::string const &data) {
+	int wanted = 0;
+	if (!ParseJsonInteger(data, "\"position\"", wanted) || wanted < 0 ||
+	    wanted > 100) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "scroll_music_list needs a \"position\" from 0 to 100.");
+		return;
+	}
+
+	int before = 0;
+	int limit = 0;
+	if (!ProbeMusicScroll(before, limit, "music scroll before") || limit <= 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The music list does not scroll here.");
+		return;
+	}
+	// The bar counts in the game's own pixels, and how many there are depends on
+	// how long the list is. Asking in hundredths keeps the action from having to
+	// know that.
+	int const target = (wanted * limit + 50) / 100;
+	if (!DispatchMusicScroll(target, "music scroll")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The music list scroll bar did not answer.");
+		return;
+	}
+	Sleep(kMusicScrollSettleMs);
+
+	int after = 0;
+	int stillLimit = 0;
+	if (!ProbeMusicScroll(after, stillLimit, "music scroll after") ||
+	    stillLimit <= 0) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The music list did not report where it stands.");
+		return;
+	}
+	// Reported from where the bar actually came to rest rather than from what was
+	// asked for: the game snaps to whole rows, so the two rarely match exactly.
+	int const percent = (after * 100 + stillLimit / 2) / stillLimit;
+	std::string message =
+	    "The music list is at " + std::to_string(percent) + " of 100";
+	message += after == before ? ", where it already was." : ".";
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
+	if (after != before) {
+		SendMusicListContext();
+	}
 }
 
 void HandleScrollCgAction(std::string const &id, std::string const &data) {
@@ -205,11 +312,10 @@ void HandleScrollCgAction(std::string const &id, std::string const &data) {
 		                      "The picture is already at that edge.");
 		return;
 	}
-	std::string message = "Moved the picture. It now sits " +
-	                      std::to_string(newLeft) + " of " +
-	                      std::to_string(maxLeft) + " across and " +
-	                      std::to_string(newTop) + " of " +
-	                      std::to_string(maxTop) + " down.";
+	std::string message =
+	    "Moved the picture. It now sits " + std::to_string(newLeft) + " of " +
+	    std::to_string(maxLeft) + " across and " + std::to_string(newTop) +
+	    " of " + std::to_string(maxTop) + " down.";
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
@@ -294,6 +400,8 @@ bool Handle(std::string const &id,
 		HandleNextCgViewAction(id, data);
 	} else if (name == "set_music_volume") {
 		HandleMusicVolumeAction(id, data);
+	} else if (name == "scroll_music_list") {
+		HandleMusicScrollBarAction(id, data);
 	} else if (name == "scroll_cg") {
 		HandleScrollCgAction(id, data);
 	} else if (name == "close_cg") {
@@ -310,11 +418,19 @@ bool Handle(std::string const &id,
 			HandleScreenButtonAction(id, data, kScrollNames[index], "cgmode",
 			                         kScrollButtons[index], kScrollDone[index],
 			                         kScrollRefused[index]);
+			// The step buttons slide the list under the same buttons, so the rows
+			// those numbers stand for are no longer the ones last announced.
+			Sleep(kMusicScrollSettleMs);
+			SendMusicListContext();
 			return true;
 		}
 		return false;
 	}
 	return true;
+}
+
+void SendEnteringContext() {
+	SendMusicListContext();
 }
 
 void AppendActions(ActionSet &set, int payload) {
@@ -354,6 +470,13 @@ void AppendActions(ActionSet &set, int payload) {
 	        "Set how loud the music player is, 0 to 100. It is the slider under "
 	        "the track list.",
 	        kMusicVolumeSchema);
+	// The track list is longer than the frame it sits in, so the bar beside it is
+	// the only way to reach the entries below the visible rows.
+	set.add("scroll_music_list",
+	        "Move the track list to a place along its scroll bar, 0 at the top "
+	        "and 100 at the bottom. The list shows only part of itself at a "
+	        "time.",
+	        kMusicScrollBarSchema);
 	// The grid's last page carries fewer squares, so both the wording and the
 	// schema's maximum follow the page rather than assuming nine everywhere.
 	int const squares = (payload >> kSquareShift) & kSquareMask;

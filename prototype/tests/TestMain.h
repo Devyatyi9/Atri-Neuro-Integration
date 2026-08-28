@@ -10,7 +10,9 @@
 extern int g_TestFailures;
 extern int g_TestChecks;
 
-void ReportCheck(bool passed, char const *file, int line,
+void ReportCheck(bool passed,
+                 char const *file,
+                 int line,
                  char const *description);
 
 #define CHECK(condition) \

@@ -148,7 +148,7 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	}
 	char const *const outcome = part.empty() ? nullptr : ConfirmedOutcome(part);
 	NeuroSendActionResult(id.c_str(), true,
-	                      outcome                 ? outcome
+	                      outcome   ? outcome
 	                      : confirm ? "Confirmed the dialog."
 	                                : "Cancelled the dialog.");
 }
@@ -286,17 +286,20 @@ void ForceDialogAnswer() {
 		} else if (part == "AskDelete") {
 			subject = "The game is asking whether to erase that save.";
 		} else if (part == "AskCopy") {
-			subject = "The game is asking whether to copy that save into the slot "
-			          "chosen.";
+			subject =
+			    "The game is asking whether to copy that save into the slot "
+			    "chosen.";
 		} else if (part == "AskMove") {
-			subject = "The game is asking whether to move that save into the slot "
-			          "chosen.";
+			subject =
+			    "The game is asking whether to move that save into the slot "
+			    "chosen.";
 		} else if (part == "AskAllRemove1" || part == "AskAllRemove2") {
 			// Two questions in a row for the same thing, the second one a second
 			// chance to back out. Nothing we register raises them; they are named
 			// so that a stray one does not reach Neuro as an unlabelled question.
-			subject = "The game is asking whether to erase every save. It asks "
-			          "this twice.";
+			subject =
+			    "The game is asking whether to erase every save. It asks "
+			    "this twice.";
 		} else if (part == "AskPrevScn") {
 			subject = "The game is asking whether to go back to the previous scene.";
 		} else if (part == "AskNextScn") {

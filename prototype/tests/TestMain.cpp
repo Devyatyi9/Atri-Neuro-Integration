@@ -5,7 +5,9 @@
 int g_TestFailures = 0;
 int g_TestChecks = 0;
 
-void ReportCheck(bool passed, char const *file, int line,
+void ReportCheck(bool passed,
+                 char const *file,
+                 int line,
                  char const *description) {
 	++g_TestChecks;
 	if (passed) {

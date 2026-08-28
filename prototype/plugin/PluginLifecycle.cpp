@@ -90,16 +90,14 @@ static void DeferredTJSInitThread() {
 		char buf[256];
 
 		if (ExecuteTJSSync(L"neuroGetVersion()", &result, 5000)) {
-			sprintf_s(buf, "  neuroGetVersion() returned: %s\n",
-			          result.c_str());
+			sprintf_s(buf, "  neuroGetVersion() returned: %s\n", result.c_str());
 			Log(buf);
 		} else {
 			Log("  ERROR: neuroGetVersion() timed out\n");
 		}
 
 		if (ExecuteTJSSync(L"neuroIsTJSReady()", &result, 5000)) {
-			sprintf_s(buf, "  neuroIsTJSReady() returned: %s\n",
-			          result.c_str());
+			sprintf_s(buf, "  neuroIsTJSReady() returned: %s\n", result.c_str());
 			Log(buf);
 		} else {
 			Log("  ERROR: neuroIsTJSReady() timed out\n");

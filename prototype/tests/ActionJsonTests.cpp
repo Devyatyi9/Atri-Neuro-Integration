@@ -84,14 +84,16 @@ void RunActionJsonTests() {
 	ExpectString(R"({"text": "hello"})", "\"text\"", "hello");
 	ExpectString(R"({"text": ""})", "\"text\"", "");
 	ExpectString(R"({"text": "a b, c"})", "\"text\"", "a b, c");
-	ExpectString("{\"text\": \"he said \\\"hi\\\" back\"}", "\"text\"", "he said \"hi\" back");
+	ExpectString("{\"text\": \"he said \\\"hi\\\" back\"}", "\"text\"",
+	             "he said \"hi\" back");
 	ExpectString("{\"text\": \"a \\\\ b\"}", "\"text\"", "a \\ b");
 	ExpectString("{\"text\": \"line\\nbreak\"}", "\"text\"", "line\nbreak");
 	// Escaped and raw non-ASCII have to land on the same bytes: which one
 	// arrives depends on the encoder at the other end, not on the text.
 	ExpectString("{\"text\": \"\\u0416\"}", "\"text\"", "\xd0\x96");
 	ExpectString("{\"text\": \"\xd0\x96\"}", "\"text\"", "\xd0\x96");
-	ExpectString("{\"text\": \"\\ud83d\\ude00\"}", "\"text\"", "\xf0\x9f\x98\x80");
+	ExpectString("{\"text\": \"\\ud83d\\ude00\"}", "\"text\"",
+	             "\xf0\x9f\x98\x80");
 	ExpectString(R"({"other": "x", "text": "y"})", "\"text\"", "y");
 
 	ExpectStringRefused(R"({"text": 5})", "\"text\"");

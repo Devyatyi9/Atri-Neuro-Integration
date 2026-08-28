@@ -166,10 +166,10 @@ void HandleNeuroAction(std::string const &id,
 	// arrives: the server retires its own only once the action is complete, and
 	// clearing on arrival let a fast open-close-open send the next force while
 	// the server still held the first.
-	bool const answersForce =
-	    name == "answer_dialog" || name == "close_edit_menu" ||
-	    name == "edit_comment" || name == "edit_copy" || name == "edit_move" ||
-	    name == "edit_erase";
+	bool const answersForce = name == "answer_dialog" ||
+	                          name == "close_edit_menu" ||
+	                          name == "edit_comment" || name == "edit_copy" ||
+	                          name == "edit_move" || name == "edit_erase";
 	struct ForceGuard {
 		bool active;
 		~ForceGuard() {
@@ -259,9 +259,9 @@ void SyncCapabilities(int kind, int payload = 0) {
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
-	g_DialogForcePending.store(kind == kCapabilityStateDialog ||
-	                               kind == kCapabilityStateEditMenu,
-	                           std::memory_order_release);
+	g_DialogForcePending.store(
+	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu,
+	    std::memory_order_release);
 	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
 		// is not sent here: this state is entered during plugin init, before the
@@ -329,6 +329,12 @@ void SyncCapabilities(int kind, int payload = 0) {
 		ScreenSlots::SendEnteringContext(ScreenSlots::Mode::Save, payload);
 		Log(("[Action] Capabilities: save (" + set.names() + ")\n").c_str());
 	} else if (kind == kCapabilityStateGallery) {
+		// Only on the way in. The payload changes whenever a picture opens or a
+		// page turns, and repeating the whole track list at each of those would
+		// bury everything else.
+		if (SyncedCapabilityKind() != kCapabilityStateGallery) {
+			ScreenGallery::SendEnteringContext();
+		}
 		ActionSet set;
 		ScreenGallery::AppendActions(set, payload);
 		NeuroSetRegisteredActions(set.data(), set.count());

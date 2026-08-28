@@ -111,7 +111,8 @@ void AppendUtf8(unsigned codePoint, std::string &out) {
 
 }  // namespace
 
-bool ParseJsonString(std::string const &json, char const *key,
+bool ParseJsonString(std::string const &json,
+                     char const *key,
                      std::string &out) {
 	size_t const start = FindValueStart(json, key);
 	if (start == std::string::npos || json[start] != '"') {
@@ -142,14 +143,30 @@ bool ParseJsonString(std::string const &json, char const *key,
 		char const escape = json[cursor + 1];
 		cursor += 2;
 		switch (escape) {
-			case '"': text += '\"'; break;
-			case '\\': text += '\\'; break;
-			case '/': text += '/'; break;
-			case 'b': text += '\b'; break;
-			case 'f': text += '\f'; break;
-			case 'n': text += '\n'; break;
-			case 'r': text += '\r'; break;
-			case 't': text += '\t'; break;
+			case '"':
+				text += '\"';
+				break;
+			case '\\':
+				text += '\\';
+				break;
+			case '/':
+				text += '/';
+				break;
+			case 'b':
+				text += '\b';
+				break;
+			case 'f':
+				text += '\f';
+				break;
+			case 'n':
+				text += '\n';
+				break;
+			case 'r':
+				text += '\r';
+				break;
+			case 't':
+				text += '\t';
+				break;
 			case 'u': {
 				unsigned unit = 0;
 				if (!ReadHex4(json, cursor, unit)) {
@@ -162,9 +179,8 @@ bool ParseJsonString(std::string const &json, char const *key,
 					// broken text on the screen.
 					unsigned low = 0;
 					if (cursor + 1 >= json.size() || json[cursor] != '\\' ||
-					    json[cursor + 1] != 'u' ||
-					    !ReadHex4(json, cursor + 2, low) || low < 0xdc00 ||
-					    low > 0xdfff) {
+					    json[cursor + 1] != 'u' || !ReadHex4(json, cursor + 2, low) ||
+					    low < 0xdc00 || low > 0xdfff) {
 						return false;
 					}
 					cursor += 6;
@@ -196,8 +212,7 @@ bool ParseJsonBoolean(std::string const &json, char const *key, int &out) {
 			return false;
 		}
 		size_t const after = start + size;
-		return after >= json.size() ||
-		       strchr(",}] \t\r\n", json[after]) != nullptr;
+		return after >= json.size() || strchr(",}] \t\r\n", json[after]) != nullptr;
 	};
 	if (literal("true", 4)) {
 		out = 1;

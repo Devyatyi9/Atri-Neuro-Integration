@@ -336,8 +336,8 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 		// sent is a quiet lie about what the save now says.
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    ("That comment is longer than the " + std::to_string(kEditCommentLimit) +
-		     " characters a slot holds.")
+		    ("That comment is longer than the " +
+		     std::to_string(kEditCommentLimit) + " characters a slot holds.")
 		        .c_str());
 		return;
 	}
@@ -393,9 +393,8 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true,
-	                      text.empty()
-	                          ? "Cleared the comment on that save."
-	                          : "Wrote that comment on the save.");
+	                      text.empty() ? "Cleared the comment on that save."
+	                                   : "Wrote that comment on the save.");
 }
 
 void HandleEditMenuItemAction(std::string const &id, int item) {
@@ -756,10 +755,10 @@ void ForceEditMenuChoice(int payload) {
 	names[count++] = "close_edit_menu";
 	// Ephemeral: the menu stands only until something is chosen, and closing it
 	// is always one of the choices.
-	NeuroForceAction("The edit menu for that save is open, and nothing else on "
-	                 "the screen answers while it stands.",
-	                 "Choose one of its entries, or close it.", names, count,
-	                 true);
+	NeuroForceAction(
+	    "The edit menu for that save is open, and nothing else on "
+	    "the screen answers while it stands.",
+	    "Choose one of its entries, or close it.", names, count, true);
 }
 
 void SendEditMenuContext(int payload) {
@@ -792,9 +791,8 @@ void SendEditMenuContext(int payload) {
 		std::string comment;
 		if (ProbeEditMenuSlot(position, "edit menu comment slot") &&
 		    ProbeSlotComment(position, comment, "edit menu comment")) {
-			message += comment.empty()
-			               ? " It has no comment yet."
-			               : " Its comment now reads: " + comment;
+			message += comment.empty() ? " It has no comment yet."
+			                           : " Its comment now reads: " + comment;
 			if (!comment.empty()) {
 				message +=
 				    ". edit_comment replaces it whole, so send it back with the "
@@ -806,8 +804,8 @@ void SendEditMenuContext(int payload) {
 		// Said plainly, because the entries are on screen: without this, an
 		// entry the game draws and refuses is indistinguishable from one that
 		// was never offered.
-		message += " Also on the menu but greyed out for this slot: " + refused +
-		           ".";
+		message +=
+		    " Also on the menu but greyed out for this slot: " + refused + ".";
 	}
 	NeuroSendContext(message.c_str(), false);
 }
