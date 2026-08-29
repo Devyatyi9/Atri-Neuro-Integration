@@ -1,6 +1,7 @@
 #include <Windows.h>
 
 #include <cwchar>
+#include <string>
 
 #pragma warning(push)
 #pragma warning(disable : 26495)
@@ -179,7 +180,20 @@ WRAPPER_GENFUNC(VerQueryValueW)
 	}
 
 void VersionDllInit() {
-	HMODULE hOriginalDll = LoadLibrary(L"C:\\Windows\\system32\\version.dll");
+	// The full path is taken from the system, 
+	// which also eliminates the need for searching 
+	// and prevents the possibility of a looped loading of the library
+	wchar_t systemPath[MAX_PATH];
+	UINT const systemPathLength = GetSystemDirectoryW(systemPath, MAX_PATH);
+	HMODULE hOriginalDll = NULL;
+	if (systemPathLength > 0 && systemPathLength < MAX_PATH) {
+		std::wstring path(systemPath, systemPathLength);
+		path += L"\\version.dll";
+		hOriginalDll = LoadLibraryW(path.c_str());
+	}
+	if (!hOriginalDll) {
+		ReportLastError(L"LoadLibraryW(system32\\version.dll)");
+	}
 	WRAPPER_FUNC(GetFileVersionInfoA);
 	WRAPPER_FUNC(GetFileVersionInfoByHandle);
 	WRAPPER_FUNC(GetFileVersionInfoExW);
