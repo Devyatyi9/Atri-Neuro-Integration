@@ -13,6 +13,7 @@
 #include "ActionSchemas.h"
 #include "Logging.h"
 #include "NeuroClient.h"
+#include "SlotPayload.h"
 
 namespace {
 
@@ -32,32 +33,13 @@ constexpr int kSlotColumns = 5;
 // The tab bar, carried in the payload: which tabs the bar shows, and which of
 // those can be pressed. The tab that is open has no button of its own, so
 // switching tabs changes the mask and re-registers the set.
-constexpr int kSaveTabSave = 1 << 0;
-constexpr int kSaveTabLoad = 1 << 1;
-constexpr int kSaveTabQuick = 1 << 2;
-constexpr int kSaveTabVoice = 1 << 3;
-constexpr int kSaveTabMask = 0xf;
-constexpr int kSaveTabEnabledShift = 4;
-// How many pages the list has and which one is open, in the same value: the
-// page decides which ten slots the numbers refer to, so moving it has to
-// re-register and re-describe them.
-constexpr int kSavePageCountShift = 8;
-constexpr int kSavePageShift = 14;
-constexpr int kSavePageMask = 0x3f;
-// The per-slot edit menu: whether it is up, and which of its four entries can
-// be pressed. Both belong in the payload because both change what the screen
-// offers -- while the menu stands, nothing else on the screen can be used.
-constexpr int kEditMenuOpen = 1 << 20;
-constexpr int kEditItemsShift = 21;
-constexpr int kEditItemsMask = 0xf;
-// Drawn but refused is its own state here: the game greys an entry out for the
-// slot rather than leaving it off the menu, and Neuro is told which is which.
-constexpr int kEditItemsShownShift = 25;
-// Copy, Move and Swap all put the screen into the same shape: the next slot
-// pressed is the destination. Two bits, because which of the three it is has to
-// be said out loud -- the slot press means something different in each.
-constexpr int kCopyModeShift = 29;
-constexpr int kCopyModeMask = 0x3;
+//
+// How all of this sits inside the one int the screen travels as lives in
+// SlotPayload, and only there.
+constexpr int kSaveTabSave = kSlotTabSave;
+constexpr int kSaveTabLoad = kSlotTabLoad;
+constexpr int kSaveTabQuick = kSlotTabQuick;
+constexpr int kSaveTabVoice = kSlotTabVoice;
 
 // In the order the probe reports them.
 char const *const kCopyModeVerbs[] = {"", "copied", "moved", "swapped with"};
@@ -587,8 +569,11 @@ int ReadPayloadValue(bool editMenuOpen) {
 		if (!ProbeEditMenuItems(shown, items, "edit menu payload")) {
 			return 0;
 		}
-		return kEditMenuOpen | ((items & kEditItemsMask) << kEditItemsShift) |
-		       ((shown & kEditItemsMask) << kEditItemsShownShift);
+		SlotPayload value;
+		value.editMenuOpen = true;
+		value.editItems = items;
+		value.editItemsShown = shown;
+		return PackSlotPayload(value);
 	}
 
 	int visible = 0;
@@ -608,17 +593,19 @@ int ReadPayloadValue(bool editMenuOpen) {
 		return 0;
 	}
 	int const pages = ProbeSavePageCount();
-	return (visible & kSaveTabMask) |
-	       ((enabled & kSaveTabMask) << kSaveTabEnabledShift) |
-	       ((pages & kSavePageMask) << kSavePageCountShift) |
-	       ((page & kSavePageMask) << kSavePageShift) |
-	       ((copyMode & kCopyModeMask) << kCopyModeShift);
+	SlotPayload value;
+	value.visibleTabs = visible;
+	value.enabledTabs = enabled;
+	value.pageCount = pages;
+	value.page = page;
+	value.copyMode = copyMode;
+	return PackSlotPayload(value);
 }
 
 // The tab bar is the same on all three modes, so its action is built in one
 // place.
 void AppendSwitchTabAction(ActionSet &set, int payload) {
-	int const visible = payload & kSaveTabMask;
+	int const visible = UnpackSlotPayload(payload).visibleTabs;
 	if (visible == 0) {
 		return;
 	}
@@ -643,11 +630,11 @@ void AppendSwitchTabAction(ActionSet &set, int payload) {
 // The page buttons under the same list. The quick tab has none: its ten slots
 // are the whole list.
 void AppendSwitchPageAction(ActionSet &set, int payload) {
-	int const pages = (payload >> kSavePageCountShift) & kSavePageMask;
+	int const pages = UnpackSlotPayload(payload).pageCount;
 	if (pages < 2) {
 		return;
 	}
-	int const page = (payload >> kSavePageShift) & kSavePageMask;
+	int const page = UnpackSlotPayload(payload).page;
 	set.add("switch_page",
 	        set.keep("Show another page of this list, 1 to " +
 	                 std::to_string(pages) + ". Page " + std::to_string(page) +
@@ -715,7 +702,7 @@ bool Handle(std::string const &id,
 // to the cursor. So it gets its own set, and the choice is forced rather than
 // merely offered.
 void AppendEditMenuActions(ActionSet &set, int payload) {
-	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
+	int const items = UnpackSlotPayload(payload).editItems;
 	if ((items & 1) != 0) {
 		// The one entry that is not a press. The game's own comment window is a
 		// native dialog: it cannot be typed into from here, and the game does
@@ -744,7 +731,7 @@ void AppendEditMenuActions(ActionSet &set, int payload) {
 }
 
 void ForceEditMenuChoice(int payload) {
-	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
+	int const items = UnpackSlotPayload(payload).editItems;
 	char const *names[5] = {};
 	int count = 0;
 	for (int index = 0; index < 4; ++index) {
@@ -762,8 +749,9 @@ void ForceEditMenuChoice(int payload) {
 }
 
 void SendEditMenuContext(int payload) {
-	int const items = (payload >> kEditItemsShift) & kEditItemsMask;
-	int const shown = (payload >> kEditItemsShownShift) & kEditItemsMask;
+	SlotPayload const state = UnpackSlotPayload(payload);
+	int const items = state.editItems;
+	int const shown = state.editItemsShown;
 	std::string offered;
 	std::string refused;
 	for (int index = 0; index < 4; ++index) {
@@ -811,7 +799,7 @@ void SendEditMenuContext(int payload) {
 }
 
 void AppendActions(ActionSet &set, Mode mode, int payload) {
-	int const copyMode = (payload >> kCopyModeShift) & kCopyModeMask;
+	int const copyMode = UnpackSlotPayload(payload).copyMode;
 	if (copyMode != 0) {
 		// The screen keeps its grid but every press means something else: the
 		// slot is the destination now, not a save to load or a place to write.
@@ -879,7 +867,7 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 }
 
 void SendEnteringContext(Mode mode, int payload) {
-	int const copyMode = (payload >> kCopyModeShift) & kCopyModeMask;
+	int const copyMode = UnpackSlotPayload(payload).copyMode;
 	if (copyMode != 0) {
 		std::string const verb(kCopyModeVerbs[copyMode]);
 		// What the game itself puts in its help window at this moment is one
@@ -898,7 +886,7 @@ void SendEnteringContext(Mode mode, int payload) {
 
 	// Page 0 is the quick tab: the same screen holding the ten quick saves
 	// instead of the numbered list.
-	bool const quick = ((payload >> kSavePageShift) & kSavePageMask) == 0;
+	bool const quick = UnpackSlotPayload(payload).page == 0;
 	if (mode == Mode::Load) {
 		SendWindowContext(
 		    quick ? "The quick saves are open." : "The load screen is open.", false,
@@ -915,7 +903,7 @@ void SendEnteringContext(Mode mode, int payload) {
 }
 
 bool PayloadHasEditMenu(int payload) {
-	return (payload & kEditMenuOpen) != 0;
+	return UnpackSlotPayload(payload).editMenuOpen;
 }
 
 bool ReadPayload(ScreenSnapshot const &screen, int &payload) {

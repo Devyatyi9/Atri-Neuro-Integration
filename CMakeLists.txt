@@ -113,6 +113,7 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ActionSchemas.h
         prototype/actions/common/ActionSet.h
         prototype/actions/common/ParseNumber.cpp
+        prototype/actions/common/SlotPayload.cpp
         prototype/actions/common/ParseNumber.h
         prototype/actions/probes/ActionProbes.cpp
         prototype/actions/probes/ActionProbes.h
@@ -193,8 +194,10 @@ if(ATRI_BUILD_PROTOTYPE)
     add_executable(atri_prototype_tests
         prototype/actions/common/ActionJson.cpp
         prototype/actions/common/ParseNumber.cpp
+        prototype/actions/common/SlotPayload.cpp
         prototype/tests/ActionJsonTests.cpp
         prototype/tests/ParseNumberTests.cpp
+        prototype/tests/SlotPayloadTests.cpp
         prototype/tests/TestMain.cpp
         prototype/tests/TestMain.h
     )

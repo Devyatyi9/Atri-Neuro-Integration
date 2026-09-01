@@ -180,8 +180,8 @@ WRAPPER_GENFUNC(VerQueryValueW)
 	}
 
 void VersionDllInit() {
-	// The full path is taken from the system, 
-	// which also eliminates the need for searching 
+	// The full path is taken from the system,
+	// which also eliminates the need for searching
 	// and prevents the possibility of a looped loading of the library
 	wchar_t systemPath[MAX_PATH];
 	UINT const systemPathLength = GetSystemDirectoryW(systemPath, MAX_PATH);
