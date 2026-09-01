@@ -73,18 +73,17 @@ void HandleViewCgAction(std::string const &id, std::string const &data) {
 	}
 	// The page decides how many squares there are, so the bound is read now
 	// rather than taken from the schema.
-	int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
-	bool open = false;
-	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
+	GalleryState gallery;
+	if (!ProbeGallery(gallery)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Cannot tell what the gallery is showing.");
 		return;
 	}
-	if (number > squares) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    ("This page has only " + std::to_string(squares) + " squares.")
-		        .c_str());
+	if (number > gallery.squareCount) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      ("This page has only " +
+		                       std::to_string(gallery.squareCount) + " squares.")
+		                          .c_str());
 		return;
 	}
 
@@ -325,20 +324,19 @@ void HandleScrollCgAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	int axes = 0, left = 0, maxLeft = 0, top = 0, maxTop = 0;
-	if (!ProbeCgScroll(axes, left, maxLeft, top, maxTop, "scroll_cg before") ||
-	    axes == 0) {
+	CgScrollState before;
+	if (!ProbeCgScroll(before, "scroll_cg before") || before.canScroll == 0) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "This picture fits the frame; there is nothing to "
 		                      "move.");
 		return;
 	}
-	if (horizontal != 0 && (axes & 1) == 0) {
+	if (horizontal != 0 && (before.canScroll & 1) == 0) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "This picture does not move sideways.");
 		return;
 	}
-	if (vertical != 0 && (axes & 2) == 0) {
+	if (vertical != 0 && (before.canScroll & 2) == 0) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "This picture does not move up or down.");
 		return;
@@ -352,21 +350,21 @@ void HandleScrollCgAction(std::string const &id, std::string const &data) {
 	// Read back rather than assume: the game stops at the edges, so asking for
 	// ten steps near the border moves fewer, and the answer should say where the
 	// picture actually ended up.
-	int after = 0, newLeft = left, newTop = top;
-	if (!ProbeCgScroll(after, newLeft, maxLeft, newTop, maxTop,
-	                   "scroll_cg after")) {
+	CgScrollState after;
+	if (!ProbeCgScroll(after, "scroll_cg after")) {
 		NeuroSendActionResult(id.c_str(), true, "Moved the picture.");
 		return;
 	}
-	if (newLeft == left && newTop == top) {
+	if (after.left == before.left && after.top == before.top) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "The picture is already at that edge.");
 		return;
 	}
-	std::string message =
-	    "Moved the picture. It now sits " + std::to_string(newLeft) + " of " +
-	    std::to_string(maxLeft) + " across and " + std::to_string(newTop) +
-	    " of " + std::to_string(maxTop) + " down.";
+	std::string message = "Moved the picture. It now sits " +
+	                      std::to_string(after.left) + " of " +
+	                      std::to_string(after.maxLeft) + " across and " +
+	                      std::to_string(after.top) + " of " +
+	                      std::to_string(after.maxTop) + " down.";
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
@@ -423,10 +421,8 @@ void HandleSwitchTrackAction(std::string const &id, std::string const &data) {
 		                      "That only works on the Extra screen.");
 		return;
 	}
-	int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
-	bool open = false;
-	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants) ||
-	    number > tracks) {
+	GalleryState gallery;
+	if (!ProbeGallery(gallery) || number > gallery.trackCount) {
 		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
 		return;
 	}
@@ -576,23 +572,24 @@ void AppendActions(ActionSet &set, int payload) {
 }
 
 bool ReadPayload(int &payload) {
-	int page = 0, pages = 0, squares = 0, tracks = 0, scroll = 0, variants = 0;
-	bool open = false;
-	if (!ProbeGallery(page, pages, squares, tracks, scroll, open, variants)) {
+	GalleryState gallery;
+	if (!ProbeGallery(gallery)) {
 		return false;
 	}
 	// Asked only while a picture is up: with the grid on screen there is no
 	// layer to ask about, and this runs several times a second.
 	int canScroll = 0;
-	if (open) {
-		int left = 0, maxLeft = 0, top = 0, maxTop = 0;
-		if (!ProbeCgScroll(canScroll, left, maxLeft, top, maxTop, "cg scroll")) {
-			canScroll = 0;
+	if (gallery.viewOpen) {
+		CgScrollState scroll;
+		if (ProbeCgScroll(scroll, "cg scroll")) {
+			canScroll = scroll.canScroll;
 		}
 	}
-	payload = scroll | (open ? kViewOpenFlag : 0) |
-	          (variants > 0 ? kMoreViewsFlag : 0) | (squares << kSquareShift) |
-	          (pages << kPageShift) | (tracks << kTrackShift) |
+	payload = gallery.scrollMask | (gallery.viewOpen ? kViewOpenFlag : 0) |
+	          (gallery.variantsLeft > 0 ? kMoreViewsFlag : 0) |
+	          (gallery.squareCount << kSquareShift) |
+	          (gallery.pageCount << kPageShift) |
+	          (gallery.trackCount << kTrackShift) |
 	          ((canScroll & kCanScrollMask) << kCanScrollShift);
 	return true;
 }

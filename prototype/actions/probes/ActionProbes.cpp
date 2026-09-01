@@ -876,7 +876,7 @@ bool ProbeBacklogButtons(int &flags) {
 	return true;
 }
 
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask, int &saveMask) {
+bool ProbeBacklogLineButtons(BacklogLineButtons &buttons) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof kag == 'undefined' || typeof kag.current "
@@ -902,18 +902,16 @@ bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask, int &saveMask) {
 	if (raw.size() != 15) {
 		return false;
 	}
-	jumpMask = 0;
-	voiceMask = 0;
-	saveMask = 0;
+	buttons = BacklogLineButtons();
 	for (int i = 0; i < 5; ++i) {
 		if (raw[i] == '1') {
-			jumpMask |= 1 << i;
+			buttons.jumpMask |= 1 << i;
 		}
 		if (raw[i + 5] == '1') {
-			voiceMask |= 1 << i;
+			buttons.voiceMask |= 1 << i;
 		}
 		if (raw[i + 10] == '1') {
-			saveMask |= 1 << i;
+			buttons.saveMask |= 1 << i;
 		}
 	}
 	return true;
@@ -985,13 +983,7 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	    tag, verb, index);
 }
 
-bool ProbeGallery(int &page,
-                  int &pageCount,
-                  int &squareCount,
-                  int &trackCount,
-                  int &scrollMask,
-                  bool &viewOpen,
-                  int &variantsLeft) {
+bool ProbeGallery(GalleryState &state) {
 	std::string raw;
 	if (!QueryString(
 	        L"(function(){ if (typeof Current != 'Object' || typeof kag.current "
@@ -1063,38 +1055,33 @@ bool ProbeGallery(int &page,
 	if (raw.size() < cursor + 4) {
 		return false;
 	}
-	page = values[0];
-	pageCount = values[1];
-	squareCount = values[2];
-	trackCount = values[3];
-	scrollMask = 0;
+	state.page = values[0];
+	state.pageCount = values[1];
+	state.squareCount = values[2];
+	state.trackCount = values[3];
+	state.scrollMask = 0;
 	for (int i = 0; i < 4; ++i) {
 		if (raw[cursor + i] == '1') {
-			scrollMask |= 1 << i;
+			state.scrollMask |= 1 << i;
 		}
 	}
 	cursor += 5;
 	if (cursor >= raw.size()) {
 		return false;
 	}
-	viewOpen = raw[cursor] == '1';
+	state.viewOpen = raw[cursor] == '1';
 	size_t const last = raw.find('|', cursor);
 	// No trailing field at all is a legitimate "none left"; a field that is
 	// there but unreadable is not, and must not be reported as zero.
-	variantsLeft = 0;
+	state.variantsLeft = 0;
 	if (last != std::string::npos &&
-	    !ParseProbeInt(raw.substr(last + 1), variantsLeft, "gallery")) {
+	    !ParseProbeInt(raw.substr(last + 1), state.variantsLeft, "gallery")) {
 		return false;
 	}
 	return true;
 }
 
-bool ProbeCgScroll(int &canScroll,
-                   int &left,
-                   int &maxLeft,
-                   int &top,
-                   int &maxTop,
-                   char const *tag) {
+bool ProbeCgScroll(CgScrollState &state, char const *tag) {
 	std::string raw;
 	if (!QueryString(L"(function(){ var g = global.__cm_gallery;"
 	                 L"if (typeof g != 'Object' || !g) return '';"
@@ -1127,11 +1114,11 @@ bool ProbeCgScroll(int &canScroll,
 		}
 		cursor = bar + 1;
 	}
-	canScroll = values[0];
-	left = values[1];
-	maxLeft = values[2];
-	top = values[3];
-	maxTop = values[4];
+	state.canScroll = values[0];
+	state.left = values[1];
+	state.maxLeft = values[2];
+	state.top = values[3];
+	state.maxTop = values[4];
 	return true;
 }
 

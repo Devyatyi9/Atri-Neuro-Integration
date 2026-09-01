@@ -151,63 +151,75 @@ void HandleShowUiAction(std::string const &id, std::string const &data) {
 // mode on, the next turns it off, and the button stays enabled throughout.
 // Which direction is registered comes from the mode flag, so the handler only
 // has to press.
+// The four strings that make one of these travel together rather than as
+// loose arguments: six const char* in a row is the shape where two get
+// swapped, and a swapped pair here answers a working action with the wrong
+// sentence.
+struct QuickMenuAction {
+	char const *name;
+	char const *button;
+	char const *ok;
+	char const *fail;
+};
+
 void HandleQuickMenuToggle(std::string const &id,
                            std::string const &data,
-                           char const *action,
-                           char const *button,
-                           char const *okMessage,
-                           char const *failMessage) {
+                           QuickMenuAction const &action) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    (std::string(action) + " does not accept arguments.").c_str());
+		    (std::string(action.name) + " does not accept arguments.").c_str());
 		return;
 	}
 
-	std::string const tag(action);
+	std::string const tag(action.name);
 	bool const ok =
 	    ProbeStateIs("game", (tag + " state").c_str()) &&
-	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
-	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	    ProbeQuickMenuButtonReady(action.button, (tag + " button").c_str()) &&
+	    DispatchQuickMenuButton(action.button, (tag + " dispatch").c_str());
 	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, failMessage);
+		NeuroSendActionResult(id.c_str(), false, action.fail);
 		return;
 	}
-	NeuroSendActionResult(id.c_str(), true, okMessage);
+	NeuroSendActionResult(id.c_str(), true, action.ok);
 }
 
 // Stepping between choice points asks first (asknextscn / askprevscn), the way
 // returning to the title does -- so the result says the question was raised,
 // not that the jump happened. The confirmation is configurable, so whether it
 // actually appeared is read back rather than assumed.
+struct SceneStepAction {
+	char const *name;
+	char const *button;
+	char const *asked;
+	char const *done;
+	char const *fail;
+};
+
 void HandleSceneStepAction(std::string const &id,
                            std::string const &data,
-                           char const *action,
-                           char const *button,
-                           char const *askedMessage,
-                           char const *doneMessage,
-                           char const *failMessage) {
+                           SceneStepAction const &action) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    (std::string(action) + " does not accept arguments.").c_str());
+		    (std::string(action.name) + " does not accept arguments.").c_str());
 		return;
 	}
 
-	std::string const tag(action);
+	std::string const tag(action.name);
 	bool const ok =
 	    ProbeStateIs("game", (tag + " state").c_str()) &&
-	    ProbeQuickMenuButtonReady(button, (tag + " button").c_str()) &&
-	    DispatchQuickMenuButton(button, (tag + " dispatch").c_str());
+	    ProbeQuickMenuButtonReady(action.button, (tag + " button").c_str()) &&
+	    DispatchQuickMenuButton(action.button, (tag + " dispatch").c_str());
 	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, failMessage);
+		NeuroSendActionResult(id.c_str(), false, action.fail);
 		return;
 	}
 	Sleep(kDialogSettleMs);
 	NeuroSendActionResult(id.c_str(), true,
 	                      ProbeDialogVisible((tag + " asked").c_str())
-	                          ? askedMessage
-	                          : doneMessage);
+	                          ? action.asked
+	                          : action.done);
 }
 
 // Builds the schema for a single integer field bounded to what is actually on
@@ -257,55 +269,61 @@ bool Handle(std::string const &id,
 	} else if (name == "show_ui") {
 		HandleShowUiAction(id, data);
 	} else if (name == "start_auto_mode") {
-		HandleQuickMenuToggle(id, data, "start_auto_mode", "auto",
-		                      "Auto mode is on; the text advances on its own.",
-		                      "Turning auto mode on is unavailable.");
+		HandleQuickMenuToggle(id, data,
+		                      {"start_auto_mode", "auto",
+		                       "Auto mode is on; the text advances on its own.",
+		                       "Turning auto mode on is unavailable."});
 	} else if (name == "stop_auto_mode") {
-		HandleQuickMenuToggle(id, data, "stop_auto_mode", "auto",
-		                      "Auto mode is off.",
-		                      "Turning auto mode off is unavailable.");
+		HandleQuickMenuToggle(id, data,
+		                      {"stop_auto_mode", "auto", "Auto mode is off.",
+		                       "Turning auto mode off is unavailable."});
 	} else if (name == "start_skip_mode") {
 		HandleQuickMenuToggle(
-		    id, data, "start_skip_mode", "skip", "Skipping through the text.",
-		    "Skip is greyed out: the game only skips text that has already "
-		    "been read.");
+		    id, data,
+		    {"start_skip_mode", "skip", "Skipping through the text.",
+		     "Skip is greyed out: the game only skips text that has already "
+		     "been read."});
 	} else if (name == "stop_skip_mode") {
-		HandleQuickMenuToggle(id, data, "stop_skip_mode", "skip",
-		                      "Stopped skipping.",
-		                      "Turning skip mode off is unavailable.");
+		HandleQuickMenuToggle(id, data,
+		                      {"stop_skip_mode", "skip", "Stopped skipping.",
+		                       "Turning skip mode off is unavailable."});
 	} else if (name == "quick_save") {
-		HandleQuickMenuToggle(id, data, "quick_save", "qsave",
-		                      "Saved to the quick slot.",
-		                      "Quick save is greyed out right now.");
+		HandleQuickMenuToggle(id, data,
+		                      {"quick_save", "qsave", "Saved to the quick slot.",
+		                       "Quick save is greyed out right now."});
 	} else if (name == "quick_load") {
-		HandleQuickMenuToggle(id, data, "quick_load", "qload",
-		                      "Loading the quick save.",
-		                      "There is no quick save to load.");
+		HandleQuickMenuToggle(id, data,
+		                      {"quick_load", "qload", "Loading the quick save.",
+		                       "There is no quick save to load."});
 	} else if (name == "save_voice_line") {
 		HandleQuickMenuToggle(
-		    id, data, "save_voice_line", "vsave",
-		    "Opened the voice collection to keep this line.",
-		    "The keep button is greyed out: this line has no voice.");
+		    id, data,
+		    {"save_voice_line", "vsave",
+		     "Opened the voice collection to keep this line.",
+		     "The keep button is greyed out: this line has no voice."});
 	} else if (name == "replay_voice") {
-		HandleQuickMenuToggle(id, data, "replay_voice", "vreplay",
-		                      "Playing that line again.",
-		                      "There is no voice line to replay.");
+		HandleQuickMenuToggle(
+		    id, data,
+		    {"replay_voice", "vreplay", "Playing that line again.",
+		     "There is no voice line to replay."});
 	} else if (name == "open_save") {
-		HandleQuickMenuToggle(id, data, "open_save", "save",
-		                      "Opened the save screen.",
-		                      "Opening the save screen is unavailable.");
+		HandleQuickMenuToggle(id, data,
+		                      {"open_save", "save", "Opened the save screen.",
+		                       "Opening the save screen is unavailable."});
 	} else if (name == "previous_scene") {
-		HandleSceneStepAction(id, data, "previous_scene", "xprev",
-		                      "Asked to go back to the previous choice point; "
-		                      "confirm or cancel the dialog.",
-		                      "Went back to the previous choice point.",
-		                      "There is nothing to go back to.");
+		HandleSceneStepAction(id, data,
+		                      {"previous_scene", "xprev",
+		                       "Asked to go back to the previous choice point; "
+		                       "confirm or cancel the dialog.",
+		                       "Went back to the previous choice point.",
+		                       "There is nothing to go back to."});
 	} else if (name == "next_scene") {
-		HandleSceneStepAction(id, data, "next_scene", "next",
-		                      "Asked to jump ahead to the next choice point; "
-		                      "confirm or cancel the dialog.",
-		                      "Jumped ahead to the next choice point.",
-		                      "There is nothing to jump ahead to.");
+		HandleSceneStepAction(id, data,
+		                      {"next_scene", "next",
+		                       "Asked to jump ahead to the next choice point; "
+		                       "confirm or cancel the dialog.",
+		                       "Jumped ahead to the next choice point.",
+		                       "There is nothing to jump ahead to."});
 	} else {
 		return false;
 	}

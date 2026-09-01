@@ -239,7 +239,15 @@ bool ProbeBacklogButtons(int &flags);
 // blockBaseLayer child and report it through `visible`, not `enabled`; the
 // slots are window-relative, so the same number means a different line after
 // scrolling.
-bool ProbeBacklogLineButtons(int &jumpMask, int &voiceMask, int &saveMask);
+// Grouped rather than passed as three loose int&: three masks in a row is the
+// shape where two get swapped, and a swap here reads one button's state as
+// another's.
+struct BacklogLineButtons {
+	int jumpMask = 0;
+	int voiceMask = 0;
+	int saveMask = 0;
+};
+bool ProbeBacklogLineButtons(BacklogLineButtons &buttons);
 // How many lines the conversation history holds, and a window of it as
 // "<index>	<speaker>	<line>" rows with `index` numbered from 1. Both come from
 // the player object the backlog reads, so neither depends on what is on screen.
@@ -272,24 +280,29 @@ bool DispatchBacklogLineButton(char const *verb, int index, char const *tag);
 // which is true. `squareCount` is how many of the nine cells the current page
 // actually uses: the last page carries fewer, and the unused ones are simply
 // invisible.
-bool ProbeGallery(int &page,
-                  int &pageCount,
-                  int &squareCount,
-                  int &trackCount,
-                  int &scrollMask,
-                  bool &viewOpen,
-                  int &variantsLeft);
+struct GalleryState {
+	int page = 0;
+	int pageCount = 0;
+	int squareCount = 0;
+	int trackCount = 0;
+	int scrollMask = 0;
+	int variantsLeft = 0;
+	bool viewOpen = false;
+};
+bool ProbeGallery(GalleryState &state);
 // The open picture's scrolling. Only the first record opens at full size, and
 // only on its second view: the picture is larger than the frame and the player
 // moves it with the wheel, the arrow keys or by dragging. `canScroll` carries
 // the axes the game will actually move -- bit 0 horizontal, bit 1 vertical --
 // and comes back 0 for every view that fits, which is most of them.
-bool ProbeCgScroll(int &canScroll,
-                   int &left,
-                   int &maxLeft,
-                   int &top,
-                   int &maxTop,
-                   char const *tag);
+struct CgScrollState {
+	int canScroll = 0;
+	int left = 0;
+	int maxLeft = 0;
+	int top = 0;
+	int maxTop = 0;
+};
+bool ProbeCgScroll(CgScrollState &state, char const *tag);
 // Moves it by whole steps, the way the arrow keys do: the game multiplies each
 // by its own step and clamps to the edges, so a step past the end simply stops
 // there.

@@ -60,15 +60,15 @@ void HandleBacklogLineAction(std::string const &id,
 		                      "That only works while the backlog is open.");
 		return;
 	}
-	int jumpMask = 0;
-	int voiceMask = 0;
-	int saveMask = 0;
-	if (!ProbeBacklogLineButtons(jumpMask, voiceMask, saveMask)) {
+	BacklogLineButtons buttons;
+	if (!ProbeBacklogLineButtons(buttons)) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Cannot tell which lines are on screen right now.");
 		return;
 	}
-	int const mask = which == 0 ? jumpMask : which == 1 ? voiceMask : saveMask;
+	int const mask = which == 0   ? buttons.jumpMask
+	                 : which == 1 ? buttons.voiceMask
+	                              : buttons.saveMask;
 	if ((mask & (1 << slot)) == 0) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      which == 0 ? "That line cannot be jumped to."
@@ -364,15 +364,13 @@ void AppendActions(ActionSet &set, int payload) {
 
 bool ReadPayload(int &payload) {
 	int flags = 0;
-	int jumpMask = 0;
-	int voiceMask = 0;
-	int saveMask = 0;
-	if (!ProbeBacklogButtons(flags) ||
-	    !ProbeBacklogLineButtons(jumpMask, voiceMask, saveMask)) {
+	BacklogLineButtons buttons;
+	if (!ProbeBacklogButtons(flags) || !ProbeBacklogLineButtons(buttons)) {
 		return false;
 	}
-	payload = flags | (jumpMask << kJumpShift) | (voiceMask << kVoiceShift) |
-	          (saveMask << kSaveShift);
+	payload = flags | (buttons.jumpMask << kJumpShift) |
+	          (buttons.voiceMask << kVoiceShift) |
+	          (buttons.saveMask << kSaveShift);
 	return true;
 }
 
