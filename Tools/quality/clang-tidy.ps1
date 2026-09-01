@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param()
+param(
+    # Sweep with .clang-tidy-full instead of the set the build keeps at zero.
+    [switch]$Full
+)
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -30,6 +33,11 @@ try {
         Write-Warning "compile_commands.json is older than CMakeLists.txt; new sources may be missing. Re-run the ""Configure: clangd Database"" task."
     }
 
+    $fullConfigPath = Join-Path $repoRoot ".clang-tidy-full"
+    if ($Full -and -not (Test-Path -LiteralPath $fullConfigPath -PathType Leaf)) {
+        throw "-Full needs $fullConfigPath, which is missing."
+    }
+
     $compileCommands = Get-Content -LiteralPath $compileCommandsPath -Raw | ConvertFrom-Json
     $sourcePattern = "(?i)^(src|prototype)/.*\.(c|cc|cpp|cxx)$"
     $files = @($compileCommands.file | Where-Object {
@@ -44,7 +52,11 @@ try {
     $failedFiles = @()
     foreach ($file in $files) {
         Write-Host "Checking $file"
-        & $clangTidy $file "-p=$compileCommandsDir" "--quiet"
+        if ($Full) {
+            & $clangTidy $file "-p=$compileCommandsDir" "--quiet" "--config-file=$fullConfigPath"
+        } else {
+            & $clangTidy $file "-p=$compileCommandsDir" "--quiet"
+        }
         if ($LASTEXITCODE -ne 0) {
             $failedFiles += $file
         }

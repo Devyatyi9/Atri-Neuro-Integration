@@ -1,0 +1,11 @@
+---
+# Everything at its defaults, for the occasional sweep: run
+# Tools/quality/clang-tidy.ps1 -Full. Nothing here is expected to be at zero.
+#
+# The point of keeping it is that .clang-tidy turns two checks off and tunes a
+# third, and a suppression nobody ever looks behind is how a real report goes
+# missing. This is the way to look behind it without editing anything.
+Checks: '-*,bugprone-*,performance-*'
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(src|prototype)/.*'
+...
