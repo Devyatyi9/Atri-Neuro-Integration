@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.30)
 
 project(AtriNeuroIntegration LANGUAGES C CXX)
 
+# Pinned rather than left to each compiler: MSVC builds this at C++14 by
+# default while clang-cl, which clang-tidy runs, reads the same code as C++17.
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if(NOT WIN32)
     message(FATAL_ERROR "ATRI Neuro Integration targets Windows only.")
 endif()

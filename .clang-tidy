@@ -23,6 +23,6 @@ CheckOptions:
   # cleanly and answers with the wrong number.
   - key: bugprone-easily-swappable-parameters.MinimumLength
     value: '3'
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/(src|prototype)/.*'
 ...
