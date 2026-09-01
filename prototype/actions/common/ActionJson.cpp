@@ -35,11 +35,10 @@ bool IsEmptyJsonObject(std::string const &data) {
 }
 
 // A JSON number token is only accepted here when it is a whole integer that
-// fits, and when the value really ends where the integer ends. The old scan
-// took any run of digits and minus signs and handed it to atoi, so "2.9"
-// arrived as slot 2, "1-2" as page 1, and an overflowing literal as whatever
-// atoi happened to produce -- each of them a number in range, accepted by the
-// caller, and pointing at the wrong thing. A malformed value has to be
+// fits, and when the value really ends where the integer ends. Scanning for a
+// run of digits instead reads "2.9" as slot 2 and "1-2" as page 1: numbers in
+// range, accepted by the caller, pointing at the wrong thing. A malformed
+// value has to be
 // refused, not rounded.
 bool ParseJsonInteger(std::string const &json, char const *key, int &out) {
 	size_t const start = FindValueStart(json, key);

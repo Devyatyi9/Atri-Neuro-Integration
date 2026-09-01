@@ -348,7 +348,7 @@ bool DispatchGalleryItem(char const *verb, int index, char const *tag);
 // Leaves the open picture, through the right click the gallery scenario itself
 // listens for (*view_rclick -> *view_quit). Not the controller's own onNext:
 // that reaches into an object the engine has already released once a video is
-// playing, and killed the game outright (cgmode.ks:27, 2026-08-20).
+// playing, and kills the game outright.
 // Steps to the next view of the open picture, by clicking into the picture
 // layer -- the scenario waits there and the window's own click never arrives.
 bool DispatchGalleryNextView(char const *tag);

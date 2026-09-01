@@ -30,8 +30,8 @@ void Log(char const *message) {
 	// rather than per line. Both mattered: this runs on the game's main thread
 	// for every synchronous TJS call, and a per-line fflush there put the game
 	// into disk waits -- a flood of probes hung it outright, with the main
-	// thread parked in this path. Holding the ring's lock across the write also
-	// blocked anyone reading the log back, exactly when it was most wanted.
+	// thread parked in this path. Holding the ring's lock across the write would
+	// also block anyone reading the log back.
 	{
 		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
 		if (!g_LogFile) {
@@ -76,11 +76,8 @@ void CloseLogFile() {
 	// Two locks, one after the other, because this touches both halves and Log
 	// keeps them apart: the file under its own lock, the ring under the ring's.
 	//
-	// Closing the file under the ring's lock was a use-after-free waiting for
-	// load, and it was found by one: with several TCP clients logging at once, a
-	// thread was inside fprintf on the FILE* while this closed it, and the crash
-	// landed in the CRT with the stream already gone. The tag log was given its
-	// own lock when the two were split; this one was missed.
+	// Closing the file under the ring's lock is a use-after-free: another thread
+	// can be inside fprintf on the FILE* while this closes it.
 	//
 	// Never held together, and in this order only: Log takes the file lock and
 	// releases it before taking the ring's, so nothing nests either way.
@@ -132,10 +129,9 @@ std::wstring GetPluginLogFile(std::size_t offset,
 }
 
 void LogTagFile(char const *text) {
-	// The hottest of the three log paths: this runs from the onTag hook, on the
-	// game's main thread, around fourteen times per line of dialogue. It used to
-	// flush per call and to take the ring's mutex, so it blocked the game on the
-	// disk and blocked anyone reading the plugin log at the same time.
+	// The hottest of the three log paths: it runs from the onTag hook, on the
+	// game's main thread, around fourteen times per line of dialogue. Hence its
+	// own lock and no flush per call -- either would put the game on the disk.
 	std::lock_guard<std::mutex> lock(g_TagLogFileMutex);
 	if (!g_TagLogFile) {
 		g_TagLogFile = fopen("neuro_tag_log.txt", "a");

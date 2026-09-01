@@ -359,10 +359,9 @@ class NeuroConsole {
 		// snippet was wrapped twice, and this copy used `e.message` directly,
 		// which yields void when a primitive is thrown rather than an object.
 		//
-		// The checkbox now selects the entry point instead of suppressing the
-		// wrapper: unchecked keeps the previous behaviour (a single expression,
-		// value returned), checked runs the input as a script so pasted
-		// statements work -- which is what it was really being used for.
+		// The checkbox selects the entry point: unchecked evaluates a single
+		// expression and returns its value, checked runs the input as a script so
+		// that pasted statements work.
 		BOOL const scriptModeChecked =
 		    (SendMessage(m_hNoWrapper, BM_GETCHECK, 0, 0) == BST_CHECKED);
 		TJSExecMode const mode =

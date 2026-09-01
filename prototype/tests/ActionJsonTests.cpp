@@ -56,8 +56,8 @@ void RunActionJsonTests() {
 	ExpectInteger(R"({"page": 4, "slot": 5})", "\"slot\"", 5);
 	ExpectInteger("{\"slot\":\n\t6\n}", "\"slot\"", 6);
 
-	// Every one of these used to come back as a number inside the range the
-	// handlers accept, which is how a fraction became a real page turn.
+	// Each of these can be misread as a number the handlers would accept, which
+	// is how a fraction becomes a real page turn.
 	ExpectIntegerRefused(R"({"slot": 2.9})", "\"slot\"");
 	ExpectIntegerRefused(R"({"slot": 1-2})", "\"slot\"");
 	ExpectIntegerRefused(R"({"slot": --3})", "\"slot\"");

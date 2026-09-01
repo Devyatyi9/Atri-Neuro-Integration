@@ -199,8 +199,8 @@ bool ProbeStateIsMenuScreen(char const *tag) {
 	// Every value the system scenarios jump to, minus title and game, collected
 	// from the sysjump/syscurrent tags in new-extract-data/sysscn/*.ks -- plus
 	// "voice", which that sweep cannot see because nothing jumps to it. It is the
-	// Voice tab inside the save/load screen, confirmed live 2026-08-20, and is a
-	// different screen from "voicemode" (the voice settings page).
+	// Voice tab inside the save/load screen, and a different screen from
+	// "voicemode", the voice settings page.
 	//
 	// So this list is a lower bound, not the full set. Nothing depends on it
 	// being complete: the capability refresh resolves screens by the controls
@@ -498,9 +498,8 @@ bool DispatchQuickMenuButton(char const *button, char const *tag) {
 bool DispatchShowTextWindow(char const *tag) {
 	// showMessageLayerByUser() is what the engine reaches when the player clicks
 	// or presses Escape while the window is away; it clears messageLayerHiding
-	// and re-triggers the conductor. Confirmed live 2026-08-20: 1 -> 0. There is
-	// no control to route through here -- the bar's own hide button reports
-	// enabled = 0 once the window is gone.
+	// and re-triggers the conductor. There is no control to route through here:
+	// the bar's own hide button reports enabled = 0 once the window is gone.
 	return Ask(
 	    L"(function(){ if (typeof kag == 'undefined' || typeof "
 	    L"kag.showMessageLayerByUser != 'Object') return 0;"
@@ -1021,11 +1020,9 @@ bool ProbeGallery(GalleryState &state) {
 	        // what says it is up.
 	        //
 	        // isQuitViewLoop must NOT be used for this: it turns true on the
-	        // last view, while that view is still on screen waiting for the
-	        // click that dismisses it. Trusting it registered the grid actions
-	        // over a picture that was still showing, and go_back then pressed a
-	        // control the picture was covering (found via Gary, 2026-08-20).
-	        // It is still the right source for how many views remain.
+	        // last view while that view is still on screen, so the grid actions
+	        // would register over a picture the player can still see. It is
+	        // still the right source for how many views remain.
 	        L"var open = kag.current.names['back'] === void ? 1 : 0, left = 0;"
 	        L"try { if (typeof global.__cm_gallery == 'Object') {"
 	        L"var g = global.__cm_gallery;"

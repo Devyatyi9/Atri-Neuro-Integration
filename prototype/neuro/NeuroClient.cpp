@@ -43,8 +43,7 @@ std::mutex g_ActionsMutex;
 // Context is queued here and flushed by the poll thread, never sent from the
 // caller's thread. The poll thread reacquires g_ContextMutex every poll_ms in a
 // tight loop, and std::mutex is not fair on Windows, so a caller that blocks on
-// it can starve indefinitely -- that is exactly what stalled the 200ms context
-// monitor loop when it called the send path directly (2026-08-19).
+// it can starve indefinitely.
 struct OutboundContext {
 	std::string message;
 	bool silent;

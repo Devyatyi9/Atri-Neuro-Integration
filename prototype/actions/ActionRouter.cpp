@@ -53,11 +53,8 @@ std::atomic<bool> g_DialogForcePending(false);
 // dialog is long gone, which is what drains the queue on the server side.
 std::atomic<bool> g_ForceOutstanding(false);
 
-// Kind in the high half, payload in the low half. They were packed into one
-// int before, and the payloads collided with the kind constants: the
-// backlog's voice mask reached the gallery's base bit, so a backlog with a
-// voiced line registered the Extra actions instead (2026-08-20). Splitting
-// the halves makes that impossible rather than merely unlikely.
+// Kind in the high half, payload in the low half. Sharing one half lets a
+// payload reach a kind constant, which registers the wrong screen entirely.
 std::atomic<long long> g_SyncedCapabilityState(-1);
 // The kind alone, for the places that ask "am I already on this screen" without
 // caring about the payload.
@@ -433,12 +430,10 @@ void SyncScreenByControls(bool stateChanged) {
 	bool const settled = synced == kCapabilityStateMenu ||
 	                     synced == kCapabilityStateMenuBackOnly ||
 	                     synced == kCapabilityStateBare;
-	// The tab count is re-read every poll, not once on the way in: the seventh
-	// settings tab is not there yet at the moment the screen is entered, and a
-	// single early sample fixed the maximum at six for as long as the screen
-	// stayed open (found via Tony with validation off, 2026-08-20). The button
-	// probes below stay behind the settled check -- only this one is cheap
-	// enough to repeat.
+	// Re-read every poll, not once on the way in: the seventh settings tab is
+	// not there yet when the screen is entered, so a single early sample fixes
+	// the maximum at six for as long as it stays open. The button probes below
+	// stay behind the settled check; only this one is cheap enough to repeat.
 	if (synced == kCapabilityStateLanguageSelect && !stateChanged) {
 		// Sitting on the first-run screen. Nothing about it can change without
 		// leaving it, and leaving changes the state string, so the only work
@@ -524,9 +519,8 @@ void RefreshPrototypeActionState() {
 		return;
 	}
 
-	// Every distinct state value is logged once. A screen this code has never
-	// seen used to fall through every branch and return without a trace, which
-	// was indistinguishable from "capabilities are simply unchanged".
+	// Every distinct state value is logged once, so a screen no branch here
+	// recognises leaves a trace instead of looking like "nothing changed".
 	static std::string lastObservedState;
 	bool const stateChanged = screen.state != lastObservedState;
 	if (stateChanged) {
@@ -549,14 +543,14 @@ void RefreshPrototypeActionState() {
 		// Still in the startup splashes: SystemHook.currentState is genuinely an
 		// empty string until the title exists. This is the bulk of the wait, so
 		// the notice has to cover it -- restricting it to the brief
-		// title-but-not-ready window made it arrive just as the menu appeared,
-		// which read as nonsense ("not available yet" the moment it was).
+		// title-but-not-ready window puts it on screen just as the menu appears,
+		// where it reads as nonsense.
 		//
 		// Only believe an empty reading before any real state has been seen.
-		// currentState is not a stable field: it was observed holding unrelated
-		// values mid-session (e.g. "bgmPlaying" while the option screen was up),
-		// so treating a stray empty reading as "back to loading" would revoke the
-		// live action set for no reason.
+		// currentState is not a stable field -- it holds unrelated values
+		// mid-session, such as "bgmPlaying" over the option screen -- so a stray
+		// empty reading treated as "back to loading" would revoke the live action
+		// set for no reason.
 		int const synced = SyncedCapabilityKind();
 		if (synced == kCapabilityStateUnknown ||
 		    synced == kCapabilityStateTitleLoading) {
