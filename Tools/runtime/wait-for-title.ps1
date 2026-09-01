@@ -14,16 +14,15 @@
     Which main-menu button to wait for. "cont" (Continue) also requires a
     suspend-save to exist, which is what SystemAction.canContinue reports.
 .PARAMETER TimeoutSeconds
-    Give up after this long instead of blocking forever. A cold start measured
-    24s here, so 30 is the practical ceiling with headroom; raise it only if the
-    game grows a much heavier plugin set.
+    Give up after this long instead of blocking forever. Cold starts here run
+    15-29s, splash screens included.
 .EXAMPLE
     .\Tools\runtime\wait-for-title.ps1
     .\Tools\runtime\wait-for-title.ps1 -Button start -TimeoutSeconds 45
 #>
 param(
     [string]$Button = "cont",
-    [int]$TimeoutSeconds = 30,
+    [int]$TimeoutSeconds = 45,
     [int]$Port = 18700
 )
 
