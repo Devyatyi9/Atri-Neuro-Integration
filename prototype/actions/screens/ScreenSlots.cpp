@@ -534,7 +534,10 @@ void SendWindowContext(std::string const &opening,
 			empty += empty.empty() ? slot : ", " + slot;
 			continue;
 		}
-		filled += " " + slot + ") " + what;
+		filled += " ";
+		filled += slot;
+		filled += ") ";
+		filled += what;
 		filled += when.empty() ? ";" : ", " + when + ";";
 	}
 

@@ -23,6 +23,13 @@ try {
         throw "Compilation database not found: $compileCommandsPath. Run the Configure: clangd Database task first."
     }
 
+    # A database older than the build files lists the sources of some earlier
+    # shape of the project, and files added since are skipped without a word.
+    $cmakeLists = Join-Path $repoRoot "CMakeLists.txt"
+    if ((Get-Item -LiteralPath $compileCommandsPath).LastWriteTime -lt (Get-Item -LiteralPath $cmakeLists).LastWriteTime) {
+        Write-Warning "compile_commands.json is older than CMakeLists.txt; new sources may be missing. Re-run the ""Configure: clangd Database"" task."
+    }
+
     $compileCommands = Get-Content -LiteralPath $compileCommandsPath -Raw | ConvertFrom-Json
     $sourcePattern = "(?i)^(src|prototype)/.*\.(c|cc|cpp|cxx)$"
     $files = @($compileCommands.file | Where-Object {

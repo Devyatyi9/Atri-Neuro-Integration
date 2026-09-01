@@ -130,9 +130,10 @@ static bool RecvFromClient(SOCKET sock, std::string &out) {
 // Single-client handling.
 // ============================================================================
 
-static void HandleClient(SOCKET clientSock,
-                         std::shared_ptr<std::atomic<bool>> finished,
-                         std::shared_ptr<std::atomic<bool>> exitAfterResponse) {
+static void HandleClient(
+    SOCKET clientSock,
+    std::shared_ptr<std::atomic<bool>> const &finished,
+    std::shared_ptr<std::atomic<bool>> const &exitAfterResponse) {
 	char buf[128];
 	sprintf_s(buf, "[TCP] Client connected (sock=%d)\n", (int)clientSock);
 	Log(buf);

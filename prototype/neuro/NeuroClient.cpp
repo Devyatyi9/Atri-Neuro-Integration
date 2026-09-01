@@ -158,11 +158,12 @@ void QueueActionsSnapshot(ActionSnapshot snapshot) {
 		message.actionNames = g_OutboundMessages[index].actionNames;
 		g_OutboundMessages[index] = std::move(message);
 		g_OutboundMessages.erase(
-		    std::remove_if(g_OutboundMessages.begin() + index + 1,
-		                   g_OutboundMessages.end(),
-		                   [](OutboundMessage const &entry) {
-			                   return entry.isActionsSnapshot;
-		                   }),
+		    std::remove_if(
+		        g_OutboundMessages.begin() + static_cast<std::ptrdiff_t>(index) + 1,
+		        g_OutboundMessages.end(),
+		        [](OutboundMessage const &entry) {
+			        return entry.isActionsSnapshot;
+		        }),
 		    g_OutboundMessages.end());
 		return;
 	}

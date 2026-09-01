@@ -1,3 +1,4 @@
+// NOLINTNEXTLINE(bugprone-reserved-identifier) -- the name is the CRT's own.
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 
@@ -832,7 +833,7 @@ static void ApplyPointerFocusToGame(bool enabled) {
 		            : TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
 		                    "'no'); return 1; } catch (e) { return 0; } })()"),
 		    &unused);
-	} catch (...) {
+	} catch (...) {  // NOLINT(bugprone-empty-catch)
 		// The dialog class may not be loaded yet; the exit-hook install applies
 		// it again once it is.
 	}

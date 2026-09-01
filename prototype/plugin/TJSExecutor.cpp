@@ -168,7 +168,7 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 				} else {
 					g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
 				}
-			} catch (...) {
+			} catch (...) {  // NOLINT(bugprone-empty-catch)
 				// Ignore upkeep failures; they should not crash the continuous hook.
 			}
 		}
@@ -326,7 +326,7 @@ static void VariantToUtf8(tTJSVariant const &value, std::string &out) {
 		if (text.GetLen() > 0) {
 			Utf16ToUtf8(text.c_str(), text.GetLen(), out);
 		}
-	} catch (...) {
+	} catch (...) {  // NOLINT(bugprone-empty-catch)
 		// A variant that will not become a string is an empty answer, not a
 		// failure of the call: the caller already knows whether it executed.
 	}
