@@ -290,6 +290,148 @@ def check_duplicate_id_suppressed(harness: Harness, after: int) -> int:
     return first["sequence"]
 
 
+def check_unregister_names_the_previous_set(harness: Harness) -> None:
+    """A changed set must be preceded by an unregister naming what it replaces.
+
+    check_register_payload_is_ordered only asks whether some unregister was
+    seen. That passes even when the unregister lists the wrong names, which
+    leaves the dropped actions callable on the server -- the exact failure the
+    registry check catches after the fact, caught here at the message level.
+    """
+    events = harness.events(0)
+    active: list[str] = []
+    checked = 0
+    for event in events:
+        message = event["message"]
+        command = message.get("command")
+        if command == "actions/unregister":
+            names = message["data"].get("action_names") or []
+            assert set(names) == set(active), (
+                f"unregister names {sorted(names)} but the active set is "
+                f"{sorted(active)}")
+            active = []
+            checked += 1
+        elif command == "actions/register":
+            # Re-registering an active name is legitimate -- it replaces the
+            # definition -- so only the unregister side is asserted.
+            active = [a.get("name") for a in message["data"].get("actions") or []]
+    assert checked, "no actions/unregister observed at all"
+
+
+def check_rapid_capability_switches(harness: Harness) -> int:
+    """Screens switched back to back must still leave a consistent set.
+
+    Each transition is a full unregister/register pair, so switching faster
+    than the refresh settles is where a stale action would survive.
+    """
+    registry = harness.actions()
+    if "open_extra" not in registry["active"]:
+        print("SKIP: rapid switches need the title screen", flush=True)
+        return harness.status()["last_sequence"]
+
+    # Notes accumulate for the whole run, and an earlier check provokes one on
+    # purpose, so only the ones added here count.
+    notes_before = len(registry["protocol_notes"])
+    after = harness.status()["last_sequence"]
+    for round_index in range(3):
+        for name in ("open_extra", "go_back"):
+            action_id = f"regress-switch-{round_index}-{name}-{uuid.uuid4().hex[:6]}"
+            harness.send({
+                "command": "action",
+                "data": {"id": action_id, "name": name, "data": "{}"},
+            })
+            result = harness.wait_for_result(action_id, after, timeout_ms=8000)
+            assert result["message"]["data"]["success"] is True, (
+                f"{name} failed mid-switch: {result}")
+            after = result["sequence"]
+
+    # The set has to settle back to the screen we started from.
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        if "open_extra" in harness.actions()["active"]:
+            break
+        time.sleep(0.2)
+    final = harness.actions()
+    assert "open_extra" in final["active"], (
+        f"the title set did not come back after switching: {final['active']}")
+    assert "view_cg" not in final["active"], (
+        f"an Extra action survived the return to the title: {final['active']}")
+    new_notes = final["protocol_notes"][notes_before:]
+    assert not new_notes, f"switching produced protocol violations: {new_notes}"
+    return after
+
+
+def check_action_result_latency(harness: Harness, after: int) -> int:
+    """Every action must be answered, and quickly enough to stay usable.
+
+    The core already flags a result that arrives past the server's own limit;
+    this measures the ordinary case, so a regression shows as a number rather
+    than as the game feeling slow.
+    """
+    samples: list[float] = []
+    for _ in range(8):
+        action_id = f"regress-latency-{uuid.uuid4().hex[:8]}"
+        started = time.monotonic()
+        harness.send({
+            "command": "action",
+            "data": {"id": action_id, "name": PROBE_ACTION, "data": "{}"},
+        })
+        result = harness.wait_for_result(action_id, after, timeout_ms=5000)
+        samples.append(time.monotonic() - started)
+        after = result["sequence"]
+    worst = max(samples)
+    median = sorted(samples)[len(samples) // 2]
+    assert worst < 2.0, (
+        f"slowest action/result took {worst:.2f}s, median {median:.2f}s")
+    print(f"       latency: median {median * 1000:.0f}ms, worst "
+          f"{worst * 1000:.0f}ms over {len(samples)} calls", flush=True)
+    return after
+
+
+def check_burst_is_fully_answered(harness: Harness, after: int) -> int:
+    """A burst sent without waiting must be answered once per action.
+
+    Kept under the SDK's inbound queue, which holds MESSAGE_QUEUE_SIZE = 10
+    messages: the eleventh unpolled message sets NeuroSDK_MessageQueueFull and
+    the connection is dropped, so a larger burst would test the disconnect
+    rather than the draining. Polling is every 100ms, which is the window that
+    ceiling applies over.
+    """
+    action_ids = [f"regress-burst-{index}-{uuid.uuid4().hex[:6]}" for index in range(8)]
+    for action_id in action_ids:
+        harness.send({
+            "command": "action",
+            "data": {"id": action_id, "name": PROBE_ACTION, "data": "{}"},
+        })
+
+    deadline = time.monotonic() + 20.0
+    answered: dict[str, int] = {}
+    # Each pass re-reads every event after the same point, so a result already
+    # counted would be counted again; the sequence numbers keep them apart.
+    seen: set[int] = set()
+    while time.monotonic() < deadline and len(answered) < len(action_ids):
+        for event in harness.events(after):
+            if event["sequence"] in seen:
+                continue
+            seen.add(event["sequence"])
+            message = event["message"]
+            if message.get("command") != "action/result":
+                continue
+            result_id = message["data"].get("id")
+            if result_id in action_ids:
+                answered[result_id] = answered.get(result_id, 0) + 1
+        if len(answered) < len(action_ids):
+            time.sleep(0.2)
+
+    missing = [a for a in action_ids if a not in answered]
+    assert not missing, (
+        f"{len(missing)} of {len(action_ids)} burst actions went unanswered")
+    repeated = {a: n for a, n in answered.items() if n > 1}
+    assert not repeated, f"burst actions answered more than once: {repeated}"
+    assert harness.status()["connected"], "the game dropped the connection under a burst"
+    return harness.status()["last_sequence"]
+
+
 def check_reconnect(harness: Harness) -> None:
     """Disconnecting the game must not stop it from reconnecting on its own."""
     before = harness.status()["last_sequence"]
@@ -335,6 +477,18 @@ def main() -> int:
 
         after = check_duplicate_id_suppressed(harness, after)
         print("PASS: duplicate action ID produced no second result", flush=True)
+
+        check_unregister_names_the_previous_set(harness)
+        print("PASS: every unregister named the set it replaced", flush=True)
+
+        after = check_rapid_capability_switches(harness)
+        print("PASS: rapid screen switches left no stale actions", flush=True)
+
+        after = check_action_result_latency(harness, after)
+        print("PASS: action/result latency within budget", flush=True)
+
+        after = check_burst_is_fully_answered(harness, after)
+        print("PASS: burst of 8 actions answered exactly once each", flush=True)
 
         check_reconnect(harness)
         print("PASS: game reconnected automatically after disconnect", flush=True)
