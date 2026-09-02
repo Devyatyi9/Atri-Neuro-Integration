@@ -1,0 +1,33 @@
+(function() {
+	// Story choices have no visible hover state of their own: the three states
+	// in the button's image strip are drawn identically, so the engine switches
+	// between them and nothing changes on screen. The state machine itself
+	// works, which is enough -- giving the hover segment a different look is all
+	// that is missing.
+	//
+	// Screen-blending the segment with the normal one lifts the artwork without
+	// washing it out, and leaves the alpha channel alone, so the transparent
+	// margin around the button stays transparent.
+	if (typeof global.SelectButtonLayer != "Object") {
+		return 0;
+	}
+	if (typeof global.SelectButtonLayer.__neuroOrigRedraw != "undefined") {
+		return 1;
+	}
+
+	global.SelectButtonLayer.__neuroOrigRedraw = global.SelectButtonLayer.redraw;
+	global.SelectButtonLayer.redraw = function() {
+		var result = this.__neuroOrigRedraw(...);
+		// redraw reloads the strip from file, so the highlight has to be laid on
+		// again after every one of them, not once at creation.
+		try {
+			var segment = this.width;
+			if (segment > 0 && this.imageWidth >= segment * 3) {
+				this.operateRect(segment * 2, 0, this, 0, 0,
+				                 segment, this.imageHeight, omPsScreen, 255);
+			}
+		} catch (e) {}
+		return result;
+	};
+	return 2;
+})();

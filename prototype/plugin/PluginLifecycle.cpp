@@ -117,6 +117,13 @@ static void DeferredTJSInitThread() {
 		    L"neuroExecFile('neuro_scripts/install_context_hook.tjs', 1)",
 		    TJSExecMode::Expression);
 
+		// Story choices have no hover state that shows: the engine switches
+		// between three identically drawn segments. This gives the hover one a
+		// look of its own.
+		ExecuteTJSAsync(
+		    L"neuroExecFile('neuro_scripts/install_choice_highlight.tjs', 1)",
+		    TJSExecMode::Expression);
+
 		StartHotkeyThread();
 		NeuroAutoConnect();
 	} else {
