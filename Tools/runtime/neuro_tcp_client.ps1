@@ -78,9 +78,18 @@ function Restart-Game {
         if (-not (Test-Path $scriptTarget)) {
             New-Item -ItemType Directory -Path $scriptTarget | Out-Null
         }
-        $scripts = Get-ChildItem -Path $scriptSource -Filter *.tjs -File
+        # Recursive, and the folders come along: the scripts are loaded by
+        # path (neuro_scripts/install/hooks.tjs), so a flat copy would leave
+        # the plugin asking for files that are not there.
+        $scripts = Get-ChildItem -Path $scriptSource -Filter *.tjs -File -Recurse
         foreach ($script in $scripts) {
-            Copy-Item -LiteralPath $script.FullName -Destination $scriptTarget -Force
+            $relative = $script.FullName.Substring($scriptSource.Length).TrimStart('\')
+            $destination = Join-Path $scriptTarget $relative
+            $folder = Split-Path -Parent $destination
+            if (-not (Test-Path $folder)) {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null
+            }
+            Copy-Item -LiteralPath $script.FullName -Destination $destination -Force
         }
         Write-Host "TJS scripts updated: $($scripts.Count) file(s) -> $scriptTarget"
     }

@@ -114,20 +114,20 @@ static void DeferredTJSInitThread() {
 		// ensuring safe state for context monitoring without race conditions.
 		Log("Installing context monitor hook via conductor.onTag...\n");
 		ExecuteTJSAsync(
-		    L"neuroExecFile('neuro_scripts/install_context_hook.tjs', 1)",
+		    L"neuroExecFile('neuro_scripts/install/context_hook.tjs', 1)",
 		    TJSExecMode::Expression);
 
 		// Story choices have no hover state that shows: the engine switches
 		// between three identically drawn segments. This gives the hover one a
 		// look of its own.
 		ExecuteTJSAsync(
-		    L"neuroExecFile('neuro_scripts/install_choice_highlight.tjs', 1)",
+		    L"neuroExecFile('neuro_scripts/install/choice_highlight.tjs', 1)",
 		    TJSExecMode::Expression);
 
 		// The context monitor's sections, defined once so the poll can call
 		// them. It runs inside tag dispatch, where loading a file per poll
 		// would be far too expensive.
-		ExecuteTJSAsync(L"neuroExecFile('neuro_scripts/install_collectors.tjs', 1)",
+		ExecuteTJSAsync(L"neuroExecFile('neuro_scripts/install/collectors.tjs', 1)",
 		                TJSExecMode::Expression);
 
 		StartHotkeyThread();
