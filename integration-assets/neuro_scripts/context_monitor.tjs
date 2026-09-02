@@ -53,57 +53,34 @@
     var selectShow = (visual !== void) ? visual["select"] : 0;
 
     // --- Initialize globals ---
-    // Collected sections keep their previous values here, keyed by field
-    // name; the fields still read inline keep a global each.
+    // Every field keeps its previous value here, keyed by field name.
     if (typeof global.__cm_prev == "undefined") global.__cm_prev = %[];
     // The choice edge below distinguishes "never seen" from "not showing",
     // so this one starts at -1 rather than at nothing.
     if (global.__cm_prev["select"] === void) global.__cm_prev["select"] = -1;
-    if (typeof global.__cm_file == "undefined") global.__cm_file = "";
-    if (typeof global.__cm_label == "undefined") global.__cm_label = "";
-    if (typeof global.__cm_line == "undefined") global.__cm_line = -1;
-    if (typeof global.__cm_chara == "undefined") global.__cm_chara = "";
-    if (typeof global.__cm_lastLangText == "undefined") global.__cm_lastLangText = "";
-    if (typeof global.__cm_lastLangName == "undefined") global.__cm_lastLangName = "";
-    if (typeof global.__cm_state == "undefined") global.__cm_state = "";
-    if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
-    if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
-    if (typeof global.__cm_recollect == "undefined") global.__cm_recollect = -1;
 
     var changes = "";
 
-    if (file != global.__cm_file && file != "") {
-      changes += "[scenario] " + file + "\n";
-      global.__cm_file = file;
-    }
-    if (label != global.__cm_label && label != "") {
-      changes += "[label] " + label + "\n";
-      global.__cm_label = label;
-    }
-    if (line != global.__cm_line) {
-      changes += "[line] " + line + "\n";
-      global.__cm_line = line;
-    }
-    if (chara != global.__cm_chara) {
-      changes += "[chara] " + chara + "\n";
-      global.__cm_chara = chara;
-    }
-
-    if (state != global.__cm_state) {
-      changes += "[state] " + state + "\n";
-      global.__cm_state = state;
-    }
-    if (moviePlaying != global.__cm_moviePlaying) {
-      changes += "[movie] " + moviePlaying + "\n";
-      global.__cm_moviePlaying = moviePlaying;
-    }
-    if (bgChange != global.__cm_bgChange) {
-      changes += "[bgchange] " + bgChange + "\n";
-      global.__cm_bgChange = bgChange;
-    }
-    if (recollect != global.__cm_recollect) {
-      changes += "[recollect] " + recollect + "\n";
-      global.__cm_recollect = recollect;
+    // The fields read here rather than by a collector. Same comparison as
+    // the collected ones, so they travel as a table too: a name, the value,
+    // and whether an empty reading means "nothing to say" rather than a
+    // change to empty.
+    var plain = [
+      %[ "n" => "scenario", "v" => file, "skipEmpty" => true ],
+      %[ "n" => "label", "v" => label, "skipEmpty" => true ],
+      %[ "n" => "line", "v" => line ],
+      %[ "n" => "chara", "v" => chara ],
+      %[ "n" => "state", "v" => state ],
+      %[ "n" => "movie", "v" => moviePlaying ],
+      %[ "n" => "bgchange", "v" => bgChange ],
+      %[ "n" => "recollect", "v" => recollect ]
+    ];
+    for (var pi = 0; pi < plain.count; pi++) {
+      var pf = plain[pi];
+      if (pf["skipEmpty"] && pf["v"] == "") continue;
+      if (pf["v"] == global.__cm_prev[pf["n"]]) continue;
+      changes += "[" + pf["n"] + "] " + pf["v"] + "\n";
+      global.__cm_prev[pf["n"]] = pf["v"];
     }
 
     // The collected sections are compared by name: the keys are already the
@@ -165,13 +142,17 @@
     // Correctly-localized text and speaker name in the active kag.languageType
     // (see the kag.getLangInfo call-through above). This is what actually
     // renders on screen, unlike the raw native properties.
-    if (global.__cm_langText != global.__cm_lastLangText) {
-      changes += "[lang_text] \"" + global.__cm_langText + "\"\n";
-      global.__cm_lastLangText = global.__cm_langText;
-    }
-    if (global.__cm_langName != global.__cm_lastLangName) {
-      changes += "[lang_name] \"" + global.__cm_langName + "\"\n";
-      global.__cm_lastLangName = global.__cm_langName;
+    // Quoted, unlike every other field: the text can end in a space or be
+    // empty, and the quotes make that visible in the log.
+    var localized = [
+      %[ "n" => "lang_text", "v" => global.__cm_langText ],
+      %[ "n" => "lang_name", "v" => global.__cm_langName ]
+    ];
+    for (var li = 0; li < localized.count; li++) {
+      var lf = localized[li];
+      if (lf["v"] == global.__cm_prev[lf["n"]]) continue;
+      changes += "[" + lf["n"] + "] \"" + lf["v"] + "\"\n";
+      global.__cm_prev[lf["n"]] = lf["v"];
     }
 
     // Drain every semantic event queued since the last poll, in order. There
