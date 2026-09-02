@@ -9,7 +9,8 @@
 		"collect_audio.tjs",
 		"collect_visual.tjs",
 		"collect_modes.tjs",
-		"collect_conductor.tjs"
+		"collect_conductor.tjs",
+		"install_hooks.tjs"
 	];
 	var loaded = 0;
 	for (var i = 0; i < files.count; i++) {
