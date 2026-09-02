@@ -440,6 +440,19 @@ bool DispatchChoice(int index, char const *tag) {
 		     " pointer focus: " + (focused ? "moved" : "refused") + "\n")
 		        .c_str());
 	}
+	// The same arrival a player makes before pressing: the button takes its
+	// hover look and holds it for a moment. These buttons have no hover
+	// handler to call -- the engine drives the state itself from a flag -- so
+	// the flag is raised and the button asked to redraw.
+	if (AskFormatted(L"(function(){ var layer = kag.selectLayer;"
+	                 L"var button = layer.selects[%d];"
+	                 L"if (!isvalid button) return 0;"
+	                 L"button.Butt_mouseOn = 1; button.update(); return 1; })()",
+	                 tag, index)) {
+		Sleep(kHoverPreviewMs);
+	}
+	// Nothing is sent to leave again: the choice disappears with the press,
+	// taking its buttons along.
 	return AskFormatted(
 	    L"(function(){ var layer = kag.selectLayer;"
 	    L"var button = layer.selects[%d];"
