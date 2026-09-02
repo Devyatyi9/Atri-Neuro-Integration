@@ -215,4 +215,27 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/tests
     )
     add_test(NAME prototype-units COMMAND atri_prototype_tests)
+
+    # TJS assets are data, not code: a mistake in one reaches the game and
+    # nothing else. The checker is a local copy, so its absence skips these
+    # rather than failing the configure.
+    find_program(ATRI_TJSCHECK
+        NAMES tjscheck
+        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Tools"
+        NO_DEFAULT_PATH
+    )
+    if(ATRI_TJSCHECK)
+        file(GLOB_RECURSE ATRI_TJS_SCRIPTS CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/integration-assets/*.tjs"
+            "${CMAKE_CURRENT_SOURCE_DIR}/Tools/tjs/*.tjs"
+        )
+        # One test per file so a failure names the file rather than the set.
+        foreach(script IN LISTS ATRI_TJS_SCRIPTS)
+            file(RELATIVE_PATH name "${CMAKE_CURRENT_SOURCE_DIR}" "${script}")
+            add_test(NAME "tjs-syntax: ${name}"
+                     COMMAND "${ATRI_TJSCHECK}" "${script}")
+        endforeach()
+    else()
+        message(STATUS "tjscheck not found in Tools/, TJS syntax tests skipped")
+    endif()
 endif()
