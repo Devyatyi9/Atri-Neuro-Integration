@@ -18,7 +18,7 @@ kag.__neuroRawTagsEvents = [];
 kag.onConductorBeforeTag = function(tagname, tag) {
     // This runs on the native tag-dispatch path, outside any protective
     // try/catch of the caller -- an uncaught exception here reaches the engine
-    // directly and can produce a fatal error dialog (observed 2026-08-19).
+    // directly and can produce a fatal error dialog.
     try {
         kag.__neuroRawTagsEvents.add(tagname);
         Debug.message("raw-tag " + tagname);

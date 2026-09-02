@@ -137,10 +137,10 @@
     // so its localized text comes from the same getLangInfo path as the render.
     //     The marker lives on the layer, not in a global, because kag.selectLayer
     //     is replaced over the session: a one-shot global guard would leave every
-    //     later layer unhooked (observed 2026-08-19 -- the first choice after a
-    //     scene entry emitted nothing). Marking the layer re-hooks each new one on
-    //     the next poll, and keeping the saved original on the layer as well means
-    //     the call-through runs with the correct owner as `this`.
+    //     later layer unhooked, and the first choice after a scene entry would
+    //     emit nothing. Marking the layer re-hooks each new one on the next poll,
+    //     and keeping the saved original on the layer as well means the
+    //     call-through runs with the correct owner as `this`.
     if (typeof kag.selectLayer != "undefined" &&
         typeof kag.selectLayer.onButtonClick != "undefined" &&
         typeof kag.selectLayer.__cm_hooked == "undefined") {
@@ -306,9 +306,8 @@
       // choice_shown: only on the edge into "showing", and read here rather than
       // from a hook because the option list stays on screen until the player acts.
       // Compare against 1 explicitly: the initial value is -1, which is truthy in
-      // TJS, so a `!previous` test would silently miss the very first choice of a
-      // session (observed 2026-08-19 -- a save loaded straight into a choice
-      // produced no event at all).
+      // TJS, so a `!previous` test silently misses the very first choice of a
+      // session -- a save loaded straight into a choice produces no event at all.
       if (selectShow && global.__cm_selectShow != 1) {
         try {
           var opts = kag.selectLayer.selects;
