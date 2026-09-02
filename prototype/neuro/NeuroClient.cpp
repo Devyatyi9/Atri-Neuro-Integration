@@ -137,6 +137,33 @@ neurosdk_error_e SendStartup() {
 	return SendMessage(&startup);
 }
 
+// Makes room for one more outbound message, and says what it cost.
+//
+// An action result is the one message Neuro is waiting on: without it the
+// action never completes at her end. So the victim is chosen rather than
+// taken from the front -- the oldest message that is not a result goes
+// first, and a result is only dropped when the queue holds nothing else.
+void MakeRoomForOutboundMessage() {
+	if (g_OutboundMessages.size() < kMaxQueuedMessages) {
+		return;
+	}
+	for (size_t index = 0; index < g_OutboundMessages.size(); ++index) {
+		if (g_OutboundMessages[index].kind == NeuroSDK_MessageKind_ActionResult) {
+			continue;
+		}
+		Log("[Neuro] Outbound queue full, dropped a queued message\n");
+		g_OutboundMessages.erase(g_OutboundMessages.begin() +
+		                         static_cast<std::ptrdiff_t>(index));
+		return;
+	}
+	// Nothing but results left, so one of them has to go, and the action it
+	// belongs to will never complete. Logged loudly for that reason.
+	Log(("[Neuro] Outbound queue full of results, dropping the result for " +
+	     g_OutboundMessages.front().id + "\n")
+	        .c_str());
+	g_OutboundMessages.erase(g_OutboundMessages.begin());
+}
+
 struct ActionSnapshot {
 	std::vector<RegisteredAction> actions;
 	std::vector<std::string> previousNames;
@@ -166,9 +193,7 @@ void QueueActionsSnapshot(ActionSnapshot snapshot) {
 		    g_OutboundMessages.end());
 		return;
 	}
-	if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
-		g_OutboundMessages.erase(g_OutboundMessages.begin());
-	}
+	MakeRoomForOutboundMessage();
 	g_OutboundMessages.push_back(std::move(message));
 }
 
@@ -674,7 +699,16 @@ std::atomic<bool> g_LastActionResultSucceeded(false);
 
 bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 	g_LastActionResultSucceeded.store(success, std::memory_order_release);
+	// Nothing can be sent while the link is down, and the action is lost with
+	// it: the caller has no way to retry and the server is left waiting until
+	// it gives up. Said out loud, because a result that never arrives is
+	// otherwise indistinguishable from a handler that forgot to answer.
 	if (!id || !NeuroIsReady()) {
+		if (id) {
+			Log(("[Neuro] Not connected, dropped the result for " + std::string(id) +
+			     "\n")
+			        .c_str());
+		}
 		return false;
 	}
 	OutboundMessage msg = {};
@@ -684,9 +718,7 @@ bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 	msg.message = message ? message : "";
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
-		if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
-			g_OutboundMessages.erase(g_OutboundMessages.begin());
-		}
+		MakeRoomForOutboundMessage();
 		g_OutboundMessages.push_back(msg);
 	}
 	return true;
@@ -710,9 +742,7 @@ bool NeuroForceAction(char const *state,
 	}
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
-		if (g_OutboundMessages.size() >= kMaxQueuedMessages) {
-			g_OutboundMessages.erase(g_OutboundMessages.begin());
-		}
+		MakeRoomForOutboundMessage();
 		g_OutboundMessages.push_back(msg);
 	}
 	return true;
