@@ -217,12 +217,13 @@ if(ATRI_BUILD_PROTOTYPE)
     add_test(NAME prototype-units COMMAND atri_prototype_tests)
 
     # TJS assets are data, not code: a mistake in one reaches the game and
-    # nothing else. The checker is a local copy, so its absence skips these
-    # rather than failing the configure.
+    # nothing else. The copy in Tools/ comes first because it is the one this
+    # repository is known to work with; PATH is the fallback for a checker
+    # built elsewhere. Absent both, these tests are skipped rather than
+    # failing the configure -- the checker is not in version control.
     find_program(ATRI_TJSCHECK
         NAMES tjscheck
         PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Tools"
-        NO_DEFAULT_PATH
     )
     if(ATRI_TJSCHECK)
         file(GLOB_RECURSE ATRI_TJS_SCRIPTS CONFIGURE_DEPENDS
