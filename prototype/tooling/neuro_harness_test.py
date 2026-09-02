@@ -361,6 +361,50 @@ def check_rapid_capability_switches(harness: Harness) -> int:
     return after
 
 
+def check_capability_switch_latency(harness: Harness) -> int:
+    """How long a screen change takes to reach Neuro as a new action set.
+
+    The action's own result says the button was pressed; what matters for
+    playing is when the set that describes the new screen arrives, which is a
+    separate message and can trail the result while the scene loads.
+    """
+    registry = harness.actions()
+    if "open_extra" not in registry["active"]:
+        print("SKIP: switch latency needs the title screen", flush=True)
+        return harness.status()["last_sequence"]
+
+    # Each step is the action to send and a name that only the arriving set has,
+    # so the register being waited for is unmistakably the new screen's.
+    steps = [("open_extra", "view_cg"), ("go_back", "open_extra")]
+    after = harness.status()["last_sequence"]
+    for action_name, marker in steps * 2:
+        action_id = f"regress-swlat-{uuid.uuid4().hex[:8]}"
+        started = time.monotonic()
+        harness.send({
+            "command": "action",
+            "data": {"id": action_id, "name": action_name, "data": "{}"},
+        })
+        result = harness.wait_for_result(action_id, after, timeout_ms=8000)
+        assert result["message"]["data"]["success"] is True, (
+            f"{action_name} failed: {result}")
+        result_at = time.monotonic() - started
+
+        event = wait_for_event(
+            harness, after,
+            lambda e, m=marker: e["message"].get("command") == "actions/register"
+            and m in [a.get("name") for a in e["message"]["data"].get("actions") or []],
+            timeout_s=10.0,
+            label=f"actions/register carrying {marker}",
+        )
+        register_at = time.monotonic() - started
+        after = max(event["sequence"], result["sequence"])
+        print(f"       {action_name}: result {result_at * 1000:.0f}ms, "
+              f"set {register_at * 1000:.0f}ms", flush=True)
+        assert register_at < 5.0, (
+            f"the set for {marker} took {register_at:.1f}s to arrive")
+    return after
+
+
 def check_action_result_latency(harness: Harness, after: int) -> int:
     """Every action must be answered, and quickly enough to stay usable.
 
@@ -486,6 +530,9 @@ def main() -> int:
 
         after = check_action_result_latency(harness, after)
         print("PASS: action/result latency within budget", flush=True)
+
+        after = check_capability_switch_latency(harness)
+        print("PASS: the new action set follows a screen change", flush=True)
 
         after = check_burst_is_fully_answered(harness, after)
         print("PASS: burst of 8 actions answered exactly once each", flush=True)
