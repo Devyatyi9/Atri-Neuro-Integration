@@ -14,6 +14,12 @@ asks and changes nothing, so a run leaves no trace in the save data.
 
     py tjs-load.py [seconds] [threads]
 
+Run it against the story with skip mode on, not against the menus: skip advances
+the text continuously and keeps raising the page-end glyph, which is the churn
+the original crash needed. The menus are the easy case -- the same run reaches
+155 calls a second there and only 35 under skip, because the main thread is busy
+and synchronous calls wait their turn.
+
 Watch afterwards: the process should still be alive and answering, plugin_log
 should carry no "[Fatal]" line, and `reentry=` in the periodic line should stay
 at zero. Errors reported as WinError 10048 are this script running out of
