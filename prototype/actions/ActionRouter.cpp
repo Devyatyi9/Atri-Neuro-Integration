@@ -3,14 +3,11 @@
 #include <windows.h>
 
 #include <atomic>
-#include <cctype>
 #include <cstdlib>
-#include <cstring>
 #include <deque>
 #include <mutex>
 #include <string>
 #include <unordered_set>
-#include <vector>
 
 #include "ActionCommon.h"
 #include "ActionJson.h"

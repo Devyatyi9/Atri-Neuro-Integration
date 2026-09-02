@@ -6,10 +6,8 @@
 #include <windows.h>
 #include <atomic>
 #include <cwctype>
-#include <mutex>
 #include <string>
 #include <thread>
-#include <vector>
 
 // KiriKiri SDK
 #pragma warning(push)

@@ -1,7 +1,5 @@
 #include "SlotPayload.h"
 
-#include <string>
-
 #include "TestMain.h"
 
 namespace {

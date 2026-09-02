@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>

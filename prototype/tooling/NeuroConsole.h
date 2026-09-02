@@ -2,8 +2,6 @@
 
 #include <windows.h>
 #include <atomic>
-#include <mutex>
-#include <vector>
 
 #include "TJSExecutor.h"
 

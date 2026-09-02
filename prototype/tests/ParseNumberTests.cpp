@@ -1,7 +1,6 @@
 #include "ParseNumber.h"
 
 #include <climits>
-#include <string>
 
 #include "TestMain.h"
 

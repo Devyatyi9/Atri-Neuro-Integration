@@ -4,8 +4,6 @@
 #include <windows.h>
 #include <atomic>
 #include <cwctype>
-#include <mutex>
-#include <string>
 #include <vector>
 
 // ============================================================================

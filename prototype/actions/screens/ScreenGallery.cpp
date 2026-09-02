@@ -4,7 +4,6 @@
 
 #include <cstdio>
 #include <string>
-#include <vector>
 
 #include "ActionCommon.h"
 #include "ActionJson.h"
