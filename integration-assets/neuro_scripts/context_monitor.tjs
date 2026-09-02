@@ -166,14 +166,11 @@
     var recollect = -1;
     if (typeof tf != "undefined" && typeof tf.recollect != "undefined") recollect = tf.recollect;
 
-    // --- Audio ---
-    var bgm = "";
-    if (typeof kag.bgm != "undefined") bgm = kag.bgm.playingStorage;
-    var bgmPlaying = kag.bgm.inPlaying;
-    var voiceRatio = kag.voicePlayingRatio;
-    var voiceVol = kag.voicevolume;
-    var voiceEnable = kag.voiceenable;
-    var seVol = kag.sevolume;
+    // --- Audio, collected by neuro_scripts/collect_audio.tjs ---
+    // Absent when the collector failed to install; the section is then left
+    // out of this poll rather than reported as empty values.
+    var audio = (typeof global.__cm_collectAudio == "Object")
+        ? global.__cm_collectAudio() : void;
 
     // --- Visual ---
     var bgVis = kag.back.base.visible;
@@ -195,6 +192,9 @@
     var lastTag = "" + kag.conductor.lastTagName;
 
     // --- Initialize globals ---
+    // Collected sections keep their previous values here, keyed by field
+    // name; the fields still read inline keep a global each.
+    if (typeof global.__cm_prev == "undefined") global.__cm_prev = %[];
     if (typeof global.__cm_file == "undefined") global.__cm_file = "";
     if (typeof global.__cm_label == "undefined") global.__cm_label = "";
     if (typeof global.__cm_line == "undefined") global.__cm_line = -1;
@@ -205,12 +205,6 @@
     if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
     if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
     if (typeof global.__cm_recollect == "undefined") global.__cm_recollect = -1;
-    if (typeof global.__cm_bgm == "undefined") global.__cm_bgm = "";
-    if (typeof global.__cm_bgmPlaying == "undefined") global.__cm_bgmPlaying = -1;
-    if (typeof global.__cm_voiceRatio == "undefined") global.__cm_voiceRatio = -1;
-    if (typeof global.__cm_voiceVol == "undefined") global.__cm_voiceVol = -1;
-    if (typeof global.__cm_voiceEnable == "undefined") global.__cm_voiceEnable = -1;
-    if (typeof global.__cm_seVol == "undefined") global.__cm_seVol = -1;
     if (typeof global.__cm_bgVis == "undefined") global.__cm_bgVis = -1;
     if (typeof global.__cm_foreVis == "undefined") global.__cm_foreVis = -1;
     if (typeof global.__cm_quake == "undefined") global.__cm_quake = -1;
@@ -259,29 +253,18 @@
     }
 
     // Audio
-    if (bgm != global.__cm_bgm) {
-      changes += "[bgm] " + bgm + "\n";
-      global.__cm_bgm = bgm;
-    }
-    if (bgmPlaying != global.__cm_bgmPlaying) {
-      changes += "[bgm_playing] " + bgmPlaying + "\n";
-      global.__cm_bgmPlaying = bgmPlaying;
-    }
-    if (voiceRatio != global.__cm_voiceRatio) {
-      changes += "[voice] " + voiceRatio + "\n";
-      global.__cm_voiceRatio = voiceRatio;
-    }
-    if (voiceVol != global.__cm_voiceVol) {
-      changes += "[voice_vol] " + voiceVol + "\n";
-      global.__cm_voiceVol = voiceVol;
-    }
-    if (voiceEnable != global.__cm_voiceEnable) {
-      changes += "[voice_enable] " + voiceEnable + "\n";
-      global.__cm_voiceEnable = voiceEnable;
-    }
-    if (seVol != global.__cm_seVol) {
-      changes += "[se_vol] " + seVol + "\n";
-      global.__cm_seVol = seVol;
+    // The collected sections are compared by name: the keys are already the
+    // field names, so there is nothing to keep in step between the two.
+    if (audio !== void) {
+      var audioNames = ["bgm", "bgm_playing", "voice", "voice_vol",
+                        "voice_enable", "se_vol"];
+      for (var ai = 0; ai < audioNames.count; ai++) {
+        var an = audioNames[ai];
+        if (audio[an] != global.__cm_prev[an]) {
+          changes += "[" + an + "] " + audio[an] + "\n";
+          global.__cm_prev[an] = audio[an];
+        }
+      }
     }
 
     // Visual

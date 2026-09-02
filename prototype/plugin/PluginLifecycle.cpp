@@ -124,6 +124,12 @@ static void DeferredTJSInitThread() {
 		    L"neuroExecFile('neuro_scripts/install_choice_highlight.tjs', 1)",
 		    TJSExecMode::Expression);
 
+		// The context monitor's sections, defined once so the poll can call
+		// them. It runs inside tag dispatch, where loading a file per poll
+		// would be far too expensive.
+		ExecuteTJSAsync(L"neuroExecFile('neuro_scripts/install_collectors.tjs', 1)",
+		                TJSExecMode::Expression);
+
 		StartHotkeyThread();
 		NeuroAutoConnect();
 	} else {

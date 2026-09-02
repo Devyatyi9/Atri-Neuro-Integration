@@ -1,0 +1,24 @@
+// One section of the context monitor, defined once at startup and called from
+// the poll. Keeping it out of the poll script means the poll stays a driver:
+// call the collectors, compare, build the line. Loading a file per poll would
+// be far too expensive -- this runs inside tag dispatch.
+//
+// The keys are the field names the poll emits, so nothing has to translate
+// between a variable and its `[name]`.
+(function() {
+	global.__cm_collectAudio = function() {
+		var bgm = "";
+		if (typeof kag.bgm != "undefined") {
+			bgm = kag.bgm.playingStorage;
+		}
+		return %[
+			"bgm" => bgm,
+			"bgm_playing" => kag.bgm.inPlaying,
+			"voice" => kag.voicePlayingRatio,
+			"voice_vol" => kag.voicevolume,
+			"voice_enable" => kag.voiceenable,
+			"se_vol" => kag.sevolume
+		];
+	} incontextof global;
+	return 1;
+})();
