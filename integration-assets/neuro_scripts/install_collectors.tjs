@@ -6,7 +6,10 @@
 // the poll: the driver checks for each one before calling it.
 (function() {
 	var files = [
-		"collect_audio.tjs"
+		"collect_audio.tjs",
+		"collect_visual.tjs",
+		"collect_modes.tjs",
+		"collect_conductor.tjs"
 	];
 	var loaded = 0;
 	for (var i = 0; i < files.count; i++) {

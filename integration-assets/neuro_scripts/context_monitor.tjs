@@ -172,29 +172,23 @@
     var audio = (typeof global.__cm_collectAudio == "Object")
         ? global.__cm_collectAudio() : void;
 
-    // --- Visual ---
-    var bgVis = kag.back.base.visible;
-    var foreVis = kag.fore.base.visible;
-    var quake = kag.quaking;
-    var msgHide = kag.messageLayerHiding;
-    var selectShow = kag.selectShowing;
-    var noeffect = kag.noeffect;
-
-    // --- Modes ---
-    var autoMode = kag._autoMode;
-    // Reported as the raw level, not as on/off: 0 none, 1 click, 2 page,
-    // 3 to next stop, 4 fast, 5 to label, 6 cancel, 7 force. Only 3 and above
-    // are the mode a player turns on; 1 and 2 pass through on ordinary clicks.
-    var skipMode = kag._skipMode;
-
-    // --- Conductor ---
-    var status = kag.conductor.status;
-    var lastTag = "" + kag.conductor.lastTagName;
+    // --- Visual, modes and conductor, from their collectors ---
+    var visual = (typeof global.__cm_collectVisual == "Object")
+        ? global.__cm_collectVisual() : void;
+    var modes = (typeof global.__cm_collectModes == "Object")
+        ? global.__cm_collectModes() : void;
+    var conductor = (typeof global.__cm_collectConductor == "Object")
+        ? global.__cm_collectConductor() : void;
+    // Read out because the choice edge below needs it beside the emission.
+    var selectShow = (visual !== void) ? visual["select"] : 0;
 
     // --- Initialize globals ---
     // Collected sections keep their previous values here, keyed by field
     // name; the fields still read inline keep a global each.
     if (typeof global.__cm_prev == "undefined") global.__cm_prev = %[];
+    // The choice edge below distinguishes "never seen" from "not showing",
+    // so this one starts at -1 rather than at nothing.
+    if (global.__cm_prev["select"] === void) global.__cm_prev["select"] = -1;
     if (typeof global.__cm_file == "undefined") global.__cm_file = "";
     if (typeof global.__cm_label == "undefined") global.__cm_label = "";
     if (typeof global.__cm_line == "undefined") global.__cm_line = -1;
@@ -205,16 +199,6 @@
     if (typeof global.__cm_moviePlaying == "undefined") global.__cm_moviePlaying = -1;
     if (typeof global.__cm_bgChange == "undefined") global.__cm_bgChange = -1;
     if (typeof global.__cm_recollect == "undefined") global.__cm_recollect = -1;
-    if (typeof global.__cm_bgVis == "undefined") global.__cm_bgVis = -1;
-    if (typeof global.__cm_foreVis == "undefined") global.__cm_foreVis = -1;
-    if (typeof global.__cm_quake == "undefined") global.__cm_quake = -1;
-    if (typeof global.__cm_msgHide == "undefined") global.__cm_msgHide = -1;
-    if (typeof global.__cm_selectShow == "undefined") global.__cm_selectShow = -1;
-    if (typeof global.__cm_noeffect == "undefined") global.__cm_noeffect = -1;
-    if (typeof global.__cm_autoMode == "undefined") global.__cm_autoMode = -1;
-    if (typeof global.__cm_skipMode == "undefined") global.__cm_skipMode = -1;
-    if (typeof global.__cm_status == "undefined") global.__cm_status = -1;
-    if (typeof global.__cm_lastTag == "undefined") global.__cm_lastTag = "";
 
     var changes = "";
 
@@ -267,31 +251,37 @@
       }
     }
 
+    // The other collected sections, compared the same way. `select` is not
+    // here: its emission carries the choice edge and stays written out.
+    var collected = [
+      %[ "from" => visual,
+         "names" => ["bg_visible", "fore_visible", "quake", "msg_hide",
+                     "noeffect"] ],
+      %[ "from" => modes, "names" => ["auto", "skip"] ],
+      %[ "from" => conductor, "names" => ["status", "lastTag"] ]
+    ];
+    for (var ci = 0; ci < collected.count; ci++) {
+      var section = collected[ci];
+      if (section["from"] === void) continue;
+      var names = section["names"];
+      for (var ni = 0; ni < names.count; ni++) {
+        var fn = names[ni];
+        if (section["from"][fn] != global.__cm_prev[fn]) {
+          changes += "[" + fn + "] " + section["from"][fn] + "\n";
+          global.__cm_prev[fn] = section["from"][fn];
+        }
+      }
+    }
+
     // Visual
-    if (bgVis != global.__cm_bgVis) {
-      changes += "[bg_visible] " + bgVis + "\n";
-      global.__cm_bgVis = bgVis;
-    }
-    if (foreVis != global.__cm_foreVis) {
-      changes += "[fore_visible] " + foreVis + "\n";
-      global.__cm_foreVis = foreVis;
-    }
-    if (quake != global.__cm_quake) {
-      changes += "[quake] " + quake + "\n";
-      global.__cm_quake = quake;
-    }
-    if (msgHide != global.__cm_msgHide) {
-      changes += "[msg_hide] " + msgHide + "\n";
-      global.__cm_msgHide = msgHide;
-    }
-    if (selectShow != global.__cm_selectShow) {
+    if (selectShow != global.__cm_prev["select"]) {
       changes += "[select] " + selectShow + "\n";
       // choice_shown: only on the edge into "showing", and read here rather than
       // from a hook because the option list stays on screen until the player acts.
       // Compare against 1 explicitly: the initial value is -1, which is truthy in
       // TJS, so a `!previous` test silently misses the very first choice of a
       // session -- a save loaded straight into a choice produces no event at all.
-      if (selectShow && global.__cm_selectShow != 1) {
+      if (selectShow && global.__cm_prev["select"] != 1) {
         try {
           var opts = kag.selectLayer.selects;
           var optLine = "choice_shown";
@@ -301,32 +291,12 @@
           global.__cm_events.add(optLine);
         } catch (e) {}
       }
-      global.__cm_selectShow = selectShow;
-    }
-    if (noeffect != global.__cm_noeffect) {
-      changes += "[noeffect] " + noeffect + "\n";
-      global.__cm_noeffect = noeffect;
+      global.__cm_prev["select"] = selectShow;
     }
 
     // Modes
-    if (autoMode != global.__cm_autoMode) {
-      changes += "[auto] " + autoMode + "\n";
-      global.__cm_autoMode = autoMode;
-    }
-    if (skipMode != global.__cm_skipMode) {
-      changes += "[skip] " + skipMode + "\n";
-      global.__cm_skipMode = skipMode;
-    }
 
     // Conductor status
-    if (status != global.__cm_status) {
-      changes += "[status] " + status + "\n";
-      global.__cm_status = status;
-    }
-    if (lastTag != global.__cm_lastTag) {
-      changes += "[lastTag] " + lastTag + "\n";
-      global.__cm_lastTag = lastTag;
-    }
 
     // Correctly-localized text and speaker name in the active kag.languageType
     // (see the kag.getLangInfo call-through above). This is what actually
