@@ -1,14 +1,35 @@
 # Configures the language server, not the checks. The rule set lives in
 # .clang-tidy and clangd reads it exactly as the command-line gate does; what is
-# left for here is where the compilation database is and which of clangd's own
-# diagnostics to show.
+# left for here is where the compilation database is and how the editor behaves.
 CompileFlags:
   CompilationDatabase: build/clangd
 
 Diagnostics:
   # clangd carries an include-cleaner of its own, separate from the
   # misc-include-cleaner check. Both on means every include is judged twice,
-  # and only the check knows that windows.h and tp_stub.h are umbrellas and
-  # that sprintf_s comes from cstdio.
+  # and only the check knows which headers here are umbrellas.
   UnusedIncludes: None
   MissingIncludes: None
+
+Index:
+  # Costs one indexing pass and buys references and completion across <std>.
+  StandardLibrary: Yes
+
+Hover:
+  # Win32 hands back LPARAM, LONG_PTR and tjs_int; this shows what they are.
+  ShowAKA: Yes
+
+InlayHints:
+  Enabled: Yes
+  # The probes take five and seven same-typed parameters in a row, which is
+  # exactly where a swapped pair compiles and answers wrong. Names at the call
+  # site are the cheapest guard against it.
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  BlockEnd: No
+  DefaultArguments: No
+
+Completion:
+  # Completing a Win32 symbol would otherwise add the header that declares it,
+  # winbase.h or synchapi.h, rather than the umbrella this code includes.
+  HeaderInsertion: Never
