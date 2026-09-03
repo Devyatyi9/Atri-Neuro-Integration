@@ -34,8 +34,9 @@ CheckOptions:
     value: '3'
   # The other half of include-cleaner asks for the header that declares each
   # symbol, which on Win32 means naming synchapi.h and winnt.h instead of the
-  # umbrella that documents them. Six hundred reports, and every one of them
-  # wrong for this platform.
+  # umbrella that documents them: 380 of its 416 reports are that. The other
+  # 36 are real, and are lost with them -- the report names no provider, so
+  # IgnoreHeaders cannot separate the two and this is all or nothing.
   - key: misc-include-cleaner.MissingIncludes
     value: 'false'
   # Umbrella headers: nothing is used from them directly, and everything is
