@@ -734,13 +734,14 @@ void ConsoleThreadProc() {
 			}
 			if (msg.message == WM_CONSOLE_APPEND) {
 				std::lock_guard<std::mutex> lock(g_ConsoleMutex);
+				// AppendToNeuroConsole is this message's only sender: wParam is
+				// always a freshly allocated ConsoleAppendData, and g_Console is
+				// only ever cleared before this loop starts or after it exits, so
+				// neither can be null while a WM_CONSOLE_APPEND is being handled.
 				ConsoleAppendData *data = (ConsoleAppendData *)msg.wParam;
-				NeuroConsole *console = g_Console.load();
-				if (data && console) {
-					console->AppendOutput(data->text, data->color);
-					delete[] data->text;
-					delete data;
-				}
+				g_Console.load()->AppendOutput(data->text, data->color);
+				delete[] data->text;
+				delete data;
 				continue;
 			}
 		}
