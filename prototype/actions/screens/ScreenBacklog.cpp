@@ -2,12 +2,14 @@
 
 #include <windows.h>
 
+#include <cstddef>
 #include <string>
 
 #include "ActionCommon.h"
 #include "ActionJson.h"
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
+#include "ActionSet.h"
 #include "NeuroClient.h"
 
 namespace {

@@ -1,5 +1,7 @@
 #include "ContextPayload.h"
 
+#include <cstddef>
+#include <string>
 #include <vector>
 
 namespace {

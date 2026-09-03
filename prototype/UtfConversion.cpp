@@ -3,6 +3,7 @@
 #include <climits>
 #include <cstring>
 #include <cwchar>
+#include <string>
 
 #include "UtfConversion.h"
 

@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cstring>
+#include <string>
 
 #include "ParseNumber.h"
 

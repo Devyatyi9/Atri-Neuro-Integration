@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <deque>
 #include <mutex>
+#include <string>
 
 namespace {
 constexpr std::size_t kMaxDebugLogLines = 1000;

@@ -1,7 +1,8 @@
 #include "ActionCommon.h"
 
 #include <atomic>
-
+#include <cstddef>
+#include <string>
 #include <vector>
 
 #include "ActionJson.h"

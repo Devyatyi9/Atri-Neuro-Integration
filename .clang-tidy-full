@@ -5,7 +5,7 @@
 # The point of keeping it is that .clang-tidy turns three checks off and tunes
 # two others, and a suppression nobody ever looks behind is how a real report
 # goes missing. This is the way to look behind it without editing anything.
-Checks: '-*,clang-diagnostic-*,bugprone-*,performance-*,misc-include-cleaner'
+Checks: '-*,clang-diagnostic-*,bugprone-*,performance-*,misc-include-cleaner,clang-analyzer-*,concurrency-*'
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*[/\](src|prototype)[/\].*'
 ...

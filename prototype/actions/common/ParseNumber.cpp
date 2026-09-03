@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
+#include <string>
 
 bool ParseIntToken(std::string const &token, int &out) {
 	if (token.empty()) {

@@ -2,10 +2,15 @@
 #include <windows.h>
 #include <winsock2.h>
 
+#include <atomic>
+#include <cstdint>
 #include <cstdio>
 #include <list>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 #include "Logging.h"
 #include "NeuroTCPServer.h"

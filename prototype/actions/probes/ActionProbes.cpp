@@ -2,6 +2,7 @@
 
 #include <windows.h>
 
+#include <cstddef>
 #include <string>
 
 #pragma warning(push)

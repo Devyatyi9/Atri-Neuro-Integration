@@ -9,6 +9,7 @@
 #include "ActionJson.h"
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
+#include "ActionSet.h"
 #include "Logging.h"
 #include "NeuroClient.h"
 

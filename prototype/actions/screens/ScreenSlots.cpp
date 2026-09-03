@@ -10,6 +10,7 @@
 #include "ActionJson.h"
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
+#include "ActionSet.h"
 #include "NeuroClient.h"
 #include "SlotPayload.h"
 

@@ -5,6 +5,7 @@
 #include <richedit.h>
 #include <windows.h>
 #include <atomic>
+#include <cstddef>
 #include <cwctype>
 #include <mutex>
 #include <string>

@@ -4,10 +4,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <neurosdk.h>
