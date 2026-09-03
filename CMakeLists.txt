@@ -162,6 +162,11 @@ if(ATRI_BUILD_PROTOTYPE)
         INTEGRATIONTEST_EXPORTS
         UNICODE
         _UNICODE
+        # fopen and getenv are standard C; the deprecation is Microsoft's
+        # opinion, and the _s replacements it names are neither standard nor
+        # simpler. Set on the target so it does not drift into being a #define
+        # in whichever file was edited last.
+        _CRT_SECURE_NO_WARNINGS
     )
     target_include_directories(atri_neuro_prototype PRIVATE
         prototype

@@ -1,5 +1,3 @@
-// NOLINTNEXTLINE(bugprone-reserved-identifier) -- the name is the CRT's own.
-#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 
 #include <cstdio>
