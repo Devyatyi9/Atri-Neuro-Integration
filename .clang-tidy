@@ -1,5 +1,5 @@
 ---
-# The set the build is meant to keep at zero. Two checks are off and one is
+# The set the build is meant to keep at zero. Three checks are off and two are
 # tuned, each for a reason that is not "it was noisy": see .clang-tidy-full,
 # which keeps everything at its defaults for an occasional sweep.
 #
@@ -10,12 +10,17 @@
 #   thirty-seven that are there on purpose.
 # performance-no-int-to-ptr -- the Win32 contract, where SetWindowLongPtr hands
 #   back a LONG_PTR that is a WNDPROC. Every report is that same shape.
+# performance-enum-size -- it argues from an array of them. Ours are mode
+#   selectors passed by value and never stored, so the base type costs a
+#   register either way, and pinning it would buy an <cstdint> per header.
 Checks: >
   -*,
   bugprone-*,
   performance-*,
+  misc-include-cleaner,
   -bugprone-throwing-static-initialization,
-  -performance-no-int-to-ptr
+  -performance-no-int-to-ptr,
+  -performance-enum-size
 CheckOptions:
   # At the default of two, this fires on every pair of same-typed parameters and
   # buries the cases that matter. At three it points at the real hazard: probes
@@ -23,6 +28,19 @@ CheckOptions:
   # cleanly and answers with the wrong number.
   - key: bugprone-easily-swappable-parameters.MinimumLength
     value: '3'
+  # The other half of include-cleaner asks for the header that declares each
+  # symbol, which on Win32 means naming synchapi.h and winnt.h instead of the
+  # umbrella that documents them. Six hundred reports, and every one of them
+  # wrong for this platform.
+  - key: misc-include-cleaner.MissingIncludes
+    value: 'false'
+  # Umbrella headers: nothing is used from them directly, and everything is
+  # used through them. Anything narrower than a whole header is kept where it
+  # is written, with an IWYU pragma on the include itself.
+  - key: misc-include-cleaner.IgnoreHeaders
+    value: '[Ww]indows\.h;tp_stub\.h'
 WarningsAsErrors: '*'
-HeaderFilterRegex: '.*/(src|prototype)/.*'
+# Both separators: the compilation database spells paths the way the Windows
+# build does, and a forward-slash-only pattern matches none of them.
+HeaderFilterRegex: '.*[/\](src|prototype)[/\].*'
 ...

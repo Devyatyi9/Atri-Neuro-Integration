@@ -5,9 +5,7 @@
 #include <richedit.h>
 #include <windows.h>
 #include <atomic>
-#include <cwctype>
 #include <string>
-#include <thread>
 
 // KiriKiri SDK
 #pragma warning(push)

@@ -12,7 +12,6 @@
 #include "Logging.h"
 #include "ParseNumber.h"
 #include "TJSExecutor.h"
-#include "UtfConversion.h"
 
 bool QueryString(wchar_t const *expr, std::string &out, char const *tag) {
 	// Both of these run on the Neuro polling thread, so the answer arrives as

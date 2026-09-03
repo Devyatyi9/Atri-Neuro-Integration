@@ -2,14 +2,13 @@
 
 #include <windows.h>
 
-#include <cstdio>
+#include <cstdio>  // IWYU pragma: keep -- declares sprintf_s
 #include <string>
 
 #include "ActionCommon.h"
 #include "ActionJson.h"
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
-#include "Logging.h"
 #include "NeuroClient.h"
 
 namespace {

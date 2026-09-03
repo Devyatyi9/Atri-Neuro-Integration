@@ -20,7 +20,6 @@
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "NeuroConsole.h"
-#include "NeuroTCPServer.h"
 #include "PluginLifecycle.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"

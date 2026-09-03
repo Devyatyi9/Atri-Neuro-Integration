@@ -1,7 +1,6 @@
 // Winsock2 must be included before windows.h.
 #include <windows.h>
 #include <winsock2.h>
-#include <ws2tcpip.h>
 
 #include <cstdio>
 #include <list>

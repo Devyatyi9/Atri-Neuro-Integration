@@ -16,7 +16,6 @@
 #pragma warning(pop)
 
 #include "Logging.h"
-#include "PluginLifecycle.h"
 #include "UtfConversion.h"
 
 static std::atomic<bool> g_TJSReady(false);

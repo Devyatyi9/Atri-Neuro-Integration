@@ -1,7 +1,7 @@
 #include "PluginLifecycle.h"
 
 #include <atomic>
-#include <cstdio>
+#include <cstdio>  // IWYU pragma: keep -- declares sprintf_s
 #include <exception>
 #include <string>
 #include <thread>

@@ -1,0 +1,14 @@
+# Configures the language server, not the checks. The rule set lives in
+# .clang-tidy and clangd reads it exactly as the command-line gate does; what is
+# left for here is where the compilation database is and which of clangd's own
+# diagnostics to show.
+CompileFlags:
+  CompilationDatabase: build/clangd
+
+Diagnostics:
+  # clangd carries an include-cleaner of its own, separate from the
+  # misc-include-cleaner check. Both on means every include is judged twice,
+  # and only the check knows that windows.h and tp_stub.h are umbrellas and
+  # that sprintf_s comes from cstdio.
+  UnusedIncludes: None
+  MissingIncludes: None
