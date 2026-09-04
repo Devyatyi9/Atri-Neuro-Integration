@@ -66,6 +66,14 @@ kag.movies = [ %[ status: 1 ] ];
 // The other music player. It serves the title and the menus, and in a scene it
 // is empty -- which is the whole reason the collector cannot read only this.
 kag.bgm = %[ playingStorage: "", inPlaying: 0 ];
+kag.bgm.play = function(arg) { global.kag.bgm.playingStorage = arg.storage; };
+kag.bgm.stop = function() { global.kag.bgm.playingStorage = ""; };
+kag.se = [ %[] ];
+kag.se[0].play = function(arg) { global.__stubCalls.add("se:" + arg.storage); };
+kag.se[0].stop = function() { global.__stubCalls.add("se:stop"); };
+kag.voices[0].stop = function() { global.__stubCalls.add("voice:stop"); };
+kag.voices[0].open = function(n) { global.kag.voices[0].storage = n; };
+kag.voices[0].play = function() { global.__stubCalls.add("voice:play"); };
 kag.voicePlayingRatio = 0;
 kag.voicevolume = 100;
 kag.voiceenable = 1;

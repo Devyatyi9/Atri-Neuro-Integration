@@ -10,7 +10,8 @@
 		"collect/visual.tjs",
 		"collect/modes.tjs",
 		"collect/conductor.tjs",
-		"install/hooks.tjs"
+		"install/hooks.tjs",
+		"install/console_helpers.tjs"
 	];
 	var loaded = 0;
 	for (var i = 0; i < files.count; i++) {

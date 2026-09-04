@@ -1,0 +1,27 @@
+// Checks for integration-assets/neuro_scripts/install/console_helpers.tjs.
+
+assert(typeof global.pv == "Object", "pv not installed");
+assert(typeof global.pse == "Object", "pse not installed");
+assert(typeof global.pbgm == "Object", "pbgm not installed");
+assert(typeof global.pstop == "Object", "pstop not installed");
+
+// Voice takes a bare name and the .opus goes on inside, so the caller never has
+// to remember which of the three kinds carries an extension.
+global.__stubCalls.clear();
+var played = pv("ATR_b203_044");
+assert(played == "ATR_b203_044.opus", "voice extension not added, got " + played);
+
+// Music displaces what is playing, so what it displaced has to be recoverable.
+kag.bgm.playingStorage = "BGM20";
+pbgm("BGM09");
+assert(kag.bgm.playingStorage == "BGM09", "bgm not switched, got " + kag.bgm.playingStorage);
+assert(pbgmback() == "BGM20", "the previous track was not restored");
+
+// Nothing to go back to is a no-op rather than an error: it runs from a console
+// where the previous command may well have been something else entirely.
+global.__pbgmPrevious = void;
+assert(pbgmback() == "", "pbgmback invented a track");
+
+assert(pstop() == "stopped", "pstop did not report");
+
+return "console_helpers: ok";
