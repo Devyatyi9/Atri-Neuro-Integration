@@ -114,7 +114,11 @@ function Set-SpeedSettings($Settings) {
 # a run that died before restoring leaves the game sped up, and the next run then
 # reads 100/100/0.1 and calls that the player's own. It is kept on disk, written
 # the moment it is taken and removed only after it has been handed back.
-$baselineFile = Join-Path $root "docs-local\research\audio\sweep-baseline.json"
+# Kept next to the driver that owns it, not with the sweep output: this is
+# machine state for the next run, not a result. The directory is excluded
+# locally (.git/info/exclude), the same way the tool binaries are.
+$baselineDir = Join-Path $PSScriptRoot "state"
+$baselineFile = Join-Path $baselineDir "sweep-baseline.json"
 
 function Read-SavedBaseline {
     if (-not (Test-Path -LiteralPath $baselineFile)) { return $null }
@@ -123,6 +127,9 @@ function Read-SavedBaseline {
 
 function Save-Baseline($Settings) {
     if (-not $Settings) { return }
+    if (-not (Test-Path -LiteralPath $baselineDir)) {
+        New-Item -ItemType Directory -Path $baselineDir -Force | Out-Null
+    }
     $Settings | ConvertTo-Json | Set-Content -LiteralPath $baselineFile -Encoding utf8
 }
 
