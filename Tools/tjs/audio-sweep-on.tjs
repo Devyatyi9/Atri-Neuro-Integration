@@ -71,7 +71,15 @@ global.__sweepSample = function() {
 if (typeof kag.conductor.__sweepOrigOnTag != "Object") {
     kag.conductor.__sweepOrigOnTag = kag.conductor.onTag;
     kag.conductor.onTag = function(tag) {
-        var result = this.__sweepOrigOnTag(tag);
+        // Both calls are guarded, and the call-through matters most: this wrapper
+        // cannot be removed from a conductor a later scene replaced, so it can
+        // outlive the sweep and find its saved original gone. Calling void there
+        // throws eTJSError straight into the engine's tag dispatch, which takes
+        // the process down without a word in any log.
+        var result = void;
+        if (typeof this.__sweepOrigOnTag == "Object") {
+            result = this.__sweepOrigOnTag(tag);
+        }
         // Guarded on purpose. This wrapper cannot be taken off a conductor that
         // was replaced by a later scene load, so it can outlive the sweep; by
         // then __sweepSample is void and calling it would throw straight into

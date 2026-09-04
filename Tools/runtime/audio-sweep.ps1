@@ -145,7 +145,10 @@ function Read-SweepLog {
     # so a long scene never builds one huge response.
     $raw = Invoke-Tjs '(function(){ var s = global.__sweepLog.join("\n"); global.__sweepLog.clear(); return s; })()'
     if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
-    ("" + $raw) -split "`n" | Where-Object { $_.Trim() -ne "" }
+    # A failed call answers with the client's own error text, and without this it
+    # lands in the results as though the game had played a sound by that name.
+    ("" + $raw) -split "`n" |
+        Where-Object { $_.Trim() -ne "" -and $_ -notmatch '^(error:|!!!TJS_EXCEPTION!!!)' }
 }
 
 if (-not $Scenes -or $Scenes.Count -eq 0) {
@@ -359,21 +362,21 @@ try {
         Write-Host "   $count entries"
       }
       } catch {
+          # Recovery is not tied to the restart schedule: -RestartEvery says how
+          # often to restart when nothing is wrong, while this runs because
+          # something is. Tying the two together once turned a single lost scene
+          # into a lost three-hour sweep.
           Write-Warning "$scene : run stopped ($($_.Exception.Message))"
-          if ($RestartEvery -gt 0) {
-              Write-Host "-- bringing the game back"
-              try {
-                  & $client -Restart 6>&1 | Out-Null
-                  Start-Sleep -Seconds 3
-                  Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
-                  # Counted as a fresh start, so the schedule does not restart
-                  # again on the very next scene.
-                  $sceneNo = 1
-              } catch {
-                  Write-Warning "could not restart the game, stopping"
-                  throw
-              }
-          } else {
+          Write-Host "-- bringing the game back"
+          try {
+              & $client -Restart 6>&1 | Out-Null
+              Start-Sleep -Seconds 3
+              Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
+              # Counted as a fresh start, so a schedule, if one is set, does not
+              # restart again on the very next scene.
+              $sceneNo = 1
+          } catch {
+              Write-Warning "could not bring the game back, stopping"
               throw
           }
       }
