@@ -73,6 +73,7 @@ kag.se[0].play = function(arg) { global.__stubCalls.add("se:" + arg.storage); };
 kag.se[0].stop = function() { global.__stubCalls.add("se:stop"); };
 kag.voices[0].stop = function() { global.__stubCalls.add("voice:stop"); };
 kag.voices[0].open = function(n) { global.kag.voices[0].storage = n; };
+kag.voices[0].totalTime = 3400;
 kag.voices[0].play = function() { global.__stubCalls.add("voice:play"); };
 kag.voicePlayingRatio = 0;
 kag.voicevolume = 100;

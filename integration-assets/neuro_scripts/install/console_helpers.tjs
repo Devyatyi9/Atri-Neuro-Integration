@@ -4,20 +4,29 @@
 // three is guessable, so typing them out every time is a small tax on every
 // "what does this file sound like" question. These wrap them.
 //
-//   pv("ATR_b203_044")   voice
+//   pv("ATR_b203_044")   voice -- see the warning below
 //   pse("se171")         sound effect
 //   pbgm("BGM09")        music, replaces what is playing
 //   pstop()              stops all three
 //
 // The extension goes on the name, not on the caller: voice is .opus, the other
 // two take a bare name.
+//
+// **A voice played this way is not inert.** MainWindow scans every voices[i] and
+// treats any buffer with type 0 and status "play" as a voice the story is
+// speaking -- measured with the game's own predicate: 0 buffers before, 1 while
+// pv is playing, 0 after pstop. So anything that waits for the voice to finish
+// waits for this one too, which is how a hand-played line ends up stalling the
+// quit. pv reports the clip length so the wait is predictable; pstop() ends it.
 (function() {
 	global.pv = function(name) {
 		var buffer = global.kag.voices[0];
 		buffer.stop();
 		buffer.open(name + ".opus");
 		buffer.play();
-		return buffer.storage;
+		// The length matters here, not just the name: until it ends, the game
+		// counts this as a voice in progress.
+		return buffer.storage + " (" + buffer.totalTime + " ms, pstop() to end early)";
 	} incontextof global;
 
 	global.pse = function(name) {

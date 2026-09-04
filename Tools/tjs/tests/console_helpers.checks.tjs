@@ -9,7 +9,10 @@ assert(typeof global.pstop == "Object", "pstop not installed");
 // to remember which of the three kinds carries an extension.
 global.__stubCalls.clear();
 var played = pv("ATR_b203_044");
-assert(played == "ATR_b203_044.opus", "voice extension not added, got " + played);
+assert(played.indexOf("ATR_b203_044.opus") == 0, "voice extension not added, got " + played);
+// The length is part of the answer on purpose: while it plays, the game counts
+// this buffer as a voice in progress, so the caller needs to know for how long.
+assert(played.indexOf("ms") >= 0, "the clip length was not reported, got " + played);
 
 // Music displaces what is playing, so what it displaced has to be recoverable.
 kag.bgm.playingStorage = "BGM20";
