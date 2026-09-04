@@ -26,6 +26,7 @@ import csv
 import glob
 import io
 import os
+import re
 import sys
 
 SCORED = ("bgm", "se", "loopse")
@@ -150,8 +151,21 @@ def main(argv):
                    else "not declared anywhere near")
             print("   %-16s %-6s %s" % (name, scene, tag))
 
+    # A voice file names its own scene in its prefix, so a row where the two
+    # disagree is worth seeing: mostly the scene boundary, but also a line
+    # played by hand into the instance being swept, which is easy to do from a
+    # console and otherwise invisible in the output.
+    odd = []
+    for scene, names in voices.items():
+        for name in names:
+            match = re.search(r"_(b[0-9]{3})_", name)
+            if match and match.group(1) != scene:
+                odd.append((scene, name))
     print("\nvoice: %d distinct lines over %d scenes (not scored)"
           % (sum(len(v) for v in voices.values()), len(voices)))
+    print("voice rows whose prefix names another scene: %d" % len(odd))
+    for scene, name in sorted(odd):
+        print("   %-8s %s" % (scene, name))
     return 0
 
 
