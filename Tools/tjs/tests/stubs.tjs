@@ -12,6 +12,12 @@
 // Keep this file to what the scripts under test actually reach for. A stub that
 // grows to imitate the whole engine stops being readable and starts being wrong
 // in ways nobody notices.
+//
+// One way these stubs are not the game: they are dictionaries, and a dictionary
+// as `this` cuts off global name resolution, while a class instance -- which is
+// what kag really is -- does not. Code using bare globals therefore fails here
+// and works in the game. Treat a failure of that shape as a false positive and
+// check against a live measurement before calling anything broken.
 
 global.Scripts = %[];
 Scripts.getObjectKeys = function(obj) {
