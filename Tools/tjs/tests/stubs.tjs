@@ -35,8 +35,8 @@ EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
 // Two sound layers of the two kinds the collector distinguishes: music-class
 // (bgm, loopse) carry _filename, sound-class carry a sound object.
 global.__stubEnvObjects = %[
-	bgm: %[ className: "bgm", _filename: "BGM01" ],
-	se1: %[ className: "loopse", _filename: "se171" ]
+	bgm: %[ className: "bgm", _filename: "BGM01", playing: 1 ],
+	se1: %[ className: "loopse", _filename: "se171", playing: 1 ]
 ];
 
 global.kag = %[];
@@ -55,6 +55,14 @@ kag.onMovieStatusChanged = function(status, movieId) {
 	global.__stubCalls.add("movie:" + status + ":" + movieId);
 };
 kag.movies = [ %[ status: 1 ] ];
+
+// The other music player. It serves the title and the menus, and in a scene it
+// is empty -- which is the whole reason the collector cannot read only this.
+kag.bgm = %[ playingStorage: "", inPlaying: 0 ];
+kag.voicePlayingRatio = 0;
+kag.voicevolume = 100;
+kag.voiceenable = 1;
+kag.sevolume = 80;
 kag._sysMovieLayer = %[];
 kag.isMoviePlaying = function() { return true; };
 

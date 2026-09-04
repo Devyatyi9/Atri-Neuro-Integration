@@ -1,0 +1,35 @@
+// Checks for integration-assets/neuro_scripts/collect/audio.tjs.
+//
+// This collector feeds the bgm field of the context. It read only kag.bgm,
+// which serves the title and the menus and is empty in a scene, so the field
+// was blank for the whole of the story while layers were plainly playing.
+
+// In a scene the answer comes from the env layer, found by class rather than by
+// name -- layer names change from scene to scene.
+var audio = global.__cm_collectAudio();
+assert(audio["bgm"] == "BGM01", "scene music not read, got '" + audio["bgm"] + "'");
+assert(audio["bgm_playing"] == 1, "scene music playing flag not read");
+
+// The exact regression: kag.bgm is empty here, and reading it would give "".
+assert(kag.bgm.playingStorage == "", "stub no longer reproduces the scene case");
+assert(audio["bgm"] != kag.bgm.playingStorage, "the collector fell back to the wrong player");
+
+// Off the story -- title, menus -- there is no scene layer and kag.bgm is the
+// answer. Covering both is why the layer is preferred rather than substituted.
+global.__stubEnvObjects["bgm"]._filename = "";
+kag.bgm.playingStorage = "BGM20";
+kag.bgm.inPlaying = 1;
+audio = global.__cm_collectAudio();
+assert(audio["bgm"] == "BGM20", "title music not read, got '" + audio["bgm"] + "'");
+assert(audio["bgm_playing"] == 1, "title playing flag not read");
+
+// A layer whose file is empty must not win over a player that has one, which is
+// what the emptiness test in the loop is for.
+assert(typeof global.__cm_findSceneMusic() != "Object", "an empty layer was taken as playing");
+
+// The rest of the fields keep coming through untouched.
+assert(audio["voice_vol"] == 100, "voice volume lost");
+assert(audio["se_vol"] == 80, "se volume lost");
+assert(audio["voice_enable"] == 1, "voice enable lost");
+
+return "audio: ok";

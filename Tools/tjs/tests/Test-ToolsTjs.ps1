@@ -48,11 +48,29 @@ if ($checks.Count -eq 0) {
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $failures = 0
 
+# A checked script is looked for in Tools/tjs first, then among the scripts
+# deployed into the game. Those are the ones that run unattended on every poll,
+# and they had no behaviour coverage at all -- which is where the empty bgm
+# field sat unnoticed for as long as it did.
+$repoRoot = Split-Path -Parent $toolsDir
+$deployed = Join-Path $repoRoot "integration-assets\neuro_scripts"
+
+function Resolve-Script([string]$Name) {
+    $candidate = Join-Path $toolsTjs "$Name.tjs"
+    if (Test-Path -LiteralPath $candidate) { return $candidate }
+    if (Test-Path -LiteralPath $deployed) {
+        $found = Get-ChildItem -LiteralPath $deployed -Recurse -Filter "$Name.tjs" |
+            Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
+    return $null
+}
+
 foreach ($check in $checks) {
     $name = $check.Name -replace '\.checks\.tjs$', ''
-    $target = Join-Path $toolsTjs "$name.tjs"
-    if (-not (Test-Path -LiteralPath $target)) {
-        Write-Host "FAIL $name : no script at $target"
+    $target = Resolve-Script $name
+    if (-not $target) {
+        Write-Host "FAIL $name : no script named $name.tjs in Tools\tjs or integration-assets\neuro_scripts"
         $failures++
         continue
     }
@@ -67,9 +85,9 @@ foreach ($check in $checks) {
         foreach ($line in Get-Content -LiteralPath $setupList) {
             $line = $line.Trim()
             if (-not $line -or $line.StartsWith("#")) { continue }
-            $prior = Join-Path $toolsTjs "$line.tjs"
-            if (-not (Test-Path -LiteralPath $prior)) {
-                throw "$name.setup names a script that does not exist: $prior"
+            $prior = Resolve-Script $line
+            if (-not $prior) {
+                throw "$name.setup names a script that does not exist: $line.tjs"
             }
             $setup += "(function(){`n" + (Get-Content -LiteralPath $prior -Raw) + "`n})();`n"
         }

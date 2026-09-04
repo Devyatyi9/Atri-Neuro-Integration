@@ -5,15 +5,54 @@
 //
 // The keys are the field names the poll emits, so nothing has to translate
 // between a variable and its `[name]`.
+//
+// Music comes from two different players and neither covers the other. In a
+// scene it is an env layer of class "bgm", carrying the file in `_filename`;
+// on the title and in menus it is `kag.bgm`. Reading only `kag.bgm`, as this
+// did, left the field empty for the whole of the story -- the layers were
+// playing BGM15, BGM13, BGM06 while the context said nothing.
+//
+// The layer is asked first and `kag.bgm` is the fallback, so both screens are
+// covered rather than trading one for the other. Layer names change from scene
+// to scene, so the layer is found by its class, not by name.
 (function() {
+	global.__cm_findSceneMusic = function() {
+		// Guarded whole: this is reached from tag dispatch, where an escaping
+		// exception is not caught by anything and costs the process. An empty
+		// answer here simply means "no scene layer", which is a real state.
+		try {
+			var plugin = kag.kagPlugins[0];
+			if (typeof plugin == "undefined") return void;
+			var names = Scripts.getObjectKeys(plugin.envobjects);
+			for (var i = 0; i < names.count; i++) {
+				var layer = plugin.envobjects[names[i]];
+				if (typeof layer._filename == "undefined") continue;
+				if (layer.className != "bgm") continue;
+				if (("" + layer._filename) == "") continue;
+				return layer;
+			}
+		} catch (e) {}
+		return void;
+	} incontextof global;
+
 	global.__cm_collectAudio = function() {
 		var bgm = "";
-		if (typeof kag.bgm != "undefined") {
+		var playing = 0;
+
+		var layer = global.__cm_findSceneMusic();
+		// "Object", not "!= undefined": typeof a member holding void reports
+		// "void", so an undefined test passes and the read below throws.
+		if (typeof layer == "Object") {
+			bgm = "" + layer._filename;
+			playing = layer.playing;
+		} else if (typeof kag.bgm != "undefined") {
 			bgm = kag.bgm.playingStorage;
+			playing = kag.bgm.inPlaying;
 		}
+
 		return %[
 			"bgm" => bgm,
-			"bgm_playing" => kag.bgm.inPlaying,
+			"bgm_playing" => playing,
 			"voice" => kag.voicePlayingRatio,
 			"voice_vol" => kag.voicevolume,
 			"voice_enable" => kag.voiceenable,
