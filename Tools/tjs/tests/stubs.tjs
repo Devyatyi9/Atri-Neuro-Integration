@@ -1,0 +1,46 @@
+// Stub game environment for running Tools/tjs scripts under tjsbox.
+//
+// The sandbox has only the TJS2 core -- no kag, no engine classes, and no
+// Scripts.getObjectKeys, which comes from the scriptsEx plugin rather than the
+// engine. Everything a script touches has to be built here, in TJS.
+//
+// Stubs are the point, not a workaround. The failures worth catching are states
+// that are awkward to reach in a running game on purpose: a saved handler that
+// has become void, a layer with no filename, an object replaced mid-scene. Here
+// they are two lines.
+//
+// Keep this file to what the scripts under test actually reach for. A stub that
+// grows to imitate the whole engine stops being readable and starts being wrong
+// in ways nobody notices.
+
+global.Scripts = %[];
+Scripts.getObjectKeys = function(obj) {
+	// Only the collections the scripts enumerate need real answers.
+	if (obj === global.__stubEnvObjects) return ["bgm", "se1"];
+	return [];
+};
+
+// The class the sweep collector patches. In the game this is native.
+global.EnvSoundBuffer = %[];
+EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
+	return "orig-play:" + a0;
+};
+
+// Two sound layers of the two kinds the collector distinguishes: music-class
+// (bgm, loopse) carry _filename, sound-class carry a sound object.
+global.__stubEnvObjects = %[
+	bgm: %[ className: "bgm", _filename: "BGM01" ],
+	se1: %[ className: "loopse", _filename: "se171" ]
+];
+
+global.kag = %[];
+kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
+kag.voices = [ %[ storage: "ATR_b999_001.opus" ] ];
+kag.conductor = %[];
+kag.conductor.onTag = function(tag) { return "orig-onTag:" + tag; };
+
+// Assertion helper for the checks files. Throwing is how a check fails: tjsbox
+// reports the message with a line number and exits non-zero.
+global.assert = function(condition, what) {
+	if (!condition) throw new Exception("check failed: " + what);
+};
