@@ -26,7 +26,12 @@ param(
     # Which instance to drive. A second copy of the game runs on its own port
     # (see the plugin config), so a sweep can go against it while the first copy
     # is busy. The baseline file is per port for the same reason.
-    [int]$Port = 18700
+    [int]$Port = 18700,
+    # Which copy to bring back when a scene fails. Must name the same instance
+    # the port reaches: recovery kills by the process name derived from this
+    # path, so leaving it at the default while sweeping the copy would restart
+    # the other game instead of the one that broke.
+    [string]$GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
 )
 
 # Walks the game scene by scene and records every sound it hears, so the result
@@ -293,7 +298,7 @@ try {
       # on a schedule keeps the address space from filling.
       if ($RestartEvery -gt 0 -and ($sceneNo % $RestartEvery) -eq 0) {
           Write-Host "-- restarting the game"
-          & $client -Restart -Port $Port 6>&1 | Out-Null
+          & $client -Restart -Port $Port -GameExe $GameExe 6>&1 | Out-Null
           Start-Sleep -Seconds 3
           # Taken on the first contact and only once; after that the game has
           # already been sped up and asking it again would return that.
@@ -464,7 +469,7 @@ try {
           Write-Warning "$scene : run stopped ($($_.Exception.Message))"
           Write-Host "-- bringing the game back"
           try {
-              & $client -Restart -Port $Port 6>&1 | Out-Null
+              & $client -Restart -Port $Port -GameExe $GameExe 6>&1 | Out-Null
               Start-Sleep -Seconds 3
               Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
               # Counted as a fresh start, so a schedule, if one is set, does not
