@@ -48,16 +48,30 @@ function Invoke-TjsFile([string]$RelativePath) {
 
 function Get-Position {
     # file, line and the flags the sweep has to react to, in one round trip.
-    $raw = Invoke-Tjs '(function(){ var i = kag.getCurrentInfo(); return i.file + "|" + i.line + "|" + (kag.selectShowing ? 1 : 0) + "|" + (kag.autoMode ? 1 : 0) + "|" + (kag.clickWaiting ? 1 : 0); })()'
+    $raw = Invoke-Tjs '(function(){ var i = kag.getCurrentInfo(); return i.file + "|" + i.line + "|" + (kag.selectShowing ? 1 : 0) + "|" + (kag.autoMode ? 1 : 0) + "|" + (kag.clickWaiting ? 1 : 0) + "|" + (kag.isMoviePlaying() ? 1 : 0); })()'
     $parts = ("" + $raw).Trim() -split '\|'
-    if ($parts.Count -lt 5) { return $null }
+    if ($parts.Count -lt 6) { return $null }
     [pscustomobject]@{
         File       = $parts[0]
         Line       = [int]$parts[1]
         Choice     = $parts[2] -eq "1"
         AutoMode   = $parts[3] -eq "1"
         ClickWait  = $parts[4] -eq "1"
+        Movie      = $parts[5] -eq "1"
     }
+}
+
+function Get-ChoiceCount {
+    # How many options the choice actually offers. Not always two: availability
+    # depends on progress flags, so the count is read rather than assumed.
+    $raw = Invoke-Tjs '(function(){ var l = kag.selectLayer; if (l == void || l.selects == void) return 0; var n = 0; for (var i = 0; i < l.selects.count; i++) { if (isvalid l.selects[i]) n++; } return n; })()'
+    $n = 0
+    if ([int]::TryParse(("" + $raw).Trim(), [ref]$n)) { return $n }
+    0
+}
+
+function Select-Choice([int]$Index) {
+    Invoke-Tjs "(function(){ var l = kag.selectLayer; var b = l.selects[$Index]; if (!isvalid b) return 0; l.onButtonClick(b); return 1; })()"
 }
 
 function Read-SweepLog {
@@ -135,11 +149,29 @@ try {
                 break
             }
             if ($pos.Choice) {
-                # A choice would fork the story. The sweep visits scenes directly,
-                # so it stops here rather than picking a branch.
-                Write-Host "   choice on screen, moving on"
-                break
+                # Take a branch rather than abandoning the scene: stopping here
+                # would lose everything after the choice, not just the branch not
+                # taken. Which branch is not chosen cleverly -- the first option
+                # is enough to keep going, and covering the rest is a separate
+                # job (see design/audio-context.md).
+                $options = Get-ChoiceCount
+                "$scene`tchoice`t$options options, took 1" | Add-Content -LiteralPath $OutFile -Encoding utf8
+                Write-Host "   choice with $options option(s), taking the first"
+                [void](Select-Choice 0)
+                $stalled = 0
+                continue
             }
+            if ($pos.Movie) {
+                # OP and ED run minutes of video while the scenario stands still.
+                # Their audio is inside the movie file, not on the sound layers, so
+                # sitting through them collects nothing -- click past instead. The
+                # stall counter is reset so the wait for the movie to actually end
+                # is not mistaken for a stuck scene.
+                Invoke-Tjs '(function(){ kag.onPrimaryClick(1); return 1; })()' | Out-Null
+                $stalled = 0
+                continue
+            }
+
             if ($pos.Line -eq $lastLine) {
                 $stalled++
                 if ($stalled -ge 25) {
