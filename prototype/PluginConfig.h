@@ -34,3 +34,13 @@ std::wstring const &GetPluginConfigSource();
 // The full path to a log file, honouring LogDirectory. Creates the directory if
 // it is named and missing.
 std::wstring ResolveLogPath(wchar_t const *name);
+
+// One line naming this process, written at the top of every log it opens.
+//
+// Nothing marks a log file as belonging to an instance: the files are told
+// apart by their path and nothing else. Point two instances at one directory
+// and the second finds the first's log already there, fails to move it aside
+// because it is open, and appends into it -- silently. This line is what makes
+// that readable afterwards, and it is why the first thing in a log is which
+// process, which exe and which config produced it.
+std::string GetInstanceBanner();

@@ -31,6 +31,8 @@ void AppendGameDebugLogFile(std::wstring const &line) {
 		if (!g_DebugLogFile) {
 			return;
 		}
+		std::string const banner = GetInstanceBanner();
+		fwrite(banner.data(), 1, banner.size(), g_DebugLogFile);
 	}
 
 	int const size = WideCharToMultiByte(CP_UTF8, 0, line.data(),

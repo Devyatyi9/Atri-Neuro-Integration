@@ -27,7 +27,14 @@ tcp_port = 18700
 # if missing. Empty (the default) means the game's own folder, which is where
 # every earlier version put them.
 #
-# Two instances sharing one directory write over each other's logs, and the
-# rotation on startup silently does nothing, because a log the other process
-# holds open cannot be moved.
+# Name it after the instance rather than after logs: the rotation folder inside
+# it is already called Logs, and "logs-copy\Logs" reads as the same word twice.
+#   log_dir = D:\Games\ATRI-TestVersion\instance-copy
+#
+# Nothing marks a log file as belonging to an instance -- they are told apart by
+# path and by nothing else. Point two instances at one directory and the second
+# finds the first's log already there, cannot move it aside because it is open,
+# and appends into it. Each log opens with a "# instance pid=... exe=... port=...
+# config=..." line, which is what makes such a mixed file readable afterwards;
+# it is not a guard, so give each instance its own directory.
 log_dir =

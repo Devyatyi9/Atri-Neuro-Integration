@@ -155,6 +155,35 @@ std::wstring const &GetPluginConfigSource() {
 	return g_ConfigSource;
 }
 
+std::string GetInstanceBanner() {
+	wchar_t exePath[MAX_PATH] = {};
+	GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+
+	std::wstring wide = L"# instance pid=";
+	wide += std::to_wstring(GetCurrentProcessId());
+	wide += L" exe=";
+	wide += exePath;
+	wide += L" port=";
+	wide += std::to_wstring(GetPluginConfig().TcpPort);
+	wide += L" config=";
+	wide += GetPluginConfigSource().empty() ? L"(defaults)"
+	                                        : GetPluginConfigSource().c_str();
+	wide += L"\n";
+
+	// Converted here rather than through UtfConversion, which would drag that
+	// unit into the test target for one line.
+	int const size = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(),
+	                                     static_cast<int>(wide.size()), nullptr,
+	                                     0, nullptr, nullptr);
+	if (size <= 0) {
+		return std::string();
+	}
+	std::string narrow(static_cast<std::size_t>(size), '\0');
+	WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), static_cast<int>(wide.size()),
+	                    &narrow[0], size, nullptr, nullptr);
+	return narrow;
+}
+
 std::wstring ResolveLogPath(wchar_t const *name) {
 	std::wstring const &directory = GetPluginConfig().LogDirectory;
 	if (directory.empty()) {

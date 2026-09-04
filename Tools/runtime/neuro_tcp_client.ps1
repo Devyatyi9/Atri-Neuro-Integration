@@ -71,8 +71,21 @@ function Restart-Game {
 
     $targetDll = Join-Path $GameDir "Neuro-Integration.dll"
     if (Test-Path $PluginDll) {
-        Copy-Item -LiteralPath $PluginDll -Destination $targetDll -Force
-        Write-Host "DLL updated: $PluginDll -> $targetDll"
+        # Both copies of the game load the same DLL from the same folder, so
+        # while either is running the file is locked and cannot be replaced.
+        # That is not a reason to refuse the restart: the instance being
+        # restarted still comes back, just on the DLL already deployed. Said out
+        # loud, because a silent skip here would mean testing yesterday's build.
+        try {
+            Copy-Item -LiteralPath $PluginDll -Destination $targetDll -Force -ErrorAction Stop
+            Write-Host "DLL updated: $PluginDll -> $targetDll"
+        } catch {
+            $holders = Get-Process -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProcessName -like 'ATRI*' -and $_.ProcessName -ne $GameProcessName } |
+                ForEach-Object { "$($_.ProcessName) (PID $($_.Id))" }
+            Write-Warning "DLL NOT updated -- the file is held by another instance: $($holders -join ', ')"
+            Write-Warning "Starting on the DLL already in $GameDir. Close the other instance first to deploy a new build."
+        }
     }
 
     # The TJS the plugin loads at run time lives beside the game, not in the

@@ -70,7 +70,10 @@ void ArchiveExistingLog(wchar_t const *path) {
 	// Two runs can end inside the same second, so the plain name is only the
 	// first candidate. Never replaces: an archived log is not worth losing.
 	for (int attempt = 0; attempt < 100; ++attempt) {
-		std::wstring target = archive + L"\\" + stem + stamp;
+		std::wstring target = archive;
+		target += L"\\";
+		target += stem;
+		target += stamp;
 		if (attempt > 0) {
 			wchar_t suffix[16] = {};
 			swprintf_s(suffix, L"-%d", attempt);
@@ -97,6 +100,10 @@ void Log(char const *message) {
 			std::wstring const path = ResolveLogPath(L"plugin_log.txt");
 			ArchiveExistingLog(path.c_str());
 			g_LogFile = _wfopen(path.c_str(), L"a");
+			if (g_LogFile) {
+				std::string const banner = GetInstanceBanner();
+				fprintf(g_LogFile, "%s", banner.c_str());
+			}
 		}
 		if (g_LogFile) {
 			fprintf(g_LogFile, "%s", message);
@@ -201,6 +208,8 @@ void LogTagFile(char const *text) {
 		if (!g_TagLogFile) {
 			return;
 		}
+		std::string const banner = GetInstanceBanner();
+		fprintf(g_TagLogFile, "%s", banner.c_str());
 	}
 	fprintf(g_TagLogFile, "%s", text);
 	ULONGLONG const now = GetTickCount64();
