@@ -1,0 +1,19 @@
+// Restores the speed settings changed by Tools/tjs/fast-playback-on.tjs.
+// Returns 1 if something was restored, 0 if there was nothing to restore.
+//
+// These are the player's own settings from the options screen, so leaving them
+// turned up would silently change how the game plays for them afterwards.
+//
+// The guard tests for "Object" (a live dictionary), not for "undefined": once a
+// member has been assigned void, typeof reports "void", so an "undefined" test
+// would pass again on a second run and assign void over the very values this
+// just restored. Running this twice must be a no-op.
+if (typeof kag.__neuroSpeedOriginal != "Object") {
+    return 0;
+}
+kag.textspeed = kag.__neuroSpeedOriginal.textspeed;
+kag.autospeed = kag.__neuroSpeedOriginal.autospeed;
+kag.drawspeed = kag.__neuroSpeedOriginal.drawspeed;
+kag.autoModeWaitVoice = kag.__neuroSpeedOriginal.autoModeWaitVoice;
+kag.__neuroSpeedOriginal = void;
+return 1;

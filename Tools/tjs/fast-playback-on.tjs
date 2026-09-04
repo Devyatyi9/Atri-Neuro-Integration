@@ -1,0 +1,33 @@
+// Speeds the game up for runtime event collection, without using skip.
+//
+// Skip is not usable for collecting audio: in both skip modes the engine never
+// calls SE playback at all (see design/audio-context.md). Auto mode keeps every
+// event, it is just slow. This turns the four speed knobs up instead, so a
+// scene runs through quickly with all events intact.
+//
+// drawspeed is an inverse multiplier -- main/uimain.tjs prints it as 1/v, and 0
+// as "MAX". 0.1 is therefore about ten times normal. Zero is avoided on purpose:
+// syncVoiceSpeed computes 1/kag.drawspeed.
+//
+// Save the originals only when none are held. The test is "not a live value"
+// rather than "undefined": a previous restore leaves the slot as void
+// (typeof "void", not "undefined").
+if (typeof kag.__neuroSpeedOriginal != "Object") {
+    kag.__neuroSpeedOriginal = %[
+        textspeed: kag.textspeed,
+        autospeed: kag.autospeed,
+        drawspeed: kag.drawspeed,
+        autoModeWaitVoice: kag.autoModeWaitVoice
+    ];
+}
+// autospeed runs the other way round from the rest: the setter computes
+// autoModePageWait = (max - autospeed) * k, so the maximum is the fast end and
+// zero leaves a four second pause on every page. Take the ceiling from the
+// engine rather than assuming 100.
+kag.textspeed = 100;
+kag.autospeed = kag._autoSpeedMax;
+kag.drawspeed = 0.1;
+kag.autoModeWaitVoice = 0;
+return "textspeed=" + kag.textspeed + " autospeed=" + kag.autospeed +
+    " pageWait=" + kag.autoModePageWait + " lineWait=" + kag.autoModeLineWait +
+    " drawspeed=" + kag.drawspeed + " autoWaitVoice=" + kag.autoModeWaitVoice;
