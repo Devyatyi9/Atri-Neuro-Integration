@@ -105,7 +105,10 @@ function Get-ChoiceTargets {
     # carries the label its branch starts at. Those labels are the other entry
     # points into this scene, which is how the sweep covers both branches without
     # touching progress flags (research/tjs/objects/Flags.md, "Выборы").
-    $raw = Invoke-Tjs '(function(){ if (typeof f.selectInfos == "undefined") return ""; var s = f.selectInfos; var r = ""; for (var i = 0; i < s.count; i++) { var e = s[i]; if (typeof e.target == "undefined") continue; r += e.target + " "; } return r; })()'
+    # Filtered by the scene on purpose: selectInfos keeps what earlier choices put
+    # there, so an unfiltered read at the second choice scene would queue labels
+    # belonging to the first one -- and those labels do not exist here.
+    $raw = Invoke-Tjs '(function(){ if (typeof f.selectInfos == "undefined") return ""; var here = "" + kag.getCurrentInfo().file; var s = f.selectInfos; var r = ""; for (var i = 0; i < s.count; i++) { var e = s[i]; if (typeof e.target == "undefined") continue; if (typeof e.storage != "undefined" && ("" + e.storage) != here) continue; r += e.target + " "; } return r; })()'
     ("" + $raw).Trim() -split '\s+' | Where-Object { $_ -like '*' -and $_ -ne "" }
 }
 
