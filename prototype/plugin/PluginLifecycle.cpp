@@ -158,11 +158,28 @@ static void StopDeferredTJSInit() {
 	}
 }
 
+// GetAsyncKeyState reads the keyboard, not the window: it says nothing about who
+// has focus. With one instance that was invisible, but two copies of the game
+// both answered the same F12 and each opened its own console -- so the console
+// that appeared was whichever won the race, not the one belonging to the window
+// being used, and sounds played from it went to the wrong process.
+static bool ThisProcessHasFocus() {
+	HWND const foreground = GetForegroundWindow();
+	if (!foreground) {
+		return false;
+	}
+	DWORD processId = 0;
+	GetWindowThreadProcessId(foreground, &processId);
+	return processId == GetCurrentProcessId();
+}
+
 static void HotkeyThread() {
 	Log("Hotkey thread started (F12 = console)\n");
 
 	while (g_HotkeyThreadRunning.load()) {
-		if (GetAsyncKeyState(VK_F12) & 0x8000) {
+		// The console window belongs to this process too, so it keeps its own
+		// F12 working while it is focused.
+		if ((GetAsyncKeyState(VK_F12) & 0x8000) && ThisProcessHasFocus()) {
 			ToggleNeuroConsole();
 			Sleep(300);
 		}
@@ -283,16 +300,42 @@ void ShutdownPluginWorkers() {
 
 	Log("Plugin worker shutdown started\n");
 
+	// Timed step by step. Closing the game is slow enough to be noticed, and
+	// several of these steps can wait -- a client thread inside a synchronous
+	// TJS call, the accept loop's select timeout, the websocket disconnect --
+	// so which one it is has to be measured rather than reasoned about.
+	ULONGLONG const startedAt = GetTickCount64();
+	ULONGLONG stepAt = startedAt;
+	auto step = [&stepAt](char const *name) {
+		ULONGLONG const now = GetTickCount64();
+		char line[128];
+		sprintf_s(line, "[shutdown] %s took %llu ms\n", name, now - stepAt);
+		Log(line);
+		stepAt = now;
+	};
+
 	ShutdownPrototypeActionRouter();
+	step("action router");
 
 	// Release workers blocked on main-thread TJS calls before joining them.
 	StopAcceptingTJSCalls();
+	step("stop accepting TJS calls");
 	StopDeferredTJSInit();
+	step("deferred init thread");
 	StopHotkeyThread();
+	step("hotkey thread");
 	NeuroDisconnect();
+	step("neuro disconnect");
 	ShutdownNeuroConsole();
+	step("console");
 	StopTCPServer();
+	step("tcp server");
 	CloseGameDebugLogFile();
+
+	char total[128];
+	sprintf_s(total, "[shutdown] workers total %llu ms\n",
+	          GetTickCount64() - startedAt);
+	Log(total);
 }
 
 void ShutdownPluginLifecycle() {
