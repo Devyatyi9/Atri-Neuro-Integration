@@ -1,0 +1,21 @@
+// Checks for Tools/tjs/capture-raw-tags.tjs.
+
+global.__stubCalls.clear();
+kag.onConductorBeforeTag("cm", void);
+
+assert(kag.__neuroRawTagsEvents.count == 1, "tag not recorded");
+assert(kag.__neuroRawTagsEvents[0] == "cm", "wrong tag name, got " + kag.__neuroRawTagsEvents[0]);
+
+// Observe-only means the engine's own handler still has to run.
+var reached = false;
+for (var i = 0; i < global.__stubCalls.count; i++) {
+	if (global.__stubCalls[i] == "beforeTag:cm") reached = true;
+}
+assert(reached, "the original handler was not called");
+
+// A restore leaves the saved slot void while this wrapper is still installed.
+kag.__neuroRawTagsOriginal = void;
+kag.onConductorBeforeTag("ct", void);
+assert(kag.__neuroRawTagsEvents.count == 2, "recording stopped after the original went away");
+
+return "capture-raw-tags: ok";

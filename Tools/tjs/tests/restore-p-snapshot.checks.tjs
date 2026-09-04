@@ -1,0 +1,12 @@
+// Checks for Tools/tjs/restore-p-snapshot.tjs, run after the capture.
+
+assert(global.__scriptResult == 1, "restore did not report that it restored");
+
+global.__stubCalls.clear();
+assert(kag.tagHandlers["p"](%[]) == "orig-p", "the original handler is not back");
+assert(global.__stubCalls.count == 1, "the wrapper is still in the way");
+
+assert(typeof kag.__neuroPSnapshotOriginal == "void", "the saved handler was left behind");
+assert(typeof kag.__neuroPSnapshotEvents == "void", "the event list was left behind");
+
+return "restore-p-snapshot: ok";

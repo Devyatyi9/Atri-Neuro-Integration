@@ -1,0 +1,14 @@
+// Checks for Tools/tjs/restore-transition-timing.tjs, run after the capture.
+
+assert(global.__scriptResult == 1, "restore did not report that it restored");
+
+global.__stubCalls.clear();
+kag.beginTransition(%[ method: "crossfade", time: 500, rule: "" ]);
+kag.stopTransition();
+assert(global.__stubCalls.count == 2, "the originals are not back");
+
+assert(typeof kag.__neuroTransitionCaptureBegin == "void", "a saved function was left behind");
+assert(typeof kag.__neuroTransitionCaptureStop == "void", "a saved function was left behind");
+assert(typeof kag.__neuroTransitionCaptureEvents == "void", "the event list was left behind");
+
+return "restore-transition-timing: ok";

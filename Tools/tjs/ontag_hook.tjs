@@ -15,16 +15,27 @@
 if (typeof kag.conductor.__neuronOrigOnTag == "undefined") {
     kag.conductor.__neuronOrigOnTag = kag.conductor.onTag;
     kag.conductor.onTag = function(tag) {
-        var result = this.__neuronOrigOnTag(tag);
-        
-        /* After tag processing - safe window for context monitoring */
+        /* Guarded: this wrapper cannot be taken off a conductor a later scene
+           replaced, so it outlives the hook and finds its saved handler gone.
+           Calling void there throws into the engine's own tag dispatch, which
+           takes the process down without a word in any log. */
+        var result = void;
+        if (typeof this.__neuronOrigOnTag == "Object") {
+            result = this.__neuronOrigOnTag(tag);
+        }
+
+        /* After tag processing - safe window for context monitoring.
+           The plugin exports are named in full: inside a function held on the
+           conductor, an unqualified name resolves against the conductor and
+           does not fall back to global, so a bare neuroExecFile is void and
+           the catch below would quietly swallow every call. */
         try {
-            var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
-            if (data != '') neuroSendContextFromTJS(data);
+            var data = global.neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
+            if (data != '') global.neuroSendContextFromTJS(data);
         } catch(e) {
             /* Silence errors to avoid breaking conductor */
         }
-        
+
         return result;
     };
 }

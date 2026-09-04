@@ -1,0 +1,24 @@
+// Checks for Tools/tjs/capture-p-snapshot.tjs.
+
+global.__stubCalls.clear();
+
+// This replaces the [p] handler rather than observing it, so the tag has to go
+// on working exactly as before: the original's value is what the conductor gets.
+var passed = kag.tagHandlers["p"](%[]);
+assert(passed == "orig-p", "call-through lost the result, got " + passed);
+
+// The snapshot is taken at the moment [p] fires, not at the next poll tick.
+assert(kag.__neuroPSnapshotEvents.count == 1, "nothing recorded");
+assert(kag.__neuroPSnapshotEvents[0] == "ATRI|line",
+	"wrong snapshot, got " + kag.__neuroPSnapshotEvents[0]);
+
+// The snapshot may fail on its own -- the history layer is unavailable while
+// the engine tears down -- and [p] still has to work.
+kag.historyLayer = void;
+assert(kag.tagHandlers["p"](%[]) == "orig-p", "a failed snapshot broke the tag");
+
+// A restore leaves the saved slot void while this handler is still installed.
+kag.__neuroPSnapshotOriginal = void;
+kag.tagHandlers["p"](%[]);
+
+return "capture-p-snapshot: ok";

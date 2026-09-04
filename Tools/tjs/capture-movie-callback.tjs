@@ -7,11 +7,25 @@ if (typeof kag.__neuroMovieCaptureOriginal != "Object") {
 }
 kag.__neuroMovieCaptureEvents = [];
 kag.onMovieStatusChanged = function(status, movieId) {
-    var movie = kag.movies[movieId];
-    var movieKeys = movie === void ? "" : Scripts.getObjectKeys(movie).join(",");
-    var layerKeys = kag._sysMovieLayer === void ? "" : Scripts.getObjectKeys(kag._sysMovieLayer).join(",");
-    var snapshot = "movie-callback status=" + status + ";id=" + movieId + ";playing=" + kag.isMoviePlaying() + ";movieKeys=" + movieKeys + ";layerKeys=" + layerKeys;
-    kag.__neuroMovieCaptureEvents.push(snapshot);
-    Debug.message(snapshot);
-    kag.__neuroMovieCaptureOriginal(status, movieId);
+    // Every global is written out in full. Inside a function held on an object,
+    // an unqualified name resolves against that object and does not fall back
+    // to global, so a bare `kag` here is `kag.kag`, which is void.
+    //
+    // The probe's own work is fenced off, but the call through is not: the
+    // engine drives movie playback from this callback, so losing it leaves the
+    // movie hanging. It is guarded instead, because a restore leaves the saved
+    // slot void while this wrapper may still be installed.
+    try {
+        var movie = global.kag.movies[movieId];
+        var movieKeys = movie === void ? "" : global.Scripts.getObjectKeys(movie).join(",");
+        var layer = global.kag._sysMovieLayer;
+        var layerKeys = layer === void ? "" : global.Scripts.getObjectKeys(layer).join(",");
+        var snapshot = "movie-callback status=" + status + ";id=" + movieId +
+            ";playing=" + global.kag.isMoviePlaying() +
+            ";movieKeys=" + movieKeys + ";layerKeys=" + layerKeys;
+        global.kag.__neuroMovieCaptureEvents.push(snapshot);
+        global.Debug.message(snapshot);
+    } catch (e) {}
+    if (typeof global.kag.__neuroMovieCaptureOriginal == "Object")
+        global.kag.__neuroMovieCaptureOriginal(status, movieId);
 };

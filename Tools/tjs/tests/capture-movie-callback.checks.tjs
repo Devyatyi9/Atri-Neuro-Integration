@@ -1,0 +1,21 @@
+// Checks for Tools/tjs/capture-movie-callback.tjs.
+
+global.__stubCalls.clear();
+kag.onMovieStatusChanged(2, 0);
+
+assert(kag.__neuroMovieCaptureEvents.count == 1, "status change not recorded");
+
+// The engine's own callback drives movie playback, so swallowing it leaves the
+// movie hanging rather than merely losing a probe entry.
+var reached = false;
+for (var i = 0; i < global.__stubCalls.count; i++) {
+	if (global.__stubCalls[i] == "movie:2:0") reached = true;
+}
+assert(reached, "the original callback was not called");
+
+// A restore leaves the saved slot void while this wrapper is still installed.
+kag.__neuroMovieCaptureOriginal = void;
+kag.onMovieStatusChanged(2, 0);
+assert(kag.__neuroMovieCaptureEvents.count == 2, "recording stopped after the original went away");
+
+return "capture-movie-callback: ok";

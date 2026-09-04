@@ -19,12 +19,18 @@ kag.onConductorBeforeTag = function(tagname, tag) {
     // This runs on the native tag-dispatch path, outside any protective
     // try/catch of the caller -- an uncaught exception here reaches the engine
     // directly and can produce a fatal error dialog.
+    //
+    // Every global is written out in full. Inside a function held on an object,
+    // an unqualified name resolves against that object and does not fall back
+    // to global, so a bare `kag` here is `kag.kag`, which is void. The catch
+    // below then swallows the failure and the probe records nothing at all
+    // while looking like it works.
     try {
-        kag.__neuroRawTagsEvents.add(tagname);
-        Debug.message("raw-tag " + tagname);
+        global.kag.__neuroRawTagsEvents.add(tagname);
+        global.Debug.message("raw-tag " + tagname);
     } catch (e) {}
     try {
-        if (typeof kag.__neuroRawTagsOriginal == "Object")
-            kag.__neuroRawTagsOriginal(tagname, tag);
+        if (typeof global.kag.__neuroRawTagsOriginal == "Object")
+            global.kag.__neuroRawTagsOriginal(tagname, tag);
     } catch (e) {}
 };

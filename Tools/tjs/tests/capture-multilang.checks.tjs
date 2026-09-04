@@ -1,0 +1,28 @@
+// Checks for Tools/tjs/capture-multilang.tjs.
+
+global.__stubCalls.clear();
+
+// The engine calls this getter with two arguments. The original declares the
+// third as a default parameter; a wrapper does not inherit that default, and
+// forwarding the explicit void indexes a native array out of bounds -- a
+// hardware exception, not a catchable TJS error. Restoring the default is the
+// point of the wrapper's first line.
+var active = kag.getLangInfo(%[], "text");
+assert(active == "lang1:text", "the language default was not restored, got " + active);
+
+// All three languages are read for the same tag object.
+assert(kag.__neuroMultiLangEvents.count == 1, "nothing recorded");
+var event = kag.__neuroMultiLangEvents[0];
+assert(event.indexOf("jp=lang0:text") >= 0, "japanese not read: " + event);
+assert(event.indexOf("en=lang1:text") >= 0, "english not read: " + event);
+assert(event.indexOf("cn=lang2:text") >= 0, "chinese not read: " + event);
+
+// Fields other than text pass through without being recorded.
+kag.getLangInfo(%[], "name");
+assert(kag.__neuroMultiLangEvents.count == 1, "a non-text field was recorded");
+
+// A restore leaves the saved slot void while this wrapper is still installed.
+kag.__neuroMultiLangOriginal = void;
+kag.getLangInfo(%[], "text");
+
+return "capture-multilang: ok";

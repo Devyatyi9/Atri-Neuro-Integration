@@ -30,16 +30,23 @@ kag.getLangInfo = function(arg0, arg1, arg2) {
     // a native array out of bounds and crashes the process outright
     // ("Hardware exception raised", not a catchable TJS error). Restoring the
     // default here is mandatory, not defensive style.
-    if (arg2 === void) arg2 = kag.languageType;
-    var result = kag.__neuroMultiLangOriginal(arg0, arg1, arg2);
+    //
+    // Every global is written out in full. Inside a function held on an object,
+    // an unqualified name resolves against that object and does not fall back
+    // to global, so a bare `kag` here is `kag.kag`, which is void -- and this
+    // line runs outside any catch, in a getter the whole render pipeline calls.
+    if (arg2 === void) arg2 = global.kag.languageType;
+    var original = global.kag.__neuroMultiLangOriginal;
+    if (typeof original != "Object") return void;
+    var result = original(arg0, arg1, arg2);
     try {
         if (arg1 == "text") {
-            var event = "jp=" + kag.__neuroMultiLangOriginal(arg0, arg1, 0)
+            var event = "jp=" + original(arg0, arg1, 0)
                       + " || active=" + result
-                      + " || en=" + kag.__neuroMultiLangOriginal(arg0, arg1, 1)
-                      + " || cn=" + kag.__neuroMultiLangOriginal(arg0, arg1, 2);
-            kag.__neuroMultiLangEvents.add(event);
-            Debug.message("multilang " + event);
+                      + " || en=" + original(arg0, arg1, 1)
+                      + " || cn=" + original(arg0, arg1, 2);
+            global.kag.__neuroMultiLangEvents.add(event);
+            global.Debug.message("multilang " + event);
         }
     } catch (e) {}
     return result;

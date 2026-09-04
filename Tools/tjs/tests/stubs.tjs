@@ -39,6 +39,75 @@ kag.voices = [ %[ storage: "ATR_b999_001.opus" ] ];
 kag.conductor = %[];
 kag.conductor.onTag = function(tag) { return "orig-onTag:" + tag; };
 
+// Engine callbacks the capture probes replace. Each records that it ran, so a
+// check can tell a wrapper that calls through from one that swallows the call.
+global.__stubCalls = [];
+kag.onConductorBeforeTag = function(tagname, tag) {
+	global.__stubCalls.add("beforeTag:" + tagname);
+};
+kag.onMovieStatusChanged = function(status, movieId) {
+	global.__stubCalls.add("movie:" + status + ":" + movieId);
+};
+kag.movies = [ %[ status: 1 ] ];
+kag._sysMovieLayer = %[];
+kag.isMoviePlaying = function() { return true; };
+
+// Speed settings, at values a player might have left them at rather than at
+// defaults: a round-trip check is only meaningful if the originals are unusual.
+kag.textspeed = 30;
+kag.autospeed = 45;
+kag.drawspeed = 1;
+kag.autoModeWaitVoice = 1;
+kag.autoModePageWait = 3600;
+kag.autoModeLineWait = 500;
+kag._autoSpeedMax = 100;
+
+// Skip. skipKeyPressing is what force-skip stubs out; the rest only record.
+kag.skipMode = 0;
+kag.skipKeyPressing = function() { return 0; };
+kag.skipToStop2 = function() {
+	global.__stubCalls.add("skipToStop2");
+	global.kag.skipMode = 4;
+};
+kag.cancelSkip = function() {
+	global.__stubCalls.add("cancelSkip");
+	global.kag.skipMode = 0;
+};
+
+// Localization getter, hooked by capture-multilang. The third argument has a
+// default in the engine; here it is required, so a wrapper that forwards void
+// is caught rather than quietly reading the wrong language.
+kag.languageType = 1;
+kag.getLangInfo = function(obj, field, langType) {
+	if (langType === void) throw new Exception("getLangInfo called without a language");
+	return "lang" + langType + ":" + field;
+};
+
+// Tag handlers, hooked by capture-p-snapshot. A handler lives on this
+// dictionary rather than on kag, which is what makes `this` there not kag.
+kag.tagHandlers = %[];
+kag.tagHandlers["p"] = function(p) {
+	global.__stubCalls.add("tag:p");
+	return "orig-p";
+};
+kag.historyLayer = %[ currentName: "ATRI", currentText: "line" ];
+
+// Transitions, hooked by capture-transition-timing.
+kag.inTransition = false;
+kag.beginTransition = function(params) { global.__stubCalls.add("beginTransition"); };
+kag.stopTransition = function() { global.__stubCalls.add("stopTransition"); };
+
+// Provided by the engine's own script layer, which the sandbox does not compile.
+global.Debug = %[];
+Debug.message = function(text) { global.__stubCalls.add("debug:" + text); };
+global.System = %[];
+System.getTickCount = function() { return 1000; };
+
+// Exported by the plugin, so absent here in exactly the way they are absent
+// from any process the plugin failed to load into.
+global.neuroExecFile = function(path, mode) { return ""; };
+global.neuroSendContextFromTJS = function(data) { };
+
 // Assertion helper for the checks files. Throwing is how a check fails: tjsbox
 // reports the message with a line number and exits non-zero.
 global.assert = function(condition, what) {

@@ -7,15 +7,29 @@ if (typeof kag.__neuroTransitionCaptureBegin != "Object") {
     kag.__neuroTransitionCaptureStop = kag.stopTransition;
 }
 kag.__neuroTransitionCaptureEvents = [];
+// Every global below is written out in full. Inside a function held on an
+// object, an unqualified name resolves against that object and does not fall
+// back to global, so a bare `kag`, `Debug` or `System` here is void.
 kag.beginTransition = function(params) {
-    var event = "transition-begin tick=" + System.getTickCount() + ";method=" + params.method + ";time=" + params.time + ";rule=" + params.rule + ";before=" + kag.inTransition;
-    kag.__neuroTransitionCaptureEvents.push(event);
-    Debug.message(event);
-    kag.__neuroTransitionCaptureBegin(params);
+    try {
+        var event = "transition-begin tick=" + global.System.getTickCount() +
+            ";method=" + params.method + ";time=" + params.time +
+            ";rule=" + params.rule + ";before=" + global.kag.inTransition;
+        global.kag.__neuroTransitionCaptureEvents.push(event);
+        global.Debug.message(event);
+    } catch (e) {}
+    // Guarded: a restore leaves the saved slot void while this may still be
+    // installed, and the engine drives the transition from here.
+    var original = global.kag.__neuroTransitionCaptureBegin;
+    if (typeof original == "Object") original(params);
 };
 kag.stopTransition = function() {
-    var event = "transition-stop tick=" + System.getTickCount() + ";before=" + kag.inTransition;
-    kag.__neuroTransitionCaptureEvents.push(event);
-    Debug.message(event);
-    kag.__neuroTransitionCaptureStop();
+    try {
+        var event = "transition-stop tick=" + global.System.getTickCount() +
+            ";before=" + global.kag.inTransition;
+        global.kag.__neuroTransitionCaptureEvents.push(event);
+        global.Debug.message(event);
+    } catch (e) {}
+    var original = global.kag.__neuroTransitionCaptureStop;
+    if (typeof original == "Object") original();
 };

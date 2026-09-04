@@ -1,0 +1,17 @@
+// Checks for Tools/tjs/audio-sweep-off.tjs, run after audio-sweep-on.
+
+assert(global.__scriptResult == 1, "removal did not report that it removed");
+
+// The class patch is put back so later layers are built clean.
+assert(EnvSoundBuffer.play("x") == "orig-play:x", "EnvSoundBuffer.play not restored");
+
+// The conductor keeps whatever handler it had before the sweep.
+assert(kag.conductor.onTag("msg") == "orig-onTag:msg", "conductor.onTag not restored");
+assert(typeof kag.conductor.__sweepOrigOnTag == "void", "the saved handler was left behind");
+
+// The collector's own state is cleared, which is what makes a stale wrapper on
+// an already-replaced conductor dangerous -- hence the guards in the -on script.
+assert(typeof global.__sweepSample == "void", "the sampler was left behind");
+assert(typeof global.__sweepLog == "void", "the log was left behind");
+
+return "audio-sweep-off: ok";

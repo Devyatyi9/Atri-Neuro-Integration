@@ -1,0 +1,16 @@
+// Checks for Tools/tjs/force-skip-off.tjs, run after force-skip-on.
+
+assert(global.__scriptResult == 1, "restore did not report that it restored");
+assert(kag.skipKeyPressing() == 0, "the real key predicate is not back");
+assert(typeof kag.__neuroSkipKeyOriginal == "void", "the saved predicate was left behind");
+
+// Cancelled explicitly rather than left to the engine's next check, so the
+// caller can tell when the mode actually ended.
+var cancelled = false;
+for (var i = 0; i < global.__stubCalls.count; i++) {
+	if (global.__stubCalls[i] == "cancelSkip") cancelled = true;
+}
+assert(cancelled, "skip was not cancelled explicitly");
+assert(kag.skipMode == 0, "skip mode still set, got " + kag.skipMode);
+
+return "force-skip-off: ok";

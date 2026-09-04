@@ -1,0 +1,29 @@
+// Checks for Tools/tjs/capture-transition-timing.tjs.
+
+global.__stubCalls.clear();
+kag.beginTransition(%[ method: "crossfade", time: 500, rule: "" ]);
+kag.stopTransition();
+
+assert(kag.__neuroTransitionCaptureEvents.count == 2, "both ends were not recorded");
+assert(kag.__neuroTransitionCaptureEvents[0].indexOf("transition-begin") == 0, "begin not recorded");
+assert(kag.__neuroTransitionCaptureEvents[0].indexOf("method=crossfade") >= 0, "parameters not recorded");
+assert(kag.__neuroTransitionCaptureEvents[1].indexOf("transition-stop") == 0, "stop not recorded");
+
+// The engine drives the transition from these, so swallowing the call would
+// leave it never starting or never ending.
+var began = false;
+var stopped = false;
+for (var i = 0; i < global.__stubCalls.count; i++) {
+	if (global.__stubCalls[i] == "beginTransition") began = true;
+	if (global.__stubCalls[i] == "stopTransition") stopped = true;
+}
+assert(began, "the original beginTransition was not called");
+assert(stopped, "the original stopTransition was not called");
+
+// A restore leaves the saved slots void while these are still installed.
+kag.__neuroTransitionCaptureBegin = void;
+kag.__neuroTransitionCaptureStop = void;
+kag.beginTransition(%[ method: "crossfade", time: 500, rule: "" ]);
+kag.stopTransition();
+
+return "capture-transition-timing: ok";

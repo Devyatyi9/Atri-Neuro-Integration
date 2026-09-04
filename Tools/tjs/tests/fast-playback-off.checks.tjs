@@ -1,0 +1,14 @@
+// Checks for Tools/tjs/fast-playback-off.tjs, run after fast-playback-on.
+
+assert(global.__scriptResult == 1, "restore did not report that it restored");
+
+// The whole point: the player gets their own settings back, not defaults.
+assert(kag.textspeed == 30, "textspeed not restored, got " + kag.textspeed);
+assert(kag.autospeed == 45, "autospeed not restored, got " + kag.autospeed);
+assert(kag.drawspeed == 1, "drawspeed not restored, got " + kag.drawspeed);
+assert(kag.autoModeWaitVoice == 1, "autoModeWaitVoice not restored");
+
+// What makes a second run a no-op rather than a wipe.
+assert(typeof kag.__neuroSpeedOriginal == "void", "the saved settings were left behind");
+
+return "fast-playback-off: ok";

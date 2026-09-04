@@ -1,0 +1,17 @@
+// Checks for Tools/tjs/fast-playback-on.tjs.
+
+// The player's own settings have to be kept, or the restore has nothing to put
+// back and the game is left fast after the run.
+assert(typeof kag.__neuroSpeedOriginal == "Object", "originals were not saved");
+assert(kag.__neuroSpeedOriginal.textspeed == 30, "wrong textspeed saved");
+assert(kag.__neuroSpeedOriginal.drawspeed == 1, "wrong drawspeed saved");
+
+// autospeed runs the other way round: the ceiling is the fast end, and it is
+// taken from the engine rather than assumed to be 100.
+assert(kag.autospeed == kag._autoSpeedMax, "autospeed not at the engine ceiling");
+assert(kag.textspeed == 100, "textspeed not raised");
+
+// Zero drawspeed is avoided on purpose: syncVoiceSpeed divides by it.
+assert(kag.drawspeed != 0, "drawspeed set to zero");
+
+return "fast-playback-on: ok";

@@ -1,0 +1,8 @@
+// Checks for Tools/tjs/restore-multilang.tjs, run after the capture.
+
+assert(global.__scriptResult == 1, "restore did not report that it restored");
+assert(kag.getLangInfo(%[], "text", 2) == "lang2:text", "the original getter is not back");
+assert(typeof kag.__neuroMultiLangOriginal == "void", "the saved getter was left behind");
+assert(typeof kag.__neuroMultiLangEvents == "void", "the event list was left behind");
+
+return "restore-multilang: ok";

@@ -21,10 +21,20 @@ kag.tagHandlers["p"] = function(p) {
     // throws (e.g. kag.historyLayer unavailable while the engine tears down),
     // the call-through below must still run unconditionally so [p] keeps
     // working exactly as it did before this override existed.
+    //
+    // Every global is written out in full. This function is held on
+    // kag.tagHandlers, so `this` is that dictionary and an unqualified `kag`
+    // resolves to kag.tagHandlers.kag, which is void. Unqualified, the snapshot
+    // fails on its first line and the catch hides it.
     try {
-        var event = kag.historyLayer.currentName + "|" + kag.historyLayer.currentText;
-        kag.__neuroPSnapshotEvents.add(event);
-        Debug.message("p-snapshot " + event);
+        var history = global.kag.historyLayer;
+        var event = history.currentName + "|" + history.currentText;
+        global.kag.__neuroPSnapshotEvents.add(event);
+        global.Debug.message("p-snapshot " + event);
     } catch (e) {}
-    return kag.__neuroPSnapshotOriginal(p);
+    // Guarded: a restore leaves the saved slot void while this handler may
+    // still be installed, and [p] runs on the engine's own dispatch path.
+    var original = global.kag.__neuroPSnapshotOriginal;
+    if (typeof original != "Object") return void;
+    return original(p);
 };

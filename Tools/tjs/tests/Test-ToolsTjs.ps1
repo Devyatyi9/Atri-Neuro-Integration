@@ -57,8 +57,29 @@ foreach ($check in $checks) {
         continue
     }
 
+    # A restore script is only meaningful after its capture script has run, so a
+    # <name>.setup file may name the scripts to run first, one per line. Naming
+    # them beats copying them: the setup is then the real script, not a stale
+    # imitation of it.
+    $setup = ""
+    $setupList = Join-Path $here "$name.setup"
+    if (Test-Path -LiteralPath $setupList) {
+        foreach ($line in Get-Content -LiteralPath $setupList) {
+            $line = $line.Trim()
+            if (-not $line -or $line.StartsWith("#")) { continue }
+            $prior = Join-Path $toolsTjs "$line.tjs"
+            if (-not (Test-Path -LiteralPath $prior)) {
+                throw "$name.setup names a script that does not exist: $prior"
+            }
+            $setup += "(function(){`n" + (Get-Content -LiteralPath $prior -Raw) + "`n})();`n"
+        }
+    }
+
     $script = Get-Content -LiteralPath $target -Raw
-    $body = $stubs + "`n(function(){`n" + $script + "`n})();`n" +
+    # The script's own value is kept: several of these report 1 or 0 to say
+    # whether they did anything, and that answer is worth checking.
+    $body = $stubs + "`n" + $setup +
+            "global.__scriptResult = (function(){`n" + $script + "`n})();`n" +
             (Get-Content -LiteralPath $check.FullName -Raw)
 
     $temp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), ".tjs")

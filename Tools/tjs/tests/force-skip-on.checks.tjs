@@ -1,0 +1,16 @@
+// Checks for Tools/tjs/force-skip-on.tjs.
+
+assert(typeof kag.__neuroSkipKeyOriginal == "Object", "the key predicate was not saved");
+
+// Stubbing the predicate is the whole mechanism: checkCancelSkipFast drops
+// SKIP_FAST on the first tick where it reports false, so without this the mode
+// lasts about a second.
+assert(kag.skipKeyPressing() == 1, "the predicate does not report a held key");
+
+var started = false;
+for (var i = 0; i < global.__stubCalls.count; i++) {
+	if (global.__stubCalls[i] == "skipToStop2") started = true;
+}
+assert(started, "skip was never started");
+
+return "force-skip-on: ok";

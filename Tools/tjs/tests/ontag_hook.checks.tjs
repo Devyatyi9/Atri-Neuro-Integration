@@ -1,0 +1,15 @@
+// Checks for Tools/tjs/ontag_hook.tjs.
+
+// The hook has to hand back what the conductor's own handler returned; losing
+// it changes what the engine sees for every tag in the session.
+var passed = kag.conductor.onTag("msg");
+assert(passed == "orig-onTag:msg", "call-through lost the result, got " + passed);
+
+// The failure this class of script keeps repeating: the saved handler is gone,
+// because a later scene replaced the conductor or a restore cleared the slot.
+// Unguarded, the call throws eTJSError inside the engine's tag dispatch and
+// takes the process down without a word in any log.
+kag.conductor.__neuronOrigOnTag = void;
+kag.conductor.onTag("msg");
+
+return "ontag_hook: ok";
