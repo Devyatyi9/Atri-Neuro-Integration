@@ -1,0 +1,33 @@
+# Plugin settings. Copy into the game's folder to use.
+#
+# Only what two copies of the game cannot share lives here. Everything else the
+# plugin does is per-process and needs no configuration.
+#
+# Which file is read, first match wins:
+#   1. the path in the NEURO_PLUGIN_CONFIG environment variable
+#   2. <exe name>.neuro.cfg   beside the exe
+#   3. neuro_plugin.cfg       beside the exe
+#   4. nothing -- the defaults below are used
+#
+# The second form is what makes a second copy work with no launcher: copy the
+# exe, put ATRI-MyDearMoments-_Copy.neuro.cfg beside it, and that copy picks up
+# its own port and log directory by itself.
+#
+# Read once, at startup. Changing it while the game runs has no effect: a port
+# cannot move under a listening socket, nor a path under an open file.
+
+# The plugin's TCP port. Machine-wide, so two instances must not share it --
+# and sharing it does not fail cleanly. The socket is opened with SO_REUSEADDR,
+# which on Windows lets a second bind succeed rather than refusing it, after
+# which connections go to whichever socket the stack picks.
+tcp_port = 18700
+
+# Where plugin_log.txt, neuro_tag_log.txt and game_debug_log.txt are written,
+# along with the Logs\ folder the previous run's copies are moved into. Created
+# if missing. Empty (the default) means the game's own folder, which is where
+# every earlier version put them.
+#
+# Two instances sharing one directory write over each other's logs, and the
+# rotation on startup silently does nothing, because a log the other process
+# holds open cannot be moved.
+log_dir =

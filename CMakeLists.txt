@@ -141,6 +141,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/neuro/ContextPayload.cpp
         prototype/neuro/ContextPayload.h
         prototype/Logging.cpp
+        prototype/PluginConfig.cpp
+        prototype/PluginConfig.h
         prototype/neuro/NeuroClient.cpp
         prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
@@ -206,8 +208,10 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ActionJson.cpp
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
+        prototype/PluginConfig.cpp
         prototype/tests/ActionJsonTests.cpp
         prototype/tests/ParseNumberTests.cpp
+        prototype/tests/PluginConfigTests.cpp
         prototype/tests/SlotPayloadTests.cpp
         prototype/tests/TestMain.cpp
         prototype/tests/TestMain.h
@@ -216,6 +220,7 @@ if(ATRI_BUILD_PROTOTYPE)
         OUTPUT_NAME prototype-tests
     )
     target_include_directories(atri_prototype_tests PRIVATE
+        prototype
         prototype/actions/common
         prototype/tests
     )

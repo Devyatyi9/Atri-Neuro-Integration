@@ -1,5 +1,7 @@
 #include "Logging.h"
 
+#include "PluginConfig.h"
+
 #include <windows.h>
 
 #include <cstdio>
@@ -25,9 +27,9 @@ std::deque<std::string> g_LogLines;
 std::size_t g_LogCharacters = 0;
 }  // namespace
 
-void ArchiveExistingLog(wchar_t const *name) {
+void ArchiveExistingLog(wchar_t const *path) {
 	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
-	if (!GetFileAttributesExW(name, GetFileExInfoStandard, &attributes)) {
+	if (!GetFileAttributesExW(path, GetFileExInfoStandard, &attributes)) {
 		return;
 	}
 	// An empty file is not worth a slot in the archive.
@@ -35,7 +37,14 @@ void ArchiveExistingLog(wchar_t const *name) {
 		return;
 	}
 
-	CreateDirectoryW(L"Logs", nullptr);
+	// The archive sits beside the log, wherever the log was configured to be,
+	// so two instances writing to different directories keep separate histories.
+	std::wstring const full(path);
+	std::size_t const slash = full.find_last_of(L"\\/");
+	std::wstring const directory =
+	    slash == std::wstring::npos ? std::wstring() : full.substr(0, slash + 1);
+	std::wstring const archive = directory + L"Logs";
+	CreateDirectoryW(archive.c_str(), nullptr);
 
 	// Named after the last write rather than the move, so the name says when the
 	// run it belongs to ended.
@@ -46,7 +55,8 @@ void ArchiveExistingLog(wchar_t const *name) {
 		return;
 	}
 
-	std::wstring const file(name);
+	std::wstring const file =
+	    slash == std::wstring::npos ? full : full.substr(slash + 1);
 	std::size_t const dot = file.find_last_of(L'.');
 	std::wstring const stem =
 	    dot == std::wstring::npos ? file : file.substr(0, dot);
@@ -60,14 +70,14 @@ void ArchiveExistingLog(wchar_t const *name) {
 	// Two runs can end inside the same second, so the plain name is only the
 	// first candidate. Never replaces: an archived log is not worth losing.
 	for (int attempt = 0; attempt < 100; ++attempt) {
-		std::wstring target = L"Logs\\" + stem + stamp;
+		std::wstring target = archive + L"\\" + stem + stamp;
 		if (attempt > 0) {
 			wchar_t suffix[16] = {};
 			swprintf_s(suffix, L"-%d", attempt);
 			target += suffix;
 		}
 		target += extension;
-		if (MoveFileExW(name, target.c_str(), 0)) {
+		if (MoveFileExW(path, target.c_str(), 0)) {
 			return;
 		}
 	}
@@ -84,8 +94,9 @@ void Log(char const *message) {
 		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
 		if (!g_LogFile) {
 			// First open in this process, so the previous run's file goes aside.
-			ArchiveExistingLog(L"plugin_log.txt");
-			g_LogFile = fopen("plugin_log.txt", "a");
+			std::wstring const path = ResolveLogPath(L"plugin_log.txt");
+			ArchiveExistingLog(path.c_str());
+			g_LogFile = _wfopen(path.c_str(), L"a");
 		}
 		if (g_LogFile) {
 			fprintf(g_LogFile, "%s", message);
@@ -184,8 +195,9 @@ void LogTagFile(char const *text) {
 	// own lock and no flush per call -- either would put the game on the disk.
 	std::lock_guard<std::mutex> lock(g_TagLogFileMutex);
 	if (!g_TagLogFile) {
-		ArchiveExistingLog(L"neuro_tag_log.txt");
-		g_TagLogFile = fopen("neuro_tag_log.txt", "a");
+		std::wstring const path = ResolveLogPath(L"neuro_tag_log.txt");
+		ArchiveExistingLog(path.c_str());
+		g_TagLogFile = _wfopen(path.c_str(), L"a");
 		if (!g_TagLogFile) {
 			return;
 		}

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "Logging.h"
+#include "../PluginConfig.h"
 
 namespace {
 constexpr std::size_t kMaxDebugLogLines = 1000;
@@ -24,8 +25,9 @@ FILE *g_DebugLogFile = nullptr;
 
 void AppendGameDebugLogFile(std::wstring const &line) {
 	if (!g_DebugLogFile) {
-		ArchiveExistingLog(L"game_debug_log.txt");
-		g_DebugLogFile = _wfopen(L"game_debug_log.txt", L"ab");
+		std::wstring const path = ResolveLogPath(L"game_debug_log.txt");
+		ArchiveExistingLog(path.c_str());
+		g_DebugLogFile = _wfopen(path.c_str(), L"ab");
 		if (!g_DebugLogFile) {
 			return;
 		}

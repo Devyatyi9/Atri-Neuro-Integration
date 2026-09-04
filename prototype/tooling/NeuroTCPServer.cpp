@@ -12,6 +12,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include "../PluginConfig.h"
 #include "Logging.h"
 #include "NeuroTCPServer.h"
 #include "TJSExecutor.h"
@@ -218,14 +219,16 @@ static void TCPServerThread() {
 	setsockopt(g_ListenSocket, SOL_SOCKET, SO_REUSEADDR, (char const *)&opt,
 	           sizeof(opt));
 
+	int const port = GetPluginConfig().TcpPort;
+
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	addr.sin_port = htons(NEURO_TCP_PORT);
+	addr.sin_port = htons(static_cast<u_short>(port));
 
 	if (bind(g_ListenSocket, (sockaddr *)&addr, sizeof(addr)) != 0) {
 		char buf[128];
-		sprintf_s(buf, "[TCP] Bind failed on port %d\n", NEURO_TCP_PORT);
+		sprintf_s(buf, "[TCP] Bind failed on port %d\n", port);
 		Log(buf);
 		closesocket(g_ListenSocket);
 		g_ListenSocket = INVALID_SOCKET;
@@ -244,8 +247,17 @@ static void TCPServerThread() {
 	}
 
 	char buf[128];
-	sprintf_s(buf, "[TCP] Listening on 127.0.0.1:%d\n", NEURO_TCP_PORT);
+	sprintf_s(buf, "[TCP] Listening on 127.0.0.1:%d\n", port);
 	Log(buf);
+
+	// Said once, and only when a file was actually read: with two copies running
+	// this is the line that tells which settings this process took.
+	if (!GetPluginConfigSource().empty()) {
+		std::string source;
+		if (Utf16ToUtf8(GetPluginConfigSource().c_str(), source)) {
+			Log(("[TCP] Settings from " + source + "\n").c_str());
+		}
+	}
 
 	while (g_TCPServerRunning.load()) {
 		ReapFinishedClientThreads();

@@ -20,11 +20,13 @@ void ReportCheck(bool passed,
 void RunParseNumberTests();
 void RunActionJsonTests();
 void RunSlotPayloadTests();
+void RunPluginConfigTests();
 
 int main() {
 	RunParseNumberTests();
 	RunActionJsonTests();
 	RunSlotPayloadTests();
+	RunPluginConfigTests();
 
 	printf("%d checks, %d failed\n", g_TestChecks, g_TestFailures);
 	return g_TestFailures == 0 ? 0 : 1;

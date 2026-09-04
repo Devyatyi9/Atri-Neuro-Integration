@@ -3,14 +3,15 @@
 #include <cstddef>
 #include <string>
 
-// Moves an existing log aside into Logs\, named after when it was last written,
-// so a new run starts with an empty file. Call it immediately before opening a
-// log for the first time in the process.
+// Moves an existing log aside into a Logs\ folder beside it, named after when
+// it was last written, so a new run starts with an empty file. Takes the log's
+// full path -- the directory is configurable, and the archive follows it. Call
+// it immediately before opening a log for the first time in the process.
 //
 // The logs are opened in append mode and used to grow across every run, which
 // made "did this happen just now" unanswerable without comparing timestamps --
 // and twice led to reading an old incident as a current one.
-void ArchiveExistingLog(wchar_t const *name);
+void ArchiveExistingLog(wchar_t const *path);
 
 void Log(char const *message);
 std::wstring GetPluginLogFile(std::size_t offset,

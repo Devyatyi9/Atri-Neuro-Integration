@@ -22,7 +22,11 @@ param(
     [int]$RestartEvery = 0,
     [string]$OutFile,
     # Leave the sped-up playback settings in place when the sweep ends.
-    [switch]$KeepSettings
+    [switch]$KeepSettings,
+    # Which instance to drive. A second copy of the game runs on its own port
+    # (see the plugin config), so a sweep can go against it while the first copy
+    # is busy. The baseline file is per port for the same reason.
+    [int]$Port = 18700
 )
 
 # Walks the game scene by scene and records every sound it hears, so the result
@@ -44,7 +48,7 @@ function Invoke-Tjs([string]$Code) {
     # neuro_tcp_client.ps1 prints the reply with Write-Host and returns nothing,
     # so the value has to be taken off the information stream (6) rather than the
     # pipeline. Its own status lines are filtered out; what is left is the reply.
-    $lines = & $client -Code $Code 6>&1 | ForEach-Object { "$_" }
+    $lines = & $client -Code $Code -Port $Port 6>&1 | ForEach-Object { "$_" }
     $reply = $lines | Where-Object {
         $_ -notmatch '^(Tip:|Usage:|Starting game|Game started|TCP server|DLL updated|TJS scripts updated|Killing game)'
     }
@@ -118,7 +122,7 @@ function Set-SpeedSettings($Settings) {
 # machine state for the next run, not a result. The directory is excluded
 # locally (.git/info/exclude), the same way the tool binaries are.
 $baselineDir = Join-Path $PSScriptRoot "state"
-$baselineFile = Join-Path $baselineDir "sweep-baseline.json"
+$baselineFile = Join-Path $baselineDir "sweep-baseline-$Port.json"
 
 function Read-SavedBaseline {
     if (-not (Test-Path -LiteralPath $baselineFile)) { return $null }
@@ -271,7 +275,7 @@ try {
       # on a schedule keeps the address space from filling.
       if ($RestartEvery -gt 0 -and ($sceneNo % $RestartEvery) -eq 0) {
           Write-Host "-- restarting the game"
-          & $client -Restart 6>&1 | Out-Null
+          & $client -Restart -Port $Port 6>&1 | Out-Null
           Start-Sleep -Seconds 3
           # Taken on the first contact and only once; after that the game has
           # already been sped up and asking it again would return that.
@@ -442,7 +446,7 @@ try {
           Write-Warning "$scene : run stopped ($($_.Exception.Message))"
           Write-Host "-- bringing the game back"
           try {
-              & $client -Restart 6>&1 | Out-Null
+              & $client -Restart -Port $Port 6>&1 | Out-Null
               Start-Sleep -Seconds 3
               Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
               # Counted as a fresh start, so a schedule, if one is set, does not

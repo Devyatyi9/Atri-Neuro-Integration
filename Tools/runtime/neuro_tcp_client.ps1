@@ -10,12 +10,18 @@
     Forcefully terminate the game.
 .PARAMETER Port
     TCP server port (default: 18700).
+.PARAMETER GameExe
+    Which copy of the game to start and stop. A second copy runs on its own port
+    and log directory (see the plugin config), so -Restart has to be told which
+    one is meant; the process to kill is derived from this path, so the other
+    copy is left alone.
 #>
 param(
     [string]$Code,
     [switch]$Restart,
     [switch]$Kill,
     [int]$Port = 18700,
+    [string]$GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe",
     [string]$WsUrl = "ws://127.0.0.1:8000",
     # procdump watches for the game and writes a full dump on an unhandled
     # exception. Two crashes were lost before this was wired in, because the
@@ -24,11 +30,13 @@ param(
     [switch]$NoDump
 )
 
-$GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe"
-$GameProcessName = "ATRI-MyDearMoments-"
+# Both derived from -GameExe, so pointing at the copy targets only the copy: the
+# two have different process names, and killing by name would otherwise be a
+# coin toss over which instance dies.
+$GameProcessName = [System.IO.Path]::GetFileNameWithoutExtension($GameExe)
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $PluginDll = Join-Path $RepoRoot "build\prototype\Debug\Neuro-Integration.dll"
-$GameDir = "D:\Games\ATRI-TestVersion"
+$GameDir = Split-Path -Parent $GameExe
 $ProcDump = "C:\ProgramData\procdump\procdump.exe"
 $DumpDir = "C:\Temp\dumps"
 
