@@ -1,0 +1,21 @@
+// Turns the engine's forced skip on without touching the keyboard.
+//
+// Forced skip is normally the Ctrl hotkey, and it cannot be faked with a window
+// message: skipKeyPressing() (system/MainWindow.tjs) asks getKeyState for the
+// real keyboard state. checkCancelSkipFast() then drops SKIP_FAST on the first
+// tick where that returns false, so calling skipToStop2() alone lasts about a
+// second. Stubbing the predicate is what makes the mode hold.
+//
+// Save the original only when one is not already held. The test is "not a live
+// function" rather than "undefined": a previous restore leaves the slot as void
+// (typeof "void", not "undefined").
+if (typeof kag.__neuroSkipKeyOriginal != "Object") {
+    kag.__neuroSkipKeyOriginal = kag.skipKeyPressing;
+}
+kag.skipKeyPressing = function() {
+    return 1;
+};
+kag.skipToStop2();
+// Nothing will stop this on its own -- the engine's own cancel path is exactly
+// what was stubbed out. Run Tools/tjs/force-skip-off.tjs to end it.
+return kag.skipMode;

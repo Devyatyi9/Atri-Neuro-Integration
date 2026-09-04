@@ -1,0 +1,20 @@
+// Ends the forced skip started by Tools/tjs/force-skip-on.tjs and puts the real
+// key predicate back. Returns 1 if something was restored, 0 if there was
+// nothing to restore.
+//
+// The guard tests for "Object" (a live function), not for "undefined": once a
+// member has been assigned void, typeof reports "void", so an "undefined" test
+// would pass again on a second run and assign void over the very function this
+// just restored. Running this twice must be a no-op.
+if (typeof kag.__neuroSkipKeyOriginal != "Object") {
+    return 0;
+}
+kag.skipKeyPressing = kag.__neuroSkipKeyOriginal;
+kag.__neuroSkipKeyOriginal = void;
+// Cancel explicitly: with the predicate restored the engine would stop on its
+// own at the next check, but leaving the mode set until then means the caller
+// cannot tell when it actually ended.
+if (typeof kag.cancelSkip == "Object") {
+    kag.cancelSkip();
+}
+return 1;
