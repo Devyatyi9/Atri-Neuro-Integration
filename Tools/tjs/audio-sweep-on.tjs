@@ -1,0 +1,101 @@
+// Collector for the scene-by-scene audio sweep. Driver: Tools/runtime/audio-sweep.ps1.
+//
+// Audio reaches the game through five different places (design/audio-context.md),
+// and only one of them is an event. This records all of them into one ordered
+// list, which the driver drains between scenes.
+//
+//   one-shot story SE  EnvSoundBuffer.play          event, patched below
+//   looping SE         envobjects className loopse  polled, _filename
+//   BGM                envobjects className bgm     polled, _filename
+//   voice              kag.voices[i].storage        polled
+//   UI SE              kag.se[i].play               event, deliberately skipped
+//
+// UI sounds are left out on purpose: they are not in the scenario data the sweep
+// compares against, so counting them would only add noise.
+//
+// The polled sources are sampled from the conductor's onTag, which fires once per
+// tag -- finer than the driver could poll over TCP, and it costs nothing when
+// nothing changed. That hook lives on the conductor instance, and the conductor is
+// rebuilt with every scene, so this script is written to be re-run after each jump.
+
+if (typeof global.__sweepLog != "Object") {
+    global.__sweepLog = [];
+}
+global.__sweepPrev = %[];
+
+// --- events: one-shot SE -----------------------------------------------------
+// Patching the class rather than the instances is deliberate: TJS2 copies members
+// into an object at construction, so a class patch reaches every layer built after
+// it, and the sound layers are rebuilt per scene (research/tjs/tjs2-syntax.md 14).
+if (typeof global.__sweepOrigPlay != "Object") {
+    global.__sweepOrigPlay = EnvSoundBuffer.play;
+    EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
+        try {
+            global.__sweepLog.add("se\t" + a0);
+        } catch (e) {}
+        return (global.__sweepOrigPlay incontextof this)(a0, a1, a2, a3, a4);
+    };
+}
+
+// --- polled sources ----------------------------------------------------------
+global.__sweepSample = function() {
+    try {
+        var plugin = kag.kagPlugins[0];
+        var names = Scripts.getObjectKeys(plugin.envobjects);
+        for (var i = 0; i < names.count; i++) {
+            var layer = plugin.envobjects[names[i]];
+            if (typeof layer._filename == "undefined") continue;
+            var kind = layer.className;
+            if (kind != "bgm" && kind != "loopse") continue;
+            var file = "" + layer._filename;
+            if (file == "") continue;
+            var key = kind + ":" + names[i];
+            if (global.__sweepPrev[key] == file) continue;
+            global.__sweepPrev[key] = file;
+            global.__sweepLog.add(kind + "\t" + file);
+        }
+        for (var i = 0; i < kag.voices.count; i++) {
+            var voice = kag.voices[i];
+            var storage = "" + voice.storage;
+            if (storage == "") continue;
+            var vkey = "voice:" + i;
+            if (global.__sweepPrev[vkey] == storage) continue;
+            global.__sweepPrev[vkey] = storage;
+            global.__sweepLog.add("voice\t" + storage);
+        }
+    } catch (e) {}
+} incontextof global;
+
+// The conductor is replaced on every scene load, so the wrapper has to be put back
+// each time. Guarding on the conductor's own marker keeps a re-run cheap.
+if (typeof kag.conductor.__sweepOrigOnTag != "Object") {
+    kag.conductor.__sweepOrigOnTag = kag.conductor.onTag;
+    kag.conductor.onTag = function(tag) {
+        var result = this.__sweepOrigOnTag(tag);
+        // Guarded on purpose. This wrapper cannot be taken off a conductor that
+        // was replaced by a later scene load, so it can outlive the sweep; by
+        // then __sweepSample is void and calling it would throw straight into
+        // the engine's tag dispatch and stall the scene.
+        if (typeof global.__sweepSample == "Object") {
+            global.__sweepSample();
+        }
+        return result;
+    };
+}
+
+// A voice buffer keeps its storage after playback stops, so on entering a scene it
+// still holds the previous scene's last line. Record those values as already seen,
+// without logging them, so the scene does not open with a stale entry. Layers are
+// deliberately not primed: their entry-time contents are what the sweep is for.
+global.__sweepPrimeVoices = function() {
+    try {
+        for (var i = 0; i < kag.voices.count; i++) {
+            var storage = "" + kag.voices[i].storage;
+            if (storage == "") continue;
+            global.__sweepPrev["voice:" + i] = storage;
+        }
+    } catch (e) {}
+} incontextof global;
+global.__sweepPrimeVoices();
+
+return "sweep armed, log=" + global.__sweepLog.count;

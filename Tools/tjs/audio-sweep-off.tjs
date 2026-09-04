@@ -1,0 +1,28 @@
+// Removes the sweep collector installed by Tools/tjs/audio-sweep-on.tjs.
+// Returns 1 if something was removed, 0 if there was nothing to remove.
+//
+// The class patch on EnvSoundBuffer.play cannot be undone for layers that were
+// built while it was in place -- they copied the patched member at construction
+// (research/tjs/tjs2-syntax.md 14). Restoring the class stops new layers from
+// getting it; the ones already alive keep recording until the next scene load.
+// That is harmless: without the log they append to being drained, nothing else
+// changes.
+//
+// The guard tests for "Object" (a live value), not "undefined": once a member has
+// been assigned void, typeof reports "void", so an "undefined" test would pass on
+// a second run and assign void over what was just restored.
+if (typeof global.__sweepOrigPlay != "Object") {
+    return 0;
+}
+EnvSoundBuffer.play = global.__sweepOrigPlay;
+global.__sweepOrigPlay = void;
+
+if (typeof kag.conductor.__sweepOrigOnTag == "Object") {
+    kag.conductor.onTag = kag.conductor.__sweepOrigOnTag;
+    kag.conductor.__sweepOrigOnTag = void;
+}
+
+global.__sweepSample = void;
+global.__sweepPrev = void;
+global.__sweepLog = void;
+return 1;
