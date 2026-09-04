@@ -9,6 +9,17 @@ param(
     [int]$SceneTimeoutSec = 0,
     # How often to drain the collector and check progress.
     [int]$PollMs = 700,
+    # Restart the game every this many scenes. 0 (the default) means never on a
+    # schedule -- the game is only brought back if a scene actually fails.
+    #
+    # Routine restarts were here first, after a sweep died on
+    # "Cannot allocate memory for Bitmap (3840x2160)". Three measurements since
+    # then found nothing accumulating: private memory returns to its baseline
+    # across scene jumps, the largest contiguous free block does not shrink, and
+    # GPU memory sits flat. With no mechanism to point at, restarting on a
+    # schedule is cost without a reason -- while recovering from a failure costs
+    # nothing until something fails.
+    [int]$RestartEvery = 0,
     [string]$OutFile,
     # Leave the sped-up playback settings in place when the sweep ends.
     [switch]$KeepSettings
@@ -81,6 +92,23 @@ function Select-Choice([int]$Index) {
     Invoke-Tjs "(function(){ var l = kag.selectLayer; var b = l.selects[$Index]; if (!isvalid b) return 0; l.onButtonClick(b); return 1; })()"
 }
 
+function Get-SpeedSettings {
+    $raw = Invoke-Tjs '(function(){ return kag.textspeed + "|" + kag.autospeed + "|" + kag.drawspeed + "|" + kag.autoModeWaitVoice; })()'
+    $parts = ("" + $raw).Trim() -split '\|'
+    if ($parts.Count -lt 4) { return $null }
+    [pscustomobject]@{
+        TextSpeed = $parts[0]
+        AutoSpeed = $parts[1]
+        DrawSpeed = $parts[2]
+        WaitVoice = $parts[3]
+    }
+}
+
+function Set-SpeedSettings($Settings) {
+    if (-not $Settings) { return }
+    Invoke-Tjs "(function(){ kag.textspeed = $($Settings.TextSpeed); kag.autospeed = $($Settings.AutoSpeed); kag.drawspeed = $($Settings.DrawSpeed); kag.autoModeWaitVoice = $($Settings.WaitVoice); return 1; })()" | Out-Null
+}
+
 function Get-SceneTimeout([string]$Scene) {
     # The real end-of-scene signal is the current scenario changing; this is only
     # the fallback for a scene that never gets there. A flat number is wrong in
@@ -139,11 +167,46 @@ Write-Host "Sweeping $($Scenes.Count) scene(s) -> $OutFile"
 "scene`tkind`tfile" | Set-Content -LiteralPath $OutFile -Encoding utf8
 
 $applied = $false
+$baseline = $null
 try {
-    Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
+    # Only when nothing will restart the game: with restarts on, the settings are
+    # applied after each one, and touching the game here would fail outright if it
+    # is not currently up (a previous run may have left it dead).
+    if ($RestartEvery -le 0) {
+        # Remembered before anything is changed, and kept here rather than in the
+        # game: a restart would take the in-game copy with it, and the run after
+        # it would mistake the sped-up values for the player's own.
+        $baseline = Get-SpeedSettings
+        if ($baseline) { Write-Host "player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)" }
+        Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
+    }
     $applied = $true
 
+    $sceneNo = 0
     foreach ($scene in $Scenes) {
+      # The game is a 32-bit process and jumping between scenes accumulates
+      # graphics memory it never gives back. Left alone it dies with
+      # "Cannot allocate memory for Bitmap ... (3840x2160)" and a run of D3D
+      # allocation failures -- which is what ended the first attempt at this
+      # sweep, mid-scene, on a process that had been up for a while. Restarting
+      # on a schedule keeps the address space from filling.
+      if ($RestartEvery -gt 0 -and ($sceneNo % $RestartEvery) -eq 0) {
+          Write-Host "-- restarting the game"
+          & $client -Restart 6>&1 | Out-Null
+          Start-Sleep -Seconds 3
+          # The player's settings are remembered here, on the first contact and
+          # only once. Keeping that snapshot inside the game would lose it with
+          # every restart -- and worse, the next start would take the sped-up
+          # values for the originals and hand those back at the end. That is
+          # exactly how a sweep left the game on textspeed 100 once.
+          if (-not $baseline) {
+              $baseline = Get-SpeedSettings
+              if ($baseline) { Write-Host "   player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)" }
+          }
+          Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
+      }
+      $sceneNo++
+
       # A scene with a choice is not one run but several: the branches are just
       # other labels to enter at. The queue starts with the normal entry and grows
       # when a choice reveals where its options lead.
@@ -151,6 +214,10 @@ try {
       $entryQueue.Enqueue("*start")
       $entered = @{}
 
+      # One scene dying must not end the sweep. The game can run out of memory
+      # part way through, and everything already written stays valid -- so note
+      # it, bring the game back, and carry on with the next scene.
+      try {
       while ($entryQueue.Count -gt 0) {
         $entry = $entryQueue.Dequeue()
         if ($entered.ContainsKey($entry)) { continue }
@@ -291,15 +358,49 @@ try {
         }
         Write-Host "   $count entries"
       }
+      } catch {
+          Write-Warning "$scene : run stopped ($($_.Exception.Message))"
+          if ($RestartEvery -gt 0) {
+              Write-Host "-- bringing the game back"
+              try {
+                  & $client -Restart 6>&1 | Out-Null
+                  Start-Sleep -Seconds 3
+                  Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
+                  # Counted as a fresh start, so the schedule does not restart
+                  # again on the very next scene.
+                  $sceneNo = 1
+              } catch {
+                  Write-Warning "could not restart the game, stopping"
+                  throw
+              }
+          } else {
+              throw
+          }
+      }
     }
 } finally {
-    # Leave the game standing still rather than running on by itself: the sweep
-    # turned auto on, and with the player's own page wait restored it would sit
-    # there advancing every few seconds, which reads as a hang.
-    Invoke-Tjs '(function(){ kag.autoMode = 0; return 1; })()' | Out-Null
-    Invoke-TjsFile "Tools\tjs\audio-sweep-off.tjs" | Out-Null
-    if ($applied -and -not $KeepSettings) {
-        Invoke-TjsFile "Tools\tjs\fast-playback-off.tjs" | Out-Null
+    # Cleanup talks to the game, and the game may well be gone -- it can run out
+    # of memory mid-sweep, and that is exactly when this block runs. Failing here
+    # would bury the real error under a connection one.
+    try {
+        # Leave the game standing still rather than running on by itself: the sweep
+        # turned auto on, and with the player's own page wait restored it would sit
+        # there advancing every few seconds, which reads as a hang.
+        Invoke-Tjs '(function(){ kag.autoMode = 0; return 1; })()' | Out-Null
+        Invoke-TjsFile "Tools\tjs\audio-sweep-off.tjs" | Out-Null
+        if ($applied -and -not $KeepSettings) {
+            # Written back from the snapshot taken here rather than from the one
+            # inside the game: with restarts the in-game copy may describe a
+            # process that no longer exists.
+            if ($baseline) {
+                Set-SpeedSettings $baseline
+                Write-Host "Restored player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)"
+            } else {
+                Invoke-TjsFile "Tools\tjs\fast-playback-off.tjs" | Out-Null
+            }
+        }
+    } catch {
+        Write-Warning "Cleanup skipped: the game did not answer ($($_.Exception.Message))"
     }
     Write-Host "Done -> $OutFile"
 }
