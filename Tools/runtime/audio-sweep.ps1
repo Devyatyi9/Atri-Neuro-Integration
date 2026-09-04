@@ -109,6 +109,78 @@ function Set-SpeedSettings($Settings) {
     Invoke-Tjs "(function(){ kag.textspeed = $($Settings.TextSpeed); kag.autospeed = $($Settings.AutoSpeed); kag.drawspeed = $($Settings.DrawSpeed); kag.autoModeWaitVoice = $($Settings.WaitVoice); return 1; })()" | Out-Null
 }
 
+# The player's settings do not survive a process, so the only copy that matters
+# is the one taken before the first change. Asking the game for it is not enough:
+# a run that died before restoring leaves the game sped up, and the next run then
+# reads 100/100/0.1 and calls that the player's own. It is kept on disk, written
+# the moment it is taken and removed only after it has been handed back.
+$baselineFile = Join-Path $root "docs-local\research\audio\sweep-baseline.json"
+
+function Read-SavedBaseline {
+    if (-not (Test-Path -LiteralPath $baselineFile)) { return $null }
+    try { Get-Content -LiteralPath $baselineFile -Raw | ConvertFrom-Json } catch { $null }
+}
+
+function Save-Baseline($Settings) {
+    if (-not $Settings) { return }
+    $Settings | ConvertTo-Json | Set-Content -LiteralPath $baselineFile -Encoding utf8
+}
+
+function Clear-SavedBaseline {
+    Remove-Item -LiteralPath $baselineFile -ErrorAction SilentlyContinue
+}
+
+# Recognise the values fast-playback-on sets, so they are never mistaken for the
+# player's. autospeed is compared against the engine's own ceiling rather than a
+# literal, the same way the script sets it.
+function Test-IsFastProfile($Settings) {
+    if (-not $Settings) { return $false }
+    $max = ("" + (Invoke-Tjs '(function(){ return kag._autoSpeedMax; })()')).Trim()
+    return ([string]$Settings.TextSpeed -eq "100" -and
+            [string]$Settings.DrawSpeed -eq "0.1" -and
+            [string]$Settings.AutoSpeed -eq $max)
+}
+
+# Where the player's settings come from, best source first.
+function Get-PlayerBaseline {
+    $saved = Read-SavedBaseline
+    if ($saved) {
+        Write-Host "player settings taken from the previous run's saved copy (it did not restore them)"
+        return $saved
+    }
+
+    # fast-playback-on keeps its own snapshot in the game. It is gone after a
+    # restart, and it is not always the truth either: the script refuses to
+    # overwrite an existing snapshot, so one left behind by an earlier run holds
+    # whatever that run left -- measured holding the fast values themselves. It
+    # counts only when it does not look like the fast profile.
+    $held = ("" + (Invoke-Tjs '(function(){ var o = kag.__neuroSpeedOriginal; if (typeof o != "Object") return ""; return o.textspeed + "|" + o.autospeed + "|" + o.drawspeed + "|" + o.autoModeWaitVoice; })()')).Trim()
+    if ($held) {
+        $parts = $held -split '\|'
+        if ($parts.Count -ge 4) {
+            $settings = [pscustomobject]@{
+                TextSpeed = $parts[0]; AutoSpeed = $parts[1]
+                DrawSpeed = $parts[2]; WaitVoice = $parts[3]
+            }
+            if (-not (Test-IsFastProfile $settings)) {
+                Write-Host "player settings recovered from the snapshot still held in the game"
+                Save-Baseline $settings
+                return $settings
+            }
+            Write-Warning "The snapshot held in the game is itself the fast profile; an earlier run left it behind."
+        }
+    }
+
+    $live = Get-SpeedSettings
+    if (Test-IsFastProfile $live) {
+        Write-Warning "The game is already on the fast-playback settings and nothing recorded what preceded them."
+        Write-Warning "They will be left as they are; set them back yourself from the options screen after the run."
+        return $null
+    }
+    Save-Baseline $live
+    return $live
+}
+
 function Get-SceneTimeout([string]$Scene) {
     # The real end-of-scene signal is the current scenario changing; this is only
     # the fallback for a scene that never gets there. A flat number is wrong in
@@ -176,10 +248,7 @@ try {
     # applied after each one, and touching the game here would fail outright if it
     # is not currently up (a previous run may have left it dead).
     if ($RestartEvery -le 0) {
-        # Remembered before anything is changed, and kept here rather than in the
-        # game: a restart would take the in-game copy with it, and the run after
-        # it would mistake the sped-up values for the player's own.
-        $baseline = Get-SpeedSettings
+        $baseline = Get-PlayerBaseline
         if ($baseline) { Write-Host "player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)" }
         Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
     }
@@ -197,13 +266,10 @@ try {
           Write-Host "-- restarting the game"
           & $client -Restart 6>&1 | Out-Null
           Start-Sleep -Seconds 3
-          # The player's settings are remembered here, on the first contact and
-          # only once. Keeping that snapshot inside the game would lose it with
-          # every restart -- and worse, the next start would take the sped-up
-          # values for the originals and hand those back at the end. That is
-          # exactly how a sweep left the game on textspeed 100 once.
+          # Taken on the first contact and only once; after that the game has
+          # already been sped up and asking it again would return that.
           if (-not $baseline) {
-              $baseline = Get-SpeedSettings
+              $baseline = Get-PlayerBaseline
               if ($baseline) { Write-Host "   player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)" }
           }
           Invoke-TjsFile "Tools\tjs\fast-playback-on.tjs" | Out-Null
@@ -396,10 +462,26 @@ try {
             # inside the game: with restarts the in-game copy may describe a
             # process that no longer exists.
             if ($baseline) {
+                # Off first, then the disk copy over the top. Off is what clears
+                # the snapshot fast-playback-on keeps in the game; left behind,
+                # it holds the fast values, and the next run's -on refuses to
+                # overwrite an existing snapshot -- so the poison carries over.
+                Invoke-TjsFile "Tools\tjs\fast-playback-off.tjs" | Out-Null
                 Set-SpeedSettings $baseline
-                Write-Host "Restored player settings: text $($baseline.TextSpeed), auto $($baseline.AutoSpeed), draw $($baseline.DrawSpeed)"
+                # Read back rather than assume: the saved copy is dropped only
+                # once the game actually holds those values again, so a restore
+                # that silently failed leaves the copy for the next run to use.
+                $now = Get-SpeedSettings
+                if ($now -and [string]$now.TextSpeed -eq [string]$baseline.TextSpeed -and
+                    [string]$now.DrawSpeed -eq [string]$baseline.DrawSpeed) {
+                    Clear-SavedBaseline
+                    Write-Host "Restored player settings: text $($now.TextSpeed), auto $($now.AutoSpeed), draw $($now.DrawSpeed)"
+                } else {
+                    Write-Warning "The settings did not come back; the saved copy is kept at $baselineFile and the next run will use it."
+                }
             } else {
                 Invoke-TjsFile "Tools\tjs\fast-playback-off.tjs" | Out-Null
+                Write-Warning "No record of the player's settings existed, so the game is left on the fast ones."
             }
         }
     } catch {
