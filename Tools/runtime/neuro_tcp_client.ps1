@@ -5,7 +5,13 @@
 .PARAMETER Code
     TJS code to execute. Reads from stdin when omitted.
 .PARAMETER Restart
-    Restart the game.
+    Restart the copy named by -GameExe, leaving any other instance alone. The
+    DLL is only replaced if no instance is holding it, so this is the mode for
+    bringing back an instance that died or wedged.
+.PARAMETER Deploy
+    Close every instance first, then deploy and start the one named by -GameExe.
+    A new build cannot be deployed any other way: all copies load the same DLL
+    from the same folder, and it is locked while any of them runs.
 .PARAMETER Kill
     Forcefully terminate the game.
 .PARAMETER Port
@@ -19,6 +25,7 @@
 param(
     [string]$Code,
     [switch]$Restart,
+    [switch]$Deploy,
     [switch]$Kill,
     [int]$Port = 18700,
     [string]$GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe",
@@ -55,10 +62,22 @@ function Start-CrashWatcher {
     Write-Host "Crash watcher armed: dumps go to $DumpDir"
 }
 
-function Restart-Game {
-    $procs = Get-Process -Name $GameProcessName -ErrorAction SilentlyContinue
+function Restart-Game([switch]$CloseEveryInstance) {
+    # Two modes, because they want opposite things. Bringing back a wedged
+    # instance must not disturb the other one, and that is -Restart. Deploying a
+    # new build must close them all, because every copy loads the same DLL from
+    # the same folder and it stays locked while any of them runs -- otherwise the
+    # copy quietly starts on yesterday's build.
+    $procs = if ($CloseEveryInstance) {
+        $stem = [System.IO.Path]::GetFileNameWithoutExtension($GameExe)
+        $family = ($stem -split '_')[0]
+        Get-Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProcessName -like "$family*" }
+    } else {
+        Get-Process -Name $GameProcessName -ErrorAction SilentlyContinue
+    }
     foreach ($p in $procs) {
-        Write-Host "Killing game process (PID $($p.Id))..."
+        Write-Host "Killing game process $($p.ProcessName) (PID $($p.Id))..."
         $p.Kill()
         if (-not $p.WaitForExit(5000)) {
             throw "Game process did not exit within 5 seconds (PID $($p.Id))."
@@ -154,6 +173,7 @@ function Kill-Game {
 }
 
 if ($Kill) { Kill-Game; exit 0 }
+if ($Deploy) { Restart-Game -CloseEveryInstance; exit 0 }
 if ($Restart) { Restart-Game; exit 0 }
 
 # Read from stdin when Code was not supplied as a parameter.
