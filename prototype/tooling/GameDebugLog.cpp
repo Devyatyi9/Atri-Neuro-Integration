@@ -7,6 +7,8 @@
 #include <mutex>
 #include <string>
 
+#include "Logging.h"
+
 namespace {
 constexpr std::size_t kMaxDebugLogLines = 1000;
 constexpr std::size_t kMaxDebugLogCharacters = 100000;
@@ -22,6 +24,7 @@ FILE *g_DebugLogFile = nullptr;
 
 void AppendGameDebugLogFile(std::wstring const &line) {
 	if (!g_DebugLogFile) {
+		ArchiveExistingLog(L"game_debug_log.txt");
 		g_DebugLogFile = _wfopen(L"game_debug_log.txt", L"ab");
 		if (!g_DebugLogFile) {
 			return;

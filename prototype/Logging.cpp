@@ -25,6 +25,54 @@ std::deque<std::string> g_LogLines;
 std::size_t g_LogCharacters = 0;
 }  // namespace
 
+void ArchiveExistingLog(wchar_t const *name) {
+	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+	if (!GetFileAttributesExW(name, GetFileExInfoStandard, &attributes)) {
+		return;
+	}
+	// An empty file is not worth a slot in the archive.
+	if (attributes.nFileSizeLow == 0 && attributes.nFileSizeHigh == 0) {
+		return;
+	}
+
+	CreateDirectoryW(L"Logs", nullptr);
+
+	// Named after the last write rather than the move, so the name says when the
+	// run it belongs to ended.
+	FILETIME local = {};
+	SYSTEMTIME time = {};
+	if (!FileTimeToLocalFileTime(&attributes.ftLastWriteTime, &local) ||
+	    !FileTimeToSystemTime(&local, &time)) {
+		return;
+	}
+
+	std::wstring const file(name);
+	std::size_t const dot = file.find_last_of(L'.');
+	std::wstring const stem =
+	    dot == std::wstring::npos ? file : file.substr(0, dot);
+	std::wstring const extension =
+	    dot == std::wstring::npos ? L"" : file.substr(dot);
+
+	wchar_t stamp[32] = {};
+	swprintf_s(stamp, L"-%04u%02u%02u-%02u%02u%02u", time.wYear, time.wMonth,
+	           time.wDay, time.wHour, time.wMinute, time.wSecond);
+
+	// Two runs can end inside the same second, so the plain name is only the
+	// first candidate. Never replaces: an archived log is not worth losing.
+	for (int attempt = 0; attempt < 100; ++attempt) {
+		std::wstring target = L"Logs\\" + stem + stamp;
+		if (attempt > 0) {
+			wchar_t suffix[16] = {};
+			swprintf_s(suffix, L"-%d", attempt);
+			target += suffix;
+		}
+		target += extension;
+		if (MoveFileExW(name, target.c_str(), 0)) {
+			return;
+		}
+	}
+}
+
 void Log(char const *message) {
 	// The file is written outside the ring's lock, and flushed on a timer
 	// rather than per line. Both mattered: this runs on the game's main thread
@@ -35,6 +83,8 @@ void Log(char const *message) {
 	{
 		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
 		if (!g_LogFile) {
+			// First open in this process, so the previous run's file goes aside.
+			ArchiveExistingLog(L"plugin_log.txt");
 			g_LogFile = fopen("plugin_log.txt", "a");
 		}
 		if (g_LogFile) {
@@ -134,6 +184,7 @@ void LogTagFile(char const *text) {
 	// own lock and no flush per call -- either would put the game on the disk.
 	std::lock_guard<std::mutex> lock(g_TagLogFileMutex);
 	if (!g_TagLogFile) {
+		ArchiveExistingLog(L"neuro_tag_log.txt");
 		g_TagLogFile = fopen("neuro_tag_log.txt", "a");
 		if (!g_TagLogFile) {
 			return;
