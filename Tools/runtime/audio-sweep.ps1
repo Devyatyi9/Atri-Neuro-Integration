@@ -4,8 +4,9 @@ param(
     [string[]]$Scenes,
     # Where the decompiled scenes live, used only to build the default list.
     [string]$SceneDir = "D:\Games\ATRI-TestVersion\ks-scn-decompiled",
-    # Give up on a scene after this long and move to the next one.
-    [int]$SceneTimeoutSec = 900,
+    # Safety net only -- a scene normally ends by the current scenario changing.
+    # 0 means work it out from the scene's length.
+    [int]$SceneTimeoutSec = 0,
     # How often to drain the collector and check progress.
     [int]$PollMs = 700,
     [string]$OutFile,
@@ -48,9 +49,13 @@ function Invoke-TjsFile([string]$RelativePath) {
 
 function Get-Position {
     # file, line and the flags the sweep has to react to, in one round trip.
-    $raw = Invoke-Tjs '(function(){ var i = kag.getCurrentInfo(); return i.file + "|" + i.line + "|" + (kag.selectShowing ? 1 : 0) + "|" + (kag.autoMode ? 1 : 0) + "|" + (kag.clickWaiting ? 1 : 0) + "|" + (kag.isMoviePlaying() ? 1 : 0); })()'
+    # The conductor says what it is doing, which beats guessing from a timer.
+    # status: 0 stopped, 1 running, 2 waiting on a condition (Conductor.tjs).
+    # In state 2 the conditions themselves are listed in waitUntil, so "waiting
+    # for a click" is told apart from "playing a transition" by name.
+    $raw = Invoke-Tjs '(function(){ var i = kag.getCurrentInfo(); var c = kag.conductor; var w = ""; if (typeof c.waitUntil != "undefined") { w = Scripts.getObjectKeys(c.waitUntil).join(","); } return i.file + "|" + i.line + "|" + (kag.selectShowing ? 1 : 0) + "|" + (kag.autoMode ? 1 : 0) + "|" + (kag.clickWaiting ? 1 : 0) + "|" + (kag.isMoviePlaying() ? 1 : 0) + "|" + c.status + "|" + w; })()'
     $parts = ("" + $raw).Trim() -split '\|'
-    if ($parts.Count -lt 6) { return $null }
+    if ($parts.Count -lt 7) { return $null }
     [pscustomobject]@{
         File       = $parts[0]
         Line       = [int]$parts[1]
@@ -58,6 +63,8 @@ function Get-Position {
         AutoMode   = $parts[3] -eq "1"
         ClickWait  = $parts[4] -eq "1"
         Movie      = $parts[5] -eq "1"
+        Status     = [int]$parts[6]
+        WaitOn     = if ($parts.Count -ge 8) { $parts[7] } else { "" }
     }
 }
 
@@ -72,6 +79,34 @@ function Get-ChoiceCount {
 
 function Select-Choice([int]$Index) {
     Invoke-Tjs "(function(){ var l = kag.selectLayer; var b = l.selects[$Index]; if (!isvalid b) return 0; l.onButtonClick(b); return 1; })()"
+}
+
+function Get-SceneTimeout([string]$Scene) {
+    # The real end-of-scene signal is the current scenario changing; this is only
+    # the fallback for a scene that never gets there. A flat number is wrong in
+    # both directions -- 420 s truncated b102, while short scenes would sit idle
+    # for a quarter of an hour.
+    #
+    # Length is taken from the decompiled file's size rather than by parsing it:
+    # across all 34 scenes the ratio holds between 1074 and 1302 bytes per line
+    # (1173 on average), which is far more accuracy than a safety net needs.
+    if ($SceneTimeoutSec -gt 0) { return $SceneTimeoutSec }
+    $path = Join-Path (Join-Path $SceneDir $Scene) "$Scene.json"
+    if (-not (Test-Path -LiteralPath $path)) { return 900 }
+    $lines = (Get-Item -LiteralPath $path).Length / 1173
+    # Measured playback is about 4.2 lines a second; three times that is room for
+    # transitions and stops without letting a stuck scene hold the sweep for long.
+    $seconds = [int]($lines / 4.2 * 3)
+    [Math]::Min([Math]::Max($seconds, 240), 2400)
+}
+
+function Get-ChoiceTargets {
+    # While a choice is on screen, f.selectInfos describes its options, and each
+    # carries the label its branch starts at. Those labels are the other entry
+    # points into this scene, which is how the sweep covers both branches without
+    # touching progress flags (research/tjs/objects/Flags.md, "Выборы").
+    $raw = Invoke-Tjs '(function(){ if (typeof f.selectInfos == "undefined") return ""; var s = f.selectInfos; var r = ""; for (var i = 0; i < s.count; i++) { var e = s[i]; if (typeof e.target == "undefined") continue; r += e.target + " "; } return r; })()'
+    ("" + $raw).Trim() -split '\s+' | Where-Object { $_ -like '*' -and $_ -ne "" }
 }
 
 function Read-SweepLog {
@@ -106,8 +141,21 @@ try {
     $applied = $true
 
     foreach ($scene in $Scenes) {
-        Write-Host "== $scene"
-        Invoke-Tjs ("(function(){ tf.start_storage = `"$scene`"; tf.start_target = `"*start`"; kag.process(`"start.ks`", `"*envstart`"); return 1; })()") | Out-Null
+      # A scene with a choice is not one run but several: the branches are just
+      # other labels to enter at. The queue starts with the normal entry and grows
+      # when a choice reveals where its options lead.
+      $entryQueue = [System.Collections.Generic.Queue[string]]::new()
+      $entryQueue.Enqueue("*start")
+      $entered = @{}
+
+      while ($entryQueue.Count -gt 0) {
+        $entry = $entryQueue.Dequeue()
+        if ($entered.ContainsKey($entry)) { continue }
+        $entered[$entry] = $true
+        $tag = if ($entry -eq "*start") { $scene } else { "$scene$entry" }
+
+        Write-Host "== $scene $entry"
+        Invoke-Tjs ("(function(){ tf.start_storage = `"$scene`"; tf.start_target = `"$entry`"; kag.process(`"start.ks`", `"*envstart`"); return 1; })()") | Out-Null
 
         # Wait for the jump to land before arming: the collector's conductor hook
         # has to go onto the conductor this scene actually runs on.
@@ -128,7 +176,8 @@ try {
         Invoke-Tjs '(function(){ global.__sweepSample(); return 1; })()' | Out-Null
         Invoke-Tjs '(function(){ kag.autoMode = 1; return 1; })()' | Out-Null
 
-        $deadline = (Get-Date).AddSeconds($SceneTimeoutSec)
+        $timeout = Get-SceneTimeout $scene
+        $deadline = (Get-Date).AddSeconds($timeout)
         $lastLine = -1
         $stalled = 0
         $count = 0
@@ -136,10 +185,17 @@ try {
         while ((Get-Date) -lt $deadline) {
             Start-Sleep -Milliseconds $PollMs
 
-            foreach ($entry in Read-SweepLog) {
-                "$scene`t$entry" | Add-Content -LiteralPath $OutFile -Encoding utf8
+            $fresh = 0
+            foreach ($row in Read-SweepLog) {
+                "$tag`t$row" | Add-Content -LiteralPath $OutFile -Encoding utf8
                 $count++
+                $fresh++
             }
+            # Sound arriving is proof the scene is alive even while the line stands
+            # still. Without this a long animation -- a background pan holding one
+            # line for many seconds -- looks exactly like a stuck scene and gets
+            # abandoned mid-way.
+            if ($fresh -gt 0) { $stalled = 0 }
 
             $pos = Get-Position
             if (-not $pos) { continue }
@@ -149,15 +205,26 @@ try {
                 break
             }
             if ($pos.Choice) {
-                # Take a branch rather than abandoning the scene: stopping here
-                # would lose everything after the choice, not just the branch not
-                # taken. Which branch is not chosen cleverly -- the first option
-                # is enough to keep going, and covering the rest is a separate
-                # job (see design/audio-context.md).
+                # Note where the other options lead before taking one: once the
+                # choice is pressed it disappears, and with it the only place the
+                # branch labels are readable.
                 $options = Get-ChoiceCount
-                "$scene`tchoice`t$options options, took 1" | Add-Content -LiteralPath $OutFile -Encoding utf8
-                Write-Host "   choice with $options option(s), taking the first"
+                $targets = @(Get-ChoiceTargets)
+                foreach ($target in $targets) {
+                    if (-not $entered.ContainsKey($target)) { $entryQueue.Enqueue($target) }
+                }
+                "$tag`tchoice`t$options options -> $($targets -join ',')" | Add-Content -LiteralPath $OutFile -Encoding utf8
+                Write-Host "   choice with $options option(s) -> $($targets -join ',')"
                 [void](Select-Choice 0)
+                # Pressing an option lands on that option's label, so this run
+                # already covers that branch. Mark it taken, or the queue would
+                # replay it as if it had never been seen.
+                Start-Sleep -Milliseconds 800
+                $landedLabel = ("" + (Invoke-Tjs '(function(){ return "" + kag.getCurrentInfo().label; })()')).Trim()
+                if ($landedLabel -ne "") {
+                    $entered[$landedLabel] = $true
+                    Write-Host "   took $landedLabel"
+                }
                 $stalled = 0
                 continue
             }
@@ -172,10 +239,25 @@ try {
                 continue
             }
 
+            # Ask the engine instead of inferring. Running means it is working;
+            # waiting on anything that is not input means it will get there by
+            # itself -- a transition or an animation holding one line is normal,
+            # not a stall.
+            $needsInput = $pos.ClickWait -or ($pos.WaitOn -split ',' | Where-Object { $_ -eq 'click' })
+            if ($pos.Status -eq 1 -or ($pos.Status -eq 2 -and -not $needsInput)) {
+                $stalled = 0
+                if ($pos.Line -ne $lastLine) { $lastLine = $pos.Line }
+                continue
+            }
+
             if ($pos.Line -eq $lastLine) {
                 $stalled++
-                if ($stalled -ge 25) {
-                    Write-Host "   stopped advancing at line $($pos.Line), moving on"
+                # Generous on purpose: a silent animation can hold one line for a
+                # good while, and cutting it short loses the rest of the scene.
+                # The click nudges below start much earlier, so anything that is
+                # merely waiting for input is already moving by now.
+                if ($stalled -ge 45) {
+                    Write-Warning "$tag : no progress and no sound for $([int]($stalled * $PollMs / 1000))s at line $($pos.Line), moving on"
                     break
                 }
                 # Auto gets cancelled by things like a click or a dialog; put it back.
@@ -193,11 +275,19 @@ try {
             }
         }
 
-        foreach ($entry in Read-SweepLog) {
-            "$scene`t$entry" | Add-Content -LiteralPath $OutFile -Encoding utf8
+        if ((Get-Date) -ge $deadline) {
+            # Worth saying out loud: a truncated run looks exactly like a complete
+            # one in the output file, and the missing sounds get blamed on the
+            # capture instead of the clock.
+            Write-Warning "$tag : hit the ${timeout}s safety timeout -- the scene did not finish, so its tail is missing"
+        }
+
+        foreach ($row in Read-SweepLog) {
+            "$tag`t$row" | Add-Content -LiteralPath $OutFile -Encoding utf8
             $count++
         }
         Write-Host "   $count entries"
+      }
     }
 } finally {
     # Leave the game standing still rather than running on by itself: the sweep
