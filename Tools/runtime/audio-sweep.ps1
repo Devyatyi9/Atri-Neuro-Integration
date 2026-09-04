@@ -96,6 +96,23 @@ function Select-Choice([int]$Index) {
     Invoke-Tjs "(function(){ var l = kag.selectLayer; var b = l.selects[$Index]; if (!isvalid b) return 0; l.onButtonClick(b); return 1; })()"
 }
 
+function Format-Row([string]$Entry, [string]$Row) {
+    # The collector stamps each event with the scene it happened in, so the row
+    # already reads "scene<tab>kind<tab>file". The driver only adds where it
+    # asked the game to go -- which is not the same thing, and the difference is
+    # the point: it learns of a scene change on its next poll, so the tail of a
+    # batch used to be filed under a scene the game had already left.
+    $parts = $Row -split "`t"
+    if ($parts.Count -ge 3) {
+        # getCurrentInfo can come back empty between scenarios; the entry is the
+        # only thing left to say where this happened.
+        if (-not $parts[0]) { $parts[0] = $Entry }
+        return (($parts -join "`t") + "`t$Entry")
+    }
+    # An older collector, still supported: nothing better than the entry to go on.
+    return "$Entry`t$Row`t$Entry"
+}
+
 function Get-SpeedSettings {
     $raw = Invoke-Tjs '(function(){ return kag.textspeed + "|" + kag.autospeed + "|" + kag.drawspeed + "|" + kag.autoModeWaitVoice; })()'
     $parts = ("" + $raw).Trim() -split '\|'
@@ -113,11 +130,12 @@ function Set-SpeedSettings($Settings) {
     Invoke-Tjs "(function(){ kag.textspeed = $($Settings.TextSpeed); kag.autospeed = $($Settings.AutoSpeed); kag.drawspeed = $($Settings.DrawSpeed); kag.autoModeWaitVoice = $($Settings.WaitVoice); return 1; })()" | Out-Null
 }
 
-# The player's settings do not survive a process, so the only copy that matters
-# is the one taken before the first change. Asking the game for it is not enough:
-# a run that died before restoring leaves the game sped up, and the next run then
-# reads 100/100/0.1 and calls that the player's own. It is kept on disk, written
-# the moment it is taken and removed only after it has been handed back.
+# The player's settings do not survive a process -- the game starts on its own
+# values every time and nothing writes a choice back -- so the only copy that
+# matters is the one taken before the first change. Asking the game for it is
+# not enough: a run that died before restoring leaves the game sped up, and the
+# live values then say nothing about what preceded them. It is kept on disk,
+# written the moment it is taken and removed only after it has been handed back.
 # Kept next to the driver that owns it, not with the sweep output: this is
 # machine state for the next run, not a result. The directory is excluded
 # locally (.git/info/exclude), the same way the tool binaries are.
@@ -141,9 +159,13 @@ function Clear-SavedBaseline {
     Remove-Item -LiteralPath $baselineFile -ErrorAction SilentlyContinue
 }
 
-# Recognise the values fast-playback-on sets, so they are never mistaken for the
-# player's. autospeed is compared against the engine's own ceiling rather than a
-# literal, the same way the script sets it.
+# Recognises the values fast-playback-on sets. Informational only: the game
+# starts on exactly these -- measured on a pristine instance, text 100, auto at
+# the ceiling, draw 0.1, waitVoice 0 -- so they cannot tell "left fast by a run
+# that died" from "just launched". Refusing to record a baseline on this test,
+# as an earlier version did, therefore refused on every fresh game. What that
+# test was meant to protect against is covered by the copy on disk instead: a
+# run that dies leaves its record for the next one.
 function Test-IsFastProfile($Settings) {
     if (-not $Settings) { return $false }
     $max = ("" + (Invoke-Tjs '(function(){ return kag._autoSpeedMax; })()')).Trim()
@@ -160,11 +182,9 @@ function Get-PlayerBaseline {
         return $saved
     }
 
-    # fast-playback-on keeps its own snapshot in the game. It is gone after a
-    # restart, and it is not always the truth either: the script refuses to
-    # overwrite an existing snapshot, so one left behind by an earlier run holds
-    # whatever that run left -- measured holding the fast values themselves. It
-    # counts only when it does not look like the fast profile.
+    # fast-playback-on keeps its own snapshot in the game, taken before it
+    # changed anything. It is gone after a restart, but while it is there it is
+    # what preceded the change and the live values are not.
     $held = ("" + (Invoke-Tjs '(function(){ var o = kag.__neuroSpeedOriginal; if (typeof o != "Object") return ""; return o.textspeed + "|" + o.autospeed + "|" + o.drawspeed + "|" + o.autoModeWaitVoice; })()')).Trim()
     if ($held) {
         $parts = $held -split '\|'
@@ -173,20 +193,18 @@ function Get-PlayerBaseline {
                 TextSpeed = $parts[0]; AutoSpeed = $parts[1]
                 DrawSpeed = $parts[2]; WaitVoice = $parts[3]
             }
-            if (-not (Test-IsFastProfile $settings)) {
-                Write-Host "player settings recovered from the snapshot still held in the game"
-                Save-Baseline $settings
-                return $settings
-            }
-            Write-Warning "The snapshot held in the game is itself the fast profile; an earlier run left it behind."
+            Write-Host "player settings recovered from the snapshot still held in the game"
+            Save-Baseline $settings
+            return $settings
         }
     }
 
     $live = Get-SpeedSettings
     if (Test-IsFastProfile $live) {
-        Write-Warning "The game is already on the fast-playback settings and nothing recorded what preceded them."
-        Write-Warning "They will be left as they are; set them back yourself from the options screen after the run."
-        return $null
+        # Almost always a freshly started game rather than a mess left behind,
+        # since these are the values it launches with. Recorded either way:
+        # putting back what was found is right in both cases.
+        Write-Host "note: the game is on its startup speed settings"
     }
     Save-Baseline $live
     return $live
@@ -250,7 +268,7 @@ if (-not $OutFile) {
 }
 
 Write-Host "Sweeping $($Scenes.Count) scene(s) -> $OutFile"
-"scene`tkind`tfile" | Set-Content -LiteralPath $OutFile -Encoding utf8
+"scene`tkind`tfile`tentry" | Set-Content -LiteralPath $OutFile -Encoding utf8
 
 $applied = $false
 $baseline = $null
@@ -337,7 +355,7 @@ try {
 
             $fresh = 0
             foreach ($row in Read-SweepLog) {
-                "$tag`t$row" | Add-Content -LiteralPath $OutFile -Encoding utf8
+                (Format-Row $tag $row) | Add-Content -LiteralPath $OutFile -Encoding utf8
                 $count++
                 $fresh++
             }
@@ -363,7 +381,7 @@ try {
                 foreach ($target in $targets) {
                     if (-not $entered.ContainsKey($target)) { $entryQueue.Enqueue($target) }
                 }
-                "$tag`tchoice`t$options options -> $($targets -join ',')" | Add-Content -LiteralPath $OutFile -Encoding utf8
+                "$tag`tchoice`t$options options -> $($targets -join ',')`t$tag" | Add-Content -LiteralPath $OutFile -Encoding utf8
                 Write-Host "   choice with $options option(s) -> $($targets -join ',')"
                 [void](Select-Choice 0)
                 # Pressing an option lands on that option's label, so this run
@@ -433,7 +451,7 @@ try {
         }
 
         foreach ($row in Read-SweepLog) {
-            "$tag`t$row" | Add-Content -LiteralPath $OutFile -Encoding utf8
+            (Format-Row $tag $row) | Add-Content -LiteralPath $OutFile -Encoding utf8
             $count++
         }
         Write-Host "   $count entries"

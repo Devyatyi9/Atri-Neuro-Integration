@@ -4,12 +4,23 @@
 // names change from scene to scene.
 global.__sweepSample();
 assert(global.__sweepLog.count == 2, "two layers sampled, got " + global.__sweepLog.count);
-assert(global.__sweepLog[0] == "bgm\tBGM01", "bgm layer, got " + global.__sweepLog[0]);
-assert(global.__sweepLog[1] == "loopse\tse171", "loop layer, got " + global.__sweepLog[1]);
+assert(global.__sweepLog[0] == "b101.ks\tbgm\tBGM01", "bgm layer, got " + global.__sweepLog[0]);
+assert(global.__sweepLog[1] == "b101.ks\tloopse\tse171", "loop layer, got " + global.__sweepLog[1]);
 
 // Sampling twice must not repeat what has not changed.
 global.__sweepSample();
 assert(global.__sweepLog.count == 2, "unchanged layers logged twice");
+
+// The scene is read when the event happens, not stamped later by the driver.
+// Filing a whole drained batch under the scene the driver last knew about put
+// four sounds in the wrong scene in the 2026-09-04 sweep.
+kag.__stubScene = "b102.ks";
+global.__stubEnvObjects["bgm"]._filename = "BGM07";
+global.__sweepSample();
+assert(global.__sweepLog.count == 3, "the changed layer was not logged");
+assert(global.__sweepLog[2] == "b102.ks\tbgm\tBGM07",
+	"the event kept the old scene, got " + global.__sweepLog[2]);
+kag.__stubScene = "b101.ks";
 
 // The event half: the wrapper has to call through and return what the original
 // returned, or the tag pipeline silently loses its result.

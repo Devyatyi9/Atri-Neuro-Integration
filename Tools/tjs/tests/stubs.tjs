@@ -42,6 +42,13 @@ global.__stubEnvObjects = %[
 global.kag = %[];
 kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
 kag.voices = [ %[ storage: "ATR_b999_001.opus" ] ];
+// Where the game currently is. The sweep collector stamps every event with it,
+// so a stub that never changes would hide a collector that reads it once.
+kag.__stubScene = "b101.ks";
+kag.getCurrentInfo = function() {
+	return %[ file: global.kag.__stubScene, line: 1 ];
+};
+
 kag.conductor = %[];
 kag.conductor.onTag = function(tag) { return "orig-onTag:" + tag; };
 

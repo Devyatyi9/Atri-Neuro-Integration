@@ -21,6 +21,18 @@
 if (typeof global.__sweepLog != "Object") {
     global.__sweepLog = [];
 }
+
+// Each row carries the scene it happened in, read here rather than stamped by
+// the driver when it drains the log. The driver only learns of a scene change
+// on its next poll, so the last rows of a batch were being filed under the
+// scene the game had already left.
+global.__sweepScene = function() {
+    try {
+        var info = kag.getCurrentInfo();
+        if (typeof info == "Object") return "" + info.file;
+    } catch (e) {}
+    return "";
+} incontextof global;
 global.__sweepPrev = %[];
 
 // --- events: one-shot SE -----------------------------------------------------
@@ -31,7 +43,7 @@ if (typeof global.__sweepOrigPlay != "Object") {
     global.__sweepOrigPlay = EnvSoundBuffer.play;
     EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
         try {
-            global.__sweepLog.add("se\t" + a0);
+            global.__sweepLog.add(global.__sweepScene() + "\tse\t" + a0);
         } catch (e) {}
         return (global.__sweepOrigPlay incontextof this)(a0, a1, a2, a3, a4);
     };
@@ -52,7 +64,7 @@ global.__sweepSample = function() {
             var key = kind + ":" + names[i];
             if (global.__sweepPrev[key] == file) continue;
             global.__sweepPrev[key] = file;
-            global.__sweepLog.add(kind + "\t" + file);
+            global.__sweepLog.add(global.__sweepScene() + "\t" + kind + "\t" + file);
         }
         for (var i = 0; i < kag.voices.count; i++) {
             var voice = kag.voices[i];
@@ -61,7 +73,7 @@ global.__sweepSample = function() {
             var vkey = "voice:" + i;
             if (global.__sweepPrev[vkey] == storage) continue;
             global.__sweepPrev[vkey] = storage;
-            global.__sweepLog.add("voice\t" + storage);
+            global.__sweepLog.add(global.__sweepScene() + "\tvoice\t" + storage);
         }
     } catch (e) {}
 } incontextof global;
