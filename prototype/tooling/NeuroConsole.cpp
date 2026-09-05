@@ -2,8 +2,10 @@
 // Class: console for executing TJS commands.
 // ============================================================================
 
-#include <richedit.h>
 #include <windows.h>
+// After windows.h: both of these depend on its types.
+#include <commdlg.h>
+#include <richedit.h>
 #include <atomic>
 #include <cstddef>
 #include <cwctype>
@@ -23,7 +25,6 @@
 
 #include "GameDebugLog.h"
 #include "NeuroConsole.h"
-#include "ScriptingWindow.h"
 #include "ThreadGuard.h"
 #include "UtfConversion.h"
 
@@ -37,10 +38,17 @@ class NeuroConsole {
 	HWND m_hInput;        // Command input edit control.
 	HWND m_hExecute;      // Execute button.
 	HWND m_hClear;        // Clear button.
-	HWND m_hScriptMode;   // Script Mode button.
+	HWND m_hScriptMode;   // Expand button: shows and hides the script area.
+	HWND m_hScript;       // Multi-line script area, hidden until expanded.
+	HWND m_hScriptRun;    // Run for the script area, so Run is never ambiguous.
+	HWND m_hScriptClear;  // Clear for the script area, likewise.
+	HWND m_hScriptLoad;   // Loads a .tjs file into the script area.
+	HWND m_hScriptSave;   // Writes the script area back out to a .tjs file.
+	bool m_ScriptExpanded;
 	HWND m_hAlwaysOnTop;  // AlwaysOnTop checkbox.
 	HWND m_hDebugOutput;  // Debug Output checkbox.
-	HWND m_hNoWrapper;    // No Wrapper checkbox.
+	HWND m_hFlatScript;   // Flat Script checkbox: picks the entry point.
+	HWND m_hRaw;          // Raw checkbox: send the code without the wrapper.
 
 	std::vector<std::wstring> m_history;  // Command history.
 	int m_historyIndex;
@@ -53,6 +61,7 @@ class NeuroConsole {
 	static WNDPROC s_OriginalEditProc;  // Input Edit control subclass procedure.
 	static WNDPROC
 	    s_OriginalOutputProc;  // Output RichEdit control subclass procedure.
+	static WNDPROC s_OriginalScriptProc;  // Script area subclass procedure.
 
 	// Output field subclass procedure for Esc and Ctrl+A handling.
 	static LRESULT CALLBACK OutputEditProc(HWND hwnd,
@@ -75,6 +84,33 @@ class NeuroConsole {
 			return 0;
 		}
 		return CallWindowProc(s_OriginalOutputProc, hwnd, msg, wParam, lParam);
+	}
+
+	// Script area subclass procedure. A plain EDIT has no select-all of its
+	// own, so Ctrl+A has to be answered here the way the other two fields do.
+	// Enter is deliberately left alone: ES_WANTRETURN makes it a newline, which
+	// is the point of this field.
+	static LRESULT CALLBACK ScriptEditProc(HWND hwnd,
+	                                       UINT msg,
+	                                       WPARAM wParam,
+	                                       LPARAM lParam) {
+		if (msg == WM_KEYDOWN) {
+			if (wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+				SendMessage(hwnd, EM_SETSEL, 0, -1);
+				return 0;
+			}
+			if (wParam == VK_ESCAPE) {
+				if (s_Instance && s_Instance->m_hWnd) {
+					ShowWindow(s_Instance->m_hWnd, SW_HIDE);
+				}
+				return 0;
+			}
+		}
+		// Block WM_CHAR for Esc and Ctrl+A to prevent a beep.
+		if (msg == WM_CHAR && (wParam == 27 || wParam == 1)) {
+			return 0;
+		}
+		return CallWindowProc(s_OriginalScriptProc, hwnd, msg, wParam, lParam);
 	}
 
 	// Input field subclass procedure for Enter, arrow keys, and Ctrl+A.
@@ -158,9 +194,11 @@ class NeuroConsole {
 					return 0;
 				}
 
-				// Script Mode button click.
+				// Expand button: the script area lives in this window rather
+				// than in a second one, so output, history and scrollback stay
+				// in one place.
 				if ((HWND)lParam == console->m_hScriptMode) {
-					ToggleScriptingWindow();
+					console->ToggleScriptArea();
 					return 0;
 				}
 
@@ -168,6 +206,29 @@ class NeuroConsole {
 				if ((HWND)lParam == console->m_hClear) {
 					if (console)
 						console->ClearOutput();
+					return 0;
+				}
+
+				// The script area's own Run and Clear. Two buttons named Run in
+				// one window would be a guess; these say which area they mean.
+				if ((HWND)lParam == console->m_hScriptRun) {
+					console->RunScript();
+					return 0;
+				}
+
+				if ((HWND)lParam == console->m_hScriptClear) {
+					SetWindowTextW(console->m_hScript, L"");
+					SetFocus(console->m_hScript);
+					return 0;
+				}
+
+				if ((HWND)lParam == console->m_hScriptLoad) {
+					console->LoadScriptFile();
+					return 0;
+				}
+
+				if ((HWND)lParam == console->m_hScriptSave) {
+					console->SaveScriptFile();
 					return 0;
 				}
 
@@ -185,9 +246,15 @@ class NeuroConsole {
 					return 0;
 				}
 
-				// No Wrapper checkbox.
-				if ((HWND)lParam == console->m_hNoWrapper) {
+				// Flat Script checkbox.
+				if ((HWND)lParam == console->m_hFlatScript) {
 					// No special handling; state is checked during execution.
+					return 0;
+				}
+
+				// Raw checkbox.
+				if ((HWND)lParam == console->m_hRaw) {
+					// Same: read at execution time.
 					return 0;
 				}
 				break;
@@ -220,16 +287,44 @@ class NeuroConsole {
 		int const checkboxHeight = 20;
 		int const padding = 5;
 		int const buttonWidth = 80;
-		int const scriptModeWidth = 100;
+		int const scriptModeWidth = 130;
 		int const checkboxWidth = 100;
 
-		// Output fills most of the window, leaving space for bottom checkboxes.
-		int outputHeight = height - inputHeight - checkboxHeight - padding * 4;
-		SetWindowPos(m_hOutput, NULL, padding, padding, width - padding * 2,
+		// The script area takes its height from the output rather than from the
+		// window, so expanding it never pushes the input row off the bottom.
+		int available = height - inputHeight - checkboxHeight - padding * 4;
+		int scriptHeight = m_ScriptExpanded ? (available * 2) / 5 : 0;
+		int outputHeight = available - scriptHeight - (scriptHeight ? padding : 0);
+
+		// Script area on top, output under it: what is being written stays put
+		// while the output below grows with each answer. Its own buttons sit
+		// between them, next to the area they act on.
+		int scriptRow = m_ScriptExpanded ? inputHeight + padding : 0;
+		scriptHeight -= scriptRow;
+		if (scriptHeight > 0) {
+			SetWindowPos(m_hScript, NULL, padding, padding, width - padding * 2,
+			             scriptHeight, SWP_NOZORDER);
+			int const rowY = padding + scriptHeight + padding;
+			SetWindowPos(m_hScriptRun, NULL, padding, rowY, buttonWidth,
+			             inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptClear, NULL, padding * 2 + buttonWidth, rowY,
+			             buttonWidth + 20, inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptLoad, NULL,
+			             padding * 3 + buttonWidth * 2 + 20, rowY, buttonWidth,
+			             inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptSave, NULL,
+			             padding * 4 + buttonWidth * 3 + 20, rowY, buttonWidth,
+			             inputHeight, SWP_NOZORDER);
+		}
+
+		int outputY = padding + (scriptHeight > 0
+		                             ? scriptHeight + padding + scriptRow
+		                             : 0);
+		SetWindowPos(m_hOutput, NULL, padding, outputY, width - padding * 2,
 		             outputHeight, SWP_NOZORDER);
 
 		// Input field
-		int inputY = outputHeight + padding * 2;
+		int inputY = available + padding * 2;
 		SetWindowPos(m_hInput, NULL, padding, inputY,
 		             width - buttonWidth * 2 - scriptModeWidth - padding * 5,
 		             inputHeight, SWP_NOZORDER);
@@ -257,8 +352,196 @@ class NeuroConsole {
 		SetWindowPos(m_hDebugOutput, NULL, padding + checkboxWidth + padding,
 		             checkboxY, checkboxWidth, checkboxHeight, SWP_NOZORDER);
 
-		SetWindowPos(m_hNoWrapper, NULL, padding + checkboxWidth * 2 + padding * 2,
+		SetWindowPos(m_hFlatScript, NULL, padding + checkboxWidth * 2 + padding * 2,
 		             checkboxY, checkboxWidth, checkboxHeight, SWP_NOZORDER);
+
+		SetWindowPos(m_hRaw, NULL, padding + checkboxWidth * 3 + padding * 3,
+		             checkboxY, 60, checkboxHeight, SWP_NOZORDER);
+	}
+
+	// Reads a .tjs into the script area. UTF-8 with or without a BOM, and
+	// UTF-16 LE with one -- the same three shapes tjscheck and tjsbox accept, so
+	// a file that passes those loads here unchanged.
+	void LoadScriptFile() {
+		wchar_t path[MAX_PATH] = {};
+		OPENFILENAMEW ofn = {};
+		ofn.lStructSize = sizeof(ofn);
+		ofn.hwndOwner = m_hWnd;
+		ofn.lpstrFilter = L"TJS scripts\0*.tjs\0All files\0*.*\0";
+		ofn.lpstrFile = path;
+		ofn.nMaxFile = MAX_PATH;
+		ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+		if (!GetOpenFileNameW(&ofn)) {
+			return;
+		}
+
+		HANDLE const file =
+		    CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		                FILE_ATTRIBUTE_NORMAL, NULL);
+		if (file == INVALID_HANDLE_VALUE) {
+			AppendOutput(L"Error: cannot open the file\n", RGB(255, 0, 0));
+			return;
+		}
+
+		std::string bytes;
+		char buffer[4096];
+		DWORD read = 0;
+		while (ReadFile(file, buffer, sizeof(buffer), &read, NULL) && read > 0) {
+			bytes.append(buffer, read);
+		}
+		CloseHandle(file);
+
+		std::wstring text;
+		if (bytes.size() >= 2 && (unsigned char)bytes[0] == 0xFF &&
+		    (unsigned char)bytes[1] == 0xFE) {
+			text.assign(reinterpret_cast<wchar_t const *>(bytes.data() + 2),
+			            (bytes.size() - 2) / sizeof(wchar_t));
+		} else {
+			size_t offset = 0;
+			if (bytes.size() >= 3 && (unsigned char)bytes[0] == 0xEF &&
+			    (unsigned char)bytes[1] == 0xBB && (unsigned char)bytes[2] == 0xBF) {
+				offset = 3;
+			}
+			if (!Utf8ToUtf16(bytes.data() + offset, bytes.size() - offset, text)) {
+				AppendOutput(L"Error: the file is not valid UTF-8 or UTF-16 LE\n",
+				             RGB(255, 0, 0));
+				return;
+			}
+		}
+
+		// An EDIT control breaks lines on CRLF and on nothing else, so a file
+		// saved with bare LF -- which is most of ours -- arrives as one long
+		// line. Normalising here rather than asking the files to change.
+		std::wstring normalised;
+		normalised.reserve(text.size() + text.size() / 16);
+		for (size_t i = 0; i < text.size(); ++i) {
+			wchar_t const c = text[i];
+			if (c == L'\r') {
+				normalised += L"\r\n";
+				if (i + 1 < text.size() && text[i + 1] == L'\n') {
+					++i;
+				}
+			} else if (c == L'\n') {
+				normalised += L"\r\n";
+			} else {
+				normalised += c;
+			}
+		}
+
+		SetWindowTextW(m_hScript, normalised.c_str());
+		SetFocus(m_hScript);
+		AppendOutput((std::wstring(L"Loaded ") + path + L"\n").c_str(),
+		             RGB(0, 120, 0));
+	}
+
+	// Writes the script area out as UTF-8 with LF endings and no BOM -- the
+	// shape the scripts in the repository already have, so a file saved here
+	// does not stand out from the ones beside it. The control holds CRLF
+	// because an EDIT needs it; that is a display detail and does not belong in
+	// the file.
+	void SaveScriptFile() {
+		int const textLength = GetWindowTextLengthW(m_hScript);
+		if (textLength == 0) {
+			AppendOutput(L"Nothing to save\n", RGB(150, 150, 0));
+			return;
+		}
+
+		wchar_t path[MAX_PATH] = {};
+		OPENFILENAMEW ofn = {};
+		ofn.lStructSize = sizeof(ofn);
+		ofn.hwndOwner = m_hWnd;
+		ofn.lpstrFilter = L"TJS scripts\0*.tjs\0All files\0*.*\0";
+		ofn.lpstrFile = path;
+		ofn.nMaxFile = MAX_PATH;
+		ofn.lpstrDefExt = L"tjs";
+		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+		if (!GetSaveFileNameW(&ofn)) {
+			return;
+		}
+
+		std::wstring text;
+		text.resize(textLength + 1);
+		GetWindowTextW(m_hScript, &text[0], textLength + 1);
+		text.resize(wcslen(text.c_str()));
+
+		std::wstring unixEndings;
+		unixEndings.reserve(text.size());
+		for (size_t i = 0; i < text.size(); ++i) {
+			if (text[i] == L'\r') {
+				continue;
+			}
+			unixEndings += text[i];
+		}
+
+		std::string utf8;
+		if (!Utf16ToUtf8(unixEndings.c_str(), unixEndings.size(), utf8)) {
+			AppendOutput(L"Error: the script could not be encoded\n", RGB(255, 0, 0));
+			return;
+		}
+
+		HANDLE const file =
+		    CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+		                FILE_ATTRIBUTE_NORMAL, NULL);
+		if (file == INVALID_HANDLE_VALUE) {
+			AppendOutput(L"Error: cannot write the file\n", RGB(255, 0, 0));
+			return;
+		}
+		DWORD written = 0;
+		BOOL const ok = WriteFile(file, utf8.data(), (DWORD)utf8.size(), &written,
+		                          NULL) &&
+		                written == utf8.size();
+		CloseHandle(file);
+
+		if (!ok) {
+			AppendOutput(L"Error: the file was not written in full\n",
+			             RGB(255, 0, 0));
+			return;
+		}
+		AppendOutput((std::wstring(L"Saved ") + path + L"\n").c_str(),
+		             RGB(0, 120, 0));
+	}
+
+	// The script area's Run. Its text is not added to the command history: a
+	// whole script there would bury the one-line commands the history exists to
+	// recall.
+	void RunScript() {
+		int const textLength = GetWindowTextLengthW(m_hScript);
+		if (textLength == 0)
+			return;
+		if (textLength > MAX_COMMAND_LENGTH) {
+			AppendOutput(L"Error: Script too long\n", RGB(255, 0, 0));
+			return;
+		}
+
+		std::wstring script;
+		script.resize(textLength + 1);
+		GetWindowTextW(m_hScript, &script[0], textLength + 1);
+		script.resize(wcslen(script.c_str()));
+
+		AppendOutput(L">> [script]\n", RGB(0, 150, 0));
+		ExecuteTJSCommand(script.c_str(), true);
+	}
+
+	void ToggleScriptArea() {
+		m_ScriptExpanded = !m_ScriptExpanded;
+		int const show = m_ScriptExpanded ? SW_SHOW : SW_HIDE;
+		ShowWindow(m_hScript, show);
+		ShowWindow(m_hScriptRun, show);
+		ShowWindow(m_hScriptClear, show);
+		ShowWindow(m_hScriptLoad, show);
+		ShowWindow(m_hScriptSave, show);
+		SetWindowTextW(m_hScriptMode,
+		               m_ScriptExpanded ? L"Collapse Multiline" : L"Expand Multiline");
+
+		RECT rc = {};
+		GetClientRect(m_hWnd, &rc);
+		OnResize(rc.right - rc.left, rc.bottom - rc.top);
+
+		if (m_ScriptExpanded) {
+			SetFocus(m_hScript);
+		} else {
+			SetFocus(m_hInput);
+		}
 	}
 
 	void OnAlwaysOnTopChanged() {
@@ -308,8 +591,9 @@ class NeuroConsole {
 	}
 
 	void ExecuteCommand() {
-		// Safely get the command text.
-		int textLength = GetWindowTextLengthW(m_hInput);
+		HWND const source = m_hInput;
+
+		int textLength = GetWindowTextLengthW(source);
 		if (textLength == 0)
 			return;
 
@@ -320,10 +604,9 @@ class NeuroConsole {
 
 		std::wstring command;
 		command.resize(textLength + 1);
-		GetWindowTextW(m_hInput, &command[0], textLength + 1);
+		GetWindowTextW(source, &command[0], textLength + 1);
 		command.resize(wcslen(command.c_str()));
 
-		// Add to history.
 		m_history.push_back(command);
 		m_historyIndex = (int)m_history.size();
 
@@ -342,7 +625,7 @@ class NeuroConsole {
 		SetFocus(m_hInput);
 	}
 
-	void ExecuteTJSCommand(wchar_t const *code) {
+	void ExecuteTJSCommand(wchar_t const *code, bool forceScript = false) {
 		if (!code || wcslen(code) == 0)
 			return;
 		std::wstring cleanCode = code;
@@ -364,16 +647,24 @@ class NeuroConsole {
 		// expression and returns its value, checked runs the input as a script so
 		// that pasted statements work.
 		BOOL const scriptModeChecked =
-		    (SendMessage(m_hNoWrapper, BM_GETCHECK, 0, 0) == BST_CHECKED);
-		TJSExecMode const mode =
-		    scriptModeChecked ? TJSExecMode::Script : TJSExecMode::Expression;
+		    (SendMessage(m_hFlatScript, BM_GETCHECK, 0, 0) == BST_CHECKED);
+		// The script area is many statements by definition, so it always takes
+		// the script entry point; the checkbox governs the one-line input, where
+		// evaluating a single expression is the useful default.
+		TJSExecMode const mode = (scriptModeChecked || forceScript)
+		                             ? TJSExecMode::Script
+		                             : TJSExecMode::Expression;
 
 		// Text and type, both read on the game's main thread inside the call:
 		// this runs on the console's own thread, and an engine value must not
 		// come back here.
+		BOOL const rawChecked =
+		    (SendMessage(m_hRaw, BM_GETCHECK, 0, 0) == BST_CHECKED);
+
 		std::string result;
 		std::string typeName;
-		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode, &typeName)) {
+		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode, &typeName,
+		                   rawChecked == FALSE)) {
 			std::wstring valStr;
 			if (!Utf8ToUtf16(result.c_str(), result.size(), valStr)) {
 				valStr = L"<result could not be converted>";
@@ -436,9 +727,16 @@ class NeuroConsole {
 	      m_hExecute(NULL),
 	      m_hClear(NULL),
 	      m_hScriptMode(NULL),
+	      m_hScript(NULL),
+	      m_hScriptRun(NULL),
+	      m_hScriptClear(NULL),
+	      m_hScriptLoad(NULL),
+	      m_hScriptSave(NULL),
+	      m_ScriptExpanded(false),
 	      m_hAlwaysOnTop(NULL),
 	      m_hDebugOutput(NULL),
-	      m_hNoWrapper(NULL),
+	      m_hFlatScript(NULL),
+	      m_hRaw(NULL),
 	      m_historyIndex(0),
 	      m_hRichEditDll(NULL) {
 		s_Instance = this;
@@ -499,6 +797,7 @@ class NeuroConsole {
 		s_OriginalEditProc = (WNDPROC)SetWindowLongPtr(m_hInput, GWLP_WNDPROC,
 		                                               (LONG_PTR)InputEditProc);
 
+
 		// Create the buttons.
 		m_hExecute =
 		    CreateWindowW(L"BUTTON", L"Run", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -510,8 +809,44 @@ class NeuroConsole {
 
 		// Create the Script Mode button to open the multi-line editor.
 		m_hScriptMode = CreateWindowW(
-		    L"BUTTON", L"Script Mode", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0,
+		    L"BUTTON", L"Expand Multiline", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0,
 		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+
+		// Created hidden and given no height until expanded. ES_WANTRETURN is
+		// what makes Enter insert a newline here instead of running the command,
+		// which is the difference between a script area and a long input.
+		m_hScriptRun = CreateWindowW(
+		    L"BUTTON", L"Run Script", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
+		    NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptClear = CreateWindowW(
+		    L"BUTTON", L"Clear Script", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0,
+		    m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptLoad = CreateWindowW(
+		    L"BUTTON", L"Load .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
+		    NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptSave = CreateWindowW(
+		    L"BUTTON", L"Save .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
+		    NULL, GetModuleHandle(NULL), NULL);
+
+		// Seeded the way the separate window used to be: the hint says what the
+		// buttons here do, and the example is something safe to press Run on.
+		m_hScript = CreateWindowExW(
+		    WS_EX_CLIENTEDGE, L"EDIT", L"",
+		    WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
+		    0, 0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		SetWindowTextW(
+		    m_hScript,
+		    L"// Multi-line TJS. Enter inserts a newline; Run Script executes.\r\n"
+		    L"// Load .tjs reads a file in here. Example, safe to run:\r\n"
+		    L"(function() {\r\n"
+		    L"    var keys = Scripts.getObjectKeys(kag);\r\n"
+		    L"    return \"kag has \" + keys.count + \" properties\";\r\n"
+		    L"})()\r\n");
+
+		// After the control exists: subclassing a NULL handle silently does
+		// nothing, which is how this field ended up without its Ctrl+A.
+		s_OriginalScriptProc = (WNDPROC)SetWindowLongPtr(m_hScript, GWLP_WNDPROC,
+		                                                 (LONG_PTR)ScriptEditProc);
 
 		// Create the checkboxes.
 		m_hAlwaysOnTop = CreateWindowW(
@@ -526,11 +861,22 @@ class NeuroConsole {
 		// Enabled by default.
 		SendMessage(m_hDebugOutput, BM_SETCHECK, BST_CHECKED, 0);
 
-		m_hNoWrapper = CreateWindowW(
-		    L"BUTTON", L"No Wrapper", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0, 0,
+		// "Flat Script", not "No Wrapper": the wrapper is there either way. What
+		// this picks is the entry point -- TVPExecuteExpression wraps the input
+		// in an IIFE, TVPExecuteScript runs it flat, statements and all.
+		m_hFlatScript = CreateWindowW(
+		    L"BUTTON", L"Flat Script", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0, 0,
 		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 		// Disabled by default.
-		SendMessage(m_hNoWrapper, BM_SETCHECK, BST_UNCHECKED, 0);
+		SendMessage(m_hFlatScript, BM_SETCHECK, BST_UNCHECKED, 0);
+
+		// Off by default, and meant to stay off: without the wrapper there is no
+		// readable error text, only a failed call. What it buys is that the
+		// engine gets to report the error its own way first.
+		m_hRaw = CreateWindowW(L"BUTTON", L"Raw",
+		                       WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0, 0, 0, 0,
+		                       m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		SendMessage(m_hRaw, BM_SETCHECK, BST_UNCHECKED, 0);
 
 		// Set the font.
 		HFONT hFont =
@@ -545,9 +891,15 @@ class NeuroConsole {
 		SendMessageW(m_hExecute, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hClear, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hScriptMode, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hScript, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hScriptRun, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hScriptClear, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hScriptLoad, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hScriptSave, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hAlwaysOnTop, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
-		SendMessageW(m_hNoWrapper, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hFlatScript, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hRaw, WM_SETFONT, (WPARAM)hFont, TRUE);
 
 		// Welcome message.
 		AppendOutput(L"=== Neuro Console Ready ===\n", RGB(0, 100, 200));
@@ -619,6 +971,9 @@ class NeuroConsole {
 		if (m_hInput && s_OriginalEditProc) {
 			SetWindowLongPtr(m_hInput, GWLP_WNDPROC, (LONG_PTR)s_OriginalEditProc);
 		}
+		if (m_hScript && s_OriginalScriptProc) {
+			SetWindowLongPtr(m_hScript, GWLP_WNDPROC, (LONG_PTR)s_OriginalScriptProc);
+		}
 
 		// Delete all created fonts.
 		for (HFONT font : m_fonts) {
@@ -639,48 +994,9 @@ class NeuroConsole {
 };
 
 NeuroConsole *NeuroConsole::s_Instance = nullptr;
+WNDPROC NeuroConsole::s_OriginalScriptProc = nullptr;
 WNDPROC NeuroConsole::s_OriginalEditProc = nullptr;
 WNDPROC NeuroConsole::s_OriginalOutputProc = nullptr;
-
-// ============================================================================
-// Global Scripting Window function implementations.
-// ============================================================================
-
-void InitScriptingWindow() {
-	// Create Scripting Window on the main thread.
-	ScriptingWindow *window = new ScriptingWindow();
-	if (window->Create()) {
-		g_ScriptingWindow.store(window);
-		window->Show();
-	} else {
-		delete window;
-		g_ScriptingWindow.store(nullptr);
-	}
-}
-
-void ShutdownScriptingWindow() {
-	ScriptingWindow *window = g_ScriptingWindow.load();
-	if (window) {
-		delete window;
-		g_ScriptingWindow.store(nullptr);
-	}
-}
-
-void ToggleScriptingWindow() {
-	if (!g_ScriptingWindow.load()) {
-		InitScriptingWindow();
-	} else {
-		ScriptingWindow *window = g_ScriptingWindow.load();
-		if (window) {
-			window->Toggle();
-		}
-	}
-}
-
-bool IsScriptingWindowVisible() {
-	ScriptingWindow *window = g_ScriptingWindow.load();
-	return window && window->IsVisible();
-}
 
 // ============================================================================
 // Console thread: creates the window and runs the message loop.

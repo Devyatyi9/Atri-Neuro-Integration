@@ -147,7 +147,6 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
         prototype/tooling/NeuroTCPServer.cpp
-        prototype/tooling/ScriptingWindow.cpp
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
         prototype/UtfConversion.cpp

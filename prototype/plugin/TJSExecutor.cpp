@@ -617,12 +617,14 @@ bool ExecuteTJSSync(wchar_t const *code,
                     std::string *result,
                     DWORD timeoutMs,
                     TJSExecMode mode,
-                    std::string *typeName) {
+                    std::string *typeName,
+                    bool wrap) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code)
 		return false;
 
 	bool const useScriptApi = ResolveUseScriptApi(code, mode);
-	std::wstring wrappedCode = WrapTJSProbe(code, useScriptApi);
+	std::wstring wrappedCode =
+	    wrap ? WrapTJSProbe(code, useScriptApi) : std::wstring(code);
 
 	if (IsMainThread()) {
 		// Counted, not logged per call. This path runs for every probe -- about
