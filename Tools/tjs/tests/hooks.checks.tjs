@@ -34,6 +34,19 @@ assert(global.__cm_events.count == 1, "the hook was installed twice, got " +
 global.__cm_origSePlay = void;
 EnvSoundBuffer.play("se002", 100, 0, 0, 0);
 
+// --- The shared cleaner ------------------------------------------------------
+// Used by the hook below and by the poll where it reads a choice list, so it is
+// checked on its own rather than only through one of them.
+assert(global.__cm_cleanText("plain") == "plain", "an unmarked line was altered");
+assert(global.__cm_cleanText("a %f源ノ角ゴシックB;♪%fuser; b") == "a ♪ b",
+	"the font switch was not removed, got [" + global.__cm_cleanText("a %f源ノ角ゴシックB;♪%fuser; b") + "]");
+assert(global.__cm_cleanText("%n3;dated") == "dated", "the numbered style was not removed");
+assert(global.__cm_cleanText("who %i1you%id are") == "who *you* are",
+	"emphasis did not become markdown");
+// A break belongs to the line and is kept, but escaped: one event is one line.
+assert(global.__cm_cleanText("first\nsecond") == "first\\nsecond",
+	"the break was not escaped");
+
 // --- Localized text: what the player reads, without the rendering directives -
 // "text" is what the renderer asks for, and it carries inline directives: a
 // numbered style in the diary inserts, an italicised word, a font switch around
@@ -67,5 +80,60 @@ assert(global.__cm_langEntry === plain, "the wrong entry was remembered");
 // The speaker name goes through the same wrapper and carries no directives.
 kag.getLangInfo(marked, "disp");
 assert(global.__cm_langName == "lang1:disp", "the name was captured wrong, got " + global.__cm_langName);
+
+// --- The two call-throughs that run on engine dispatch -----------------------
+// Both sit where an exception is not caught by anything above, so each has to
+// survive its saved original being gone, and each has to call that original
+// with the owner it was taken from.
+
+// The scroll hook patches a class, so the instance is built now, after the
+// patch: TJS copies members into an object as it is constructed.
+global.__stubScrollInstance = new StubStoreScroll();
+global.__stubCalls.clear();
+var scrolled = global.__stubScrollInstance.onScrolled(1, 2);
+assert(scrolled == "orig-scrolled", "the scroll call-through lost the result, got " + scrolled);
+assert(global.__stubCalls[0] == "scrolled:instance",
+	"the original ran without its instance, got " + global.__stubCalls[0]);
+assert(global.__cm_saveStore === global.__stubScrollInstance,
+	"the store instance was not caught");
+
+// The choice click hook keeps its original on the layer, so `this` is the layer.
+global.__stubCalls.clear();
+var clicked = kag.selectLayer.onButtonClick(%[ language: [] ]);
+assert(clicked == "orig-click", "the click call-through lost the result, got " + clicked);
+assert(global.__stubCalls[0] == "click:layer",
+	"the original ran without its layer, got " + global.__stubCalls[0]);
+
+// The gallery and the backlog are caught by the same trick, so they answer to
+// the same two questions.
+global.__stubGalleryInstance = new StubGallery();
+global.__stubBacklogInstance = new StubBacklog();
+global.__stubCalls.clear();
+assert(global.__stubGalleryInstance.isSeenOne(0, 0) == "orig-seen", "isSeenOne lost the result");
+assert(global.__stubGalleryInstance.focusView() == "orig-focus", "focusView lost the result");
+assert(global.__stubBacklogInstance.getBlockInfo(0) == "orig-block", "getBlockInfo lost the result");
+assert(global.__stubCalls[0] == "seen:instance" &&
+	global.__stubCalls[1] == "focus:instance" &&
+	global.__stubCalls[2] == "block:instance",
+	"an original ran without its instance: " + global.__stubCalls.join(","));
+assert(global.__cm_gallery === global.__stubGalleryInstance, "the gallery instance was not caught");
+assert(global.__cm_backlog === global.__stubBacklogInstance, "the backlog instance was not caught");
+
+// Saved originals gone, and the engine still calls all of them. Unguarded this
+// is the failure that takes the process down with nothing in any log.
+global.__cm_origScrolled = void;
+global.__stubScrollInstance.onScrolled(1, 2);
+kag.selectLayer.__cm_origClick = void;
+kag.selectLayer.onButtonClick(%[ language: [] ]);
+global.__cm_origSeenOne = void;
+global.__stubGalleryInstance.isSeenOne(0, 0);
+global.__cm_origFocusView = void;
+global.__stubGalleryInstance.focusView();
+global.__cm_origBlockInfo = void;
+global.__stubBacklogInstance.getBlockInfo(0);
+// The renderer's own path: it must answer something rather than throw.
+global.__cm_origGetLangInfo = void;
+assert(kag.getLangInfo(%[ language: [] ], "text") == "",
+	"a missing original was not answered with an empty line");
 
 return "hooks: ok";

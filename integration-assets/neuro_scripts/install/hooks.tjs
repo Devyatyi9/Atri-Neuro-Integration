@@ -7,6 +7,34 @@
 // poll's try/catch, so an uncaught exception in one reaches the engine and can
 // be fatal.
 (function() {
+	// Scenario text as the renderer receives it, turned into what the reader
+	// should get. Shared rather than inlined where it is used: the same strings
+	// reach the context by two routes -- dialogue through the hook below, and
+	// the options of a choice read directly by the poll -- and a rule applied
+	// on one route only is a rule that will drift.
+	//
+	// Of the three notations in the text, two describe how to draw and one
+	// means something. A font switch wraps a note character so it renders in a
+	// Japanese face, and a numbered style marks the diary inserts: both go. The
+	// italic pair marks the stressed word, so it becomes Markdown, which is
+	// what the API asks context messages to be written in.
+	//
+	// The line break stays but travels escaped: events reach the plugin as
+	// lines with tab-separated fields, so a real break would end the record
+	// halfway and leave the rest looking like an event of its own. The C++ side
+	// restores it when the message is built.
+	//
+	// Japanese ruby (`[かな,N]`) is deliberately left alone. It is a reading aid
+	// rather than layout noise, and it never appears in the language this reads.
+	global.__cm_cleanText = function(text) {
+		var clean = "" + text;
+		clean = clean.replace(/%f[^;]*;/g, "");
+		clean = clean.replace(/%n[0-9];/g, "");
+		clean = clean.replace(/%i[1d]/g, "*");
+		clean = clean.replace(/\n/g, "\\n");
+		return clean;
+	} incontextof global;
+
 	global.__cm_ensureHooks = function() {
     // --- Localized text and speaker name, via a kag.getLangInfo call-through.
     //     getLangInfo(arg0, field) is the single choke point the engine's own
@@ -27,34 +55,25 @@
         // is a real engine crash (Hardware exception raised), not a catchable
         // TJS error. This default MUST be preserved before calling through.
         if (arg2 === void) arg2 = kag.languageType;
+        // Guarded because this runs inside the engine's own renderer, where an
+        // exception is fatal. An empty answer there costs a blank line; calling
+        // a missing original costs the process.
+        //
+        // Called as a plain function rather than in the context of kag, which
+        // is how it has run through every measurement so far. The original does
+        // not reach for its owner -- it resolves the entry it is handed -- and
+        // this is the hottest path in the game, so it is left as measured.
+        if (typeof global.__cm_origGetLangInfo != "Object") return "";
         var r = global.__cm_origGetLangInfo(arg0, arg1, arg2);
         try {
           if (arg1 == "text") {
-            // "text" is the field the renderer asks for, and it carries the
-            // engine's own inline directives: a font switch around a note
-            // character, a numbered style in the diary inserts, and the pair
-            // that italicises a stressed word. The renderer consumes them on
-            // the way to the screen; read here, before that, they travel into
-            // the context as literal noise.
-            //
-            // The entry also holds "speechtext", the same line without them,
-            // but that one is prepared for speaking and has the line breaks
-            // taken out with the markup. The diary inserts are written in
-            // paragraphs, so using it would hand over a wall of text where the
-            // player sees a dated entry and a reply. The directives are
-            // therefore removed here and the breaks kept.
-            var shown = "" + r;
-            shown = shown.replace(/%f[^;]*;/g, "");
-            shown = shown.replace(/%n[0-9];/g, "");
-            // Emphasis is the one directive that carries meaning rather than
-            // presentation -- it marks the stressed word in a line -- and the
-            // API asks for Markdown, so it is translated instead of dropped.
-            shown = shown.replace(/%i[1d]/g, "*");
-            // Escaped, not carried through raw: events reach the plugin as
-            // lines with tab-separated fields, so a real break inside one
-            // would split the record in half. The C++ side turns it back.
-            shown = shown.replace(/\n/g, "\\n");
-            global.__cm_langText = shown;
+            // "text" is the field the renderer asks for, so it still carries
+            // the inline directives; the entry's "speechtext" is free of them
+            // but is prepared for speaking and has the line breaks taken out
+            // with the markup, which would flatten the diary inserts the player
+            // reads as paragraphs. Hence the shared cleaner above rather than
+            // the other field.
+            global.__cm_langText = global.__cm_cleanText(r);
             // The entry itself, not just the rendered string: keeping it lets
             // the same line be read back in another language later, since
             // getLangInfo takes the language as its third argument. The raw
@@ -120,7 +139,12 @@
       global.__cm_origSeenOne = global.CgGalleryMode.isSeenOne;
       global.CgGalleryMode.isSeenOne = function(a0, a1) {
         global.__cm_gallery = this;
-        return global.__cm_origSeenOne(a0, a1);
+        // Guarded and called with its instance: this is a class patch, so it
+        // outlives the global holding the original, and the original is a
+        // method that expects the object it was taken from.
+        var seen = global.__cm_origSeenOne;
+        if (typeof seen != "Object") return;
+        return (seen incontextof this)(a0, a1);
       };
       // isSeenOne only runs while the grid is being built, so a handle taken
       // there is stale the moment a picture opens over it -- and the opened view
@@ -129,7 +153,9 @@
       global.__cm_origFocusView = global.CgGalleryMode.focusView;
       global.CgGalleryMode.focusView = function() {
         global.__cm_gallery = this;
-        return global.__cm_origFocusView();
+        var focus = global.__cm_origFocusView;
+        if (typeof focus != "Object") return;
+        return (focus incontextof this)();
       };
     }
 
@@ -144,7 +170,9 @@
       global.__cm_origBlockInfo = global.DragScrollableBacklog.getBlockInfo;
       global.DragScrollableBacklog.getBlockInfo = function(a0) {
         global.__cm_backlog = this;
-        return global.__cm_origBlockInfo(a0);
+        var info = global.__cm_origBlockInfo;
+        if (typeof info != "Object") return;
+        return (info incontextof this)(a0);
       };
     }
 
@@ -162,7 +190,14 @@
       global.__cm_origScrolled = global.EditableStoreScroll.onScrolled;
       global.EditableStoreScroll.onScrolled = function(a0, a1) {
         global.__cm_saveStore = this;
-        return global.__cm_origScrolled(a0, a1);
+        // Guarded and called with the owner it was taken from. A class patch
+        // outlives the globals that hold its saved original, and calling void
+        // from here lands in the engine's own dispatch, where nothing catches
+        // it. `incontextof this` because the original is a method: reached as
+        // a plain global function it would run without its instance.
+        var original = global.__cm_origScrolled;
+        if (typeof original != "Object") return;
+        return (original incontextof this)(a0, a1);
       };
     }
 
@@ -184,6 +219,10 @@
         try {
           global.__cm_events.add("choice_made\t" + kag.getLangInfo(button, "text"));
         } catch (e) {}
+        // The saved original lives on the layer beside the marker, so the two
+        // normally go together -- but this runs on the engine's click dispatch,
+        // where an exception is fatal, and the cost of asking is one comparison.
+        if (typeof this.__cm_origClick != "Object") return;
         return this.__cm_origClick(button);
       };
     }

@@ -53,8 +53,8 @@ assert(global.__cm_poll() == "", "a drained event was reported twice");
 kag.selectShowing = 1;
 var choice = global.__cm_poll();
 assert(global.__cmContains(choice, "[select] 1\n"), "the choice was not reported, got " + choice);
-assert(global.__cmContains(choice, "[event] choice_shown\tlang1:text\tlang1:text"),
-	"the options did not come through localized, got " + choice);
+assert(global.__cmContains(choice, "[event] choice_shown\tlang1:text\txx/xx/xx \\nI woke *up*. ♪"),
+	"the options did not come through localized and cleaned, got " + choice);
 // While the list stays up, the poll must not re-announce it every tick.
 assert(global.__cm_poll() == "", "the standing choice was announced again");
 kag.selectShowing = 0;

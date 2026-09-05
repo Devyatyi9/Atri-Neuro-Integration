@@ -162,8 +162,57 @@ kag.conductor.status = "run";
 kag.conductor.lastTagName = "msg";
 kag.historyLayer.currentChara = "atri";
 // The choice list, read on the edge into "showing". Entries go through
-// getLangInfo like any other localized string.
-kag.selectLayer = %[ selects: [ %[ text: "yes" ], %[ text: "no" ] ] ];
+// getLangInfo like any other localized string -- and the second one is marked,
+// because the poll reads these itself rather than through the hook, and that is
+// the route where a directive would slip past uncleaned.
+kag.selectLayer = %[ selects: [ %[ text: "yes" ], %[ text: "no", markup: true ] ] ];
+// The engine's own click dispatch, which the choice action also goes through.
+// It records the owner it ran with, because the hook has to call the original
+// back with the layer as `this` rather than as a loose function.
+kag.selectLayer.onButtonClick = function(button) {
+	global.__stubCalls.add("click:" + (this === global.kag.selectLayer ? "layer" : "other"));
+	return "orig-click";
+};
+
+// The save/load list's scroll. A class, not a dictionary, because the hook
+// patches the class and the instance has to carry the patched member -- which
+// is the whole reason that hook is written the way it is.
+class StubStoreScroll {
+	function onScrolled(a0, a1) {
+		global.__stubCalls.add("scrolled:" + (this === global.__stubScrollInstance ? "instance" : "other"));
+		return "orig-scrolled";
+	}
+}
+global.EditableStoreScroll = StubStoreScroll;
+
+// The gallery and the backlog are caught the same way: a class method wrapped
+// once, the instance taken as it goes past. Same shape, same failure if the
+// call-through forgets its owner.
+class StubGallery {
+	function isSeenOne(a0, a1) {
+		global.__stubCalls.add("seen:" + (this === global.__stubGalleryInstance ? "instance" : "other"));
+		return "orig-seen";
+	}
+	function focusView() {
+		global.__stubCalls.add("focus:" + (this === global.__stubGalleryInstance ? "instance" : "other"));
+		return "orig-focus";
+	}
+}
+global.CgGalleryMode = StubGallery;
+global.__stubGalleryInstance = void;
+
+class StubBacklog {
+	function getBlockInfo(a0) {
+		global.__stubCalls.add("block:" + (this === global.__stubBacklogInstance ? "instance" : "other"));
+		return "orig-block";
+	}
+}
+global.DragScrollableBacklog = StubBacklog;
+global.__stubBacklogInstance = void;
+// The instance is built by the check, after the hook is installed: TJS copies a
+// class's members into an object as it is constructed, so one made earlier would
+// carry the unpatched method and quietly test nothing.
+global.__stubScrollInstance = void;
 
 // Provided by the engine's own script layer, which the sandbox does not compile.
 global.Debug = %[];

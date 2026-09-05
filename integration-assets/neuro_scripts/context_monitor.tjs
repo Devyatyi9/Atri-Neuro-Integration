@@ -138,7 +138,16 @@
             var opts = kag.selectLayer.selects;
             var optLine = "choice_shown";
             for (var oi = 0; oi < opts.count; oi++) {
-              optLine += "\t" + kag.getLangInfo(opts[oi], "text");
+              // Through the same cleaner as dialogue. The hook cleans what it
+              // stores, not what it hands back -- it must not change the text
+              // the game itself is about to draw -- so a value read here comes
+              // through raw. No option carries a directive today; relying on
+              // that would be relying on the scenario not changing.
+              var optText = kag.getLangInfo(opts[oi], "text");
+              if (typeof global.__cm_cleanText == "Object") {
+                optText = global.__cm_cleanText(optText);
+              }
+              optLine += "\t" + optText;
             }
             global.__cm_events.add(optLine);
           } catch (e) {}
