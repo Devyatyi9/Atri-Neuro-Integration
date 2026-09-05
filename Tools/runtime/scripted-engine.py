@@ -47,6 +47,18 @@ REPO_TJS_FAST = "Tools/tjs/fast-playback-on.tjs"
 CHOICE_HEADER = "A choice appeared:"
 CHOICE_OPTION = re.compile(r"(\d+)\)\s*")
 CHOICE_REFUSED = "Choice is unavailable"
+ADVANCE_REFUSED = "Text advance is unavailable"
+
+# A movie plays past every speed setting the game has, so a run simply stops
+# for the length of it -- measured at 98 seconds for the opening and about
+# three minutes for the ending. A click ends one, which is what a person does;
+# the advance action will not, because it asks whether a click is being waited
+# for first, and during a movie nothing is.
+#
+# Refusals are the only sign from here, and they are not proof: text can be
+# refused for a moment for other reasons. So the game is asked directly, and
+# only after enough refusals in a row that something is clearly stuck.
+REFUSALS_BEFORE_ASKING = 3
 
 # The route's answer for an ordinary turn: nothing of its own to do, hand over
 # to the mode. Named so it can be told apart from a route that cannot proceed.
@@ -267,6 +279,7 @@ class Engine:
         self.pending_list = None
         self.auto_armed = False
         self.blocked = None
+        self.refusals = 0
         self.pace_since = time.monotonic()
         self.pace_turns = 0
 
@@ -369,6 +382,39 @@ class Engine:
         except OSError as error:
             say(f"could not turn auto mode on: {error}")
 
+    def unstick_movie(self, messages):
+        """Ends a movie the run is waiting on, the way a player would.
+
+        Returns True when a click was sent, so the caller can stop counting.
+        """
+        try:
+            playing = send_tjs(self.options.tjs_port,
+                               "kag.isMoviePlaying() ? 1 : 0").strip()
+        except OSError as error:
+            say(f"could not ask the game about a movie: {error}")
+            return False
+        if playing != "1":
+            return False
+        say("a movie is playing and nothing can advance through it; clicking")
+        try:
+            send_tjs(self.options.tjs_port, "kag.onPrimaryClick(), 1")
+        except OSError as error:
+            say(f"could not click: {error}")
+        return True
+
+    def note_refusals(self, messages):
+        """Counts advance refusals since the last turn that got through."""
+        for text in reversed(context_texts(messages)):
+            if ADVANCE_REFUSED in text:
+                self.refusals += 1
+                break
+            if text.startswith("Text advanced"):
+                self.refusals = 0
+                break
+        if self.refusals >= REFUSALS_BEFORE_ASKING:
+            self.refusals = 0
+            self.unstick_movie(messages)
+
     def report_pace(self):
         self.pace_turns += 1
         elapsed = time.monotonic() - self.pace_since
@@ -385,6 +431,8 @@ class Engine:
         self.report_pace()
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
+        if self.options.action in actions:
+            self.note_refusals(messages)
 
         if self.decisions or self.route:
             command, why = self.choose_for_route(actions, schema, messages)
