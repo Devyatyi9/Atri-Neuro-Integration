@@ -1,0 +1,37 @@
+// Checks for integration-assets/neuro_scripts/install/hooks.tjs.
+//
+// These hooks sit on the engine's own dispatch paths, outside the poll's
+// try/catch, so a mistake here is fatal rather than merely wrong. The one-shot
+// SE patch is checked hardest because it is the newest and because it patches a
+// class rather than an instance.
+
+global.__cm_ensureHooks();
+
+assert(typeof global.__cm_events == "Object", "the event queue was not created");
+assert(typeof global.__cm_origSePlay == "Object", "the SE class was not patched");
+
+// The event carries the file name, which arrives as the first argument.
+global.__cm_events.clear();
+var passed = EnvSoundBuffer.play("se139b", 100, 0, 0, 0);
+assert(global.__cm_events.count == 1, "the SE was not queued, got " + global.__cm_events.count);
+assert(global.__cm_events[0] == "se\tse139b",
+	"wrong event, got " + global.__cm_events[0]);
+
+// Losing the call would silence the effect, not just lose an event, so the
+// original's answer has to come back untouched.
+assert(passed == "orig-play:se139b", "the call-through lost the result, got " + passed);
+
+// Installing twice must not stack wrappers: the poll calls ensureHooks every
+// tick, and a second patch would queue every effect twice and call through twice.
+global.__cm_ensureHooks();
+global.__cm_events.clear();
+EnvSoundBuffer.play("se171", 100, 0, 0, 0);
+assert(global.__cm_events.count == 1, "the hook was installed twice, got " +
+	global.__cm_events.count + " events for one effect");
+
+// The saved original can be gone -- a reload clears globals while the patched
+// class lives on -- and the engine still calls play. Unguarded that is fatal.
+global.__cm_origSePlay = void;
+EnvSoundBuffer.play("se002", 100, 0, 0, 0);
+
+return "hooks: ok";

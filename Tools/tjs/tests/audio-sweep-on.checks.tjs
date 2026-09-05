@@ -2,14 +2,16 @@
 
 // The polled half: layers are read by className, not by layer name, because
 // names change from scene to scene.
+// Every music-class layer carrying a filename is sampled, playing or not: the
+// sweep records what a scene declares, and a stopped layer still names its file.
 global.__sweepSample();
-assert(global.__sweepLog.count == 2, "two layers sampled, got " + global.__sweepLog.count);
+assert(global.__sweepLog.count == 4, "four layers sampled, got " + global.__sweepLog.count);
 assert(global.__sweepLog[0] == "b101.ks\tbgm\tBGM01", "bgm layer, got " + global.__sweepLog[0]);
 assert(global.__sweepLog[1] == "b101.ks\tloopse\tse171", "loop layer, got " + global.__sweepLog[1]);
 
 // Sampling twice must not repeat what has not changed.
 global.__sweepSample();
-assert(global.__sweepLog.count == 2, "unchanged layers logged twice");
+assert(global.__sweepLog.count == 4, "unchanged layers logged twice");
 
 // The scene is read when the event happens, not stamped later by the driver.
 // Filing a whole drained batch under the scene the driver last knew about put
@@ -17,9 +19,9 @@ assert(global.__sweepLog.count == 2, "unchanged layers logged twice");
 kag.__stubScene = "b102.ks";
 global.__stubEnvObjects["bgm"]._filename = "BGM07";
 global.__sweepSample();
-assert(global.__sweepLog.count == 3, "the changed layer was not logged");
-assert(global.__sweepLog[2] == "b102.ks\tbgm\tBGM07",
-	"the event kept the old scene, got " + global.__sweepLog[2]);
+assert(global.__sweepLog.count == 5, "the changed layer was not logged");
+assert(global.__sweepLog[4] == "b102.ks\tbgm\tBGM07",
+	"the event kept the old scene, got " + global.__sweepLog[4]);
 kag.__stubScene = "b101.ks";
 
 // The event half: the wrapper has to call through and return what the original

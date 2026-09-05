@@ -86,8 +86,8 @@
     // The collected sections are compared by name: the keys are already the
     // field names, so there is nothing to keep in step between the two.
     if (audio !== void) {
-      var audioNames = ["bgm", "bgm_playing", "voice", "voice_vol",
-                        "voice_enable", "se_vol"];
+      var audioNames = ["bgm", "bgm_playing", "loopse", "voice_file", "voice",
+                        "voice_vol", "voice_enable", "se_vol"];
       for (var ai = 0; ai < audioNames.count; ai++) {
         var an = audioNames[ai];
         if (audio[an] != global.__cm_prev[an]) {

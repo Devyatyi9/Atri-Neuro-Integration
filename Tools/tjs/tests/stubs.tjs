@@ -22,7 +22,7 @@
 global.Scripts = %[];
 Scripts.getObjectKeys = function(obj) {
 	// Only the collections the scripts enumerate need real answers.
-	if (obj === global.__stubEnvObjects) return ["bgm", "se1"];
+	if (obj === global.__stubEnvObjects) return ["bgm", "se1", "se2", "se3"];
 	return [];
 };
 
@@ -36,12 +36,14 @@ EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
 // (bgm, loopse) carry _filename, sound-class carry a sound object.
 global.__stubEnvObjects = %[
 	bgm: %[ className: "bgm", _filename: "BGM01", playing: 1 ],
-	se1: %[ className: "loopse", _filename: "se171", playing: 1 ]
+	se1: %[ className: "loopse", _filename: "se171", playing: 1 ],
+	se2: %[ className: "loopse", _filename: "se627", playing: 1 ],
+	se3: %[ className: "loopse", _filename: "se279", playing: 0 ]
 ];
 
 global.kag = %[];
 kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
-kag.voices = [ %[ storage: "ATR_b999_001.opus" ] ];
+kag.voices = [ %[ storage: "ATR_b999_001.opus", status: "stop" ] ];
 // Where the game currently is. The sweep collector stamps every event with it,
 // so a stub that never changes would hide a collector that reads it once.
 kag.__stubScene = "b101.ks";

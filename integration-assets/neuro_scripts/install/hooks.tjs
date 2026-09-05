@@ -64,6 +64,28 @@
       };
     }
 
+    // se: one-shot story sound effects. Unlike music and looping backgrounds,
+    // these leave no state to poll -- the call is the only evidence they
+    // happened, and between two polls there may be several. Patching the class
+    // rather than the live layers is deliberate: TJS2 copies members into an
+    // object at construction, so a class patch reaches every layer built after
+    // it, and the sound layers are rebuilt with every scene. Installed once.
+    if (typeof global.EnvSoundBuffer != "undefined" &&
+        typeof global.__cm_origSePlay == "undefined") {
+      global.__cm_origSePlay = global.EnvSoundBuffer.play;
+      global.EnvSoundBuffer.play = function(a0, a1, a2, a3, a4) {
+        try {
+          global.__cm_events.add("se	" + a0);
+        } catch (e) {}
+        // Guarded and outside the try above: this is the engine's own playback
+        // path, and losing the call would silence the effect rather than just
+        // lose an event.
+        var original = global.__cm_origSePlay;
+        if (typeof original != "Object") return void;
+        return (original incontextof this)(a0, a1, a2, a3, a4);
+      };
+    }
+
     // The CG gallery keeps which pictures have been seen on its own controller,
     // and the screen object reachable as Current exposes only the page number.
     // isSeenOne runs while the thumbnails are drawn, so wrapping it once catches

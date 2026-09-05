@@ -35,6 +35,44 @@
 		return void;
 	} incontextof global;
 
+	// The looping background effects, as one string. There can be several at
+	// once (up to three layers were seen), their layer names change from scene
+	// to scene, and what matters downstream is the set, not which slot holds
+	// what -- so they travel joined, and any start or stop changes the string.
+	global.__cm_collectLoops = function() {
+		var names = [];
+		try {
+			var plugin = kag.kagPlugins[0];
+			if (typeof plugin == "undefined") return "";
+			var keys = Scripts.getObjectKeys(plugin.envobjects);
+			for (var i = 0; i < keys.count; i++) {
+				var layer = plugin.envobjects[keys[i]];
+				if (typeof layer._filename == "undefined") continue;
+				if (layer.className != "loopse") continue;
+				if (!layer.playing) continue;
+				var file = "" + layer._filename;
+				if (file == "") continue;
+				names.add(file);
+			}
+		} catch (e) {}
+		return names.join(",");
+	} incontextof global;
+
+	// The voice file currently being spoken. `storage` keeps its value after
+	// playback ends, so the buffer is asked whether it is playing before its
+	// name is taken -- otherwise the last line would look like it never stops.
+	global.__cm_collectVoiceFile = function() {
+		try {
+			for (var i = 0; i < kag.voices.count; i++) {
+				var buffer = kag.voices[i];
+				if (buffer.status != "play") continue;
+				var storage = "" + buffer.storage;
+				if (storage != "") return storage;
+			}
+		} catch (e) {}
+		return "";
+	} incontextof global;
+
 	global.__cm_collectAudio = function() {
 		var bgm = "";
 		var playing = 0;
@@ -53,6 +91,8 @@
 		return %[
 			"bgm" => bgm,
 			"bgm_playing" => playing,
+			"loopse" => global.__cm_collectLoops(),
+			"voice_file" => global.__cm_collectVoiceFile(),
 			"voice" => kag.voicePlayingRatio,
 			"voice_vol" => kag.voicevolume,
 			"voice_enable" => kag.voiceenable,

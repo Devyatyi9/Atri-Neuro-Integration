@@ -32,4 +32,28 @@ assert(audio["voice_vol"] == 100, "voice volume lost");
 assert(audio["se_vol"] == 80, "se volume lost");
 assert(audio["voice_enable"] == 1, "voice enable lost");
 
+
+
+// --- looping effects and the voice file, added when the capture was wired in ---
+
+// Several loops can play at once and their layer names change from scene to
+// scene, so what travels is the set of files, not the slots holding them.
+audio = global.__cm_collectAudio();
+assert(audio["loopse"] == "se171,se627",
+	"playing loops not collected, got '" + audio["loopse"] + "'");
+
+// A stopped layer keeps its _filename -- that is how the end of a sound is
+// detected -- so it must not be reported as still playing.
+assert(audio["loopse"].indexOf("se279") < 0, "a stopped loop was reported as playing");
+
+// The voice buffer keeps its storage after playback ends, so the name is only
+// taken while it is actually playing. Otherwise the last line of a scene would
+// look like it never stops.
+assert(audio["voice_file"] == "", "a stopped voice was reported as playing");
+kag.voices[0].status = "play";
+audio = global.__cm_collectAudio();
+assert(audio["voice_file"] == "ATR_b999_001.opus",
+	"playing voice not collected, got '" + audio["voice_file"] + "'");
+kag.voices[0].status = "stop";
+
 return "audio: ok";
