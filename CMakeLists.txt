@@ -251,4 +251,33 @@ if(ATRI_BUILD_PROTOTYPE)
     else()
         message(STATUS "tjscheck not found in Tools/, TJS syntax tests skipped")
     endif()
+
+    # Syntax is the cheapest of three questions and the least interesting. The
+    # sandbox answers the other two -- whether a script behaves, and whether it
+    # uses a shape that has already cost this project a process -- and both are
+    # asked by the harness, which runs each script against the stubs with its
+    # checks file and reads the advisor's findings out of the same run.
+    #
+    # Not one test per script here, unlike the syntax pass: a script under test
+    # is compiled together with the stubs and its setup scripts, so the failure
+    # belongs to the run rather than to a file. The harness names which run it
+    # was, and the whole thing takes about a second.
+    #
+    # Same rule as above about not being in version control: absent the sandbox,
+    # this is skipped rather than failing the configure.
+    find_program(ATRI_TJSBOX
+        NAMES tjsbox
+        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Tools"
+    )
+    find_program(ATRI_POWERSHELL NAMES pwsh powershell)
+    if(ATRI_TJSBOX AND ATRI_POWERSHELL)
+        add_test(NAME "tjs-behaviour"
+                 COMMAND "${ATRI_POWERSHELL}" -NoProfile -File
+                         "${CMAKE_CURRENT_SOURCE_DIR}/Tools/tjs/tests/Test-ToolsTjs.ps1"
+                         -Sandbox "${ATRI_TJSBOX}")
+    elseif(NOT ATRI_TJSBOX)
+        message(STATUS "tjsbox not found in Tools/, TJS behaviour tests skipped")
+    else()
+        message(STATUS "PowerShell not found, TJS behaviour tests skipped")
+    endif()
 endif()

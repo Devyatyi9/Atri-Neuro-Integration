@@ -103,11 +103,22 @@ foreach ($check in $checks) {
     $temp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), ".tjs")
     [System.IO.File]::WriteAllText($temp, $body, $utf8NoBom)
     try {
-        $output = & $Sandbox $temp 2>&1 | ForEach-Object { "$_" }
+        # --advise here rather than on the file alone: the advisor runs the
+        # script before reporting, and most of these do not run without the
+        # stubs. It never changes the exit code, so its findings are read out
+        # of the output.
+        $output = & $Sandbox --advise $temp 2>&1 | ForEach-Object { "$_" }
         $code = $LASTEXITCODE
     } finally {
         Remove-Item -LiteralPath $temp -ErrorAction SilentlyContinue
     }
+
+    $advice = @($output | Where-Object { $_ -like "advice: *" -and $_ -ne "advice: nothing to report" })
+    # The advisor names the composed file, which is a temporary path. Naming the
+    # script under test instead would be wrong as often as right: the setup
+    # scripts are compiled into the same file, so the code it found may belong
+    # to one of those. The run is named, the file is not.
+    $advice = @($advice | ForEach-Object { $_ -replace [regex]::Escape($temp), "the composed file" })
 
     if ($code -ne 0) {
         Write-Host "FAIL $name"
@@ -115,8 +126,13 @@ foreach ($check in $checks) {
         Write-Host "     $($output -join "`n     ")"
         Write-Host "     (line numbers count from the composed file: stubs, then the script, then the checks)"
         $failures++
+    } elseif ($advice.Count -gt 0) {
+        Write-Host "FAIL $name  (advice)"
+        Write-Host "     $($advice -join "`n     ")"
+        $failures++
     } else {
-        Write-Host "ok   $name  $($output -join ' ')"
+        $said = @($output | Where-Object { $_ -notlike "advice: *" })
+        Write-Host "ok   $name  $($said -join ' ')"
     }
 }
 
