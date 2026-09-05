@@ -121,10 +121,12 @@ kag.cancelSkip = function() {
 kag.languageType = 1;
 kag.getLangInfo = function(obj, field, langType) {
 	if (langType === void) throw new Exception("getLangInfo called without a language");
-	// An entry can be missing the speech variant, and the engine answers with
-	// nothing rather than an error. Marking the entry is how a check reaches
-	// that state: the rendered text then has to stand in for it.
-	if (field == "speechtext" && obj.nospeech) return "";
+	// A marked entry answers with a line shaped like the ones in the scenario:
+	// every inline directive the texts actually use, and a paragraph break of
+	// the kind the diary inserts are written with.
+	if (obj.markup && field == "text") {
+		return "%n3;xx/xx/xx \nI woke %i1up%id. %f源ノ角ゴシックB;♪%fuser;";
+	}
 	return "lang" + langType + ":" + field;
 };
 

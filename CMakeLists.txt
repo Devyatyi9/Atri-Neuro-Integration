@@ -208,7 +208,9 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
         prototype/PluginConfig.cpp
+        prototype/neuro/ContextPayload.cpp
         prototype/tests/ActionJsonTests.cpp
+        prototype/tests/ContextPayloadTests.cpp
         prototype/tests/ParseNumberTests.cpp
         prototype/tests/PluginConfigTests.cpp
         prototype/tests/SlotPayloadTests.cpp
@@ -221,6 +223,7 @@ if(ATRI_BUILD_PROTOTYPE)
     target_include_directories(atri_prototype_tests PRIVATE
         prototype
         prototype/actions/common
+        prototype/neuro
         prototype/tests
     )
     add_test(NAME prototype-units COMMAND atri_prototype_tests)

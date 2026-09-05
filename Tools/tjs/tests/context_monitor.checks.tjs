@@ -70,7 +70,7 @@ assert(global.__cmContains(global.__cm_poll(), "[select] 0\n"), "the choice clos
 kag.languageType = 0;
 kag.getLangInfo(%[ language: [] ], "text");
 var spoken = global.__cm_poll();
-assert(global.__cmContains(spoken, "[lang_text] \"lang0:speechtext\"\n"),
+assert(global.__cmContains(spoken, "[lang_text] \"lang0:text\"\n"),
 	"the localized text was not quoted, got " + spoken);
 
 // --- A missing collector costs its own fields and nothing else ----------------

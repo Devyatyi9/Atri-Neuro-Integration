@@ -31,19 +31,26 @@
         try {
           if (arg1 == "text") {
             // "text" is the field the renderer asks for, and it carries the
-            // engine's own inline directives -- a font switch around a note
-            // character, a numbered style in the diary inserts. The renderer
-            // consumes them on the way to the screen; read here, before that,
-            // they travel into the context as literal noise.
-            // The same entry holds "speechtext": the identical line prepared
-            // for speaking, without them. Asked through the same call-through,
-            // so an entry that has no such field simply leaves the shown text
-            // in place rather than being guessed at.
+            // engine's own inline directives: a font switch around a note
+            // character, a numbered style in the diary inserts, and the pair
+            // that italicises a stressed word. The renderer consumes them on
+            // the way to the screen; read here, before that, they travel into
+            // the context as literal noise.
+            //
+            // The entry also holds "speechtext", the same line without them,
+            // but that one is prepared for speaking and has the line breaks
+            // taken out with the markup. The diary inserts are written in
+            // paragraphs, so using it would hand over a wall of text where the
+            // player sees a dated entry and a reply. The directives are
+            // therefore removed here and the breaks kept.
             var shown = "" + r;
-            try {
-              var spoken = global.__cm_origGetLangInfo(arg0, "speechtext", arg2);
-              if (("" + spoken) != "") shown = "" + spoken;
-            } catch (e) {}
+            shown = shown.replace(/%f[^;]*;/g, "");
+            shown = shown.replace(/%n[0-9];/g, "");
+            shown = shown.replace(/%i[1d]/g, "");
+            // Escaped, not carried through raw: events reach the plugin as
+            // lines with tab-separated fields, so a real break inside one
+            // would split the record in half. The C++ side turns it back.
+            shown = shown.replace(/\n/g, "\\n");
             global.__cm_langText = shown;
             // The entry itself, not just the rendered string: keeping it lets
             // the same line be read back in another language later, since

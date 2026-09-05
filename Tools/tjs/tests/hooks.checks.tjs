@@ -34,29 +34,36 @@ assert(global.__cm_events.count == 1, "the hook was installed twice, got " +
 global.__cm_origSePlay = void;
 EnvSoundBuffer.play("se002", 100, 0, 0, 0);
 
-// --- Localized text: the spoken variant, not the rendered one ----------------
-// "text" carries the engine's inline directives (a font switch around a note
-// character, numbered styles in the diary inserts). They belong to rendering
-// and reached the context as literal noise.
-var entry = %[ language: [] ];
-var rendered = kag.getLangInfo(entry, "text");
-assert(rendered == "lang1:text", "the call-through changed what the caller sees, got " + rendered);
-assert(global.__cm_langText == "lang1:speechtext",
-	"the rendered text was captured instead of the spoken one, got " + global.__cm_langText);
+// --- Localized text: what the player reads, without the rendering directives -
+// "text" is what the renderer asks for, and it carries inline directives: a
+// numbered style in the diary inserts, an italicised word, a font switch around
+// a note character. The renderer consumes them; captured here, before that,
+// they reached the context as literal noise.
+var marked = %[ language: [], markup: true ];
+var rendered = kag.getLangInfo(marked, "text");
+assert(rendered == "%n3;xx/xx/xx \nI woke %i1up%id. %f源ノ角ゴシックB;♪%fuser;",
+	"the call-through changed what the caller sees, got " + rendered);
+assert(global.__cm_langText == "xx/xx/xx \\nI woke up. ♪",
+	"the directives were not removed, got [" + global.__cm_langText + "]");
 
-// An entry with no speech variant still has to yield the line: falling back to
-// what was rendered is worse only than nothing at all.
-var plain = %[ language: [], nospeech: true ];
+// The break is kept, because the diary inserts are written in paragraphs and
+// that is part of what the player reads -- but escaped, since one event is one
+// line with tab-separated fields and a raw break would split the record.
+assert(global.__cm_langText.indexOf("\n") < 0,
+	"a raw line break survived into the captured text");
+
+// A line with nothing to remove passes through untouched.
+var plain = %[ language: [] ];
 kag.getLangInfo(plain, "text");
 assert(global.__cm_langText == "lang1:text",
-	"the fallback to rendered text did not happen, got " + global.__cm_langText);
+	"an unmarked line was altered, got " + global.__cm_langText);
 
 // The entry is kept for reading the same line back in another language, so it
 // must be the one just asked about.
 assert(global.__cm_langEntry === plain, "the wrong entry was remembered");
 
-// The speaker name goes through the same wrapper and is not a spoken field.
-kag.getLangInfo(entry, "disp");
+// The speaker name goes through the same wrapper and carries no directives.
+kag.getLangInfo(marked, "disp");
 assert(global.__cm_langName == "lang1:disp", "the name was captured wrong, got " + global.__cm_langName);
 
 return "hooks: ok";

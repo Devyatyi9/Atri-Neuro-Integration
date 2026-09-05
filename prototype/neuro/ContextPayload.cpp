@@ -24,6 +24,27 @@ std::vector<std::string> SplitFields(std::string const &line) {
 	return fields;
 }
 
+// Line breaks arrive escaped and are put back here.
+//
+// A dialogue event is one line with tab-separated fields, so a break carried
+// raw would end the record halfway through a sentence and leave the rest
+// looking like an event of its own. The diary inserts are written in
+// paragraphs, and that shape is part of what the player reads, so it is worth
+// carrying rather than flattening.
+std::string RestoreBreaks(std::string const &text) {
+	std::string restored;
+	restored.reserve(text.size());
+	for (size_t index = 0; index < text.size(); ++index) {
+		if (text[index] == '\\' && index + 1 < text.size() && text[index + 1] == 'n') {
+			restored += '\n';
+			++index;
+			continue;
+		}
+		restored += text[index];
+	}
+	return restored;
+}
+
 // Dialogue text carries its own quotation marks in the scenario data, so none
 // are added here; a speaker-less line is narration and stands on its own.
 std::string DescribeDialogue(std::vector<std::string> const &fields) {
@@ -31,7 +52,7 @@ std::string DescribeDialogue(std::vector<std::string> const &fields) {
 		return {};
 	}
 	std::string const &speaker = fields[1];
-	std::string const &text = fields[2];
+	std::string const text = RestoreBreaks(fields[2]);
 	if (text.empty()) {
 		return {};
 	}
