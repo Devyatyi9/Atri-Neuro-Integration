@@ -65,10 +65,12 @@ assert(global.__cmContains(global.__cm_poll(), "[select] 0\n"), "the choice clos
 // The language is switched first so the reading actually differs from the one
 // the choice above already put in the snapshot: a check that asserts an
 // unchanged value would pass on a monitor that never reports this field at all.
+// The captured value is the spoken variant of the line, not the rendered one:
+// what reaches the context has to be free of the engine's inline directives.
 kag.languageType = 0;
 kag.getLangInfo(%[ language: [] ], "text");
 var spoken = global.__cm_poll();
-assert(global.__cmContains(spoken, "[lang_text] \"lang0:text\"\n"),
+assert(global.__cmContains(spoken, "[lang_text] \"lang0:speechtext\"\n"),
 	"the localized text was not quoted, got " + spoken);
 
 // --- A missing collector costs its own fields and nothing else ----------------

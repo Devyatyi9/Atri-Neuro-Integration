@@ -121,6 +121,10 @@ kag.cancelSkip = function() {
 kag.languageType = 1;
 kag.getLangInfo = function(obj, field, langType) {
 	if (langType === void) throw new Exception("getLangInfo called without a language");
+	// An entry can be missing the speech variant, and the engine answers with
+	// nothing rather than an error. Marking the entry is how a check reaches
+	// that state: the rendered text then has to stand in for it.
+	if (field == "speechtext" && obj.nospeech) return "";
 	return "lang" + langType + ":" + field;
 };
 

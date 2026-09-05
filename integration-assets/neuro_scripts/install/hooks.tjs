@@ -30,7 +30,21 @@
         var r = global.__cm_origGetLangInfo(arg0, arg1, arg2);
         try {
           if (arg1 == "text") {
-            global.__cm_langText = "" + r;
+            // "text" is the field the renderer asks for, and it carries the
+            // engine's own inline directives -- a font switch around a note
+            // character, a numbered style in the diary inserts. The renderer
+            // consumes them on the way to the screen; read here, before that,
+            // they travel into the context as literal noise.
+            // The same entry holds "speechtext": the identical line prepared
+            // for speaking, without them. Asked through the same call-through,
+            // so an entry that has no such field simply leaves the shown text
+            // in place rather than being guessed at.
+            var shown = "" + r;
+            try {
+              var spoken = global.__cm_origGetLangInfo(arg0, "speechtext", arg2);
+              if (("" + spoken) != "") shown = "" + spoken;
+            } catch (e) {}
+            global.__cm_langText = shown;
             // The entry itself, not just the rendered string: keeping it lets
             // the same line be read back in another language later, since
             // getLangInfo takes the language as its third argument. The raw
