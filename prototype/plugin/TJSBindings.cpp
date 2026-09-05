@@ -1,5 +1,6 @@
 #include <windows.h>
 
+#include <cstddef>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -11,6 +12,7 @@
 
 #include "ncbind.hpp"
 
+#include "Logging.h"
 #include "NeuroConsole.h"
 #include "PluginLifecycle.h"
 #include "TJSBindings.h"
@@ -182,6 +184,42 @@ static tjs_error TJS_INTF_METHOD NeuroConsoleLog(tTJSVariant *result,
 		AppendToNeuroConsole(lineWithNL.c_str(), RGB(100, 100, 100));
 	}
 
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroGetPluginLog(tTJSVariant *result,
+                                                   tjs_int numparams,
+                                                   tTJSVariant **param,
+                                                   iTJSDispatch2 *objthis) {
+	std::size_t offset = 0;
+	std::size_t count = 100;
+	bool fromEnd = true;
+	if (numparams > 0 && param && param[0]) {
+		tTVInteger value = *param[0];
+		count = value > 0 ? static_cast<std::size_t>(value) : 0;
+	}
+	if (numparams > 1 && param && param[1]) {
+		fromEnd = static_cast<tTVInteger>(*param[1]) != 0;
+	}
+	if (numparams > 2 && param && param[2]) {
+		tTVInteger value = *param[2];
+		offset = value > 0 ? static_cast<std::size_t>(value) : 0;
+	}
+	if (result) {
+		std::wstring const log = GetPluginLog(offset, count, fromEnd);
+		*result = ttstr(log.c_str());
+	}
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroClearPluginLog(tTJSVariant *result,
+                                                     tjs_int numparams,
+                                                     tTJSVariant **param,
+                                                     iTJSDispatch2 *objthis) {
+	ClearPluginLog();
+	if (result) {
+		*result = (tTVInteger)1;
+	}
 	return TJS_S_OK;
 }
 
@@ -445,6 +483,8 @@ NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
 NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
 NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
+NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
+NCB_REGISTER_FUNCTION(neuroClearPluginLog, NeuroClearPluginLog);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
 NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
 

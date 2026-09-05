@@ -15,6 +15,7 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
+#include "Logging.h"
 #include "UtfConversion.h"
 
 static std::atomic<bool> g_TJSReady(false);
@@ -242,8 +243,9 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 		if (!Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
 			utf8Code = "<invalid UTF-16 code>";
 		}
-		OutputDebugStringA(
-		    ("[NEURO PLUGIN] async TJS call threw: " + utf8Code + "\n").c_str());
+		Log(("  [ExecuteTJSAsync] TJS execution threw an exception: " + utf8Code +
+		     "\n")
+		        .c_str());
 	}
 }
 
@@ -298,7 +300,7 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 			data->executed = true;
 		}
 	} catch (...) {
-		OutputDebugStringW(L"[NEURO PLUGIN] sync TJS call threw\n");
+		Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
 	}
 	SetEvent(data->completedEvent);
 }
@@ -374,7 +376,7 @@ void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode) {
 			return;
 		}
 		if (g_TJSAsyncCalls.size() >= kMaxTJSAsyncCalls) {
-			OutputDebugStringW(L"[NEURO PLUGIN] async queue full; request dropped\n");
+			Log("  [ExecuteTJSAsync] Queue full; dropping request\n");
 			return;
 		}
 		do {
@@ -576,7 +578,7 @@ bool ExecuteTJSSync(wchar_t const *code,
 				}
 				return true;
 			} catch (...) {
-				OutputDebugStringW(L"[NEURO PLUGIN] inline TJS call threw\n");
+				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
 				return false;
 			}
 		}
@@ -633,9 +635,7 @@ bool ExecuteTJSSync(wchar_t const *code,
 	}
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);
-		OutputDebugStringW(
-		    L"[NEURO PLUGIN] sync TJS call timed out waiting for the game "
-		    L"thread\n");
+		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
 	}
 	// Remove from map now that wait is complete: keeps the shared_ptr alive until
 	// after WaitForSingleObject finishes, preventing use-after-free on the event.
@@ -652,10 +652,11 @@ void TryInitTJS() {
 		if (dispatch) {
 			g_ScriptDispatch = dispatch;
 			g_TJSReady.store(true);
+			Log("TJS initialized\n");
 			OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized\n");
 		}
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
-		OutputDebugStringW(L"[NEURO PLUGIN] TryInitTJS raised\n");
+		Log("TryInitTJS: exception caught\n");
 	}
 }
 

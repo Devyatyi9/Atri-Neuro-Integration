@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 
+#include "Logging.h"
 #include "NeuroConsole.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
@@ -27,6 +28,8 @@ static std::atomic<bool> g_ShutdownStarted(false);
 static void StartHotkeyThread();
 
 static void DeferredTJSInitThread() {
+	Log("Deferred TJS init thread started\n");
+
 	int const maxAttempts = 100;
 	int const intervalMs = 100;
 
@@ -42,19 +45,20 @@ static void DeferredTJSInitThread() {
 	}
 
 	if (g_InitThreadStopRequested.load() || !IsTJSReady()) {
-		OutputDebugStringW(L"[NEURO PLUGIN] TJS not ready; giving up\n");
+		Log("Deferred TJS init: TJS never became ready\n");
 		g_InitThreadRunning.store(false);
 		return;
 	}
+	Log("Deferred TJS init: TJS ready\n");
 
 	// The console runs off the main thread and reaches TJS through this
 	// dispatcher.
 	if (!InitializeTJSExecutor()) {
-		OutputDebugStringW(
-		    L"[NEURO PLUGIN] Window subclass failed; TJS dispatch disabled\n");
+		Log("ERROR: window subclass failed; TJS dispatch disabled\n");
 	}
 
 	RegisterTJSBindings();
+	Log("TJS functions registered via ncbind\n");
 
 	// Keep the registered callback in TJS so it cannot reference an unloaded
 	// DLL.
@@ -70,6 +74,7 @@ static void DeferredTJSInitThread() {
 	    TJSExecMode::Expression);
 
 	StartHotkeyThread();
+	Log("Hotkey thread started (F12 = console)\n");
 
 	g_InitThreadRunning.store(false);
 }
@@ -196,20 +201,20 @@ static void InstallFatalHandlers() {
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
     iTVPFunctionExporter *exporter) {
 	OutputDebugStringW(L"[NEURO PLUGIN] === V2Link called ===\n");
+	Log("=== V2Link called ===\n");
 	InstallFatalHandlers();
 
 	if (!exporter) {
-		OutputDebugStringW(L"[NEURO PLUGIN] exporter is NULL\n");
+		Log("ERROR: exporter is NULL\n");
 		return E_FAIL;
 	}
 
 	if (!TVPInitImportStub(exporter)) {
-		OutputDebugStringW(L"[NEURO PLUGIN] TVPInitImportStub failed\n");
+		Log("ERROR: TVPInitImportStub failed\n");
 		return E_FAIL;
 	}
 	if (!InitializeTJSContinuousEventHook()) {
-		OutputDebugStringW(
-		    L"[NEURO PLUGIN] TJS continuous event hook registration failed\n");
+		Log("ERROR: TJS continuous event hook registration failed\n");
 	}
 
 	StartDeferredTJSInit();
@@ -224,6 +229,8 @@ void ShutdownPluginWorkers() {
 	if (g_WorkerShutdownStarted.exchange(true)) {
 		return;
 	}
+
+	Log("Plugin worker shutdown started\n");
 
 	// Release workers blocked on main-thread TJS calls before joining them.
 	StopAcceptingTJSCalls();
@@ -242,6 +249,7 @@ void ShutdownPluginLifecycle() {
 	UnregisterTJSBindings();
 	ShutdownTJSExecutor();
 	TVPUninitImportStub();
+	Log("Cleanup complete\n");
 }
 
 extern "C" __declspec(dllexport) HRESULT _stdcall V2Unlink() {

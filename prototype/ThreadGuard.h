@@ -1,9 +1,9 @@
 #pragma once
 
-#include <windows.h>
-
 #include <exception>
 #include <string>
+
+#include "Logging.h"
 
 // Wraps a thread body so that an exception cannot leave it.
 //
@@ -16,12 +16,11 @@ void RunThreadGuarded(char const *name, Body body) {
 	try {
 		body();
 	} catch (std::exception const &error) {
-		OutputDebugStringA(("[NEURO PLUGIN] thread " + std::string(name) +
-		                    " stopped on exception: " + error.what() + "\n")
-		                       .c_str());
+		Log(("[Thread] " + std::string(name) +
+		     " stopped on exception: " + error.what() + "\n")
+		        .c_str());
 	} catch (...) {
-		OutputDebugStringA(("[NEURO PLUGIN] thread " + std::string(name) +
-		                    " stopped on an unknown exception\n")
-		                       .c_str());
+		Log(("[Thread] " + std::string(name) + " stopped on an unknown exception\n")
+		        .c_str());
 	}
 }

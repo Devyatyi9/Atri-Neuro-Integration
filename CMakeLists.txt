@@ -104,6 +104,7 @@ if(ATRI_BUILD_PROTOTYPE)
     endif()
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
+        prototype/Logging.cpp
         prototype/plugin/PluginLifecycle.cpp
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
