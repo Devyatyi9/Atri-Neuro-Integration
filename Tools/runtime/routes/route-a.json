@@ -5,18 +5,15 @@
   "choices": [
     {
       "scene": "b102",
-      "text": "Take care of Atri.",
-      "index": 2
+      "text": "Take care of Atri."
     },
     {
       "scene": "b207",
-      "text": "Kiss her",
-      "index": 2
+      "text": "Kiss her"
     },
     {
       "scene": "b402",
-      "text": "Pick up the shoe.",
-      "index": 1
+      "text": "Pick up the shoe."
     }
   ]
 }

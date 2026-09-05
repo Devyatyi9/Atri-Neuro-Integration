@@ -329,16 +329,19 @@ class Engine:
             return None, "the route has no decisions left"
         decision = self.decisions[self.taken]
 
+        # By text only, and deliberately without a fallback to a number. A
+        # decision that does not match is a route that has drifted from the
+        # game -- a changed translation, another language, a typo here -- and
+        # picking something by position then sends the run down another branch
+        # while everything still looks healthy. A stopped run is cheaper than a
+        # wrong one, so this stops and says what it could not find.
         wanted = decision.get("text", "").strip().casefold()
         matches = [number for number, text in sorted(options.items())
                    if text.strip().casefold() == wanted and number not in self.rejected]
         if matches:
             return matches[0], f"route: {decision.get('text')}"
-
-        fallback = decision.get("index")
-        if fallback in options and fallback not in self.rejected:
-            return fallback, f"route: no text match, falling back to index {fallback}"
-        return None, f"route: nothing left to try for {decision.get('text')!r}"
+        return None, (f"route: no option reads {decision.get('text')!r}; "
+                      f"on offer: {sorted(options.values())}")
 
     def settle_choice(self):
         """Counts the decision in hand as made and moves to the next one."""
