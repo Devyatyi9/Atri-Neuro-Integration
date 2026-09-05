@@ -1,0 +1,90 @@
+// Checks for integration-assets/neuro_scripts/context_monitor.tjs.
+//
+// The monitor is a diff, not a reading: it runs every 200ms and must say only
+// what changed. Everything worth catching here is therefore about the second
+// call, not the first -- a field that reports on every tick would bury the
+// context in noise, and an event drained twice would tell Neuro that something
+// happened when it did not.
+//
+// The script under test has already run once as part of the composed file, so
+// that run is poll one and its emissions are the opening state.
+
+global.__cmContains = function(text, line) {
+	return ("" + text).indexOf(line) >= 0;
+} incontextof global;
+
+// --- A poll with nothing changed says nothing ---------------------------------
+// The single most important property: the monitor is called five times a second.
+var quiet = global.__cm_poll();
+assert(quiet == "", "an unchanged poll emitted: " + quiet);
+
+// --- One changed field is reported alone --------------------------------------
+global.__stubEnvObjects["bgm"]._filename = "BGM07";
+var one = global.__cm_poll();
+assert(global.__cmContains(one, "[bgm] BGM07\n"), "the changed bgm was not reported, got " + one);
+assert(!global.__cmContains(one, "[scenario]"), "an unchanged field rode along, got " + one);
+
+// --- An empty reading of a skipEmpty field is not a change --------------------
+// The scenario file is empty between scenes. Reporting that as "the scenario is
+// now nothing" and then reporting the next scene as a change would put a
+// meaningless line in the context; worse, it would overwrite the remembered
+// value, so returning to the same scene would look like a move.
+kag.__stubScene = "";
+var blank = global.__cm_poll();
+assert(!global.__cmContains(blank, "[scenario]"), "an empty scenario was reported, got " + blank);
+kag.__stubScene = "b101.ks";
+var back = global.__cm_poll();
+assert(!global.__cmContains(back, "[scenario]"),
+	"the empty reading overwrote the remembered scenario, got " + back);
+
+// --- Events drain in order, and exactly once ----------------------------------
+global.__cm_events.add("se\tse001");
+global.__cm_events.add("se\tse002");
+var drained = global.__cm_poll();
+var first = ("" + drained).indexOf("[event] se\tse001");
+var second = ("" + drained).indexOf("[event] se\tse002");
+assert(first >= 0 && second >= 0, "an event was lost, got " + drained);
+assert(first < second, "events arrived out of order, got " + drained);
+assert(global.__cm_poll() == "", "a drained event was reported twice");
+
+// --- The choice edge ----------------------------------------------------------
+// choice_shown is read here rather than from a hook, because the option list
+// stays on screen until the player acts: there is no moment to hook.
+kag.selectShowing = 1;
+var choice = global.__cm_poll();
+assert(global.__cmContains(choice, "[select] 1\n"), "the choice was not reported, got " + choice);
+assert(global.__cmContains(choice, "[event] choice_shown\tlang1:text\tlang1:text"),
+	"the options did not come through localized, got " + choice);
+// While the list stays up, the poll must not re-announce it every tick.
+assert(global.__cm_poll() == "", "the standing choice was announced again");
+kag.selectShowing = 0;
+assert(global.__cmContains(global.__cm_poll(), "[select] 0\n"), "the choice closing was not reported");
+
+// --- Localized text is quoted -------------------------------------------------
+// It can be empty or end in a space, and unquoted that is invisible in the log.
+// The language is switched first so the reading actually differs from the one
+// the choice above already put in the snapshot: a check that asserts an
+// unchanged value would pass on a monitor that never reports this field at all.
+kag.languageType = 0;
+kag.getLangInfo(%[ language: [] ], "text");
+var spoken = global.__cm_poll();
+assert(global.__cmContains(spoken, "[lang_text] \"lang0:text\"\n"),
+	"the localized text was not quoted, got " + spoken);
+
+// --- A missing collector costs its own fields and nothing else ----------------
+// The collectors are separate files installed at startup; one of them failing to
+// install must not stop the rest of the context from being reported.
+global.__cm_collectVisual = void;
+kag._skipMode = 3;
+var partial = global.__cm_poll();
+assert(global.__cmContains(partial, "[skip] 3\n"),
+	"a missing visual collector took the other sections with it, got " + partial);
+assert(!global.__cmContains(partial, "[bg_visible]"), "a section with no collector was reported");
+
+// --- A collector that throws does not reach the engine ------------------------
+// The poll runs inside the plugin's TJS call, and an exception escaping it is
+// not caught by anything above.
+global.__cm_collectModes = function() { throw new Exception("collector broke"); } incontextof global;
+global.__cm_poll();
+
+return "context_monitor: ok";

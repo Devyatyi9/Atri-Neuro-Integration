@@ -1,168 +1,178 @@
+// Poll game state - called by C++ every 200ms
+// Returns a string with changes or an empty string
+//
+// The body is a named function rather than the bare contents of the outer call
+// so that a second poll can be asked for without re-running the file. What this
+// script gets wrong is never a single reading: it is the comparison against the
+// previous one -- a field that reports every tick, an event drained twice, a
+// choice edge that never fires. None of that is visible in one call.
 (function(){
-  // Poll game state - called by C++ every 200ms
-  // Returns a string with changes or an empty string
-  try {
-    if (typeof kag == "undefined") return "";
+  global.__cm_poll = function() {
+    try {
+      if (typeof kag == "undefined") return "";
 
-    var info = kag.getCurrentInfo();
-    var file = "" + info.file;
-    var label = "" + info.label;
-    var line = info.line;
+      var info = kag.getCurrentInfo();
+      var file = "" + info.file;
+      var label = "" + info.label;
+      var line = info.line;
 
-    // --- Speaker identity (internal character ID, language-independent) ---
-    //     currentText/currentName are deliberately NOT read here. They are native
-    //     properties that bypass kag.getLangInfo and return the raw JP-authored
-    //     tag value regardless of the active language, so they do not match what
-    //     is actually on screen. Localized text/name comes from the hook below.
-    var chara = "";
-    if (typeof kag.historyLayer != "undefined") {
-      var h = kag.historyLayer;
-      if (typeof h.currentChara != "undefined") chara = h.currentChara;
-    }
-
-    // Hooks live in neuro_scripts/install_hooks.tjs; this only asks them to
-    // be in place, which is a few guards once they are.
-    if (typeof global.__cm_ensureHooks == "Object") global.__cm_ensureHooks();
-
-    // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
-    var state = "";
-    if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
-
-    // --- Narrative flags ---
-    var moviePlaying = -1;
-    if (typeof kag.isMoviePlaying != "undefined") moviePlaying = kag.isMoviePlaying();
-    var bgChange = -1;
-    if (typeof tf != "undefined" && typeof tf.bgchange != "undefined") bgChange = tf.bgchange;
-    var recollect = -1;
-    if (typeof tf != "undefined" && typeof tf.recollect != "undefined") recollect = tf.recollect;
-
-    // --- Audio, collected by neuro_scripts/collect_audio.tjs ---
-    // Absent when the collector failed to install; the section is then left
-    // out of this poll rather than reported as empty values.
-    var audio = (typeof global.__cm_collectAudio == "Object")
-        ? global.__cm_collectAudio() : void;
-
-    // --- Visual, modes and conductor, from their collectors ---
-    var visual = (typeof global.__cm_collectVisual == "Object")
-        ? global.__cm_collectVisual() : void;
-    var modes = (typeof global.__cm_collectModes == "Object")
-        ? global.__cm_collectModes() : void;
-    var conductor = (typeof global.__cm_collectConductor == "Object")
-        ? global.__cm_collectConductor() : void;
-    // Read out because the choice edge below needs it beside the emission.
-    var selectShow = (visual !== void) ? visual["select"] : 0;
-
-    // --- Initialize globals ---
-    // Every field keeps its previous value here, keyed by field name.
-    if (typeof global.__cm_prev == "undefined") global.__cm_prev = %[];
-    // The choice edge below distinguishes "never seen" from "not showing",
-    // so this one starts at -1 rather than at nothing.
-    if (global.__cm_prev["select"] === void) global.__cm_prev["select"] = -1;
-
-    var changes = "";
-
-    // The fields read here rather than by a collector. Same comparison as
-    // the collected ones, so they travel as a table too: a name, the value,
-    // and whether an empty reading means "nothing to say" rather than a
-    // change to empty.
-    var plain = [
-      %[ "n" => "scenario", "v" => file, "skipEmpty" => true ],
-      %[ "n" => "label", "v" => label, "skipEmpty" => true ],
-      %[ "n" => "line", "v" => line ],
-      %[ "n" => "chara", "v" => chara ],
-      %[ "n" => "state", "v" => state ],
-      %[ "n" => "movie", "v" => moviePlaying ],
-      %[ "n" => "bgchange", "v" => bgChange ],
-      %[ "n" => "recollect", "v" => recollect ]
-    ];
-    for (var pi = 0; pi < plain.count; pi++) {
-      var pf = plain[pi];
-      if (pf["skipEmpty"] && pf["v"] == "") continue;
-      if (pf["v"] == global.__cm_prev[pf["n"]]) continue;
-      changes += "[" + pf["n"] + "] " + pf["v"] + "\n";
-      global.__cm_prev[pf["n"]] = pf["v"];
-    }
-
-    // The collected sections are compared by name: the keys are already the
-    // field names, so there is nothing to keep in step between the two.
-    if (audio !== void) {
-      var audioNames = ["bgm", "bgm_playing", "loopse", "voice_file", "voice",
-                        "voice_vol", "voice_enable", "se_vol"];
-      for (var ai = 0; ai < audioNames.count; ai++) {
-        var an = audioNames[ai];
-        if (audio[an] != global.__cm_prev[an]) {
-          changes += "[" + an + "] " + audio[an] + "\n";
-          global.__cm_prev[an] = audio[an];
-        }
+      // --- Speaker identity (internal character ID, language-independent) ---
+      //     currentText/currentName are deliberately NOT read here. They are native
+      //     properties that bypass kag.getLangInfo and return the raw JP-authored
+      //     tag value regardless of the active language, so they do not match what
+      //     is actually on screen. Localized text/name comes from the hook below.
+      var chara = "";
+      if (typeof kag.historyLayer != "undefined") {
+        var h = kag.historyLayer;
+        if (typeof h.currentChara != "undefined") chara = h.currentChara;
       }
-    }
 
-    // The other collected sections, compared the same way. `select` is not
-    // here: its emission carries the choice edge and stays written out.
-    var collected = [
-      %[ "from" => visual,
-         "names" => ["bg_visible", "fore_visible", "quake", "msg_hide",
-                     "noeffect"] ],
-      %[ "from" => modes, "names" => ["auto", "skip"] ],
-      %[ "from" => conductor, "names" => ["status", "lastTag"] ]
-    ];
-    for (var ci = 0; ci < collected.count; ci++) {
-      var section = collected[ci];
-      if (section["from"] === void) continue;
-      var names = section["names"];
-      for (var ni = 0; ni < names.count; ni++) {
-        var fn = names[ni];
-        if (section["from"][fn] != global.__cm_prev[fn]) {
-          changes += "[" + fn + "] " + section["from"][fn] + "\n";
-          global.__cm_prev[fn] = section["from"][fn];
-        }
+      // Hooks live in neuro_scripts/install_hooks.tjs; this only asks them to
+      // be in place, which is a few guards once they are.
+      if (typeof global.__cm_ensureHooks == "Object") global.__cm_ensureHooks();
+
+      // --- State (which screen is active: game/title/option/cgmode/save/load/voice) ---
+      var state = "";
+      if (typeof SystemHook != "undefined") state = "" + SystemHook.currentState;
+
+      // --- Narrative flags ---
+      var moviePlaying = -1;
+      if (typeof kag.isMoviePlaying != "undefined") moviePlaying = kag.isMoviePlaying();
+      var bgChange = -1;
+      if (typeof tf != "undefined" && typeof tf.bgchange != "undefined") bgChange = tf.bgchange;
+      var recollect = -1;
+      if (typeof tf != "undefined" && typeof tf.recollect != "undefined") recollect = tf.recollect;
+
+      // --- Audio, collected by neuro_scripts/collect_audio.tjs ---
+      // Absent when the collector failed to install; the section is then left
+      // out of this poll rather than reported as empty values.
+      var audio = (typeof global.__cm_collectAudio == "Object")
+          ? global.__cm_collectAudio() : void;
+
+      // --- Visual, modes and conductor, from their collectors ---
+      var visual = (typeof global.__cm_collectVisual == "Object")
+          ? global.__cm_collectVisual() : void;
+      var modes = (typeof global.__cm_collectModes == "Object")
+          ? global.__cm_collectModes() : void;
+      var conductor = (typeof global.__cm_collectConductor == "Object")
+          ? global.__cm_collectConductor() : void;
+      // Read out because the choice edge below needs it beside the emission.
+      var selectShow = (visual !== void) ? visual["select"] : 0;
+
+      // --- Initialize globals ---
+      // Every field keeps its previous value here, keyed by field name.
+      if (typeof global.__cm_prev == "undefined") global.__cm_prev = %[];
+      // The choice edge below distinguishes "never seen" from "not showing",
+      // so this one starts at -1 rather than at nothing.
+      if (global.__cm_prev["select"] === void) global.__cm_prev["select"] = -1;
+
+      var changes = "";
+
+      // The fields read here rather than by a collector. Same comparison as
+      // the collected ones, so they travel as a table too: a name, the value,
+      // and whether an empty reading means "nothing to say" rather than a
+      // change to empty.
+      var plain = [
+        %[ "n" => "scenario", "v" => file, "skipEmpty" => true ],
+        %[ "n" => "label", "v" => label, "skipEmpty" => true ],
+        %[ "n" => "line", "v" => line ],
+        %[ "n" => "chara", "v" => chara ],
+        %[ "n" => "state", "v" => state ],
+        %[ "n" => "movie", "v" => moviePlaying ],
+        %[ "n" => "bgchange", "v" => bgChange ],
+        %[ "n" => "recollect", "v" => recollect ]
+      ];
+      for (var pi = 0; pi < plain.count; pi++) {
+        var pf = plain[pi];
+        if (pf["skipEmpty"] && pf["v"] == "") continue;
+        if (pf["v"] == global.__cm_prev[pf["n"]]) continue;
+        changes += "[" + pf["n"] + "] " + pf["v"] + "\n";
+        global.__cm_prev[pf["n"]] = pf["v"];
       }
-    }
 
-    if (selectShow != global.__cm_prev["select"]) {
-      changes += "[select] " + selectShow + "\n";
-      // choice_shown: only on the edge into "showing", and read here rather than
-      // from a hook because the option list stays on screen until the player acts.
-      // Compare against 1 explicitly: the initial value is -1, which is truthy in
-      // TJS, so a `!previous` test silently misses the very first choice of a
-      // session -- a save loaded straight into a choice produces no event at all.
-      if (selectShow && global.__cm_prev["select"] != 1) {
-        try {
-          var opts = kag.selectLayer.selects;
-          var optLine = "choice_shown";
-          for (var oi = 0; oi < opts.count; oi++) {
-            optLine += "\t" + kag.getLangInfo(opts[oi], "text");
+      // The collected sections are compared by name: the keys are already the
+      // field names, so there is nothing to keep in step between the two.
+      if (audio !== void) {
+        var audioNames = ["bgm", "bgm_playing", "loopse", "voice_file", "voice",
+                          "voice_vol", "voice_enable", "se_vol"];
+        for (var ai = 0; ai < audioNames.count; ai++) {
+          var an = audioNames[ai];
+          if (audio[an] != global.__cm_prev[an]) {
+            changes += "[" + an + "] " + audio[an] + "\n";
+            global.__cm_prev[an] = audio[an];
           }
-          global.__cm_events.add(optLine);
-        } catch (e) {}
+        }
       }
-      global.__cm_prev["select"] = selectShow;
-    }
 
-    // Correctly-localized text and speaker name in the active kag.languageType
-    // (see the kag.getLangInfo call-through above). This is what actually
-    // renders on screen, unlike the raw native properties.
-    // Quoted, unlike every other field: the text can end in a space or be
-    // empty, and the quotes make that visible in the log.
-    var localized = [
-      %[ "n" => "lang_text", "v" => global.__cm_langText ],
-      %[ "n" => "lang_name", "v" => global.__cm_langName ]
-    ];
-    for (var li = 0; li < localized.count; li++) {
-      var lf = localized[li];
-      if (lf["v"] == global.__cm_prev[lf["n"]]) continue;
-      changes += "[" + lf["n"] + "] \"" + lf["v"] + "\"\n";
-      global.__cm_prev[lf["n"]] = lf["v"];
-    }
+      // The other collected sections, compared the same way. `select` is not
+      // here: its emission carries the choice edge and stays written out.
+      var collected = [
+        %[ "from" => visual,
+           "names" => ["bg_visible", "fore_visible", "quake", "msg_hide",
+                       "noeffect"] ],
+        %[ "from" => modes, "names" => ["auto", "skip"] ],
+        %[ "from" => conductor, "names" => ["status", "lastTag"] ]
+      ];
+      for (var ci = 0; ci < collected.count; ci++) {
+        var section = collected[ci];
+        if (section["from"] === void) continue;
+        var names = section["names"];
+        for (var ni = 0; ni < names.count; ni++) {
+          var fn = names[ni];
+          if (section["from"][fn] != global.__cm_prev[fn]) {
+            changes += "[" + fn + "] " + section["from"][fn] + "\n";
+            global.__cm_prev[fn] = section["from"][fn];
+          }
+        }
+      }
 
-    // Drain every semantic event queued since the last poll, in order. There
-    // can be more than one per tick, unlike the single-value fields above.
-    while (global.__cm_events.count > 0) {
-      changes += "[event] " + global.__cm_events.shift() + "\n";
-    }
+      if (selectShow != global.__cm_prev["select"]) {
+        changes += "[select] " + selectShow + "\n";
+        // choice_shown: only on the edge into "showing", and read here rather than
+        // from a hook because the option list stays on screen until the player acts.
+        // Compare against 1 explicitly: the initial value is -1, which is truthy in
+        // TJS, so a `!previous` test silently misses the very first choice of a
+        // session -- a save loaded straight into a choice produces no event at all.
+        if (selectShow && global.__cm_prev["select"] != 1) {
+          try {
+            var opts = kag.selectLayer.selects;
+            var optLine = "choice_shown";
+            for (var oi = 0; oi < opts.count; oi++) {
+              optLine += "\t" + kag.getLangInfo(opts[oi], "text");
+            }
+            global.__cm_events.add(optLine);
+          } catch (e) {}
+        }
+        global.__cm_prev["select"] = selectShow;
+      }
 
-    return changes;
-  } catch(e) {
-    return "";
-  }
+      // Correctly-localized text and speaker name in the active kag.languageType
+      // (see the kag.getLangInfo call-through above). This is what actually
+      // renders on screen, unlike the raw native properties.
+      // Quoted, unlike every other field: the text can end in a space or be
+      // empty, and the quotes make that visible in the log.
+      var localized = [
+        %[ "n" => "lang_text", "v" => global.__cm_langText ],
+        %[ "n" => "lang_name", "v" => global.__cm_langName ]
+      ];
+      for (var li = 0; li < localized.count; li++) {
+        var lf = localized[li];
+        if (lf["v"] == global.__cm_prev[lf["n"]]) continue;
+        changes += "[" + lf["n"] + "] \"" + lf["v"] + "\"\n";
+        global.__cm_prev[lf["n"]] = lf["v"];
+      }
+
+      // Drain every semantic event queued since the last poll, in order. There
+      // can be more than one per tick, unlike the single-value fields above.
+      while (global.__cm_events.count > 0) {
+        changes += "[event] " + global.__cm_events.shift() + "\n";
+      }
+
+      return changes;
+    } catch(e) {
+      return "";
+    }
+  } incontextof global;
+
+  return global.__cm_poll();
 })();

@@ -13,11 +13,12 @@
 // grows to imitate the whole engine stops being readable and starts being wrong
 // in ways nobody notices.
 //
-// One way these stubs are not the game: they are dictionaries, and a dictionary
-// as `this` cuts off global name resolution, while a class instance -- which is
-// what kag really is -- does not. Code using bare globals therefore fails here
-// and works in the game. Treat a failure of that shape as a false positive and
-// check against a live measurement before calling anything broken.
+// One way these stubs can stop resembling the game: a dictionary as `this` cuts
+// off global name resolution, while a class instance -- which is what kag really
+// is -- does not. A hook installed on such a stub dies on its first bare `kag`
+// or `Debug`, and the failure looks like a bug in the hook. kag is therefore
+// built from a class below. The smaller stubs are still dictionaries, so if a
+// check fails on a name that plainly exists, suspect this before the code.
 
 global.Scripts = %[];
 Scripts.getObjectKeys = function(obj) {
@@ -41,15 +42,23 @@ global.__stubEnvObjects = %[
 	se3: %[ className: "loopse", _filename: "se279", playing: 0 ]
 ];
 
-global.kag = %[];
+// A class instance, not a dictionary, and that difference is load-bearing. A
+// hook installed on kag runs with kag as `this`, and code inside it reaches for
+// globals by bare name -- `kag`, `Debug`, `tf`. With a dictionary as `this`
+// those names resolve to void and the hook dies on its first line; with a class
+// instance they resolve, which is what the real kag is and does. A stub that
+// got this wrong reported working hooks as broken.
+class StubKag { }
+global.kag = new StubKag();
 kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
 kag.voices = [ %[ storage: "ATR_b999_001.opus", status: "stop" ] ];
 // Where the game currently is. The sweep collector stamps every event with it,
 // so a stub that never changes would hide a collector that reads it once.
 kag.__stubScene = "b101.ks";
 kag.getCurrentInfo = function() {
-	return %[ file: global.kag.__stubScene, line: 1 ];
+	return %[ file: global.kag.__stubScene, label: global.kag.__stubLabel, line: 1 ];
 };
+kag.__stubLabel = "*start";
 
 kag.conductor = %[];
 kag.conductor.onTag = function(tag) { return "orig-onTag:" + tag; };
@@ -128,6 +137,27 @@ kag.historyLayer = %[ currentName: "ATRI", currentText: "line" ];
 kag.inTransition = false;
 kag.beginTransition = function(params) { global.__stubCalls.add("beginTransition"); };
 kag.stopTransition = function() { global.__stubCalls.add("stopTransition"); };
+
+// What the context monitor and its collectors read beyond the audio above.
+// Values are set to something other than the emptiest possible reading, so a
+// poll that reports nothing is a real failure rather than a field that happens
+// to match its own default.
+global.SystemHook = %[ currentState: "game" ];
+global.tf = %[ bgchange: 0, recollect: 0 ];
+kag.back = %[ base: %[ visible: true ] ];
+kag.fore = %[ base: %[ visible: true ] ];
+kag.quaking = false;
+kag.messageLayerHiding = false;
+kag.selectShowing = 0;
+kag.noeffect = false;
+kag._autoMode = false;
+kag._skipMode = 0;
+kag.conductor.status = "run";
+kag.conductor.lastTagName = "msg";
+kag.historyLayer.currentChara = "atri";
+// The choice list, read on the edge into "showing". Entries go through
+// getLangInfo like any other localized string.
+kag.selectLayer = %[ selects: [ %[ text: "yes" ], %[ text: "no" ] ] ];
 
 // Provided by the engine's own script layer, which the sandbox does not compile.
 global.Debug = %[];

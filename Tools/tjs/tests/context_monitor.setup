@@ -1,0 +1,8 @@
+# The monitor only reports what the collectors and hooks give it, so they have
+# to be in place before it runs, exactly as install/collectors.tjs does at
+# startup. Naming them beats copying them: this stays the real code.
+audio
+visual
+modes
+conductor
+hooks
