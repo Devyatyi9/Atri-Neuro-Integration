@@ -280,6 +280,7 @@ class Engine:
         self.auto_armed = False
         self.blocked = None
         self.refusals = 0
+        self.leaving = False
         self.pace_since = time.monotonic()
         self.pace_turns = 0
 
@@ -329,10 +330,18 @@ class Engine:
         # Back at the title with every decision made: the route has run out.
         # Waiting for the title is what makes this work without knowing where
         # a route ends -- the game says so by offering a new game again.
-        if (route_done and self.route.get("exit_when_done")
-                and "start_new_game" in actions and "exit_game" in actions):
-            return (command_for("exit_game", actions),
-                    "route: finished, closing the game")
+        if route_done and self.route.get("exit_when_done"):
+            # Quitting asks for confirmation, and the schema for answering it
+            # takes a boolean. Filled from the schema alone that boolean comes
+            # out false, which cancels the dialog -- and the run then loops:
+            # quit, decline, back to the title, quit again.
+            if "answer_dialog" in actions and self.leaving:
+                return (command_for("answer_dialog", actions, {"confirm": True}),
+                        "route: confirming the quit")
+            if "start_new_game" in actions and "exit_game" in actions:
+                self.leaving = True
+                return (command_for("exit_game", actions),
+                        "route: finished, closing the game")
 
         return None, ROUTE_IDLE
 
