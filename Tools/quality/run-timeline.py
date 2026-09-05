@@ -42,13 +42,28 @@ def parse_stamp(text):
 
 
 def load_tag_log(path):
-    """The game's own record: field changes and semantic events, in order."""
+    """The game's own record: field changes and semantic events, in order.
+
+    A directory is taken as an instance's log directory. Nothing is searched
+    for: the file rotates into Logs\\ under a dated name and a second copy of
+    the game keeps its own directory, so a guess here eventually opens the other
+    instance's log -- which does not look wrong, it looks like a quiet run.
+    """
+    if os.path.isdir(path):
+        path = os.path.join(path, "neuro_tag_log.txt")
     rows = []
     unstamped = 0
+    banner = ""
     with open(path, encoding="utf-8", errors="replace") as handle:
         for line in handle:
             line = line.rstrip("\n")
-            if not line or line.startswith("#"):
+            if not line:
+                continue
+            if line.startswith("#"):
+                # Which process, which port, which config -- said out loud so a
+                # log from the wrong instance is noticed before it is believed.
+                if not banner and line.startswith("# instance"):
+                    banner = line
                 continue
             match = TAG_LINE.match(line)
             if not match:
@@ -62,7 +77,7 @@ def load_tag_log(path):
                 "field": match.group("field"),
                 "value": match.group("value"),
             })
-    return rows, unstamped
+    return rows, unstamped, banner
 
 
 def load_run(directory):
@@ -257,7 +272,8 @@ def main():
     args = parser.parse_args()
 
     streams = load_run(args.run)
-    tag_rows, unstamped = load_tag_log(args.tag_log)
+    tag_rows, unstamped, banner = load_tag_log(args.tag_log)
+    print(banner or "note: the tag log names no instance -- an older build wrote it")
     if unstamped:
         print(f"note: {unstamped} tag log line(s) carry no timestamp -- "
               f"set log_timestamps = on in the instance config for a full picture\n")
