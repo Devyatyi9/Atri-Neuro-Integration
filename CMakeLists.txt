@@ -36,12 +36,6 @@ function(atri_add_version_resource target original_filename file_description pro
     target_sources(${target} PRIVATE "${resource_file}")
 endfunction()
 
-set(NEURO_BUILD_STATIC ON CACHE BOOL "" FORCE)
-set(NEURO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(NEURO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(ENABLE_PERMESSAGE_DEFLATE OFF CACHE BOOL "" FORCE)
-add_subdirectory(lib/neurosdk EXCLUDE_FROM_ALL)
-
 add_library(atri_version_proxy SHARED
     src/proxy/dllmain.cpp
     src/proxy/Source.def
@@ -110,45 +104,10 @@ if(ATRI_BUILD_PROTOTYPE)
     endif()
 	add_library(atri_neuro_prototype SHARED
         prototype/dllmain.cpp
-        prototype/actions/ActionRouter.cpp
-        prototype/actions/ActionRouter.h
-        prototype/actions/common/ActionCommon.cpp
-        prototype/actions/common/ActionCommon.h
-        prototype/actions/common/ActionJson.cpp
-        prototype/actions/common/ActionJson.h
-        prototype/actions/common/ActionSchemas.h
-        prototype/actions/common/ActionSet.h
-        prototype/actions/common/ParseNumber.cpp
-        prototype/actions/common/SlotPayload.cpp
-        prototype/actions/common/ParseNumber.h
-        prototype/actions/probes/ActionProbes.cpp
-        prototype/actions/probes/ActionProbes.h
-        prototype/actions/probes/TJSQuery.cpp
-        prototype/actions/probes/TJSQuery.h
-        prototype/actions/screens/ScreenBacklog.cpp
-        prototype/actions/screens/ScreenBacklog.h
-        prototype/actions/screens/ScreenGallery.cpp
-        prototype/actions/screens/ScreenGallery.h
-        prototype/actions/screens/ScreenMenu.cpp
-        prototype/actions/screens/ScreenMenu.h
-        prototype/actions/screens/ScreenPlay.cpp
-        prototype/actions/screens/ScreenPlay.h
-        prototype/actions/screens/ScreenSlots.cpp
-        prototype/actions/screens/ScreenSlots.h
-        prototype/actions/screens/ScreenTitle.cpp
-        prototype/actions/screens/ScreenTitle.h
         prototype/plugin/PluginLifecycle.cpp
-        prototype/neuro/ContextPayload.cpp
-        prototype/neuro/ContextPayload.h
-        prototype/Logging.cpp
-        prototype/PluginConfig.cpp
-        prototype/PluginConfig.h
-        prototype/neuro/NeuroClient.cpp
-        prototype/tooling/GameDebugLog.cpp
-        prototype/tooling/NeuroConsole.cpp
-        prototype/tooling/NeuroTCPServer.cpp
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
+        prototype/tooling/NeuroConsole.cpp
         prototype/UtfConversion.cpp
         prototype/neuro.def
         lib/krkr-sdk/tp_stub.cpp
@@ -171,18 +130,10 @@ if(ATRI_BUILD_PROTOTYPE)
     )
     target_include_directories(atri_neuro_prototype PRIVATE
         prototype
-        prototype/actions
-        prototype/actions/common
-        prototype/actions/probes
-        prototype/actions/screens
         prototype/plugin
-        prototype/neuro
         prototype/tooling
         lib/krkr-sdk
         lib/ncbind
-    )
-    target_link_libraries(atri_neuro_prototype PRIVATE
-        neurosdk
     )
     target_link_options(atri_neuro_prototype PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/neuro.def"
@@ -195,89 +146,4 @@ if(ATRI_BUILD_PROTOTYPE)
         "ATRI Neuro Integration Prototype"
         "0.1.0.0"
     )
-
-    # Only the parts that need neither the game nor the engine are tested here.
-    # That is the whole point of keeping them apart: these run in milliseconds
-    # from a plain build, with no install, no window, and no waiting, which is
-    # what makes it reasonable to run them on every change. Anything that talks
-    # to the game is checked by prototype/tooling/neuro_harness_test.py against
-    # a running install instead.
-    enable_testing()
-    add_executable(atri_prototype_tests
-        prototype/actions/common/ActionJson.cpp
-        prototype/actions/common/ParseNumber.cpp
-        prototype/actions/common/SlotPayload.cpp
-        prototype/PluginConfig.cpp
-        prototype/neuro/ContextPayload.cpp
-        prototype/tests/ActionJsonTests.cpp
-        prototype/tests/ContextPayloadTests.cpp
-        prototype/tests/ParseNumberTests.cpp
-        prototype/tests/PluginConfigTests.cpp
-        prototype/tests/SlotPayloadTests.cpp
-        prototype/tests/TestMain.cpp
-        prototype/tests/TestMain.h
-    )
-    set_target_properties(atri_prototype_tests PROPERTIES
-        OUTPUT_NAME prototype-tests
-    )
-    target_include_directories(atri_prototype_tests PRIVATE
-        prototype
-        prototype/actions/common
-        prototype/neuro
-        prototype/tests
-    )
-    add_test(NAME prototype-units COMMAND atri_prototype_tests)
-
-    # TJS assets are data, not code: a mistake in one reaches the game and
-    # nothing else. The copy in Tools/ comes first because it is the one this
-    # repository is known to work with; PATH is the fallback for a checker
-    # built elsewhere. Absent both, these tests are skipped rather than
-    # failing the configure -- the checker is not in version control.
-    find_program(ATRI_TJSCHECK
-        NAMES tjscheck
-        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Tools"
-    )
-    if(ATRI_TJSCHECK)
-        file(GLOB_RECURSE ATRI_TJS_SCRIPTS CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/integration-assets/*.tjs"
-            "${CMAKE_CURRENT_SOURCE_DIR}/Tools/tjs/*.tjs"
-        )
-        # One test per file so a failure names the file rather than the set.
-        foreach(script IN LISTS ATRI_TJS_SCRIPTS)
-            file(RELATIVE_PATH name "${CMAKE_CURRENT_SOURCE_DIR}" "${script}")
-            add_test(NAME "tjs-syntax: ${name}"
-                     COMMAND "${ATRI_TJSCHECK}" "${script}")
-        endforeach()
-    else()
-        message(STATUS "tjscheck not found in Tools/, TJS syntax tests skipped")
-    endif()
-
-    # Syntax is the cheapest of three questions and the least interesting. The
-    # sandbox answers the other two -- whether a script behaves, and whether it
-    # uses a shape that has already cost this project a process -- and both are
-    # asked by the harness, which runs each script against the stubs with its
-    # checks file and reads the advisor's findings out of the same run.
-    #
-    # Not one test per script here, unlike the syntax pass: a script under test
-    # is compiled together with the stubs and its setup scripts, so the failure
-    # belongs to the run rather than to a file. The harness names which run it
-    # was, and the whole thing takes about a second.
-    #
-    # Same rule as above about not being in version control: absent the sandbox,
-    # this is skipped rather than failing the configure.
-    find_program(ATRI_TJSBOX
-        NAMES tjsbox
-        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Tools"
-    )
-    find_program(ATRI_POWERSHELL NAMES pwsh powershell)
-    if(ATRI_TJSBOX AND ATRI_POWERSHELL)
-        add_test(NAME "tjs-behaviour"
-                 COMMAND "${ATRI_POWERSHELL}" -NoProfile -File
-                         "${CMAKE_CURRENT_SOURCE_DIR}/Tools/tjs/tests/Test-ToolsTjs.ps1"
-                         -Sandbox "${ATRI_TJSBOX}")
-    elseif(NOT ATRI_TJSBOX)
-        message(STATUS "tjsbox not found in Tools/, TJS behaviour tests skipped")
-    else()
-        message(STATUS "PowerShell not found, TJS behaviour tests skipped")
-    endif()
 endif()

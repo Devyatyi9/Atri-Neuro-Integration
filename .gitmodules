@@ -1,3 +1,0 @@
-[submodule "lib/neurosdk"]
-	path = lib/neurosdk
-	url = https://github.com/devyatyi9/libneurosdk.git

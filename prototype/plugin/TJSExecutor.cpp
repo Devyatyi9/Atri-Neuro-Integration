@@ -15,7 +15,6 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
-#include "Logging.h"
 #include "UtfConversion.h"
 
 static std::atomic<bool> g_TJSReady(false);
@@ -24,8 +23,6 @@ static std::atomic<bool> g_AcceptTJSCalls(false);
 static std::atomic<bool> g_BlockNextTJSSyncCall(false);
 static std::atomic<bool> g_HoldTJSSyncCallsForStressTest(false);
 static std::atomic<bool> g_TJSContinuousEventHookRegistered(false);
-static std::atomic<unsigned long long> g_TJSContinuousCallbackCount(0);
-static std::atomic<tjs_uint64> g_TJSLastContinuousTick(0);
 static DWORD g_TJSContinuousHookThreadId = 0;
 
 struct TJSSyncCallData {
@@ -75,36 +72,22 @@ static std::unordered_map<UINT_PTR, TJSAsyncCall> g_TJSAsyncCalls;
 static std::deque<UINT_PTR> g_TJSAsyncCallOrder;
 static std::atomic<UINT_PTR> g_NextTJSAsyncCallId(1);
 constexpr size_t kMaxTJSAsyncCalls = 256;
-static std::atomic<unsigned long long> g_TJSAsyncExecutedCount(0);
-static std::atomic<unsigned long long> g_TJSAsyncDroppedCount(0);
-// How often upkeep found the engine mid-tag and stood aside. Counted because a
-// guard that never fires looks exactly like a guard that works.
-static std::atomic<unsigned long long> g_TJSUpkeepSkippedCount(0);
-// Sync calls that were already on the main thread and ran without queueing.
-static std::atomic<unsigned long long> g_TJSInlineMainThreadCount(0);
-
 static void ExecuteTJSAsyncCall(TJSAsyncCall const &call);
 static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data);
 static bool TakeNextTJSAsyncCall(TJSAsyncCall &call);
 static std::shared_ptr<TJSSyncCallData> TakeNextTJSSyncCall();
 
-static std::atomic<unsigned long long> g_TJSSyncExecutedCount(0);
 static std::deque<UINT_PTR> g_TJSSyncCallOrder;
 // Set while the continuous hook is draining the queue, so a nested call of the
 // hook can tell and step aside. Main thread only.
 static bool g_DrainingTJSQueue = false;
-// How often that happened. Zero says the nesting never occurs; anything else
-// says it does, and how much of the traffic it was.
-static std::atomic<unsigned long long> g_TJSDrainReentryCount(0);
 
 class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
  public:
-	void TJS_INTF_METHOD OnContinuousCallback(tjs_uint64 tick) override {
-		unsigned long long const count =
-		    g_TJSContinuousCallbackCount.fetch_add(1, std::memory_order_relaxed) +
-		    1;
-		g_TJSLastContinuousTick.store(tick, std::memory_order_relaxed);
+	// Main thread only, so a plain counter is enough.
+	int m_CallbacksSinceUpkeep = 0;
 
+	void TJS_INTF_METHOD OnContinuousCallback(tjs_uint64 tick) override {
 		// One drain at a time. A queued call runs TJS, TJS can reach code that
 		// pumps messages, and the engine calls this hook from that pump -- so a
 		// drain could start inside a drain, take eight more calls, and do it
@@ -115,7 +98,6 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		// Only the main thread reaches this, so a plain flag is enough; it exists
 		// to stop nesting, not to arbitrate between threads.
 		if (g_DrainingTJSQueue) {
-			g_TJSDrainReentryCount.fetch_add(1, std::memory_order_relaxed);
 			return;
 		}
 		g_DrainingTJSQueue = true;
@@ -131,7 +113,6 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 				break;
 			}
 			ExecuteTJSSyncCall(syncData);
-			g_TJSSyncExecutedCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
 		// Then async calls.
@@ -142,50 +123,19 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 				break;
 			}
 			ExecuteTJSAsyncCall(call);
-			g_TJSAsyncExecutedCount.fetch_add(1, std::memory_order_relaxed);
 		}
 
-		// Periodic upkeep: action registration and exit hook retry.
-		// Run only when outside tag processing to avoid race conditions.
-		// Check every ~10 callbacks (~6 times/second at 60fps).
-		if (count % 10 == 0) {
+		// Periodic upkeep: the exit hook retries until the dialog class the
+		// game builds it on exists. Every tenth callback, about six times a
+		// second at 60fps.
+		if (++m_CallbacksSinceUpkeep >= 10) {
+			m_CallbacksSinceUpkeep = 0;
 			try {
-				// Re-attach the tag hook first if the game has moved to another
-				// conductor. Without that the flag below can be raised by a
-				// conductor whose matching clear never runs, and upkeep stops for
-				// as long as that screen is open.
-				tTJSVariant insideTag;
-				TVPExecuteExpression(
-				    TJS_W("(function(){ if (typeof global.__neuroEnsureTagHook == "
-				          "'Object') global.__neuroEnsureTagHook();"
-				          "return global.__neuroInsideTag === true; })()"),
-				    &insideTag);
-				if (!(tTVInteger)insideTag) {
-					// Safe to run upkeep: not inside tag processing.
-					tTJSVariant upkeepResult;
-					TVPExecuteExpression(TJS_W("neuroPrototypeUpkeep()"), &upkeepResult);
-				} else {
-					g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
-				}
+				tTJSVariant upkeepResult;
+				TVPExecuteExpression(TJS_W("neuroPrototypeUpkeep()"), &upkeepResult);
 			} catch (...) {  // NOLINT(bugprone-empty-catch)
 				// Ignore upkeep failures; they should not crash the continuous hook.
 			}
-		}
-
-		if (count == 1 || count % 300 == 0) {
-			char message[256];
-			sprintf_s(message,
-			          "[TJS continuous] callbacks=%llu sync=%llu async=%llu "
-			          "dropped=%llu upkeepSkipped=%llu reentry=%llu tick=%llu "
-			          "thread=%lu\n",
-			          count, g_TJSSyncExecutedCount.load(std::memory_order_relaxed),
-			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
-			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
-			          g_TJSUpkeepSkippedCount.load(std::memory_order_relaxed),
-			          g_TJSDrainReentryCount.load(std::memory_order_relaxed),
-			          static_cast<unsigned long long>(tick),
-			          static_cast<unsigned long>(GetCurrentThreadId()));
-			Log(message);
 		}
 	}
 };
@@ -288,12 +238,12 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 	try {
 		RunThroughEngine(call.code, &dummy, call.useScriptApi);
 	} catch (...) {
-		Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
 		std::string utf8Code;
-		if (Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
-			Log(utf8Code.c_str());
+		if (!Utf16ToUtf8(call.code.c_str(), call.code.size(), utf8Code)) {
+			utf8Code = "<invalid UTF-16 code>";
 		}
-		Log("\n");
+		OutputDebugStringA(
+		    ("[NEURO PLUGIN] async TJS call threw: " + utf8Code + "\n").c_str());
 	}
 }
 
@@ -348,7 +298,7 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 			data->executed = true;
 		}
 	} catch (...) {
-		Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
+		OutputDebugStringW(L"[NEURO PLUGIN] sync TJS call threw\n");
 	}
 	SetEvent(data->completedEvent);
 }
@@ -383,19 +333,8 @@ bool InitializeTJSContinuousEventHook() {
 		return true;
 	}
 	g_TJSContinuousHookThreadId = GetCurrentThreadId();
-	g_TJSContinuousCallbackCount.store(0, std::memory_order_relaxed);
-	g_TJSLastContinuousTick.store(0, std::memory_order_relaxed);
-	g_TJSAsyncExecutedCount.store(0, std::memory_order_relaxed);
-	g_TJSAsyncDroppedCount.store(0, std::memory_order_relaxed);
-	g_TJSSyncExecutedCount.store(0, std::memory_order_relaxed);
 	TVPAddContinuousEventHook(&g_TJSContinuousEventHook);
 	g_AcceptTJSCalls.store(true, std::memory_order_release);
-	char message[128];
-	sprintf_s(message,
-	          "TJS continuous event hook registered (async+sync queue), "
-	          "registration thread=%lu\n",
-	          static_cast<unsigned long>(g_TJSContinuousHookThreadId));
-	Log(message);
 	return true;
 }
 
@@ -411,7 +350,6 @@ void ShutdownTJSExecutor() {
 	if (g_TJSContinuousEventHookRegistered.exchange(false,
 	                                                std::memory_order_acq_rel)) {
 		TVPRemoveContinuousEventHook(&g_TJSContinuousEventHook);
-		Log("TJS continuous event hook removed\n");
 	}
 	if (g_ScriptDispatch) {
 		g_ScriptDispatch->Release();
@@ -436,8 +374,7 @@ void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode) {
 			return;
 		}
 		if (g_TJSAsyncCalls.size() >= kMaxTJSAsyncCalls) {
-			g_TJSAsyncDroppedCount.fetch_add(1, std::memory_order_relaxed);
-			Log("  [ExecuteTJSAsync] Queue full; dropping request\n");
+			OutputDebugStringW(L"[NEURO PLUGIN] async queue full; request dropped\n");
 			return;
 		}
 		do {
@@ -627,18 +564,6 @@ bool ExecuteTJSSync(wchar_t const *code,
 	    wrap ? WrapTJSProbe(code, useScriptApi) : std::wstring(code);
 
 	if (IsMainThread()) {
-		// Counted, not logged per call. This path runs for every probe -- about
-		// sixty a second under load -- and a line each drowned the log so
-		// thoroughly that the periodic summaries could not be found in it, on
-		// top of the disk traffic it caused.
-		unsigned long long const inline_count =
-		    g_TJSInlineMainThreadCount.fetch_add(1, std::memory_order_relaxed) + 1;
-		if (inline_count == 1 || inline_count % 500 == 0) {
-			char message[96];
-			sprintf_s(message, "[ExecuteTJSSync] Ran inline on main thread x%llu\n",
-			          inline_count);
-			Log(message);
-		}
 		if (g_TJSReady.load()) {
 			try {
 				tTJSVariant value;
@@ -651,11 +576,10 @@ bool ExecuteTJSSync(wchar_t const *code,
 				}
 				return true;
 			} catch (...) {
-				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
+				OutputDebugStringW(L"[NEURO PLUGIN] inline TJS call threw\n");
 				return false;
 			}
 		}
-		Log("[ExecuteTJSSync] TJS not ready on main thread\n");
 		return false;
 	}
 
@@ -709,11 +633,9 @@ bool ExecuteTJSSync(wchar_t const *code,
 	}
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);
-		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
-	} else if (!executed) {
-		// The game thread answered but skipped the call: cancelled, or TJS not
-		// ready. Logged, because the caller only sees false either way.
-		Log("  [ExecuteTJSSync] Game thread skipped the call (not executed)\n");
+		OutputDebugStringW(
+		    L"[NEURO PLUGIN] sync TJS call timed out waiting for the game "
+		    L"thread\n");
 	}
 	// Remove from map now that wait is complete: keeps the shared_ptr alive until
 	// after WaitForSingleObject finishes, preventing use-after-free on the event.
@@ -730,11 +652,10 @@ void TryInitTJS() {
 		if (dispatch) {
 			g_ScriptDispatch = dispatch;
 			g_TJSReady.store(true);
-			Log("TJS initialized successfully!\n");
-			OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized!\n");
+			OutputDebugStringW(L"[NEURO PLUGIN] TJS initialized\n");
 		}
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
-		Log("TryInitTJS: EXCEPTION caught!\n");
+		OutputDebugStringW(L"[NEURO PLUGIN] TryInitTJS raised\n");
 	}
 }
 

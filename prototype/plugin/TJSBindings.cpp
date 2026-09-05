@@ -11,12 +11,6 @@
 
 #include "ncbind.hpp"
 
-#include "ActionCommon.h"
-#include "ActionRouter.h"
-#include "ContextPayload.h"
-#include "GameDebugLog.h"
-#include "Logging.h"
-#include "NeuroClient.h"
 #include "NeuroConsole.h"
 #include "PluginLifecycle.h"
 #include "TJSBindings.h"
@@ -30,7 +24,6 @@ static tjs_error TJS_INTF_METHOD NeuroTestFunction(tTJSVariant *result,
                                                    tTJSVariant **param,
                                                    iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroTestFunction called from TJS!\n");
-	Log(">>> NeuroTestFunction CALLED FROM TJS SCRIPT!\n");
 
 	MessageBoxW(NULL,
 	            L"SUCCESS!\n\n"
@@ -50,7 +43,6 @@ static tjs_error TJS_INTF_METHOD NeuroGetVersion(tTJSVariant *result,
                                                  tTJSVariant **param,
                                                  iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroGetVersion called!\n");
-	Log(">>> NeuroGetVersion called\n");
 
 	if (result) {
 		*result = (tTVInteger)100;  // Version 1.0.0
@@ -79,7 +71,6 @@ NeuroStressBlockNextSyncCall(tTJSVariant *result,
                              tTJSVariant **param,
                              iTJSDispatch2 *objthis) {
 	BlockNextTJSSyncCallForStressTest();
-	Log(">>> Next TJS sync call armed for stress blocking\n");
 	if (result) {
 		*result = (tTVInteger)1;
 	}
@@ -92,69 +83,8 @@ NeuroStressHoldSyncCalls(tTJSVariant *result,
                          tTJSVariant **param,
                          iTJSDispatch2 *objthis) {
 	HoldTJSSyncCallsForStressTest();
-	Log(">>> TJS sync calls armed for pending-unload stress\n");
 	if (result) {
 		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroConnectClient(tTJSVariant *result,
-                                                    tjs_int numparams,
-                                                    tTJSVariant **param,
-                                                    iTJSDispatch2 *objthis) {
-	std::string url;
-	if (numparams > 0 && param && param[0]) {
-		if (param[0]->Type() != tvtString) {
-			if (result) {
-				*result = (tTVInteger)0;
-			}
-			return TJS_S_OK;
-		}
-		ttstr value = *param[0];
-		if (!Utf16ToUtf8(value.c_str(), value.GetLen(), url) ||
-		    url.find('\0') != std::string::npos) {
-			if (result) {
-				*result = (tTVInteger)0;
-			}
-			return TJS_S_OK;
-		}
-	}
-	bool const started =
-	    NeuroConnect(url.empty() ? nullptr : url.c_str(), nullptr);
-	if (result) {
-		*result = (tTVInteger)(started ? 1 : 0);
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroDisconnectClient(tTJSVariant *result,
-                                                       tjs_int numparams,
-                                                       tTJSVariant **param,
-                                                       iTJSDispatch2 *objthis) {
-	NeuroDisconnect();
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroClientConnected(tTJSVariant *result,
-                                                      tjs_int numparams,
-                                                      tTJSVariant **param,
-                                                      iTJSDispatch2 *objthis) {
-	if (result) {
-		*result = (tTVInteger)(NeuroIsConnected() ? 1 : 0);
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroClientReady(tTJSVariant *result,
-                                                  tjs_int numparams,
-                                                  tTJSVariant **param,
-                                                  iTJSDispatch2 *objthis) {
-	if (result) {
-		*result = (tTVInteger)(NeuroIsReady() ? 1 : 0);
 	}
 	return TJS_S_OK;
 }
@@ -164,7 +94,6 @@ static tjs_error TJS_INTF_METHOD NeuroEcho(tTJSVariant *result,
                                            tTJSVariant **param,
                                            iTJSDispatch2 *objthis) {
 	OutputDebugStringW(L"[NEURO PLUGIN] NeuroEcho called!\n");
-	Log(">>> NeuroEcho called\n");
 
 	if (numparams > 0 && param && param[0]) {
 		tTJSVariant *firstParam = param[0];
@@ -194,8 +123,6 @@ static tjs_error TJS_INTF_METHOD NeuroShowConsole(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
                                                   iTJSDispatch2 *objthis) {
-	Log(">>> NeuroShowConsole called\n");
-
 	tTJSVariant checkResult;
 	TVPExecuteExpression(
 	    TJS_W(
@@ -205,11 +132,9 @@ static tjs_error TJS_INTF_METHOD NeuroShowConsole(tTJSVariant *result,
 	if ((tTVInteger)checkResult != 0) {
 		tTJSVariant dummy;
 		TVPExecuteExpression(TJS_W("Debug.console.visible = true"), &dummy);
-		Log("  Debug.console.visible = true\n");
 		if (result)
 			*result = (tTVInteger)1;
 	} else {
-		Log("  Debug.console not available\n");
 		if (result)
 			*result = (tTVInteger)0;
 	}
@@ -225,8 +150,6 @@ static tjs_error TJS_INTF_METHOD NeuroIsKAGReady(tTJSVariant *result,
 	TVPExecuteExpression(TJS_W("typeof global.kag != 'undefined'"), &checkResult);
 	bool ready = (tTVInteger)checkResult != 0;
 
-	Log(ready ? ">>> NeuroIsKAGReady: YES\n" : ">>> NeuroIsKAGReady: NO\n");
-
 	if (result)
 		*result = (tTVInteger)(ready ? 1 : 0);
 	return TJS_S_OK;
@@ -237,7 +160,6 @@ static tjs_error TJS_INTF_METHOD NeuroIsTJSReady(tTJSVariant *result,
                                                  tTJSVariant **param,
                                                  iTJSDispatch2 *objthis) {
 	bool ready = IsTJSReady();
-	Log(ready ? ">>> NeuroIsTJSReady: YES\n" : ">>> NeuroIsTJSReady: NO\n");
 
 	if (result) {
 		*result = (tTVInteger)(ready ? 1 : 0);
@@ -256,111 +178,10 @@ static tjs_error TJS_INTF_METHOD NeuroConsoleLog(tTJSVariant *result,
 
 	ttstr line = *param[0];
 	if (!line.IsEmpty()) {
-		AppendGameDebugLog(line.c_str());
 		ttstr lineWithNL = line + TJS_W("\n");
 		AppendToNeuroConsole(lineWithNL.c_str(), RGB(100, 100, 100));
 	}
 
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroGetDebugLog(tTJSVariant *result,
-                                                  tjs_int numparams,
-                                                  tTJSVariant **param,
-                                                  iTJSDispatch2 *objthis) {
-	std::size_t offset = 0;
-	std::size_t count = 100;
-	bool fromEnd = true;
-	if (numparams > 0 && param && param[0]) {
-		tTVInteger value = *param[0];
-		count = value > 0 ? static_cast<std::size_t>(value) : 0;
-	}
-	if (numparams > 1 && param && param[1]) {
-		fromEnd = static_cast<tTVInteger>(*param[1]) != 0;
-	}
-	if (numparams > 2 && param && param[2]) {
-		tTVInteger value = *param[2];
-		offset = value > 0 ? static_cast<std::size_t>(value) : 0;
-	}
-	if (result) {
-		std::wstring const log = GetGameDebugLog(offset, count, fromEnd);
-		*result = ttstr(log.c_str());
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroClearDebugLog(tTJSVariant *result,
-                                                    tjs_int numparams,
-                                                    tTJSVariant **param,
-                                                    iTJSDispatch2 *objthis) {
-	ClearGameDebugLog();
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD
-NeuroSendContextFromTJS(tTJSVariant *result,
-                        tjs_int numparams,
-                        tTJSVariant **param,
-                        iTJSDispatch2 *objthis) {
-	if (numparams < 1 || !param || !param[0]) {
-		return TJS_E_BADPARAMCOUNT;
-	}
-
-	ttstr monitorOutput = *param[0];
-	if (monitorOutput.IsEmpty()) {
-		if (result) {
-			*result = (tTVInteger)0;
-		}
-		return TJS_S_OK;
-	}
-
-	std::string utf8Output;
-	if (!Utf16ToUtf8(monitorOutput.c_str(), monitorOutput.GetLen(), utf8Output) ||
-	    utf8Output.empty()) {
-		if (result) {
-			*result = (tTVInteger)0;
-		}
-		return TJS_S_OK;
-	}
-
-	LogTagFile(utf8Output.c_str());
-
-	ContextPayload const payload = BuildContextPayload(utf8Output);
-	if (!payload.Empty()) {
-		NeuroSendContext(payload.message.c_str(), payload.silent);
-	}
-
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroGetPluginLog(tTJSVariant *result,
-                                                   tjs_int numparams,
-                                                   tTJSVariant **param,
-                                                   iTJSDispatch2 *objthis) {
-	std::size_t offset = 0;
-	std::size_t count = 100;
-	bool fromEnd = true;
-	if (numparams > 0 && param && param[0]) {
-		tTVInteger value = *param[0];
-		count = value > 0 ? static_cast<std::size_t>(value) : 0;
-	}
-	if (numparams > 1 && param && param[1]) {
-		fromEnd = static_cast<tTVInteger>(*param[1]) != 0;
-	}
-	if (numparams > 2 && param && param[2]) {
-		tTVInteger value = *param[2];
-		offset = value > 0 ? static_cast<std::size_t>(value) : 0;
-	}
-	if (result) {
-		std::wstring const log = GetPluginLogFile(offset, count, fromEnd);
-		*result = ttstr(log.c_str());
-	}
 	return TJS_S_OK;
 }
 
@@ -460,108 +281,6 @@ class tEnumMemberCallback : public tTJSDispatch {
 	}
 };
 
-static tjs_error TJS_INTF_METHOD
-NeuroGetCurrentContext(tTJSVariant *result,
-                       tjs_int numparams,
-                       tTJSVariant **param,
-                       iTJSDispatch2 *objthis) {
-	if (!IsTJSReady()) {
-		if (result)
-			*result = TJS_W("{\"error\":\"TJS not ready\"}");
-		return TJS_S_OK;
-	}
-
-	// Collect the current game context as JSON.
-	wchar_t const *tjsCode =
-	    L"(function(){"
-	    L"  try {"
-	    L"    var r = {};"
-	    L"    r.languageType = typeof kag !== 'undefined' ? kag.languageType : "
-	    L"-1;"
-	    L"    r.languageTag = typeof CurrentLanguageTag !== 'undefined' ? "
-	    L"CurrentLanguageTag : '';"
-	    L"    r.hooksActive = !!(global.__neuroHooksInstalled && "
-	    L"global.__neuroHooksEnabled);"
-	    L"    r.lastTag = global.__neuroLastTag || '';"
-	    L"    r.lastScene = global.__neuroLastScene || '';"
-	    L"    r.pendingSend = !!(global.__neuroPendingSend);"
-	    L"    global.__neuroPendingSend = false;"
-	    L"    if (typeof kag !== 'undefined' && kag.backlogWindow && "
-	    L"kag.backlogWindow._historyTextStore) {"
-	    L"      var store = kag.backlogWindow._historyTextStore;"
-	    L"      var data = store.data;"
-	    L"      var cnt = store.count;"
-	    L"      r.backlogCount = cnt;"
-	    L"      var entries = [];"
-	    L"      var start = cnt > 5 ? cnt - 5 : 0;"
-	    L"      for (var i = start; i < cnt; i++) {"
-	    L"        var e = data[i];"
-	    L"        "
-	    L"entries.push({disp:e.disp,text:e.text,voice:e.voice,name:e.name});"
-	    L"      }"
-	    L"      r.recentEntries = entries;"
-	    L"    }"
-	    L"    var ml = (typeof kag !== 'undefined' && kag.messageLayer) ? "
-	    L"kag.messageLayer : null;"
-	    L"    if (ml && ml.message) {"
-	    L"      r.currentText = ml.message;"
-	    L"      r.currentSpeaker = ml.name || '';"
-	    L"    } else if (typeof kag !== 'undefined' && kag.backlogWindow && "
-	    L"kag.backlogWindow._historyTextStore) {"
-	    L"      var store = kag.backlogWindow._historyTextStore;"
-	    L"      if (store.count > 0) {"
-	    L"        var last = store.data[store.count - 1];"
-	    L"        r.currentText = last.text;"
-	    L"        r.currentSpeaker = last.disp;"
-	    L"      }"
-	    L"    } else {"
-	    L"      r.currentText = '';"
-	    L"      r.currentSpeaker = '';"
-	    L"    }"
-	    L"    if (typeof kag !== 'undefined' && kag.backlogWindow && "
-	    L"kag.backlogWindow._historyTextStore) {"
-	    L"      var store = kag.backlogWindow._historyTextStore;"
-	    L"      if (store.count > 0) {"
-	    L"        var last = store.data[store.count - 1];"
-	    L"        r.currentVoice = last.voice;"
-	    L"        r.currentName = last.name;"
-	    L"        if (last.voice && last.name && typeof characterVoiceInfo !== "
-	    L"'undefined') {"
-	    L"          var cinfo = characterVoiceInfo[last.name];"
-	    L"          if (cinfo) r.voicePrefix = cinfo.file;"
-	    L"        }"
-	    L"      }"
-	    L"    }"
-	    L"    if (typeof characterVoiceInfo !== 'undefined') {"
-	    L"      var vm = {};"
-	    L"      var _cviKeys = Scripts.getObjectKeys(characterVoiceInfo);"
-	    L"      for (var _cviIdx = 0; _cviIdx < _cviKeys.count; _cviIdx++) {"
-	    L"        var n = _cviKeys[_cviIdx];"
-	    L"        var f = characterVoiceInfo[n].file;"
-	    L"        if (f) vm[f] = n;"
-	    L"      }"
-	    L"      r.voiceMap = vm;"
-	    L"    }"
-	    L"    r.currentScene = typeof kag !== 'undefined' ? kag.currentScene : "
-	    L"'';"
-	    L"    r.currentPage = typeof kag !== 'undefined' ? kag.currentPage : 0;"
-	    L"    return System.toJSONString(r);"
-	    L"  } catch(e) {"
-	    L"    return '{\"error\":\"' + (e && e.message ? e.message : 'unknown') "
-	    L"+ '\"}';"
-	    L"  }"
-	    L"})()";
-
-	tTJSVariant execResult;
-	TVPExecuteExpression(ttstr(tjsCode), &execResult);
-
-	if (result) {
-		*result = execResult;
-	}
-
-	return TJS_S_OK;
-}
-
 static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
                                                tjs_int numparams,
                                                tTJSVariant **param,
@@ -597,72 +316,11 @@ static tjs_error TJS_INTF_METHOD NeuroExecFile(tTJSVariant *result,
 		return TJS_S_OK;
 	}
 
-	bool silent = (numparams >= 2 && param[1]->Type() == tvtInteger &&
-	               (tjs_int)(*param[1]) != 0);
-
-	if (!silent) {
-		std::string code(buf.data());
-		if (code.size() > 500)
-			code.resize(500);
-		std::string utf8Filename;
-		if (!Utf16ToUtf8(filename.c_str(), filename.GetLen(), utf8Filename))
-			utf8Filename = "<invalid UTF-16 filename>";
-		std::string entry = "\n=== EXEC FILE: " + utf8Filename + " ===\n" + code +
-		                    "\n--- RESULT ---\n";
-		Log(entry.c_str());
-	}
-
 	tTJSVariant execResult;
 	TVPExecuteExpression(ttstr(wideCode.c_str()), &execResult);
 
-	if (!silent) {
-		ttstr resultString(execResult);
-		std::string utf8Result;
-		if (!Utf16ToUtf8(resultString.c_str(), resultString.GetLen(), utf8Result))
-			utf8Result = "<invalid UTF-16 result>";
-		std::string entry = utf8Result + "\n=== END ===\n";
-		Log(entry.c_str());
-	}
-
 	if (result)
 		*result = execResult;
-	return TJS_S_OK;
-}
-
-static tjs_error TJS_INTF_METHOD NeuroBuildVoiceMap(tTJSVariant *result,
-                                                    tjs_int numparams,
-                                                    tTJSVariant **param,
-                                                    iTJSDispatch2 *objthis) {
-	if (!IsTJSReady()) {
-		if (result)
-			*result = TJS_W("{\"error\":\"TJS not ready\"}");
-		return TJS_S_OK;
-	}
-
-	wchar_t const *tjsCode =
-	    L"(function(){"
-	    L"  try {"
-	    L"    if (typeof characterVoiceInfo === 'undefined') return '{}';"
-	    L"    var vm = {};"
-	    L"    var keys = Scripts.getObjectKeys(characterVoiceInfo);"
-	    L"    for (var i = 0; i < keys.count; i++) {"
-	    L"      var n = keys[i];"
-	    L"      var f = characterVoiceInfo[n].file;"
-	    L"      if (f) vm[f] = n;"
-	    L"    }"
-	    L"    return System.toJSONString(vm);"
-	    L"  } catch(e) {"
-	    L"    return '{}';"
-	    L"  }"
-	    L"})()";
-
-	tTJSVariant execResult;
-	TVPExecuteExpression(ttstr(tjsCode), &execResult);
-
-	if (result) {
-		*result = execResult;
-	}
-
 	return TJS_S_OK;
 }
 
@@ -753,7 +411,6 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 	}
 
 	if (!IsTJSReady()) {
-		Log(">>> NeuroExec: TJS not ready!\n");
 		if (result) {
 			*result = TJS_W("Error: TJS not initialized yet");
 		}
@@ -762,7 +419,6 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 
 	if (param[0]->Type() == tvtString) {
 		ttstr code = *param[0];
-		Log(">>> NeuroExec: executing TJS code\n");
 
 		tTJSVariant execResult;
 		TVPExecuteExpression(code, &execResult);
@@ -783,71 +439,20 @@ NCB_REGISTER_FUNCTION(neuroBeginExitShutdown, NeuroBeginExitShutdown);
 NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
                       NeuroStressBlockNextSyncCall);
 NCB_REGISTER_FUNCTION(neuroStressHoldSyncCalls, NeuroStressHoldSyncCalls);
-NCB_REGISTER_FUNCTION(neuroConnect, NeuroConnectClient);
-NCB_REGISTER_FUNCTION(neuroDisconnect, NeuroDisconnectClient);
-NCB_REGISTER_FUNCTION(neuroIsConnected, NeuroClientConnected);
-NCB_REGISTER_FUNCTION(neuroIsReady, NeuroClientReady);
 NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
 NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);
 NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
 NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
 NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
-NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
-NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
-NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
-// Runs on the game's main thread: this is reached from TJS. The game has its
-// own switch for putting the pointer on a dialog's default button -- the
-// options screen calls it automatic cursor placement -- so it is set rather
-// than worked around. "no" parks it; defaultCursorMove is what the dialog uses
-// otherwise.
-static void ApplyPointerFocusToGame(bool enabled) {
-	try {
-		tTJSVariant unused;
-		TVPExecuteExpression(
-		    enabled ? TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
-		                    "MyYesNoDialog.defaultCursorMove); return 1; }"
-		                    " catch (e) { return 0; } })()")
-		            : TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
-		                    "'no'); return 1; } catch (e) { return 0; } })()"),
-		    &unused);
-	} catch (...) {  // NOLINT(bugprone-empty-catch)
-		// The dialog class may not be loaded yet; the exit-hook install applies
-		// it again once it is.
-	}
-}
-
-static tjs_error TJS_INTF_METHOD NeuroSetPointerFocus(tTJSVariant *result,
-                                                      tjs_int numparams,
-                                                      tTJSVariant **param,
-                                                      iTJSDispatch2 *objthis) {
-	// One argument, on or off. Reading it back with no argument is how a test
-	// checks the current setting.
-	if (numparams >= 1 && param && param[0]) {
-		bool const enabled = (tTVInteger)*param[0] != 0;
-		SetPointerFocusEnabled(enabled);
-		ApplyPointerFocusToGame(enabled);
-	}
-	if (result) {
-		*result = PointerFocusEnabled() ? (tTVInteger)1 : (tTVInteger)0;
-	}
-	return TJS_S_OK;
-}
-
-NCB_REGISTER_FUNCTION(neuroSetPointerFocus, NeuroSetPointerFocus);
-NCB_REGISTER_FUNCTION(neuroSendContextFromTJS, NeuroSendContextFromTJS);
 NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
-NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
-NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);
 NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
 
 static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
                                                       tjs_int numparams,
                                                       tTJSVariant **param,
                                                       iTJSDispatch2 *objthis) {
-	// Periodic upkeep: refresh action registration and retry exit hook.
-	// Called from continuous hook when safe (outside tag processing).
-	RefreshPrototypeActionState();
+	// Called from the continuous hook when safe, outside tag processing.
 	RetryInstallExitHookIfReady();
 	if (result) {
 		*result = (tTVInteger)1;
@@ -867,16 +472,9 @@ void RetryInstallExitHookIfReady() {
 	    L"(function(){ return typeof MyYesNoDialogLayer == 'Object' && "
 	    L"typeof MyYesNoDialog != 'undefined'; })()",
 	    &ready, 5000, TJSExecMode::Expression);
-	{
-		char msg[128];
-		_snprintf_s(msg, sizeof(msg), "[ExitHook] retry executed=%d ready=%s\n",
-		            executed ? 1 : 0, ready.c_str());
-		Log(msg);
-	}
 	// The probe answers with the engine's own rendering of true, which is "1".
 	if (!executed || ready != "1")
 		return;
-	Log("[ExitHook] installing hook\n");
 	// Use the synchronous form and confirm the assignment actually landed
 	// before flipping g_ExitHookInstalled. Sync execution waits for the game
 	// thread to complete the call and returns the result, ensuring the hook
@@ -895,14 +493,9 @@ void RetryInstallExitHookIfReady() {
 	    L"})()",
 	    &installed, 5000, TJSExecMode::Expression);
 	if (!installExecuted || installed != "1") {
-		Log("[ExitHook] installation failed or unconfirmed, will retry\n");
 		return;
 	}
-	Log("[ExitHook] hook installed and confirmed\n");
 	g_ExitHookInstalled = true;
-	// The dialog class exists by now, so the pointer setting can be put where
-	// it belongs for this launch.
-	ApplyPointerFocusToGame(PointerFocusEnabled());
 }
 
 void RegisterTJSBindings() {

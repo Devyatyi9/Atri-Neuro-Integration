@@ -25,7 +25,7 @@ bool IsMainThread();
 //   Expression - TVPExecuteExpression; `1 + 1`, `typeof kag`, a single call.
 //   Script     - TVPExecuteScript; `if (...) { ... }`, `var x = 1; ...`.
 //   Auto       - pick by scanning for a top-level statement separator. Intended
-//                for interactive input (TCP console) where the caller cannot
+//                for interactive input (the console) where the caller cannot
 //                know. Prefer an explicit mode in code: the scan cannot tell a
 //                statement from an expression when the whole snippet is one
 //                `if (...) { ... }` block, whose separators all sit inside the
