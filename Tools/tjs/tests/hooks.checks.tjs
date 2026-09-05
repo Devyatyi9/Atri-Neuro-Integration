@@ -43,8 +43,10 @@ var marked = %[ language: [], markup: true ];
 var rendered = kag.getLangInfo(marked, "text");
 assert(rendered == "%n3;xx/xx/xx \nI woke %i1up%id. %f源ノ角ゴシックB;♪%fuser;",
 	"the call-through changed what the caller sees, got " + rendered);
-assert(global.__cm_langText == "xx/xx/xx \\nI woke up. ♪",
-	"the directives were not removed, got [" + global.__cm_langText + "]");
+// The font switch goes, the numbered style goes, and the emphasis becomes
+// Markdown: it marks the stressed word, and the API asks for Markdown.
+assert(global.__cm_langText == "xx/xx/xx \\nI woke *up*. ♪",
+	"the directives were not handled, got [" + global.__cm_langText + "]");
 
 // The break is kept, because the diary inserts are written in paragraphs and
 // that is part of what the player reads -- but escaped, since one event is one

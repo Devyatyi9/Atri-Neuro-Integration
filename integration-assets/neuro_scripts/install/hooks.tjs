@@ -46,7 +46,10 @@
             var shown = "" + r;
             shown = shown.replace(/%f[^;]*;/g, "");
             shown = shown.replace(/%n[0-9];/g, "");
-            shown = shown.replace(/%i[1d]/g, "");
+            // Emphasis is the one directive that carries meaning rather than
+            // presentation -- it marks the stressed word in a line -- and the
+            // API asks for Markdown, so it is translated instead of dropped.
+            shown = shown.replace(/%i[1d]/g, "*");
             // Escaped, not carried through raw: events reach the plugin as
             // lines with tab-separated fields, so a real break inside one
             // would split the record in half. The C++ side turns it back.
