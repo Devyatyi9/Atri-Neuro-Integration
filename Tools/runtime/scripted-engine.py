@@ -48,6 +48,22 @@ CHOICE_HEADER = "A choice appeared:"
 CHOICE_OPTION = re.compile(r"(\d+)\)\s*")
 CHOICE_REFUSED = "Choice is unavailable"
 
+# The route's answer for an ordinary turn: nothing of its own to do, hand over
+# to the mode. Named so it can be told apart from a route that cannot proceed.
+ROUTE_IDLE = "route: nothing to do this turn"
+ROUTE_WAITING = "route: waiting for the choice to be taken"
+
+# Neither of the two above is a problem: one is every turn between choices, the
+# other is the guard that stops a choice being answered twice while the game
+# catches up. Only what is left gets reported.
+ROUTE_ROUTINE = (ROUTE_IDLE, ROUTE_WAITING)
+
+# How often the observed pace is reported. The pace is set by the client's own
+# poll interval, which lives in its settings and has silently gone back to its
+# default once; from here that is invisible except as turns arriving slower, so
+# it is worth saying out loud rather than noticing an hour later.
+PACE_REPORT_SECONDS = 60
+
 
 def stamp():
     # The same shape the plugin writes into the tag log, so a decision here can
@@ -251,6 +267,8 @@ class Engine:
         self.pending_list = None
         self.auto_armed = False
         self.blocked = None
+        self.pace_since = time.monotonic()
+        self.pace_turns = 0
 
     def choose_for_route(self, actions, schema, messages):
         """The route's own move, or (None, why) to fall through to the mode."""
@@ -277,7 +295,7 @@ class Engine:
                     if self.last_sent is not None:
                         self.rejected.add(self.last_sent)
                 else:
-                    return None, "route: waiting for the choice to be taken"
+                    return None, ROUTE_WAITING
 
             number, why = self.route_choice(options)
             if number is None:
@@ -303,7 +321,7 @@ class Engine:
             return (command_for("exit_game", actions),
                     "route: finished, closing the game")
 
-        return None, "route: nothing to do this turn"
+        return None, ROUTE_IDLE
 
     def route_choice(self, options):
         """The index to send for the decision in hand, if it can be resolved."""
@@ -348,9 +366,20 @@ class Engine:
         except OSError as error:
             say(f"could not turn auto mode on: {error}")
 
+    def report_pace(self):
+        self.pace_turns += 1
+        elapsed = time.monotonic() - self.pace_since
+        if elapsed < PACE_REPORT_SECONDS:
+            return
+        say(f"pace: {self.pace_turns} turns in {elapsed:.0f}s"
+            f" ({elapsed * 1000 / self.pace_turns:.0f} ms per turn)")
+        self.pace_since = time.monotonic()
+        self.pace_turns = 0
+
     def choose(self, schema, messages=()):
         """The command for this prompt, as the object Gary expects back."""
         self.turns += 1
+        self.report_pace()
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
 
@@ -361,10 +390,14 @@ class Engine:
                 return command, why
             # Said once rather than every turn: when the route cannot resolve a
             # decision it stays stuck on the same one, and the reason repeated
-            # five times a second buries everything else in the log.
+            # five times a second buries everything else in the log. Having
+            # nothing to do is not being stuck -- it is every ordinary turn
+            # between two choices, and calling it a stall trains the reader to
+            # ignore the line that matters.
             if why != self.blocked:
                 self.blocked = why
-                say(f"route stalled: {why}")
+                if why not in ROUTE_ROUTINE:
+                    say(f"route stalled: {why}")
 
         if self.options.mode == "auto" and allows_wait(schema):
             return "wait", "auto mode drives the scene"
