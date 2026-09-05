@@ -429,6 +429,12 @@ class Engine:
 
 class Handler(BaseHTTPRequestHandler):
     engine = None
+    # The client asks once per turn and the answer is a few hundred bytes, so
+    # the cost of a turn is nearly all connection setup. HTTP/1.1 keeps the
+    # connection open between turns, and turning off Nagle stops the kernel
+    # holding a small response back waiting for more to send.
+    protocol_version = "HTTP/1.1"
+    disable_nagle_algorithm = True
 
     def log_message(self, *_args):
         # The default logger writes to stderr per request; decisions are logged
