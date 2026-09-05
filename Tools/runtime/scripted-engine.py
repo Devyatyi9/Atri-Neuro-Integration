@@ -267,13 +267,20 @@ class Engine:
         self.options = options
         self.route = route or {}
         self.turns = 0
+        # How the run begins. A route file may say it, and the command line
+        # overrides it -- which is what lets the true ending, a run with no
+        # decisions at all, need no file of its own.
+        self.start_action = (options.start
+                             or self.route.get("start")
+                             or ("start_new_game" if self.route.get("start_new_game") else None))
+        self.finish = options.exit_when_done or bool(self.route.get("exit_when_done"))
         self.decisions = list(self.route.get("choices", []))
         self.taken = 0
         # Indexes already refused for the decision in hand. b402 shows the same
         # text twice, enabled or disabled depending on a flag, so the first
         # match is not always the one the game will accept.
         self.rejected = set()
-        self.started = not self.route.get("start_new_game", False)
+        self.started = self.start_action is None
         self.last_sent = None
         self.pending = False
         self.pending_list = None
@@ -286,10 +293,10 @@ class Engine:
 
     def choose_for_route(self, actions, schema, messages):
         """The route's own move, or (None, why) to fall through to the mode."""
-        if not self.started and "start_new_game" in actions:
+        if not self.started and self.start_action in actions:
             self.started = True
-            return (command_for("start_new_game", actions),
-                    "route: starting a new game")
+            return (command_for(self.start_action, actions),
+                    f"route: starting with {self.start_action}")
 
         if "select_choice" in actions:
             options = latest_choice(messages)
@@ -330,7 +337,7 @@ class Engine:
         # Back at the title with every decision made: the route has run out.
         # Waiting for the title is what makes this work without knowing where
         # a route ends -- the game says so by offering a new game again.
-        if route_done and self.route.get("exit_when_done"):
+        if route_done and self.finish:
             # Quitting asks for confirmation, and the schema for answering it
             # takes a boolean. Filled from the schema alone that boolean comes
             # out false, which cancels the dialog -- and the run then loops:
@@ -443,7 +450,7 @@ class Engine:
         if self.options.action in actions:
             self.note_refusals(messages)
 
-        if self.decisions or self.route:
+        if self.decisions or self.route or self.start_action or self.finish:
             command, why = self.choose_for_route(actions, schema, messages)
             if command is not None:
                 self.blocked = None
@@ -583,6 +590,11 @@ def main():
                         help="the plugin's TCP port, used by --mode auto and --fast")
     parser.add_argument("--route",
                         help="a JSON route file: the choices to make, in order")
+    parser.add_argument("--start", choices=("start_new_game", "start_true_end"),
+                        help="what to press at the title; overrides the route file. "
+                             "The true ending takes no choices, so it needs no route")
+    parser.add_argument("--exit-when-done", action="store_true",
+                        help="close the game once the run is over")
     parser.add_argument("--fast", action="store_true",
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
