@@ -31,6 +31,7 @@ run is bounded by the scenario rather than by generation.
 
 import argparse
 import json
+import re
 import socket
 import struct
 import sys
@@ -39,6 +40,13 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 REPO_TJS_FAST = "Tools/tjs/fast-playback-on.tjs"
+
+# "A choice appeared: 1) Let Atri go. 2) Take care of Atri." -- built by
+# DescribeChoiceShown on the plugin side, and the numbering is what
+# select_choice takes, so the two cannot drift apart.
+CHOICE_HEADER = "A choice appeared:"
+CHOICE_OPTION = re.compile(r"(\d+)\)\s*")
+CHOICE_REFUSED = "Choice is unavailable"
 
 
 def stamp():
@@ -134,38 +142,254 @@ def fill(schema):
     return ""
 
 
-class Engine:
-    def __init__(self, options):
-        self.options = options
-        self.turns = 0
+def command_for(name, actions, data=None):
+    """The command object for an action, with the arguments its schema asks for.
 
-    def choose(self, schema):
+    Built in one place because forgetting them is invisible from here: Gary
+    answers a command with no `data` for an action that declares a schema with
+    "Model omitted data", drops the turn, and the run simply carries on without
+    the move ever reaching the game.
+    """
+    command = {"action": name}
+    schema = actions.get(name)
+    if data is not None:
+        command["data"] = data
+    elif schema is not None:
+        command["data"] = fill(schema)
+    return command
+
+
+# Actions that change which run this is, or end it. A driver that has to answer
+# a forced turn must never reach for one of these by accident: picking the first
+# name alphabetically once resumed a save instead of starting a new game, and
+# the whole run afterwards looked healthy while following someone else's story.
+NEVER_UNASKED = ("continue_game", "exit_game", "start_true_end", "start_new_game",
+                 "load_save", "quick_load", "return_to_title")
+
+# Preferred order for a forced turn, most harmless first: reading a line changes
+# nothing, advancing changes only position.
+FORCED_ORDER = ("read_current_line", "advance_text", "close_quick_menu",
+                "open_quick_menu")
+
+
+def context_texts(messages):
+    """Every context line the prompt carries, newest last.
+
+    Gary does not put the game's messages into the prompt as plain text: each
+    one is a JSON object on its own line inside a user turn. Searching the whole
+    turn for a phrase therefore finds it, and then reads straight past the end
+    of the message into the next object -- which is how a choice option came out
+    as `Take care of Atri."}` and matched nothing.
+    """
+    texts = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, str):
+            continue
+        for line in content.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("{"):
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    texts.append(line)
+                    continue
+                text = entry.get("text")
+                if isinstance(text, str):
+                    texts.append(text)
+                continue
+            texts.append(line)
+    return texts
+
+
+def latest_choice(messages):
+    """The numbered options of the newest choice in the context, or None.
+
+    Read out of the context rather than tracked here, because the numbering the
+    game accepts is the numbering it printed: a choice list built from scenario
+    data instead can disagree with what is on screen.
+    """
+    for text in reversed(context_texts(messages)):
+        if CHOICE_HEADER not in text:
+            continue
+        listing = text.split(CHOICE_HEADER, 1)[1]
+        marks = list(CHOICE_OPTION.finditer(listing))
+        options = {}
+        for position, mark in enumerate(marks):
+            end = marks[position + 1].start() if position + 1 < len(marks) else len(listing)
+            options[int(mark.group(1))] = listing[mark.end():end].strip()
+        return options or None
+    return None
+
+
+def refused_since_choice(messages):
+    """Whether the last thing to happen was the game turning a choice down."""
+    for text in reversed(context_texts(messages)):
+        if CHOICE_REFUSED in text:
+            return True
+        if CHOICE_HEADER in text:
+            return False
+    return False
+
+
+class Engine:
+    def __init__(self, options, route=None):
+        self.options = options
+        self.route = route or {}
+        self.turns = 0
+        self.decisions = list(self.route.get("choices", []))
+        self.taken = 0
+        # Indexes already refused for the decision in hand. b402 shows the same
+        # text twice, enabled or disabled depending on a flag, so the first
+        # match is not always the one the game will accept.
+        self.rejected = set()
+        self.started = not self.route.get("start_new_game", False)
+        self.last_sent = None
+        self.pending = False
+        self.pending_list = None
+        self.auto_armed = False
+        self.blocked = None
+
+    def choose_for_route(self, actions, schema, messages):
+        """The route's own move, or (None, why) to fall through to the mode."""
+        if not self.started and "start_new_game" in actions:
+            self.started = True
+            return (command_for("start_new_game", actions),
+                    "route: starting a new game")
+
+        if "select_choice" in actions:
+            options = latest_choice(messages)
+            if not options:
+                return None, "route: the context does not carry the choice list"
+            signature = tuple(sorted(options.items()))
+
+            if self.pending and signature != self.pending_list:
+                # A different list is up, so the one being worked on is behind
+                # us. Tracking the list itself rather than the game's "Chose:"
+                # line is what tells the two apart: the answered list can linger
+                # for a turn while the registration catches up, and a decision
+                # counted then would be spent on a question already answered.
+                self.settle_choice()
+            elif self.pending:
+                if refused_since_choice(messages):
+                    if self.last_sent is not None:
+                        self.rejected.add(self.last_sent)
+                else:
+                    return None, "route: waiting for the choice to be taken"
+
+            number, why = self.route_choice(options)
+            if number is None:
+                return None, why
+            self.last_sent = number
+            self.pending = True
+            self.pending_list = signature
+            return (command_for("select_choice", actions, {"index": number}), why)
+
+        # The list is gone, so the choice this was working on went through. It
+        # is counted here rather than at the moment of sending, because sending
+        # is not the same as being accepted -- a refused index has to be tried
+        # again against the same decision.
+        if self.pending:
+            self.settle_choice()
+
+        route_done = self.taken >= len(self.decisions)
+        # Back at the title with every decision made: the route has run out.
+        # Waiting for the title is what makes this work without knowing where
+        # a route ends -- the game says so by offering a new game again.
+        if (route_done and self.route.get("exit_when_done")
+                and "start_new_game" in actions and "exit_game" in actions):
+            return (command_for("exit_game", actions),
+                    "route: finished, closing the game")
+
+        return None, "route: nothing to do this turn"
+
+    def route_choice(self, options):
+        """The index to send for the decision in hand, if it can be resolved."""
+        if self.taken >= len(self.decisions):
+            return None, "the route has no decisions left"
+        decision = self.decisions[self.taken]
+
+        wanted = decision.get("text", "").strip().casefold()
+        matches = [number for number, text in sorted(options.items())
+                   if text.strip().casefold() == wanted and number not in self.rejected]
+        if matches:
+            return matches[0], f"route: {decision.get('text')}"
+
+        fallback = decision.get("index")
+        if fallback in options and fallback not in self.rejected:
+            return fallback, f"route: no text match, falling back to index {fallback}"
+        return None, f"route: nothing left to try for {decision.get('text')!r}"
+
+    def settle_choice(self):
+        """Counts the decision in hand as made and moves to the next one."""
+        self.pending = False
+        self.pending_list = None
+        self.taken += 1
+        self.rejected.clear()
+        self.last_sent = None
+
+    def arm_auto_mode(self, actions):
+        """Turns auto mode on once the story is actually running.
+
+        It cannot be armed at startup with a route: the game is on the title
+        then, and auto mode is a property of a running scenario. The story
+        announces itself by offering the advance action.
+        """
+        if self.auto_armed or self.options.mode != "auto":
+            return
+        if "advance_text" not in actions:
+            return
+        self.auto_armed = True
+        try:
+            say("auto mode: " + send_tjs(self.options.tjs_port,
+                                         "kag.enterAutoMode(), kag.autoMode").strip())
+        except OSError as error:
+            say(f"could not turn auto mode on: {error}")
+
+    def choose(self, schema, messages=()):
         """The command for this prompt, as the object Gary expects back."""
         self.turns += 1
         actions = offered_actions(schema)
+        self.arm_auto_mode(actions)
+
+        if self.decisions or self.route:
+            command, why = self.choose_for_route(actions, schema, messages)
+            if command is not None:
+                self.blocked = None
+                return command, why
+            # Said once rather than every turn: when the route cannot resolve a
+            # decision it stays stuck on the same one, and the reason repeated
+            # five times a second buries everything else in the log.
+            if why != self.blocked:
+                self.blocked = why
+                say(f"route stalled: {why}")
 
         if self.options.mode == "auto" and allows_wait(schema):
             return "wait", "auto mode drives the scene"
 
         preferred = self.options.action
         if preferred in actions:
-            command = {"action": preferred}
-            data_schema = actions[preferred]
-            if data_schema is not None:
-                command["data"] = fill(data_schema)
-            return command, "preferred action"
+            return command_for(preferred, actions), "preferred action"
 
         if allows_wait(schema):
             return "wait", f"{preferred} not offered"
 
         # Forced turns do not allow waiting, and refusing one leaves the game
-        # holding a force it will keep retrying. Any action beats a stall.
+        # holding a force it keeps retrying. Something has to be sent -- but not
+        # just anything: the choice is ordered from harmless to run-changing, and
+        # the run-changing ones are only reached when nothing else is on offer.
+        for name in FORCED_ORDER:
+            if name in actions:
+                return command_for(name, actions), f"forced, falling back to {name}"
+        neutral = sorted(name for name in actions if name not in NEVER_UNASKED)
+        if neutral:
+            return command_for(neutral[0], actions), f"forced, nothing preferred offered"
         if actions:
             name = sorted(actions)[0]
-            command = {"action": name}
-            if actions[name] is not None:
-                command["data"] = fill(actions[name])
-            return command, "forced, nothing preferred offered"
+            return (command_for(name, actions),
+                    f"forced with only run-changing actions offered, sending {name}")
 
         return "wait", "no actions offered"
 
@@ -212,7 +436,7 @@ class Handler(BaseHTTPRequestHandler):
             .get("json_schema", {})
             .get("schema", {})
         )
-        command, why = Handler.engine.choose(schema)
+        command, why = Handler.engine.choose(schema, request.get("messages", []))
         described = command if isinstance(command, str) else command.get("action")
         say(f"turn {Handler.engine.turns}: {described} ({why})")
 
@@ -239,7 +463,7 @@ def prepare_game(options):
         if options.fast:
             with open(REPO_TJS_FAST, encoding="utf-8") as handle:
                 say("fast playback: " + send_tjs(options.tjs_port, handle.read()).strip())
-        if options.mode == "auto":
+        if options.mode == "auto" and not options.route:
             say("auto mode: " + send_tjs(options.tjs_port, "kag.enterAutoMode(), kag.autoMode").strip())
     except OSError as error:
         say(f"could not reach the game on port {options.tjs_port}: {error}")
@@ -258,12 +482,21 @@ def main():
                         help="the model id to report; Gary only needs it to be set")
     parser.add_argument("--tjs-port", type=int, default=18701,
                         help="the plugin's TCP port, used by --mode auto and --fast")
+    parser.add_argument("--route",
+                        help="a JSON route file: the choices to make, in order")
     parser.add_argument("--fast", action="store_true",
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
     options = parser.parse_args()
 
-    Handler.engine = Engine(options)
+    route = None
+    if options.route:
+        with open(options.route, encoding="utf-8") as handle:
+            route = json.load(handle)
+        say(f"route {route.get('name', options.route)}: "
+            f"{len(route.get('choices', []))} choice(s)")
+
+    Handler.engine = Engine(options, route)
     prepare_game(options)
 
     server = HTTPServer(("127.0.0.1", options.port), Handler)

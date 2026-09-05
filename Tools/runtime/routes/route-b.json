@@ -1,0 +1,22 @@
+{
+  "name": "route-b",
+  "start_new_game": true,
+  "exit_when_done": true,
+  "choices": [
+    {
+      "scene": "b102",
+      "text": "Let Atri go.",
+      "index": 1
+    },
+    {
+      "scene": "b207",
+      "text": "Stare into her eyes",
+      "index": 1
+    },
+    {
+      "scene": "b402",
+      "text": "Leave the shoe.",
+      "index": 2
+    }
+  ]
+}
