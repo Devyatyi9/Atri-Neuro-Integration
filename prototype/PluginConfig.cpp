@@ -168,6 +168,21 @@ std::string GetInstanceBanner() {
 	wide += L" config=";
 	wide += GetPluginConfigSource().empty() ? L"(defaults)"
 	                                        : GetPluginConfigSource().c_str();
+	// Resolved, not as configured: an empty LogDirectory means the process's
+	// current directory, and "logs=" followed by nothing answers no question.
+	// Whoever reads this line is holding one instance's log while looking for
+	// another's, so the answer has to be a path they can open.
+	wide += L" logs=";
+	if (GetPluginConfig().LogDirectory.empty()) {
+		wchar_t current[MAX_PATH] = {};
+		if (GetCurrentDirectoryW(MAX_PATH, current) > 0) {
+			wide += current;
+		} else {
+			wide += L"(current directory)";
+		}
+	} else {
+		wide += GetPluginConfig().LogDirectory;
+	}
 	wide += L"\n";
 
 	// Converted here rather than through UtfConversion, which would drag that

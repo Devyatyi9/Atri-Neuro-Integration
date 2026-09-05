@@ -42,5 +42,6 @@ std::wstring ResolveLogPath(wchar_t const *name);
 // and the second finds the first's log already there, fails to move it aside
 // because it is open, and appends into it -- silently. This line is what makes
 // that readable afterwards, and it is why the first thing in a log is which
-// process, which exe and which config produced it.
+// process, which exe and which config produced it, and which directory that
+// config sent the logs to.
 std::string GetInstanceBanner();
