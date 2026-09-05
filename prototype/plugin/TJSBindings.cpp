@@ -190,24 +190,6 @@ static tjs_error TJS_INTF_METHOD NeuroEcho(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-static tjs_error TJS_INTF_METHOD NeuroSendData(tTJSVariant *result,
-                                               tjs_int numparams,
-                                               tTJSVariant **param,
-                                               iTJSDispatch2 *objthis) {
-	Log(">>> NeuroSendData called with ");
-
-	char logMsg[128];
-	sprintf_s(logMsg, sizeof(logMsg), "%d parameters\n", numparams);
-	Log(logMsg);
-
-	// TODO: Integrate with libneurosdk.
-	if (result) {
-		*result = (tTVInteger)1;
-	}
-
-	return TJS_S_OK;
-}
-
 static tjs_error TJS_INTF_METHOD NeuroShowConsole(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
@@ -806,7 +788,6 @@ NCB_REGISTER_FUNCTION(neuroDisconnect, NeuroDisconnectClient);
 NCB_REGISTER_FUNCTION(neuroIsConnected, NeuroClientConnected);
 NCB_REGISTER_FUNCTION(neuroIsReady, NeuroClientReady);
 NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
-NCB_REGISTER_FUNCTION(neuroSendData, NeuroSendData);
 NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);
 NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
 NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
