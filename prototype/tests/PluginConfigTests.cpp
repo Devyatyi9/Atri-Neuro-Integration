@@ -21,6 +21,12 @@ void ExpectLogDir(wchar_t const *text, wchar_t const *expected) {
 	ReportCheck(config.LogDirectory == expected, __FILE__, __LINE__, "log_dir");
 }
 
+void ExpectTimestamps(wchar_t const *text, bool expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.LogTimestamps == expected, __FILE__, __LINE__,
+	            "log_timestamps");
+}
+
 }  // namespace
 
 void RunPluginConfigTests() {
@@ -61,4 +67,19 @@ void RunPluginConfigTests() {
 
 	// Last one wins, so an override can be appended to a shared file.
 	ExpectPort(L"tcp_port = 18701\r\ntcp_port = 18704", 18704);
+
+	// Timestamps are off unless asked for: the log's shape is what every tool
+	// reading it so far expects.
+	ExpectTimestamps(L"", false);
+	ExpectTimestamps(L"log_timestamps = on", true);
+	ExpectTimestamps(L"log_timestamps = true", true);
+	ExpectTimestamps(L"log_timestamps = yes", true);
+	ExpectTimestamps(L"log_timestamps = 1", true);
+	ExpectTimestamps(L"log_timestamps = off", false);
+	ExpectTimestamps(L"log_timestamps = 0", false);
+	// A value nobody can read as a switch leaves the setting alone rather than
+	// being taken for "on": a run silently logged in the other format is worse
+	// than one that ignored the line.
+	ExpectTimestamps(L"log_timestamps = maybe", false);
+	ExpectTimestamps(L"log_timestamps = on\r\nlog_timestamps = maybe", true);
 }

@@ -38,3 +38,18 @@ tcp_port = 18700
 # config=..." line, which is what makes such a mixed file readable afterwards;
 # it is not a guard, so give each instance its own directory.
 log_dir =
+
+# Stamp every line of neuro_tag_log.txt with the local time, offset included:
+#   2026-09-05T17:12:33.412+03:00 [bgm] BGM09
+# Off by default. The log is read on its own far more often than it is joined
+# against anything, and the stamp is wider than most of the lines it prefixes.
+#
+# Turn it on to reconstruct a run: what the game reported, what the client sent
+# and what came back are three separate records, and a shared clock is what puts
+# them in one order. Every line of a single poll carries the same stamp -- they
+# were observed together, and spreading them apart would invent an order.
+#
+# on/true/yes/1 and off/false/no/0 are all understood; anything else leaves the
+# setting alone, because a run silently written in the other format is worse
+# than one that ignored the line.
+log_timestamps = off

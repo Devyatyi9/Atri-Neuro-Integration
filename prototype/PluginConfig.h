@@ -19,6 +19,13 @@ struct PluginConfig {
 	// Where the logs are written. Empty means the process's current directory,
 	// which is what every earlier version did.
 	std::wstring LogDirectory;
+	// Stamp every line of the tag log with the wall clock. Off by default: the
+	// log is read far more often than it is joined against anything, and the
+	// stamps double the width of a line that is otherwise a field and a value.
+	// Turn it on to line the log up against another process's record of the
+	// same run -- what the game reported and what went over the wire are two
+	// separate stories, and only a shared clock tells which came first.
+	bool LogTimestamps;
 };
 
 PluginConfig const &GetPluginConfig();

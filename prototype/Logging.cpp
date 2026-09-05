@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <cstdio>
+#include <cstring>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -25,6 +26,54 @@ ULONGLONG g_LastTagLogFlush = 0;
 constexpr ULONGLONG kLogFlushIntervalMs = 200;
 std::deque<std::string> g_LogLines;
 std::size_t g_LogCharacters = 0;
+
+// Local time with the offset spelled out, so the stamp is both readable at a
+// glance and unambiguous when a tool lines this log up against a record kept by
+// another process. Milliseconds matter: the monitor polls five times a second.
+std::string FormatTimestamp() {
+	SYSTEMTIME local = {};
+	GetLocalTime(&local);
+
+	TIME_ZONE_INFORMATION zone = {};
+	DWORD const kind = GetTimeZoneInformation(&zone);
+	LONG bias = zone.Bias;
+	if (kind == TIME_ZONE_ID_STANDARD) {
+		bias += zone.StandardBias;
+	} else if (kind == TIME_ZONE_ID_DAYLIGHT) {
+		bias += zone.DaylightBias;
+	}
+	// Windows reports the bias as minutes to ADD to local time to reach UTC,
+	// which is the opposite sign from the one an ISO offset carries.
+	LONG const offset = -bias;
+	char const sign = offset < 0 ? '-' : '+';
+	LONG const absolute = offset < 0 ? -offset : offset;
+
+	char buffer[64] = {};
+	_snprintf_s(buffer, _countof(buffer), _TRUNCATE,
+	            "%04u-%02u-%02uT%02u:%02u:%02u.%03u%c%02ld:%02ld", local.wYear,
+	            local.wMonth, local.wDay, local.wHour, local.wMinute,
+	            local.wSecond, local.wMilliseconds, sign, absolute / 60,
+	            absolute % 60);
+	return buffer;
+}
+
+// Writes `text` with every line prefixed by one stamp. All the lines of a call
+// share it on purpose: they come from a single poll, and pretending they were
+// observed at different moments would invent an order the game never had.
+void WriteStamped(FILE *file, char const *text) {
+	std::string const stamp = FormatTimestamp();
+	char const *line = text;
+	while (*line) {
+		char const *end = strchr(line, '\n');
+		if (!end) {
+			fprintf(file, "%s %s", stamp.c_str(), line);
+			return;
+		}
+		fprintf(file, "%s %.*s\n", stamp.c_str(),
+		        static_cast<int>(end - line), line);
+		line = end + 1;
+	}
+}
 }  // namespace
 
 void ArchiveExistingLog(wchar_t const *path) {
@@ -211,7 +260,11 @@ void LogTagFile(char const *text) {
 		std::string const banner = GetInstanceBanner();
 		fprintf(g_TagLogFile, "%s", banner.c_str());
 	}
-	fprintf(g_TagLogFile, "%s", text);
+	if (GetPluginConfig().LogTimestamps) {
+		WriteStamped(g_TagLogFile, text);
+	} else {
+		fprintf(g_TagLogFile, "%s", text);
+	}
 	ULONGLONG const now = GetTickCount64();
 	if (now - g_LastTagLogFlush >= kLogFlushIntervalMs) {
 		fflush(g_TagLogFile);

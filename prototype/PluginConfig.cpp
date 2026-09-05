@@ -83,6 +83,17 @@ void ApplySetting(PluginConfig &config,
 		config.LogDirectory = value;
 		return;
 	}
+	if (key == L"log_timestamps") {
+		// Every spelling a person reasonably writes for a switch. Anything else
+		// leaves the default rather than guessing, the same as an unusable port.
+		if (value == L"on" || value == L"true" || value == L"yes" || value == L"1") {
+			config.LogTimestamps = true;
+		} else if (value == L"off" || value == L"false" || value == L"no" ||
+		           value == L"0") {
+			config.LogTimestamps = false;
+		}
+		return;
+	}
 	// Unknown keys are ignored on purpose: a config written for a later version
 	// should not stop this one from starting.
 }
@@ -121,6 +132,7 @@ PluginConfig LoadConfig() {
 PluginConfig ParsePluginConfig(std::wstring const &text) {
 	PluginConfig config;
 	config.TcpPort = NEURO_TCP_PORT;
+	config.LogTimestamps = false;
 
 	std::size_t start = 0;
 	while (start <= text.size()) {
