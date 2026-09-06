@@ -90,6 +90,10 @@ REFUSALS_BEFORE_ASKING = 3
 # enough to show a slope, rare enough to stay out of the way of reading the log.
 MEMORY_EVERY_TURNS = 500
 
+# How often to check the game is still there. Cheap, but not free, and a run
+# that ended does not need noticing within the same second.
+GAME_CHECK_EVERY_TURNS = 50
+
 # The route's answer for an ordinary turn: nothing of its own to do, hand over
 # to the mode. Named so it can be told apart from a route that cannot proceed.
 ROUTE_IDLE = "route: nothing to do this turn"
@@ -152,6 +156,21 @@ class MemoryCounters(ctypes.Structure):
                 ("PagefileUsage", ctypes.c_size_t),
                 ("PeakPagefileUsage", ctypes.c_size_t),
                 ("PrivateUsage", ctypes.c_size_t)]
+
+
+def process_is_alive(pid):
+    """Whether that process still exists."""
+    STILL_ACTIVE = 259
+    handle = ctypes.windll.kernel32.OpenProcess(0x0400, False, pid)
+    if not handle:
+        return False
+    try:
+        code = ctypes.c_ulong()
+        if not ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+            return True
+        return code.value == STILL_ACTIVE
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
 
 
 def process_memory(pid):
@@ -385,6 +404,9 @@ class Engine:
         self.pace_since = time.monotonic()
         self.pace_turns = 0
         self.game_pid = game_pid(options.tjs_port)
+        self.stopping = False
+        # Set once the server exists, so the run can end itself.
+        self.on_stop = None
         self.cache_limit = None
         if self.game_pid is None:
             say(f"no process is listening on {options.tjs_port}; "
@@ -392,6 +414,26 @@ class Engine:
 
     def route_name(self):
         return self.route.get("name", f"route {self.route_index + 1}")
+
+    def stop_if_the_game_is_gone(self):
+        """Ends the run once there is no game left to play.
+
+        Nothing else notices. The client keeps asking, this keeps answering, and
+        the run goes on against a game that closed -- once for an hour, holding
+        the port, so the next run bound beside it and the client went on talking
+        to this one. What looked like a broken driver was a finished one nobody
+        had stopped.
+        """
+        if self.game_pid is None or self.stopping:
+            return
+        if self.turns % GAME_CHECK_EVERY_TURNS:
+            return
+        if process_is_alive(self.game_pid):
+            return
+        self.stopping = True
+        say("the game is gone; stopping the run")
+        if self.on_stop:
+            self.on_stop()
 
     def note_memory(self, occasion):
         """Records how much memory the game is holding, and at what point.
@@ -695,6 +737,7 @@ class Engine:
             self.note_memory("start")
         elif self.turns % MEMORY_EVERY_TURNS == 0:
             self.note_memory("running")
+        self.stop_if_the_game_is_gone()
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
         if self.options.action in actions:
@@ -877,10 +920,29 @@ def main():
     if len(routes) > 1:
         say("chain: " + " -> ".join(r.get("name", "(unnamed)") for r in routes))
 
+    # Windows lets a second listener bind a port another process is already on,
+    # so starting a run while an older driver is still alive does not fail --
+    # it succeeds, the client keeps talking to the old process, and the new one
+    # sits there having received nothing. That looked like a broken driver: the
+    # game was acting on decisions from a route that had ended hours before.
+    probe = socket.socket()
+    probe.settimeout(1.0)
+    try:
+        if probe.connect_ex(("127.0.0.1", options.port)) == 0:
+            say(f"something is already serving on {options.port}; "
+                "stop the driver that is still running, or pass --port")
+            sys.exit(1)
+    finally:
+        probe.close()
+
     Handler.engine = Engine(options, routes)
     prepare_game(options)
 
     server = HTTPServer(("127.0.0.1", options.port), Handler)
+    # Same shutdown the stop endpoint uses, from a thread for the same reason:
+    # it is called while a request is being served.
+    Handler.engine.on_stop = lambda: threading.Thread(
+        target=server.shutdown, daemon=True).start()
     say(f"scripted engine on http://127.0.0.1:{options.port}/v1 in {options.mode} mode")
     say("add it in Gary as an OpenAI-compatible engine with that Server URL")
     # Asking the server to stop, rather than letting an exception unwind out of
