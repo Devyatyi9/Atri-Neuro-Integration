@@ -27,14 +27,20 @@ Two ways to keep the story moving, because they exercise different paths:
 
 Auto mode also allows the speed-up: nothing here is waiting for a model, so the
 run is bounded by the scenario rather than by generation.
+
+To end a run early, press Ctrl+C or fetch /stop on this server's own port. Both
+finish through the same path and put the player's speed settings back; killing
+the process does not, and then they have to be restored by hand.
 """
 
 import argparse
 import json
 import re
+import signal
 import socket
 import struct
 import sys
+import threading
 import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -576,6 +582,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
+        # The way to end a run that was started in the background. Windows has
+        # no signal a stranger can send to such a process, so the stop has to
+        # arrive over something the process is already listening on -- and this
+        # server is it. Ending here rather than by killing the process is what
+        # gets the player's speed settings put back.
+        if self.path.rstrip("/").endswith("/stop"):
+            self._json(200, {"stopping": True})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
         # Some clients probe the model list before their first request.
         if self.path.rstrip("/").endswith("/models"):
             self._json(200, {"object": "list", "data": [
@@ -672,8 +687,25 @@ def main():
     server = HTTPServer(("127.0.0.1", options.port), Handler)
     say(f"scripted engine on http://127.0.0.1:{options.port}/v1 in {options.mode} mode")
     say("add it in Gary as an OpenAI-compatible engine with that Server URL")
+    # Asking the server to stop, rather than letting an exception unwind out of
+    # whatever it was doing, is what makes the restore below reliable: the run
+    # ends between requests instead of in the middle of one.
+    #
+    # SIGBREAK is here because it is the only one a Windows console can send to
+    # a process it did not start interactively, so a run started in the
+    # background still has a way to end properly. A forced kill has none: it
+    # leaves the speeds turned up, and they have to be put back by hand.
+    def stop(signum, frame):
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    signal.signal(signal.SIGINT, stop)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, stop)
+    signal.signal(signal.SIGTERM, stop)
+
     try:
         server.serve_forever()
+        say("stopped")
     except KeyboardInterrupt:
         say("stopped")
     finally:
