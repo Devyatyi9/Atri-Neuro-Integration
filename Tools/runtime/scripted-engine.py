@@ -40,6 +40,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 REPO_TJS_FAST = "Tools/tjs/fast-playback-on.tjs"
+REPO_TJS_SLOW = "Tools/tjs/fast-playback-off.tjs"
 
 # "A choice appeared: 1) Let Atri go. 2) Take care of Atri." -- built by
 # DescribeChoiceShown on the plugin side, and the numbering is what
@@ -288,6 +289,7 @@ class Engine:
         self.blocked = None
         self.refusals = 0
         self.leaving = False
+        self.speed_restored = False
         self.pace_since = time.monotonic()
         self.pace_turns = 0
 
@@ -347,6 +349,7 @@ class Engine:
                         "route: confirming the quit")
             if "start_new_game" in actions and "exit_game" in actions:
                 self.leaving = True
+                self.restore_speed()
                 return (command_for("exit_game", actions),
                         "route: finished, closing the game")
 
@@ -397,6 +400,24 @@ class Engine:
                                          "kag.enterAutoMode(), kag.autoMode").strip())
         except OSError as error:
             say(f"could not turn auto mode on: {error}")
+
+    def restore_speed(self):
+        """Puts the player's own speed settings back.
+
+        The game writes its settings to disk when it closes, so a run that ends
+        with the quit action and leaves the speeds turned up makes that change
+        permanent -- and the save folder is shared with the ordinary install, so
+        it is the player's settings that change. Restoring is therefore part of
+        finishing, not a courtesy.
+        """
+        if not self.options.fast or self.speed_restored:
+            return
+        self.speed_restored = True
+        try:
+            with open(REPO_TJS_SLOW, encoding="utf-8") as handle:
+                say("speed restored: " + send_tjs(self.options.tjs_port, handle.read()).strip())
+        except OSError as error:
+            say(f"could not restore the speed settings: {error}")
 
     def unstick_movie(self, messages):
         """Ends a movie the run is waiting on, the way a player would.
@@ -617,6 +638,10 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         say("stopped")
+    finally:
+        # Also on the way out of an interrupted run: the speeds are the
+        # player's, and leaving them turned up outlives this process.
+        Handler.engine.restore_speed()
 
 
 if __name__ == "__main__":
