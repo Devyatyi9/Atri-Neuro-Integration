@@ -7,8 +7,8 @@
 #include <mutex>
 #include <string>
 
-#include "Logging.h"
 #include "../PluginConfig.h"
+#include "Logging.h"
 
 namespace {
 constexpr std::size_t kMaxDebugLogLines = 1000;
