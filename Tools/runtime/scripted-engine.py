@@ -66,7 +66,12 @@ REPO_TJS_SLOW = "Tools/tjs/fast-playback-off.tjs"
 CHOICE_HEADER = "A choice appeared:"
 CHOICE_OPTION = re.compile(r"(\d+)\)\s*")
 CHOICE_REFUSED = "Choice is unavailable"
-ADVANCE_REFUSED = "Text advance is unavailable"
+# Both ways the game turns an advance down. The second is the movie's own
+# wording, and it has to be listed here rather than only read: counting refusals
+# is what eventually clicks through a movie, and a refusal that does not match
+# leaves the run watching the whole thing. That is exactly what happened when
+# the movie got a message of its own.
+ADVANCE_REFUSED = ("Text advance is unavailable", "A movie is playing")
 
 # A movie plays past every speed setting the game has, so a run simply stops
 # for the length of it -- measured at 98 seconds for the opening and about
@@ -559,7 +564,7 @@ class Engine:
     def note_refusals(self, messages):
         """Counts advance refusals since the last turn that got through."""
         for text in reversed(context_texts(messages)):
-            if ADVANCE_REFUSED in text:
+            if any(refusal in text for refusal in ADVANCE_REFUSED):
                 self.refusals += 1
                 break
             if text.startswith("Text advanced"):
