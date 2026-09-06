@@ -48,6 +48,7 @@ the process does not, and then they have to be restored by hand.
 import argparse
 import ctypes
 import json
+import os
 import re
 import signal
 import socket
@@ -93,6 +94,13 @@ MEMORY_EVERY_TURNS = 500
 # How often to check the game is still there. Cheap, but not free, and a run
 # that ended does not need noticing within the same second.
 GAME_CHECK_EVERY_TURNS = 50
+
+# Lines the engine writes when it is in trouble but still running. The first one
+# ran for three minutes and several hundred lines before the game gave up.
+TROUBLE_IN_THE_GAME_LOG = (
+    "could not allocate sufficient memory",
+    "An exception occured at system.tjs",
+)
 
 # The route's answer for an ordinary turn: nothing of its own to do, hand over
 # to the mode. Named so it can be told apart from a route that cannot proceed.
@@ -407,6 +415,19 @@ class Engine:
         self.stopping = False
         # Set once the server exists, so the run can end itself.
         self.on_stop = None
+        self.watch_log = options.watch_game_log
+        self.memory_limit = options.memory_limit
+        self.dump_with = options.dump_with
+        # Only what the run itself produces is read: whatever the file already
+        # held belongs to an earlier session and would stop this one at once.
+        self.watched_to = 0
+        if self.watch_log:
+            try:
+                self.watched_to = os.path.getsize(self.watch_log)
+                say(f"watching {self.watch_log} for trouble")
+            except OSError as error:
+                say(f"cannot watch the game's log: {error}")
+                self.watch_log = None
         self.cache_limit = None
         if self.game_pid is None:
             say(f"no process is listening on {options.tjs_port}; "
@@ -434,6 +455,81 @@ class Engine:
         say("the game is gone; stopping the run")
         if self.on_stop:
             self.on_stop()
+
+    def stop_on_trouble(self):
+        """Ends the run while the game is still there to look at.
+
+        The point is not to save the run -- it is already lost -- but to stop
+        before the game does, so it can be examined alive: attached to with a
+        debugger, or dumped. Once it has shown its error box and exited there is
+        nothing left but a log.
+
+        The signal comes from the game's own log. Before the run that died, the
+        engine spent three minutes failing to allocate for Direct3D, hundreds of
+        lines of it, and only then hit an image it could not load. Three minutes
+        is plenty of warning; nobody was reading the log at the time.
+
+        Memory is the second signal, and the weaker one: it says the room is
+        running out, not that anything has gone wrong yet. A 32-bit process has
+        about two gigabytes of address space, and the failures above began
+        around one.
+        """
+        if self.stopping:
+            return
+        if self.turns % GAME_CHECK_EVERY_TURNS:
+            return
+
+        reason = None
+        if self.watch_log:
+            try:
+                size = os.path.getsize(self.watch_log)
+                if size > self.watched_to:
+                    with open(self.watch_log, encoding="utf-8",
+                              errors="replace") as handle:
+                        handle.seek(self.watched_to)
+                        fresh = handle.read()
+                    self.watched_to = size
+                    for phrase in TROUBLE_IN_THE_GAME_LOG:
+                        if phrase in fresh:
+                            reason = f"the game's log says: {phrase}"
+                            break
+            except OSError as error:
+                # Losing the log is not a reason to stop watching the memory.
+                say(f"could not read the game's log: {error}")
+                self.watch_log = None
+
+        if reason is None and self.memory_limit and self.game_pid:
+            usage = process_memory(self.game_pid)
+            if usage and usage[1] >= self.memory_limit:
+                reason = (f"the game holds {usage[1]:.0f}MB private, "
+                          f"at or past the {self.memory_limit}MB mark")
+
+        if reason is None:
+            return
+
+        self.stopping = True
+        say(f"stopping while the game is still alive: {reason}")
+        self.note_memory("trouble")
+        if self.dump_with and self.game_pid:
+            self.take_a_dump()
+        elif self.game_pid:
+            say(f"the game is still running as pid {self.game_pid}; "
+                "attach to it now, or pass --dump-with to capture one here")
+        self.restore_speed()
+        if self.on_stop:
+            self.on_stop()
+
+    def take_a_dump(self):
+        """Captures the game's memory while it is still there to capture."""
+        say(f"writing a dump of pid {self.game_pid} with {self.dump_with}")
+        try:
+            done = subprocess.run(
+                [self.dump_with, "-accepteula", "-ma", str(self.game_pid)],
+                capture_output=True, text=True, timeout=300)
+            tail = (done.stdout or done.stderr or "").strip().splitlines()
+            say("dump: " + (tail[-1] if tail else f"exit {done.returncode}"))
+        except (OSError, subprocess.SubprocessError) as error:
+            say(f"could not write a dump: {error}")
 
     def note_memory(self, occasion):
         """Records how much memory the game is holding, and at what point.
@@ -738,6 +834,7 @@ class Engine:
         elif self.turns % MEMORY_EVERY_TURNS == 0:
             self.note_memory("running")
         self.stop_if_the_game_is_gone()
+        self.stop_on_trouble()
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
         if self.options.action in actions:
@@ -902,6 +999,17 @@ def main():
                              "its own way in")
     parser.add_argument("--exit-when-done", action="store_true",
                         help="close the game once the run is over")
+    parser.add_argument("--watch-game-log", metavar="FILE",
+                        help="the game's game_debug_log.txt. The run stops on the "
+                             "first sign of trouble in it, leaving the game alive "
+                             "to be attached to")
+    parser.add_argument("--memory-limit", type=int, default=0, metavar="MB",
+                        help="stop when the game holds this many megabytes of "
+                             "private bytes; 0 means never. The game is 32-bit, so "
+                             "it runs out of address space around 2000")
+    parser.add_argument("--dump-with", metavar="PROCDUMP",
+                        help="path to procdump: writes a full dump of the game "
+                             "when a run stops on trouble")
     parser.add_argument("--fast", action="store_true",
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
