@@ -285,6 +285,16 @@ class Engine:
         self.last_sent = None
         self.pending = False
         self.pending_list = None
+        # The last choice list seen in the context. The client trims the prompt
+        # to its context window, so a list can scroll out of view between the
+        # turn it appears on and the turn the answer is sent -- at a small
+        # window that happened within seconds, and the route simply stopped.
+        #
+        # Held only until the choice it belongs to is done. Carrying it further
+        # would be worse than stalling: the next choice could be answered with
+        # the previous one's options, and the run would take a branch nobody
+        # chose while still looking healthy.
+        self.remembered_options = None
         self.auto_armed = False
         self.blocked = None
         self.refusals = 0
@@ -295,15 +305,22 @@ class Engine:
 
     def choose_for_route(self, actions, schema, messages):
         """The route's own move, or (None, why) to fall through to the mode."""
+        # Noted on every turn, not only when the choice action is on offer: the
+        # list reaches the context before the action is registered, and by the
+        # time it is, a trimmed prompt may no longer carry it.
+        seen = latest_choice(messages)
+        if seen:
+            self.remembered_options = seen
+
         if not self.started and self.start_action in actions:
             self.started = True
             return (command_for(self.start_action, actions),
                     f"route: starting with {self.start_action}")
 
         if "select_choice" in actions:
-            options = latest_choice(messages)
+            options = self.remembered_options
             if not options:
-                return None, "route: the context does not carry the choice list"
+                return None, self.diagnose_missing_choice()
             signature = tuple(sorted(options.items()))
 
             if self.pending and signature != self.pending_list:
@@ -379,6 +396,7 @@ class Engine:
         """Counts the decision in hand as made and moves to the next one."""
         self.pending = False
         self.pending_list = None
+        self.remembered_options = None
         self.taken += 1
         self.rejected.clear()
         self.last_sent = None
@@ -418,6 +436,26 @@ class Engine:
                 say("speed restored: " + send_tjs(self.options.tjs_port, handle.read()).strip())
         except OSError as error:
             say(f"could not restore the speed settings: {error}")
+
+    def diagnose_missing_choice(self):
+        """Says why the route is stuck when no choice list has been seen.
+
+        The game is asked, but only to name the problem -- never to answer with.
+        The options reach Neuro through the context and nowhere else, so a
+        choice the game is showing while the context stays silent is a defect
+        in what we send her. Reading the list off the game here would answer
+        the turn and hide exactly that.
+        """
+        try:
+            showing = send_tjs(self.options.tjs_port,
+                               "(function(){ try { return kag.selectLayer.selects.count; }"
+                               " catch (e) { return 0; } })()").strip()
+        except OSError:
+            return "route: no choice list in the context, and the game could not be asked"
+        if showing and showing != "0":
+            return (f"route: the game is showing {showing} options but none of them"
+                    " reached the context -- that is a defect, not a stall")
+        return "route: no choice list in the context, and the game shows none either"
 
     def unstick_movie(self, messages):
         """Ends a movie the run is waiting on, the way a player would.
