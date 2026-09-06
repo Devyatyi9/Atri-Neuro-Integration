@@ -280,4 +280,20 @@ if(ATRI_BUILD_PROTOTYPE)
     else()
         message(STATUS "PowerShell not found, TJS behaviour tests skipped")
     endif()
+
+    # Formatting is a rule the build had no opinion about, so a change could
+    # compile and pass every test while leaving the tree unformatted. The next
+    # person to run the formatter then gets someone else's reflowed lines mixed
+    # into their own change.
+    find_program(ATRI_CLANG_FORMAT NAMES clang-format)
+    if(ATRI_CLANG_FORMAT AND ATRI_POWERSHELL)
+        add_test(NAME "format-check"
+                 COMMAND "${ATRI_POWERSHELL}" -NoProfile -File
+                         "${CMAKE_CURRENT_SOURCE_DIR}/Tools/quality/format.ps1"
+                         -Check)
+    elseif(NOT ATRI_CLANG_FORMAT)
+        message(STATUS "clang-format not found, formatting check skipped")
+    else()
+        message(STATUS "PowerShell not found, formatting check skipped")
+    endif()
 endif()
