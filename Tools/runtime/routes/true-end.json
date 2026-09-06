@@ -1,0 +1,6 @@
+{
+  "name": "true-end",
+  "start": "start_true_end",
+  "exit_when_done": true,
+  "choices": []
+}

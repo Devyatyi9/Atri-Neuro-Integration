@@ -28,6 +28,18 @@ Two ways to keep the story moving, because they exercise different paths:
 Auto mode also allows the speed-up: nothing here is waiting for a model, so the
 run is bounded by the scenario rather than by generation.
 
+Several routes can be given at once and are played back to back, each starting
+from the title the previous one came back to -- which is also how the end of a
+route is recognised, so a chain needs no knowledge of where any of them ends.
+That is what makes one run cover as much of the game as the routes name:
+
+  --route routes/route-a.json
+  --route routes/route-a.json routes/route-b.json
+  --route routes/route-a.json routes/route-b.json routes/true-end.json
+
+Only the last route may close the game; an exit_when_done in the middle would
+end the run with routes still unplayed.
+
 To end a run early, press Ctrl+C or fetch /stop on this server's own port. Both
 finish through the same path and put the player's speed settings back; killing
 the process does not, and then they have to be restored by hand.
@@ -270,24 +282,20 @@ def refused_since_choice(messages):
 
 
 class Engine:
-    def __init__(self, options, route=None):
+    def __init__(self, options, routes=None):
         self.options = options
-        self.route = route or {}
+        # Routes are played one after another in the order given. Between them
+        # the game passes through the title, which is also how the end of a
+        # route is recognised, so chaining needs no knowledge of where any of
+        # them ends -- the game says so by offering a new game again.
+        self.routes = list(routes or [])
+        self.route_index = 0
         self.turns = 0
-        # How the run begins. A route file may say it, and the command line
-        # overrides it -- which is what lets the true ending, a run with no
-        # decisions at all, need no file of its own.
-        self.start_action = (options.start
-                             or self.route.get("start")
-                             or ("start_new_game" if self.route.get("start_new_game") else None))
-        self.finish = options.exit_when_done or bool(self.route.get("exit_when_done"))
-        self.decisions = list(self.route.get("choices", []))
-        self.taken = 0
-        # Indexes already refused for the decision in hand. b402 shows the same
-        # text twice, enabled or disabled depending on a flag, so the first
-        # match is not always the one the game will accept.
-        self.rejected = set()
-        self.started = self.start_action is None
+        # Only the last route may close the game: an exit_when_done in the
+        # middle of a chain would end the run with routes still unplayed.
+        self.finish = options.exit_when_done or bool(
+            (self.routes[-1] if self.routes else {}).get("exit_when_done"))
+        self.load_route()
         self.last_sent = None
         self.pending = False
         self.pending_list = None
@@ -299,8 +307,8 @@ class Engine:
         # Held only until the choice it belongs to is done. Carrying it further
         # would be worse than stalling: the next choice could be answered with
         # the previous one's options, and the run would take a branch nobody
-        # chose while still looking healthy.
-        self.remembered_options = None
+        # chose while still looking healthy. Reset per route by load_route for
+        # the same reason, across the title between two of them.
         self.auto_armed = False
         self.blocked = None
         self.refusals = 0
@@ -308,6 +316,48 @@ class Engine:
         self.speed_restored = False
         self.pace_since = time.monotonic()
         self.pace_turns = 0
+
+    def route_name(self):
+        return self.route.get("name", f"route {self.route_index + 1}")
+
+    def load_route(self):
+        """Takes up the route at the current index, from its first decision."""
+        self.route = self.routes[self.route_index] if self.routes else {}
+        # How this route begins. The file may say it, and the command line
+        # overrides it -- which is what lets the true ending, a run with no
+        # decisions at all, be played without a file.
+        self.start_action = (self.options.start
+                             or self.route.get("start")
+                             or ("start_new_game"
+                                 if self.route.get("start_new_game") else None))
+        self.decisions = list(self.route.get("choices", []))
+        self.taken = 0
+        # Indexes already refused for the decision in hand, so a second match
+        # for the same text can be tried instead of the run stopping. The
+        # scenario does declare one choice twice -- b402 carries two entries
+        # reading "Pick up the shoe.", one of them disabled, told apart by a
+        # flag -- but the engine renders only one of the two, and no run has
+        # ever seen a refused index. Kept as a guard, not as a known case.
+        self.rejected = set()
+        self.started = self.start_action is None
+        self.remembered_options = None
+        # The end of a route is read off the title screen, so a route that
+        # never left it has not ended -- it never began. Without this a start
+        # that did not take (a True End the profile has not unlocked, a refused
+        # press) reads as a finished route: the chain would skip what is left
+        # and close the game, having played nothing.
+        self.left_title = False
+
+    def next_route(self):
+        """Moves on to the route after this one, or reports there is none."""
+        if self.route_index + 1 >= len(self.routes):
+            return False
+        finished = self.route_name()
+        self.route_index += 1
+        self.load_route()
+        say(f"route {finished} finished; starting {self.route_name()} "
+            f"({len(self.decisions)} choice(s))")
+        return True
 
     def choose_for_route(self, actions, schema, messages):
         """The route's own move, or (None, why) to fall through to the mode."""
@@ -359,9 +409,32 @@ class Engine:
             self.settle_choice()
 
         route_done = self.taken >= len(self.decisions)
+        at_title = "start_new_game" in actions and "exit_game" in actions
+        if not at_title:
+            self.left_title = True
+        elif not self.left_title:
+            # Still on the title the route started from: nothing has been
+            # played yet, so this is not the title that ends it.
+            return None, ROUTE_IDLE
         # Back at the title with every decision made: the route has run out.
         # Waiting for the title is what makes this work without knowing where
         # a route ends -- the game says so by offering a new game again.
+        #
+        # The next route is taken up here rather than by falling through to the
+        # start branch above, which would spend a turn answering the title with
+        # whatever the mode picks before the chain moved on.
+        if route_done and at_title and self.next_route():
+            if self.start_action in actions:
+                self.started = True
+                return (command_for(self.start_action, actions),
+                        f"route: starting {self.route_name()} with {self.start_action}")
+            # A route that names no way in, or names one the title is not
+            # offering: say so instead of pressing something else. The most
+            # likely cause is the True End, which the title hides until the
+            # profile has unlocked it.
+            return None, (f"route: {self.route_name()} asks for "
+                          f"{self.start_action!r}, which the title is not offering")
+
         if route_done and self.finish:
             # Quitting asks for confirmation, and the schema for answering it
             # takes a boolean. Filled from the schema alone that boolean comes
@@ -662,11 +735,16 @@ def main():
                         help="the model id to report; Gary only needs it to be set")
     parser.add_argument("--tjs-port", type=int, default=18701,
                         help="the plugin's TCP port, used by --mode auto and --fast")
-    parser.add_argument("--route",
-                        help="a JSON route file: the choices to make, in order")
+    parser.add_argument("--route", nargs="+", metavar="FILE",
+                        help="one or more JSON route files: the choices to make, "
+                             "in order. Several are played one after another in "
+                             "the order given, each starting from the title the "
+                             "previous one came back to")
     parser.add_argument("--start", choices=("start_new_game", "start_true_end"),
                         help="what to press at the title; overrides the route file. "
-                             "The true ending takes no choices, so it needs no route")
+                             "The true ending takes no choices, so it needs no route. "
+                             "Only for a single route: in a chain each route names "
+                             "its own way in")
     parser.add_argument("--exit-when-done", action="store_true",
                         help="close the game once the run is over")
     parser.add_argument("--fast", action="store_true",
@@ -674,14 +752,20 @@ def main():
                              "nothing is waiting on a model")
     options = parser.parse_args()
 
-    route = None
-    if options.route:
-        with open(options.route, encoding="utf-8") as handle:
-            route = json.load(handle)
-        say(f"route {route.get('name', options.route)}: "
+    routes = []
+    for path in options.route or []:
+        with open(path, encoding="utf-8") as handle:
+            routes.append(json.load(handle))
+    if options.start and len(routes) > 1:
+        parser.error("--start applies to one route; in a chain each route names "
+                     "its own start")
+    for route in routes:
+        say(f"route {route.get('name', '(unnamed)')}: "
             f"{len(route.get('choices', []))} choice(s)")
+    if len(routes) > 1:
+        say("chain: " + " -> ".join(r.get("name", "(unnamed)") for r in routes))
 
-    Handler.engine = Engine(options, route)
+    Handler.engine = Engine(options, routes)
     prepare_game(options)
 
     server = HTTPServer(("127.0.0.1", options.port), Handler)
