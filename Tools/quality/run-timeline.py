@@ -302,6 +302,144 @@ def list_choices(streams):
         print(f"{index:3d}  {show_time(row['at'])}  {(row.get('data') or {}).get('message', '')}")
 
 
+
+# --- the protocol checks a finished run can answer ------------------------
+#
+# These used to live in prototype/tooling/neuro_harness_test.py and were asked
+# of a harness that models the protocol rather than implements it. That model
+# once missed a real defect -- actions the game believed it had dropped stayed
+# callable, because `actions/register` is additive and nothing said so -- and it
+# was the real client that found it.
+#
+# So they are asked here instead, of a record made by the real client. What
+# cannot move stays in the harness: every check that needs a server willing to
+# send something malformed, which a correct one never will.
+
+
+class Checker:
+    """Collects pass/fail lines so one bad check does not hide the rest."""
+
+    def __init__(self):
+        self.results = []
+
+    def check(self, name, ok, detail=""):
+        self.results.append((bool(ok), name, detail))
+
+    def report(self):
+        width = max(len(name) for _, name, _ in self.results)
+        failed = 0
+        for ok, name, detail in self.results:
+            mark = "PASS" if ok else "FAIL"
+            failed += 0 if ok else 1
+            print(f"  {mark}  {name:{width}s}  {detail}")
+        print()
+        print(f"{len(self.results) - failed} of {len(self.results)} checks passed")
+        return failed
+
+
+def percentile(values, share):
+    ordered = sorted(values)
+    if not ordered:
+        return 0
+    return ordered[min(len(ordered) - 1, int(round(share * (len(ordered) - 1))))]
+
+
+def run_checks(streams):
+    """Asks the run whether the protocol held, and says so line by line."""
+    checker = Checker()
+    actions = streams["actions"]
+
+    startups = [r for r in actions if r.get("key") == "api/game/startup"]
+    checker.check("startup announced the game", bool(startups),
+                  f"{len(startups)} startup message(s)")
+
+    registers = [r for r in actions if r.get("key") == "api/game/register"]
+    unregisters = [r for r in actions if r.get("key") == "api/game/unregister"]
+
+    unnamed, unshaped = 0, 0
+    for row in registers:
+        for action in (row.get("data") or {}).get("actions") or []:
+            if not action.get("name"):
+                unnamed += 1
+            schema = action.get("schema")
+            if schema is not None and schema.get("type") != "object":
+                unshaped += 1
+    checker.check("every registered action has a name", unnamed == 0,
+                  f"{len(registers)} snapshot(s), {unnamed} unnamed")
+    checker.check("every schema is an object", unshaped == 0,
+                  f"{unshaped} with another type")
+
+    duplicated = 0
+    for row in registers:
+        names = [a.get("name") for a in (row.get("data") or {}).get("actions") or []]
+        if len(names) != len(set(names)):
+            duplicated += 1
+    checker.check("no snapshot repeats a name", duplicated == 0,
+                  f"{duplicated} snapshot(s) with a repeat")
+
+    # The registry the server would keep, rebuilt from the deltas. An
+    # unregister that names something not active means the two sides disagree
+    # about what is callable -- which is exactly the defect the harness missed.
+    active, stale, unknown = set(), 0, 0
+    for row in actions:
+        key = row.get("key")
+        data = row.get("data") or {}
+        if key in ("api/game/connected", "api/game/disconnected"):
+            active.clear()
+        elif key == "api/game/register":
+            for action in data.get("actions") or []:
+                if action.get("name"):
+                    active.add(action["name"])
+        elif key == "api/game/unregister":
+            for name in data.get("action_names") or []:
+                if name in active:
+                    active.discard(name)
+                else:
+                    unknown += 1
+    checker.check("unregister only names active actions", unknown == 0,
+                  f"{len(unregisters)} unregister(s), {unknown} naming something else")
+
+    # Pairing. Every act must be answered once: not zero times, which is a lost
+    # turn, and not twice, which is the duplicate-id defect seen from this side.
+    sent, answered, extra = {}, {}, 0
+    for row in actions:
+        data = row.get("data") or {}
+        act = (data.get("act") or {})
+        if row.get("key") == "api/game/act/actor" and act.get("id"):
+            sent[act["id"]] = row
+        elif row.get("key") == "api/game/action_result" and act.get("id"):
+            if act["id"] in sent:
+                answered[act["id"]] = answered.get(act["id"], 0) + 1
+            else:
+                extra += 1
+    unanswered = len(sent) - len(answered)
+    repeated = sum(1 for count in answered.values() if count > 1)
+    checker.check("every action was answered", unanswered == 0,
+                  f"{len(sent)} sent, {unanswered} unanswered")
+    checker.check("no action was answered twice", repeated == 0 and extra == 0,
+                  f"{repeated} answered twice, {extra} result(s) for nothing sent")
+
+    # Latency, against the client's own limit rather than one invented here:
+    # it calls a result late past 500ms.
+    LATE_MS = 500
+    gaps = []
+    pending = {}
+    for row in actions:
+        act = (row.get("data") or {}).get("act") or {}
+        if not act.get("id"):
+            continue
+        if row.get("key") == "api/game/act/actor":
+            pending[act["id"]] = row["ms"]
+        elif row.get("key") == "api/game/action_result" and act["id"] in pending:
+            gaps.append(row["ms"] - pending.pop(act["id"]))
+    late = sum(1 for gap in gaps if gap > LATE_MS)
+    share = late / len(gaps) * 100 if gaps else 0
+    checker.check("results arrive inside the client's limit", share < 1.0,
+                  f"median {percentile(gaps, 0.5):.0f}ms, p90 {percentile(gaps, 0.9):.0f}ms, "
+                  f"{late} of {len(gaps)} past {LATE_MS}ms ({share:.1f}%)")
+
+    return checker.report()
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -312,6 +450,9 @@ def main():
     parser.add_argument("--at", help="the moment, as a timestamp from either log")
     parser.add_argument("--choice", type=int, help="the moment the Nth choice appeared")
     parser.add_argument("--text", help="the moment an event first mentions this text")
+    parser.add_argument("--check", action="store_true",
+                        help="ask the run whether the protocol held, and stop. "
+                             "Exits non-zero if any check failed")
     parser.add_argument("--list-choices", action="store_true",
                         help="show the choices in this run and stop")
     parser.add_argument("--driver-log",
@@ -327,6 +468,9 @@ def main():
     if unstamped:
         print(f"note: {unstamped} tag log line(s) carry no timestamp -- "
               f"set log_timestamps = on in the instance config for a full picture\n")
+
+    if args.check:
+        raise SystemExit(1 if run_checks(streams) else 0)
 
     if args.list_choices:
         list_choices(streams)
