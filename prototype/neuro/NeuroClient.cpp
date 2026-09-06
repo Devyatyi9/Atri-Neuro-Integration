@@ -395,7 +395,15 @@ bool CreateSession() {
 	neurosdk_context_create_desc_t description = {};
 	description.url = url.c_str();
 	description.game_name = gameName.c_str();
-	description.poll_ms = 100;
+	// The SDK waits on the socket for this long, so an arriving message wakes it
+	// at once -- but everything we queue goes out only after that wait returns.
+	// At 100 ms an action result therefore sat for up to a tenth of a second
+	// after the work was already done, which was most of the delay Neuro's
+	// client measured on our answers.
+	//
+	// Ten is a wait, not a spin: with nothing to read the thread wakes a hundred
+	// times a second to check its outbound queue and sleeps again.
+	description.poll_ms = 10;
 	description.callback_log = NeuroLogCallback;
 	description.flags = NeuroSDK_ContextCreateFlags_None;
 	{
