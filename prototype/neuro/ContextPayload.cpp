@@ -35,7 +35,8 @@ std::string RestoreBreaks(std::string const &text) {
 	std::string restored;
 	restored.reserve(text.size());
 	for (size_t index = 0; index < text.size(); ++index) {
-		if (text[index] == '\\' && index + 1 < text.size() && text[index + 1] == 'n') {
+		if (text[index] == '\\' && index + 1 < text.size() &&
+		    text[index + 1] == 'n') {
 			restored += '\n';
 			++index;
 			continue;

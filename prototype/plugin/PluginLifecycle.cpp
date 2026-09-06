@@ -158,11 +158,11 @@ static void StopDeferredTJSInit() {
 	}
 }
 
-// GetAsyncKeyState reads the keyboard, not the window: it says nothing about who
-// has focus. With one instance that was invisible, but two copies of the game
-// both answered the same F12 and each opened its own console -- so the console
-// that appeared was whichever won the race, not the one belonging to the window
-// being used, and sounds played from it went to the wrong process.
+// GetAsyncKeyState reads the keyboard, not the window: it says nothing about
+// who has focus. With one instance that was invisible, but two copies of the
+// game both answered the same F12 and each opened its own console -- so the
+// console that appeared was whichever won the race, not the one belonging to
+// the window being used, and sounds played from it went to the wrong process.
 static bool ThisProcessHasFocus() {
 	HWND const foreground = GetForegroundWindow();
 	if (!foreground) {

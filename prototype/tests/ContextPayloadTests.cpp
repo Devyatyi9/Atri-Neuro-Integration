@@ -25,16 +25,16 @@ void RunContextPayloadTests() {
 
 	// A speaker-less line is narration and stands on its own, without a colon
 	// hanging off the front of it.
-	ContextPayload const narration =
-	    BuildContextPayload("[event] dialogue\t\tCatherine grabs hold of Atri's hand.\n");
+	ContextPayload const narration = BuildContextPayload(
+	    "[event] dialogue\t\tCatherine grabs hold of Atri's hand.\n");
 	CHECK(narration.message == "Catherine grabs hold of Atri's hand.");
 
 	// The diary inserts are written in paragraphs, and the player sees them
 	// that way. A break cannot travel raw -- one event is one line, so it would
 	// end the record halfway and leave the rest looking like an event of its
 	// own -- so it arrives escaped and is restored here.
-	ContextPayload const diary =
-	    BuildContextPayload("[event] dialogue\t\txx/xx/xx \\nI woke up.\\n\\nAn order.\n");
+	ContextPayload const diary = BuildContextPayload(
+	    "[event] dialogue\t\txx/xx/xx \\nI woke up.\\n\\nAn order.\n");
 	CHECK(diary.message == "xx/xx/xx \nI woke up.\n\nAn order.");
 
 	// A lone backslash is not an escape and must survive as itself.
@@ -43,8 +43,8 @@ void RunContextPayloadTests() {
 	CHECK(backslash.message == "one \\ two");
 
 	// A choice is the one thing that is actually asking for something.
-	ContextPayload const choice =
-	    BuildContextPayload("[event] choice_shown\tLet Atri go.\tTake care of Atri.\n");
+	ContextPayload const choice = BuildContextPayload(
+	    "[event] choice_shown\tLet Atri go.\tTake care of Atri.\n");
 	CHECK(choice.message ==
 	      "A choice appeared: 1) Let Atri go. 2) Take care of Atri.");
 	CHECK(!choice.silent);

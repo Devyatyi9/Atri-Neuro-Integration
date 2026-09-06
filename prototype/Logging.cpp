@@ -69,8 +69,8 @@ void WriteStamped(FILE *file, char const *text) {
 			fprintf(file, "%s %s", stamp.c_str(), line);
 			return;
 		}
-		fprintf(file, "%s %.*s\n", stamp.c_str(),
-		        static_cast<int>(end - line), line);
+		fprintf(file, "%s %.*s\n", stamp.c_str(), static_cast<int>(end - line),
+		        line);
 		line = end + 1;
 	}
 }

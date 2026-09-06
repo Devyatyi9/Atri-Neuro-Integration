@@ -305,21 +305,18 @@ class NeuroConsole {
 			SetWindowPos(m_hScript, NULL, padding, padding, width - padding * 2,
 			             scriptHeight, SWP_NOZORDER);
 			int const rowY = padding + scriptHeight + padding;
-			SetWindowPos(m_hScriptRun, NULL, padding, rowY, buttonWidth,
-			             inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptRun, NULL, padding, rowY, buttonWidth, inputHeight,
+			             SWP_NOZORDER);
 			SetWindowPos(m_hScriptClear, NULL, padding * 2 + buttonWidth, rowY,
 			             buttonWidth + 20, inputHeight, SWP_NOZORDER);
-			SetWindowPos(m_hScriptLoad, NULL,
-			             padding * 3 + buttonWidth * 2 + 20, rowY, buttonWidth,
-			             inputHeight, SWP_NOZORDER);
-			SetWindowPos(m_hScriptSave, NULL,
-			             padding * 4 + buttonWidth * 3 + 20, rowY, buttonWidth,
-			             inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptLoad, NULL, padding * 3 + buttonWidth * 2 + 20,
+			             rowY, buttonWidth, inputHeight, SWP_NOZORDER);
+			SetWindowPos(m_hScriptSave, NULL, padding * 4 + buttonWidth * 3 + 20,
+			             rowY, buttonWidth, inputHeight, SWP_NOZORDER);
 		}
 
-		int outputY = padding + (scriptHeight > 0
-		                             ? scriptHeight + padding + scriptRow
-		                             : 0);
+		int outputY =
+		    padding + (scriptHeight > 0 ? scriptHeight + padding + scriptRow : 0);
 		SetWindowPos(m_hOutput, NULL, padding, outputY, width - padding * 2,
 		             outputHeight, SWP_NOZORDER);
 
@@ -375,9 +372,8 @@ class NeuroConsole {
 			return;
 		}
 
-		HANDLE const file =
-		    CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-		                FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE const file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+		                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (file == INVALID_HANDLE_VALUE) {
 			AppendOutput(L"Error: cannot open the file\n", RGB(255, 0, 0));
 			return;
@@ -479,17 +475,16 @@ class NeuroConsole {
 			return;
 		}
 
-		HANDLE const file =
-		    CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-		                FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE const file = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+		                                FILE_ATTRIBUTE_NORMAL, NULL);
 		if (file == INVALID_HANDLE_VALUE) {
 			AppendOutput(L"Error: cannot write the file\n", RGB(255, 0, 0));
 			return;
 		}
 		DWORD written = 0;
-		BOOL const ok = WriteFile(file, utf8.data(), (DWORD)utf8.size(), &written,
-		                          NULL) &&
-		                written == utf8.size();
+		BOOL const ok =
+		    WriteFile(file, utf8.data(), (DWORD)utf8.size(), &written, NULL) &&
+		    written == utf8.size();
 		CloseHandle(file);
 
 		if (!ok) {
@@ -530,8 +525,8 @@ class NeuroConsole {
 		ShowWindow(m_hScriptClear, show);
 		ShowWindow(m_hScriptLoad, show);
 		ShowWindow(m_hScriptSave, show);
-		SetWindowTextW(m_hScriptMode,
-		               m_ScriptExpanded ? L"Collapse Multiline" : L"Expand Multiline");
+		SetWindowTextW(m_hScriptMode, m_ScriptExpanded ? L"Collapse Multiline"
+		                                               : L"Expand Multiline");
 
 		RECT rc = {};
 		GetClientRect(m_hWnd, &rc);
@@ -797,7 +792,6 @@ class NeuroConsole {
 		s_OriginalEditProc = (WNDPROC)SetWindowLongPtr(m_hInput, GWLP_WNDPROC,
 		                                               (LONG_PTR)InputEditProc);
 
-
 		// Create the buttons.
 		m_hExecute =
 		    CreateWindowW(L"BUTTON", L"Run", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -809,24 +803,24 @@ class NeuroConsole {
 
 		// Create the Script Mode button to open the multi-line editor.
 		m_hScriptMode = CreateWindowW(
-		    L"BUTTON", L"Expand Multiline", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0,
-		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		    L"BUTTON", L"Expand Multiline", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+		    0, 0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
 		// Created hidden and given no height until expanded. ES_WANTRETURN is
 		// what makes Enter insert a newline here instead of running the command,
 		// which is the difference between a script area and a long input.
-		m_hScriptRun = CreateWindowW(
-		    L"BUTTON", L"Run Script", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
-		    NULL, GetModuleHandle(NULL), NULL);
-		m_hScriptClear = CreateWindowW(
-		    L"BUTTON", L"Clear Script", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0,
-		    m_hWnd, NULL, GetModuleHandle(NULL), NULL);
-		m_hScriptLoad = CreateWindowW(
-		    L"BUTTON", L"Load .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
-		    NULL, GetModuleHandle(NULL), NULL);
-		m_hScriptSave = CreateWindowW(
-		    L"BUTTON", L"Save .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0, 0, 0, m_hWnd,
-		    NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptRun =
+		    CreateWindowW(L"BUTTON", L"Run Script", WS_CHILD | BS_PUSHBUTTON, 0, 0,
+		                  0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptClear =
+		    CreateWindowW(L"BUTTON", L"Clear Script", WS_CHILD | BS_PUSHBUTTON, 0,
+		                  0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptLoad =
+		    CreateWindowW(L"BUTTON", L"Load .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0,
+		                  0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		m_hScriptSave =
+		    CreateWindowW(L"BUTTON", L"Save .tjs", WS_CHILD | BS_PUSHBUTTON, 0, 0,
+		                  0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 
 		// Seeded the way the separate window used to be: the hint says what the
 		// buttons here do, and the example is something safe to press Run on.
@@ -865,8 +859,8 @@ class NeuroConsole {
 		// this picks is the entry point -- TVPExecuteExpression wraps the input
 		// in an IIFE, TVPExecuteScript runs it flat, statements and all.
 		m_hFlatScript = CreateWindowW(
-		    L"BUTTON", L"Flat Script", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0, 0,
-		    0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		    L"BUTTON", L"Flat Script", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0,
+		    0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 		// Disabled by default.
 		SendMessage(m_hFlatScript, BM_SETCHECK, BST_UNCHECKED, 0);
 

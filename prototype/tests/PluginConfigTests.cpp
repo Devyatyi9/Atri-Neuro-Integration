@@ -12,8 +12,7 @@ namespace {
 
 void ExpectPort(wchar_t const *text, int expected) {
 	PluginConfig const config = ParsePluginConfig(text);
-	ReportCheck(config.TcpPort == expected, __FILE__, __LINE__,
-	            "tcp_port");
+	ReportCheck(config.TcpPort == expected, __FILE__, __LINE__, "tcp_port");
 }
 
 void ExpectLogDir(wchar_t const *text, wchar_t const *expected) {
@@ -40,7 +39,8 @@ void RunPluginConfigTests() {
 
 	// Line endings: the file is hand-edited on Windows, so CRLF is the norm.
 	ExpectPort(L"tcp_port = 18701\r\n", 18701);
-	ExpectPort(L"# a comment\r\ntcp_port = 18702\r\nlog_dir = D:\\logs\r\n", 18702);
+	ExpectPort(L"# a comment\r\ntcp_port = 18702\r\nlog_dir = D:\\logs\r\n",
+	           18702);
 	ExpectLogDir(L"# a comment\r\ntcp_port = 18702\r\nlog_dir = D:\\logs\r\n",
 	             L"D:\\logs");
 
