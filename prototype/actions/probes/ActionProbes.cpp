@@ -381,6 +381,43 @@ bool ProbeCanContinue(char const *tag) {
 	    tag);
 }
 
+AdvanceResult AdvanceDialogue(char const *tag) {
+	std::string answer;
+	if (!QueryString(L"(function(){"
+	                 L" if (typeof SystemHook == 'undefined' || "
+	                 L"SystemHook.currentState != 'game') return 2;"
+	                 L" if (typeof kag == 'undefined' || typeof "
+	                 L"kag.onPrimaryClick != 'Object') return 2;"
+	                 L" if (typeof kag.isMoviePlaying == 'Object' && "
+	                 L"kag.isMoviePlaying()) return 3;"
+	                 L" if (typeof kag.clickWaiting == 'undefined' || "
+	                 L"!kag.clickWaiting) return 4;"
+	                 L" kag.onPrimaryClick();"
+	                 L" return 1; })()",
+	                 answer, tag)) {
+		return AdvanceResult::Unavailable;
+	}
+	int code = 0;
+	if (!ParseWholeInt(answer, code)) {
+		Log(("[Action] " + std::string(tag) + " expected a code, got '" + answer +
+		     "'\n")
+		        .c_str());
+		return AdvanceResult::Unavailable;
+	}
+	switch (code) {
+		case 1:
+			return AdvanceResult::Advanced;
+		case 2:
+			return AdvanceResult::NotInStory;
+		case 3:
+			return AdvanceResult::MoviePlaying;
+		case 4:
+			return AdvanceResult::NothingWaiting;
+		default:
+			return AdvanceResult::Unavailable;
+	}
+}
+
 bool ProbeClickWaiting(char const *tag) {
 	return Ask(
 	    L"(function(){ if (typeof kag == 'undefined' || typeof "

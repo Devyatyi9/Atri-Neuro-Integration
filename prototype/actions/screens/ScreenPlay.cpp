@@ -40,14 +40,22 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	bool const ok = ProbeStateIs("game", "advance state") &&
-	                ProbeClickWaiting("advance click") &&
-	                DispatchPrimaryClick("advance dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, "Text advance is unavailable.");
-		return;
+	switch (AdvanceDialogue("advance")) {
+		case AdvanceResult::Advanced:
+			NeuroSendActionResult(id.c_str(), true, "Text advanced.");
+			return;
+		case AdvanceResult::MoviePlaying:
+			// Named rather than folded into the general refusal: a movie ends on
+			// its own, and knowing that is the difference between waiting and
+			// retrying something that cannot work yet.
+			NeuroSendActionResult(id.c_str(), false,
+			                      "A movie is playing; the text will continue "
+			                      "when it ends.");
+			return;
+		default:
+			NeuroSendActionResult(id.c_str(), false, "Text advance is unavailable.");
+			return;
 	}
-	NeuroSendActionResult(id.c_str(), true, "Text advanced.");
 }
 
 void HandleSelectChoiceAction(std::string const &id, std::string const &data) {

@@ -98,6 +98,26 @@ bool ProbeCanContinue(char const *tag);
 bool ProbeClickWaiting(char const *tag);
 bool DispatchPrimaryClick(char const *tag);
 
+// Advancing the dialogue in one trip: the two conditions and the click travel
+// together instead of as three calls.
+//
+// Each call crosses to the game's main thread and waits its turn there, about
+// fourteen milliseconds apiece, and advancing is by far the most repeated
+// action there is -- eleven thousand times in a single route. Splitting it
+// three ways cost more than the work.
+//
+// The answer says why, not just whether. Refusing every case with the same
+// sentence left Neuro to guess, and during a movie she would keep trying
+// something that cannot work until it ends.
+enum class AdvanceResult {
+	Unavailable,  // the game was asked and did not answer usefully
+	Advanced,
+	NotInStory,  // a menu, the title, a screen that is not the dialogue
+	MoviePlaying,
+	NothingWaiting,  // the story is running but no click is due yet
+};
+AdvanceResult AdvanceDialogue(char const *tag);
+
 // The select layer is up with at least one enabled option; `index` is 0-based
 // here, matching the engine array.
 bool ProbeChoiceLayerReady(char const *tag);
