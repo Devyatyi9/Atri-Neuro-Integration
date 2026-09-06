@@ -46,11 +46,13 @@ the process does not, and then they have to be restored by hand.
 """
 
 import argparse
+import ctypes
 import json
 import re
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import threading
 import time
@@ -84,6 +86,10 @@ ADVANCE_REFUSED = ("Text advance is unavailable", "A movie is playing")
 # only after enough refusals in a row that something is clearly stuck.
 REFUSALS_BEFORE_ASKING = 3
 
+# How often to record the game's memory while nothing else marks the run. Often
+# enough to show a slope, rare enough to stay out of the way of reading the log.
+MEMORY_EVERY_TURNS = 500
+
 # The route's answer for an ordinary turn: nothing of its own to do, hand over
 # to the mode. Named so it can be told apart from a route that cannot proceed.
 ROUTE_IDLE = "route: nothing to do this turn"
@@ -109,6 +115,63 @@ def stamp():
 
 def say(text):
     print(f"{stamp()} {text}", flush=True)
+
+
+def game_pid(port):
+    """The process holding the plugin's TCP port, which is the game itself.
+
+    Asked for by port rather than by executable name: two copies of the game run
+    from one folder and carry nearly the same name, so matching by name picks
+    whichever answers first -- and then every memory reading afterwards belongs
+    to the wrong instance while looking perfectly reasonable.
+    """
+    try:
+        listing = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                                 capture_output=True, text=True, timeout=20).stdout
+    except (OSError, subprocess.SubprocessError) as error:
+        say(f"could not list sockets to find the game: {error}")
+        return None
+    for line in listing.splitlines():
+        parts = line.split()
+        if len(parts) >= 5 and parts[3] == "LISTENING" and parts[1].endswith(f":{port}"):
+            return int(parts[4])
+    return None
+
+
+class MemoryCounters(ctypes.Structure):
+    # PROCESS_MEMORY_COUNTERS_EX: the private bytes at the end are what matters
+    # for a 32-bit process, since that is what the address space runs out of.
+    _fields_ = [("cb", ctypes.c_ulong),
+                ("PageFaultCount", ctypes.c_ulong),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+                ("PrivateUsage", ctypes.c_size_t)]
+
+
+def process_memory(pid):
+    """Working set and private bytes for one process, in megabytes."""
+    PROCESS_QUERY_INFORMATION = 0x0400
+    PROCESS_VM_READ = 0x0010
+    handle = ctypes.windll.kernel32.OpenProcess(
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid)
+    if not handle:
+        return None
+    try:
+        counters = MemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        if not ctypes.windll.psapi.GetProcessMemoryInfo(
+                handle, ctypes.byref(counters), counters.cb):
+            return None
+        return (counters.WorkingSetSize / (1024 * 1024),
+                counters.PrivateUsage / (1024 * 1024))
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
 
 
 def send_tjs(port, code):
@@ -321,9 +384,38 @@ class Engine:
         self.speed_restored = False
         self.pace_since = time.monotonic()
         self.pace_turns = 0
+        self.game_pid = game_pid(options.tjs_port)
+        self.cache_limit = None
+        if self.game_pid is None:
+            say(f"no process is listening on {options.tjs_port}; "
+                "memory will not be recorded")
 
     def route_name(self):
         return self.route.get("name", f"route {self.route_index + 1}")
+
+    def note_memory(self, occasion):
+        """Records how much memory the game is holding, and at what point.
+
+        A run that ends in a failed image load says nothing about when the
+        memory went: by then it is simply gone. The number is only useful as a
+        curve, so it is taken at the moments a curve can be read against --
+        every choice, every route, and at a steady interval in between.
+
+        The graphic cache limit rides along because it is the ceiling the engine
+        set for itself from the machine's memory, and an image load is exactly
+        what failed.
+        """
+        if self.game_pid is None:
+            return
+        usage = process_memory(self.game_pid)
+        if usage is None:
+            return
+        working, private = usage
+        cache = ""
+        if self.cache_limit is not None:
+            cache = f" cache_limit={self.cache_limit}"
+        say(f"memory: {occasion} working={working:.0f}MB private={private:.0f}MB"
+            f"{cache} turn={self.turns}")
 
     def load_route(self):
         """Takes up the route at the current index, from its first decision."""
@@ -358,6 +450,7 @@ class Engine:
         if self.route_index + 1 >= len(self.routes):
             return False
         finished = self.route_name()
+        self.note_memory(f"{finished} finished")
         self.route_index += 1
         self.load_route()
         say(f"route {finished} finished; starting {self.route_name()} "
@@ -450,6 +543,7 @@ class Engine:
                         "route: confirming the quit")
             if "start_new_game" in actions and "exit_game" in actions:
                 self.leaving = True
+                self.note_memory("finished")
                 self.restore_speed()
                 return (command_for("exit_game", actions),
                         "route: finished, closing the game")
@@ -478,6 +572,7 @@ class Engine:
 
     def settle_choice(self):
         """Counts the decision in hand as made and moves to the next one."""
+        self.note_memory(f"{self.route_name()} choice {self.taken + 1}")
         self.pending = False
         self.pending_list = None
         self.remembered_options = None
@@ -588,6 +683,18 @@ class Engine:
         """The command for this prompt, as the object Gary expects back."""
         self.turns += 1
         self.report_pace()
+        if self.turns == 1:
+            # Read once the game is answering. It is the ceiling the engine set
+            # for its image cache from the machine's memory, so it belongs with
+            # the first reading rather than in a note somewhere.
+            try:
+                self.cache_limit = send_tjs(self.options.tjs_port,
+                                            "System.graphicCacheLimit").strip()
+            except OSError:
+                self.cache_limit = None
+            self.note_memory("start")
+        elif self.turns % MEMORY_EVERY_TURNS == 0:
+            self.note_memory("running")
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
         if self.options.action in actions:
