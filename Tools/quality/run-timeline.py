@@ -80,6 +80,28 @@ def load_tag_log(path):
     return rows, unstamped, banner
 
 
+def load_driver_log(path):
+    """The driver's own record: what it decided, and what the game weighed.
+
+    A fourth source, and the only one that knows anything outside the two
+    processes the other three come from -- the memory readings are taken of the
+    game from outside it, so nothing in the client's record or the game's own
+    log can carry them.
+    """
+    if not path:
+        return []
+    rows = []
+    for line in open(path, encoding="utf-8", errors="replace"):
+        parts = line.split(" ", 1)
+        if len(parts) != 2:
+            continue
+        at = parse_stamp(parts[0])
+        if at is None:
+            continue
+        rows.append({"at": at, "text": parts[1].rstrip("\n")})
+    return rows
+
+
 def load_run(directory):
     """The client's record, as three streams of one JSON object per line."""
     streams = {}
@@ -182,7 +204,7 @@ def show_time(at):
     return at.strftime("%H:%M:%S.") + f"{at.microsecond // 1000:03d}"
 
 
-def describe(args, tag_rows, streams, moment, why):
+def describe(args, tag_rows, streams, driver_rows, moment, why):
     span = timedelta(seconds=args.window)
     print(f"=== {show_time(moment)}  ({why})")
     print(f"    +/- {args.window}s")
@@ -244,6 +266,31 @@ def describe(args, tag_rows, streams, moment, why):
         message = str(data.get("message", ""))
         print(f"  {show_time(row['at'])}  {row['key']:26s} {detail[:60]}{outcome} {message[:40]}")
 
+    if driver_rows:
+        # Every turn would bury the rest of the output, so only the lines the
+        # driver writes about something happening: memory readings, route
+        # decisions, whatever it could not do.
+        noise = re.compile(r"^turn \d+: ")
+        shown = [row for row in window(driver_rows, moment, span)
+                 if not noise.match(row["text"])]
+        print("\n--- what the driver saw")
+        if not shown:
+            # The nearest reading either side, since a moment rarely lands on
+            # one and "no memory here" is not the useful answer.
+            before = [r for r in driver_rows
+                      if r["at"] <= moment and r["text"].startswith("memory:")]
+            after = [r for r in driver_rows
+                     if r["at"] > moment and r["text"].startswith("memory:")]
+            for label, rows in (("last before", before[-1:]), ("first after", after[:1])):
+                for row in rows:
+                    gap = abs((row["at"] - moment).total_seconds())
+                    print(f"  {show_time(row['at'])}  {row['text'][:120]}"
+                          f"   ({label}, {gap:.0f}s away)")
+            if not before and not after:
+                print("  (nothing)")
+        for row in shown:
+            print(f"  {show_time(row['at'])}  {row['text'][:150]}")
+
 
 def list_choices(streams):
     choices = [r for r in streams["context"]
@@ -267,6 +314,9 @@ def main():
     parser.add_argument("--text", help="the moment an event first mentions this text")
     parser.add_argument("--list-choices", action="store_true",
                         help="show the choices in this run and stop")
+    parser.add_argument("--driver-log",
+                        help="the scripted driver's own output, which carries the "
+                             "memory readings and the route's decisions")
     parser.add_argument("--window", type=float, default=5.0,
                         help="how many seconds either side to show (default 5)")
     args = parser.parse_args()
@@ -282,8 +332,10 @@ def main():
         list_choices(streams)
         return
 
+    driver_rows = load_driver_log(args.driver_log)
+
     moment, why = find_moment(args, tag_rows, streams)
-    describe(args, tag_rows, streams, moment, why)
+    describe(args, tag_rows, streams, driver_rows, moment, why)
 
 
 if __name__ == "__main__":
