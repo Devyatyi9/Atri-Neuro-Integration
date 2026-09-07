@@ -95,6 +95,59 @@ void HandleBacklogLineAction(std::string const &id,
 	NeuroSendActionResult(id.c_str(), true, okMessage);
 }
 
+// Whether the backlog is listing scenes rather than lines. Read from the same
+// caption the mode switch toggles, so it answers for what is on screen rather
+// than for what was last asked for.
+bool SceneListIsShowing() {
+	int flags = 0;
+	return ProbeBacklogButtons(flags) && (flags & kFlagSceneList) != 0;
+}
+
+// One row per scene: its name in the game's own words, and the scenario it
+// belongs to. The scenario is kept because it is what everything else in our
+// records is keyed by -- a title alone cannot be lined up against a run.
+void ReadSceneList(std::string const &id,
+                   std::string const &data,
+                   int total,
+                   int first) {
+	std::string window;
+	if (!ProbeSceneWindow(first, kHistoryWindow, ParseReadLanguage(data),
+	                      window) ||
+	    window.empty()) {
+		NeuroSendActionResult(id.c_str(), false, "Could not read those scenes.");
+		return;
+	}
+
+	std::string message = "Scenes out of " + std::to_string(total) + ":";
+	size_t start = 0;
+	while (start < window.size()) {
+		size_t const lineEnd = window.find('\n', start);
+		std::string const row =
+		    window.substr(start, lineEnd == std::string::npos ? std::string::npos
+		                                                      : lineEnd - start);
+		start = lineEnd == std::string::npos ? window.size() : lineEnd + 1;
+		size_t const firstTab = row.find('\t');
+		size_t const secondTab = firstTab == std::string::npos
+		                             ? std::string::npos
+		                             : row.find('\t', firstTab + 1);
+		if (secondTab == std::string::npos) {
+			continue;
+		}
+		std::string const scene =
+		    row.substr(firstTab + 1, secondTab - firstTab - 1);
+		std::string const title = row.substr(secondTab + 1);
+		message += " " + row.substr(0, firstTab) + ") ";
+		// A scene the game has no name for is still worth listing: it is a place
+		// jump_to_line can go, and saying nothing about it would hide it.
+		message += HasVisibleCharacters(title) ? title : "(untitled)";
+		if (!scene.empty()) {
+			message += " [" + scene + "]";
+		}
+		message += ";";
+	}
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
+}
+
 void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 	if (!ProbeStateIs("backlog", "read_backlog state")) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -119,6 +172,15 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	int const first = hasFrom ? number - 1 : total - kHistoryWindow;
+
+	// The backlog shows either the lines said or the scenes visited, and the
+	// same action has to answer for whichever is on screen: reading lines while
+	// the player is looking at a list of scene names describes a screen that is
+	// not there.
+	if (SceneListIsShowing()) {
+		ReadSceneList(id, data, total, first);
+		return;
+	}
 
 	std::string window;
 	if (!ProbeHistoryWindow(first, kHistoryWindow, ParseReadLanguage(data),
@@ -267,8 +329,11 @@ bool Handle(std::string const &id,
 void SendEnteringContext() {
 	int total = 0;
 	if (ProbeHistoryCount(total) && total > 0) {
+		// Named for what is on screen: the backlog opens on whichever mode it
+		// was left in, so "lines" is not a safe assumption.
+		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
 		NeuroSendContext(("The backlog is open. It holds " + std::to_string(total) +
-		                  " lines; read_backlog reads four at a time.")
+		                  held + "; read_backlog reads four at a time.")
 		                     .c_str(),
 		                 false);
 	}
@@ -280,11 +345,21 @@ void AppendActions(ActionSet &set, int payload) {
 
 	int historyTotal = 0;
 	if (ProbeHistoryCount(historyTotal) && historyTotal > 0) {
+		// The flags already say which mode is showing, so the description says
+		// what the action will actually return rather than always promising
+		// lines.
+		bool const sceneList = (payload & kFlagSceneList) != 0;
+		char const *const what = sceneList ? "scenes of the story, out of "
+		                                   : "lines of the conversation history, "
+		                                     "out of ";
+		char const *const where =
+		    sceneList ? ". Give \"from\" to start at a scene number, or leave it "
+		                "out for the four most recent."
+		              : ". Give \"from\" to start at a line number, or leave it "
+		                "out for the four most recent.";
 		set.add("read_backlog",
-		        set.keep("Read four lines of the conversation history, out of " +
-		                 std::to_string(historyTotal) +
-		                 ". Give \"from\" to start at a line number, or leave it "
-		                 "out for the four most recent."),
+		        set.keep("Read four " + std::string(what) +
+		                 std::to_string(historyTotal) + where),
 		        set.keep(ReadBacklogSchema(historyTotal)));
 	}
 

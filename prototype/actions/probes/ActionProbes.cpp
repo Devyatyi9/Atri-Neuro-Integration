@@ -223,12 +223,21 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
 	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0, pn = 0, em = 0;"
+	    L"var qv = 0;"
 	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
 	    L"d = 1;"
 	    L"if (kag.selectShowing) c = 1;"
-	    L"if (typeof kag.QuickMenu == 'Object' && kag.QuickMenu._dropdown) p = 1;"
+	    // Both readings, because they can disagree. `_dropdown` says the bar was
+	    // told to slide out; `visible` says the layer is on screen at all. In
+	    // ordinary play the layer is visible whether the bar is out or not, so
+	    // hovering brings it down -- but a scene entered through the engine's
+	    // own start point leaves the layer hidden, and then the bar can be
+	    // "out" with nothing to see.
+	    L"if (typeof kag.QuickMenu == 'Object') {"
+	    L"if (kag.QuickMenu._dropdown) p = 1;"
+	    L"if (kag.QuickMenu.visible) qv = 1; }"
 	    L"if (kag.messageLayerHiding) h = 1;"
 	    L"if (kag.autoMode) a = 1;"
 	    // skipMode is a level, not a flag: 1 and 2 are the momentary states of an
@@ -264,19 +273,19 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
-	    L"+ '|' + pn + '|' + em + '|' + sg; })()",
+	    L"+ '|' + pn + '|' + em + '|' + qv + '|' + sg; })()",
 	    &probe, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
 		return false;
 	}
 
-	// "<state>", then fourteen single-digit flags each behind a bar, then the
+	// "<state>", then fifteen single-digit flags each behind a bar, then the
 	// scenario storage. Neither string contains a bar, so the flags sit at fixed
 	// offsets from the first one and the storage is whatever follows them. The
 	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	size_t const flagsEnd = separator + 28;
+	size_t const flagsEnd = separator + 30;
 	if (separator == std::string::npos || probe.size() <= flagsEnd ||
 	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
@@ -297,6 +306,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.titleShowsTrueEnd = probe[separator + 23] == '1';
 	out.panelShowing = probe[separator + 25] == '1';
 	out.editMenuReady = probe[separator + 27] == '1';
+	out.quickMenuVisible = probe[separator + 29] == '1';
 	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }
@@ -503,6 +513,10 @@ bool ProbeQuickMenuCanDropDown(char const *tag) {
 	    L"(function(){ if (typeof kag == 'undefined' || typeof "
 	    L"kag.QuickMenu != 'Object') return 0;"
 	    L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
+	    // A hidden layer still answers canDropDown and still sets _dropdown when
+	    // told to, so without this the bar reports itself opened while the
+	    // player sees nothing move.
+	    L"if (!kag.QuickMenu.visible) return 0;"
 	    L"if (!kag.QuickMenu.canDropDown) return 0;"
 	    L"return 1; })()",
 	    tag);
@@ -1022,6 +1036,32 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
 		return false;
 	}
 	return QueryString(probe, out, "history window");
+}
+
+bool ProbeSceneWindow(int from, int count, int langType, std::string &out) {
+	wchar_t probe[1024];
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
+	        L"try { var p = global.__cm_backlog.playerObject;"
+	        L"var n = p.getHistoryCount(), s = '';"
+	        L"var lt = %d < 0 ? kag.languageType : %d;"
+	        L"for (var i = %d; i < %d && i < n; i++) {"
+	        L"if (i < 0) continue;"
+	        L"var d = p.getHistoryData(i);"
+	        // One entry per language, and the game picks by the same index it
+	        // uses everywhere else. A scene with no title at all stays empty
+	        // rather than printing the array.
+	        L"var t = d.title;"
+	        L"if (typeof t == 'Object' && t) t = t[+lt];"
+	        L"if (t === void) t = '';"
+	        L"s += (i + 1) + '\\t' + ('' + d.scene) + '\\t' + ('' + t) + '\\n'; }"
+	        L"return s; } catch (e) { return ''; } })()",
+	        langType, langType, from, from + count) < 0) {
+		Log("[Action] scene window probe did not fit\n");
+		return false;
+	}
+	return QueryString(probe, out, "scene window");
 }
 
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {

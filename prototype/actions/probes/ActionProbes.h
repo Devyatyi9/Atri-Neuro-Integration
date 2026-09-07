@@ -41,6 +41,11 @@ struct ScreenSnapshot {
 	bool dialogVisible = false;
 	bool choiceVisible = false;
 	bool quickMenuOut = false;
+	// Whether the quick menu's layer is on screen at all. Apart from
+	// `quickMenuOut` because the two can disagree: a scene entered through the
+	// engine's own start point leaves the layer hidden, and the bar then reports
+	// itself out with nothing for the player to see or reach.
+	bool quickMenuVisible = false;
 	bool textWindowHidden = false;
 	bool autoMode = false;
 	bool skipMode = false;
@@ -278,6 +283,14 @@ bool ProbeHistoryCount(int &total);
 // `langType` picks the language column: 0 is the Japanese original, -1 means
 // whatever the game is currently displaying (kag.languageType).
 bool ProbeHistoryWindow(int from, int count, int langType, std::string &out);
+// The same window while the backlog is showing scenes instead of lines, as
+// "<index>	<scene>	<title>" rows. The player object is the same one; what it
+// holds changes with the mode, which is why the count needs no separate probe.
+//
+// The title is the scenario's own name for the scene -- "Eden, Part 1" -- and
+// it is the only place the game puts that name into words. It arrives as one
+// entry per language, indexed the way the game indexes it.
+bool ProbeSceneWindow(int from, int count, int langType, std::string &out);
 // The line on screen right now, as "<speaker>	<line>". Comes from the entry
 // the monitor keeps from the render path, so it can be re-read in either
 // language.

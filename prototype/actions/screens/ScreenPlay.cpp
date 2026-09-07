@@ -32,6 +32,11 @@ constexpr int kFlagChoice = 1 << 0;
 constexpr int kFlagPanelOut = 1 << 1;
 constexpr int kFlagAuto = 1 << 2;
 constexpr int kFlagSkip = 1 << 3;
+// Whether the bar can be used at all, which is not the same as whether it is
+// out. Its layer is hidden in scenes entered through the engine's own start
+// point, and then neither sliding it out nor pressing anything on it does
+// anything a player would see.
+constexpr int kFlagPanelUsable = 1 << 4;
 
 void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
@@ -113,7 +118,7 @@ void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
 	                DispatchQuickMenuOpen("quick_menu dispatch");
 	if (!ok) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "Opening the quick menu is unavailable.");
+		                      "The quick menu is not on screen here.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
@@ -365,6 +370,14 @@ void AppendActions(ActionSet &set, int payload) {
 	// -- the handlers no longer require the bar to be out, so a call that arrives
 	// for a button the bar is currently hiding is carried out rather than
 	// refused.
+	// Nothing about the bar is offered while its layer is hidden. Sliding out
+	// something the player cannot see is not an action, and the buttons on it
+	// cannot be reached either -- offering them would be advertising a control
+	// that is not on screen.
+	if ((payload & kFlagPanelUsable) == 0) {
+		return;
+	}
+
 	if ((payload & kFlagPanelOut) == 0) {
 		set.add("open_quick_menu",
 		        "Slide out the quick menu bar so its buttons are visible.",
@@ -440,6 +453,9 @@ int ReadPayload(ScreenSnapshot const &screen) {
 	int payload = 0;
 	if (screen.choiceVisible) {
 		payload |= kFlagChoice;
+	}
+	if (screen.quickMenuVisible) {
+		payload |= kFlagPanelUsable;
 	}
 	if (screen.quickMenuOut) {
 		payload |= kFlagPanelOut;
