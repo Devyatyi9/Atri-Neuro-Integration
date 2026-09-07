@@ -191,7 +191,9 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	int total = 0;
-	if (!ProbeHistoryCount(total) || total <= 0) {
+	// The count of what is being listed, not of the history behind it: in the
+	// scene list one entry stands for a whole scene.
+	if (!ProbeBacklogBlockCount(total) || total <= 0) {
 		NeuroSendActionResult(id.c_str(), false, "The history is not readable.");
 		return;
 	}
@@ -379,7 +381,7 @@ bool Handle(std::string const &id,
 
 void SendEnteringContext() {
 	int total = 0;
-	if (ProbeHistoryCount(total) && total > 0) {
+	if (ProbeBacklogBlockCount(total) && total > 0) {
 		// Named for what is on screen: the backlog opens on whichever mode it
 		// was left in, so "lines" is not a safe assumption.
 		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
@@ -396,7 +398,7 @@ void AppendActions(ActionSet &set, int payload) {
 	        kGoBackSchema);
 
 	int historyTotal = 0;
-	if (ProbeHistoryCount(historyTotal) && historyTotal > 0) {
+	if (ProbeBacklogBlockCount(historyTotal) && historyTotal > 0) {
 		// The flags already say which mode is showing, so the description says
 		// what the action will actually return rather than always promising
 		// lines.
@@ -476,18 +478,29 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	std::string const saveList = RowList(saveMask);
 	if (!saveList.empty()) {
+		// In the scene list a row is the record the scene opens with, so the
+		// voice on it belongs to that first line rather than to anything the
+		// row shows. Saying so is the difference between an odd offer and a
+		// wrong one.
 		set.add("save_backlog_voice",
-		        set.keep("Keep the voice of one of the lines on screen in the "
-		                 "collection, numbered from the top. Available now: " +
-		                 saveList + "."),
+		        set.keep(std::string("Keep the voice of one of the rows on "
+		                             "screen in the collection, numbered from "
+		                             "the top") +
+		                 (sceneList ? " -- in the scene list that is the voice of "
+		                              "the line each scene opens with"
+		                            : "") +
+		                 ". Available now: " + saveList + "."),
 		        set.keep(BoundedIntSchema("line", highest)));
 	}
 	std::string const voiceList = RowList(voiceMask);
 	if (!voiceList.empty()) {
 		set.add("replay_backlog_voice",
-		        set.keep("Replay the voice of one of the lines on screen, "
-		                 "numbered from the top. Available now: " +
-		                 voiceList + "."),
+		        set.keep(std::string("Replay the voice of one of the rows on "
+		                             "screen, numbered from the top") +
+		                 (sceneList ? " -- in the scene list that is the voice of "
+		                              "the line each scene opens with"
+		                            : "") +
+		                 ". Available now: " + voiceList + "."),
 		        set.keep(BoundedIntSchema("line", highest)));
 	}
 }

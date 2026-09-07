@@ -1064,6 +1064,26 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
 	return QueryString(probe, out, "history window");
 }
 
+bool ProbeBacklogBlockCount(int &count) {
+	std::string raw;
+	// getBlockCount answers for the view, not for the store behind it: the
+	// scene list holds one block per scene while the history keeps every line.
+	// The count of what is being listed is the only honest "out of".
+	if (!QueryString(
+	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
+	        L"try { return '' + global.__cm_backlog.getBlockCount(); }"
+	        L"catch (e) { return ''; } })()",
+	        raw, "backlog block count")) {
+		return false;
+	}
+	int parsed = 0;
+	if (!ParseIntToken(raw, parsed) || parsed <= 0) {
+		return false;
+	}
+	count = parsed;
+	return true;
+}
+
 bool ProbeBacklogWindowRange(int &first, int &count) {
 	std::string raw;
 	// The list holds the history indices of the rows on screen, one per row, and
@@ -1098,12 +1118,16 @@ bool ProbeSceneWindow(int from, int count, int langType, std::string &out) {
 	if (_snwprintf_s(
 	        probe, _TRUNCATE,
 	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
-	        L"try { var p = global.__cm_backlog.playerObject;"
-	        L"var n = p.getHistoryCount(), s = '';"
+	        L"try { var b = global.__cm_backlog;"
+	        L"var n = b.getBlockCount(), s = '';"
 	        L"var lt = %d < 0 ? kag.languageType : %d;"
 	        L"for (var i = %d; i < %d && i < n; i++) {"
 	        L"if (i < 0) continue;"
-	        L"var d = p.getHistoryData(i);"
+	        // One block per scene, and the block is the record the scene opens
+	        // with -- which is why it carries a voice of its own. Walking the
+	        // history instead would list lines, and every line of one scene
+	        // would print that scene's name.
+	        L"var d = b.getBlockInfo(i);"
 	        // One entry per language, and the game picks by the same index it
 	        // uses everywhere else. A scene with no title at all stays empty
 	        // rather than printing the array.

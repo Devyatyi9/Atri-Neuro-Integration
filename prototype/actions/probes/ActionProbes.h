@@ -306,6 +306,10 @@ bool ProbeSceneWindow(int from, int count, int langType, std::string &out);
 // -- the row on screen, which the per-line actions take, and the index into the
 // history, which reading takes -- only meet here.
 bool ProbeBacklogWindowRange(int &first, int &count);
+// How many entries the backlog is listing right now. Not the same as the
+// history: in the scene list one entry stands for a whole scene, so this is
+// what "out of" has to be counted against.
+bool ProbeBacklogBlockCount(int &count);
 
 // The line on screen right now, as "<speaker>	<line>". Comes from the entry
 // the monitor keeps from the render path, so it can be re-read in either
