@@ -301,6 +301,12 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out);
 // it is the only place the game puts that name into words. It arrives as one
 // entry per language, indexed the way the game indexes it.
 bool ProbeSceneWindow(int from, int count, int langType, std::string &out);
+// Which part of the history the backlog is showing at this moment: the index of
+// the topmost row and how many rows are up. The two numberings the backlog uses
+// -- the row on screen, which the per-line actions take, and the index into the
+// history, which reading takes -- only meet here.
+bool ProbeBacklogWindowRange(int &first, int &count);
+
 // The line on screen right now, as "<speaker>	<line>". Comes from the entry
 // the monitor keeps from the render path, so it can be re-read in either
 // language.

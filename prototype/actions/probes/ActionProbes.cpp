@@ -1064,6 +1064,35 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
 	return QueryString(probe, out, "history window");
 }
 
+bool ProbeBacklogWindowRange(int &first, int &count) {
+	std::string raw;
+	// The list holds the history indices of the rows on screen, one per row, and
+	// it follows the scrolling. It is the only place the two numberings meet:
+	// everywhere else the rows are known by position and the history by index.
+	if (!QueryString(
+	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
+	        L"try { var l = global.__cm_backlog._blockButtonInfoList;"
+	        L"if (typeof l != 'Object') return '';"
+	        L"var n = l.count; if (n <= 0) return '';"
+	        L"return '' + l[0] + '	' + n; } catch (e) { return ''; } })()",
+	        raw, "backlog window range")) {
+		return false;
+	}
+	size_t const tab = raw.find('	');
+	if (tab == std::string::npos) {
+		return false;
+	}
+	int parsedFirst = 0;
+	int parsedCount = 0;
+	if (!ParseIntToken(raw.substr(0, tab), parsedFirst) ||
+	    !ParseIntToken(raw.substr(tab + 1), parsedCount) || parsedCount <= 0) {
+		return false;
+	}
+	first = parsedFirst;
+	count = parsedCount;
+	return true;
+}
+
 bool ProbeSceneWindow(int from, int count, int langType, std::string &out) {
 	wchar_t probe[1024];
 	if (_snwprintf_s(

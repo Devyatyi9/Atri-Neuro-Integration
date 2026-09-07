@@ -12,6 +12,7 @@
 #include "ActionSet.h"
 #include "ContextPayload.h"
 #include "NeuroClient.h"
+#include "ParseNumber.h"
 
 namespace {
 
@@ -103,22 +104,56 @@ bool SceneListIsShowing() {
 	return ProbeBacklogButtons(flags) && (flags & kFlagSceneList) != 0;
 }
 
+// What the numbers just printed can be used for. Said every time rather than
+// left to be remembered, because the same action answers in two numberings and
+// only the reply says which one this is.
+std::string Closing(bool onScreen) {
+	return onScreen
+	           ? " Those numbers are the rows jump_to_line and the voice actions "
+	             "take."
+	           : " These are not on screen: the per-line actions reach only the "
+	             "rows that are. Scroll to them first.";
+}
+
+// The number a row is printed under. The probes number by the history, which is
+// what reading a distant part of it should say; when the reply is about the
+// rows on screen it has to be the row instead, because that is what
+// jump_to_line and its neighbours take.
+std::string RowNumber(std::string const &printed, int rowBase) {
+	if (rowBase <= 0) {
+		return printed;
+	}
+	int index = 0;
+	if (!ParseIntToken(printed, index)) {
+		return printed;
+	}
+	return std::to_string(index - rowBase);
+}
+
 // One row per scene: its name in the game's own words, and the scenario it
 // belongs to. The scenario is kept because it is what everything else in our
 // records is keyed by -- a title alone cannot be lined up against a run.
+// `rows` is how many to read, and `rowBase` turns the history index into the
+// number the reply prints: zero leaves the history numbering alone, and the
+// index of the topmost row on screen turns it into the row numbering the
+// per-line actions take.
 void ReadSceneList(std::string const &id,
                    std::string const &data,
                    int total,
-                   int first) {
+                   int first,
+                   int rows,
+                   int rowBase,
+                   bool onScreen) {
 	std::string window;
-	if (!ProbeSceneWindow(first, kHistoryWindow, ParseReadLanguage(data),
-	                      window) ||
+	if (!ProbeSceneWindow(first, rows, ParseReadLanguage(data), window) ||
 	    window.empty()) {
 		NeuroSendActionResult(id.c_str(), false, "Could not read those scenes.");
 		return;
 	}
 
-	std::string message = "Scenes out of " + std::to_string(total) + ":";
+	std::string message = onScreen ? "Scenes on screen, out of "
+	                               : "Scenes elsewhere in the backlog, out of ";
+	message += std::to_string(total) + ":";
 	size_t start = 0;
 	while (start < window.size()) {
 		size_t const lineEnd = window.find('\n', start);
@@ -136,7 +171,7 @@ void ReadSceneList(std::string const &id,
 		std::string const scene =
 		    row.substr(firstTab + 1, secondTab - firstTab - 1);
 		std::string const title = row.substr(secondTab + 1);
-		message += " " + row.substr(0, firstTab) + ") ";
+		message += " " + RowNumber(row.substr(0, firstTab), rowBase) + ") ";
 		// A scene the game has no name for is still worth listing: it is a place
 		// jump_to_line can go, and saying nothing about it would hide it.
 		message += HasVisibleCharacters(title) ? title : "(untitled)";
@@ -145,6 +180,7 @@ void ReadSceneList(std::string const &id,
 		}
 		message += ";";
 	}
+	message += Closing(onScreen);
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
@@ -160,8 +196,6 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	// Without "from", the newest lines -- which is what "what was just said"
-	// means. Numbered from 1 like everything else Neuro is given.
 	int number = 0;
 	bool const hasFrom = ParseJsonInteger(data, "\"from\"", number);
 	if (hasFrom && (number < 1 || number > total)) {
@@ -171,26 +205,42 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		        .c_str());
 		return;
 	}
-	int const first = hasFrom ? number - 1 : total - kHistoryWindow;
+
+	// Without "from", exactly the rows on screen, numbered the way they are
+	// numbered there. The per-line actions take that number and nothing else, so
+	// a reply that used the history numbering would answer in figures none of
+	// them accept. With "from" the history numbering is right instead: those
+	// lines are somewhere else entirely, and the reply says so rather than
+	// offering numbers that would act on whatever happens to be on screen.
+	int windowFirst = 0;
+	int windowRows = 0;
+	bool const onScreen =
+	    !hasFrom && ProbeBacklogWindowRange(windowFirst, windowRows);
+	int const first = hasFrom    ? number - 1
+	                  : onScreen ? windowFirst
+	                             : total - kHistoryWindow;
+	int const rows = onScreen ? windowRows : kHistoryWindow;
+	int const rowBase = onScreen ? windowFirst : 0;
 
 	// The backlog shows either the lines said or the scenes visited, and the
 	// same action has to answer for whichever is on screen: reading lines while
 	// the player is looking at a list of scene names describes a screen that is
 	// not there.
 	if (SceneListIsShowing()) {
-		ReadSceneList(id, data, total, first);
+		ReadSceneList(id, data, total, first, rows, rowBase, onScreen);
 		return;
 	}
 
 	std::string window;
-	if (!ProbeHistoryWindow(first, kHistoryWindow, ParseReadLanguage(data),
-	                        window) ||
+	if (!ProbeHistoryWindow(first, rows, ParseReadLanguage(data), window) ||
 	    window.empty()) {
 		NeuroSendActionResult(id.c_str(), false, "Could not read those lines.");
 		return;
 	}
 
-	std::string message = "Lines out of " + std::to_string(total) + ":";
+	std::string message = onScreen ? "Lines on screen, out of "
+	                               : "Lines elsewhere in the backlog, out of ";
+	message += std::to_string(total) + ":";
 	size_t start = 0;
 	while (start < window.size()) {
 		size_t const lineEnd = window.find('\n', start);
@@ -211,7 +261,7 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		std::string const speaker =
 		    row.substr(firstTab + 1, secondTab - firstTab - 1);
 		bool const hasVoice = row[secondTab + 1] == '1';
-		message += " " + row.substr(0, firstTab) + ") ";
+		message += " " + RowNumber(row.substr(0, firstTab), rowBase) + ") ";
 		if (HasVisibleCharacters(speaker)) {
 			message += speaker + ": ";
 		}
@@ -223,6 +273,7 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		}
 		message += ";";
 	}
+	message += Closing(onScreen);
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
@@ -332,10 +383,11 @@ void SendEnteringContext() {
 		// Named for what is on screen: the backlog opens on whichever mode it
 		// was left in, so "lines" is not a safe assumption.
 		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
-		NeuroSendContext(("The backlog is open. It holds " + std::to_string(total) +
-		                  held + "; read_backlog reads four at a time.")
-		                     .c_str(),
-		                 false);
+		NeuroSendContext(
+		    ("The backlog is open. It holds " + std::to_string(total) + held +
+		     "; read_backlog reads the ones on screen, or elsewhere on request.")
+		        .c_str(),
+		    false);
 	}
 }
 
@@ -353,12 +405,15 @@ void AppendActions(ActionSet &set, int payload) {
 		                                   : "lines of the conversation history, "
 		                                     "out of ";
 		char const *const where =
-		    sceneList ? ". Give \"from\" to start at a scene number, or leave it "
-		                "out for the four most recent."
-		              : ". Give \"from\" to start at a line number, or leave it "
-		                "out for the four most recent.";
+		    sceneList
+		        ? ". Left out, it reads the scenes on screen, numbered the way "
+		          "the per-row actions number them; give \"from\" to read "
+		          "somewhere else, numbered by the whole list."
+		        : ". Left out, it reads the lines on screen, numbered the way the "
+		          "per-row actions number them; give \"from\" to read somewhere "
+		          "else, numbered by the whole history.";
 		set.add("read_backlog",
-		        set.keep("Read four " + std::string(what) +
+		        set.keep("Read " + std::string(what) +
 		                 std::to_string(historyTotal) + where),
 		        set.keep(ReadBacklogSchema(historyTotal)));
 	}
