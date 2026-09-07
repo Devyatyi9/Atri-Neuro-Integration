@@ -200,7 +200,11 @@ void HandleNeuroAction(std::string const &id,
 	    ScreenGallery::Handle(id, name, data)) {
 		return;
 	}
-	NeuroSendActionResult(id.c_str(), false, "Unsupported action.");
+	// Named, because a refusal reaches her alongside whatever else she has
+	// asked for, and one that does not say which action it answers cannot be
+	// lined up with any of them.
+	NeuroSendActionResult(id.c_str(), false,
+	                      ("There is no action called " + name + ".").c_str());
 }
 
 int SyncedCapabilityKind() {
