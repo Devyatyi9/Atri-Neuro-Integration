@@ -12,6 +12,7 @@
 #include "ActionSchemas.h"
 #include "ActionSet.h"
 #include "NeuroClient.h"
+#include "ParseNumber.h"
 #include "SlotPayload.h"
 
 namespace {
@@ -68,16 +69,21 @@ char const *const kSaveTabHolds[] = {"writing a new save", "saved games",
 // so the offset is written down once.
 constexpr int kQuickSlots = 10;
 
-// What the plate under the slot reads. The two halves of the list are labelled
-// differently on screen -- the quick ones are "Quick 1" to "Quick 10" and the
-// rest "No.001" upward -- so subtracting the offset everywhere printed
-// "No.-09" on the quick tab.
+// The number printed under a slot. The two halves of the list are numbered
+// separately on screen: the quick ones are Quick 1 to Quick 10, and the rest
+// start again at No.001. Every slot the player can point at has exactly one of
+// these, and it is what the actions take.
+int ScreenNumber(int index) {
+	return index < kQuickSlots ? index + 1 : index - kQuickSlots + 1;
+}
+
+// The same number as the screen writes it, for saying back to Neuro.
 std::string PlateLabel(int index) {
 	if (index < kQuickSlots) {
-		return "Quick " + std::to_string(index + 1);
+		return "Quick " + std::to_string(ScreenNumber(index));
 	}
 	char plate[16];
-	sprintf_s(plate, "No.%03d", index - kQuickSlots + 1);
+	sprintf_s(plate, "No.%03d", ScreenNumber(index));
 	return plate;
 }
 
@@ -100,16 +106,45 @@ bool ParseSlot(std::string const &id,
                char const *action,
                int &position) {
 	int number = -1;
-	if (!ParseJsonInteger(data, "\"slot\"", number) || number < 1 ||
-	    number > kVisibleSlots) {
+	if (!ParseJsonInteger(data, "\"slot\"", number)) {
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    (std::string(action) + " requires a \"slot\" from 1 to " +
-		     std::to_string(kVisibleSlots) + ", counting the slots on screen.")
+		    (std::string(action) + " requires a \"slot\" number, the one printed "
+		                           "under the slot on screen.")
 		        .c_str());
 		return false;
 	}
-	position = number - 1;
+
+	// Which ten are on screen decides what the number may be, so the window is
+	// read rather than assumed. Numbering by the plate rather than by the cell
+	// is what makes a number mean one save: cell 2 is a different save on every
+	// page, while No.022 is always the same one.
+	int base = -1;
+	int page = -1;
+	if (!ProbeSaveWindow(base, page)) {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "Cannot tell which slots the screen is showing right now.");
+		return false;
+	}
+	int const first = ScreenNumber(base);
+	int const last = ScreenNumber(base + kVisibleSlots - 1);
+	if (number < first || number > last) {
+		// Naming the page it is on rather than switching there: a page change is
+		// something the player sees happen, and doing it inside another action
+		// would hide it.
+		std::string message = std::string(action) + " takes a slot from " +
+		                      std::to_string(first) + " to " +
+		                      std::to_string(last) + ", the ten on screen now.";
+		if (number >= 1 && base >= kQuickSlots) {
+			int const wanted = (number - 1) / kVisibleSlots + 1;
+			message += " Slot " + std::to_string(number) + " is on page " +
+			           std::to_string(wanted) + "; switch_page opens it.";
+		}
+		NeuroSendActionResult(id.c_str(), false, message.c_str());
+		return false;
+	}
+	position = number - first;
 	return true;
 }
 
@@ -161,19 +196,13 @@ void HandleReadSaveSlotAction(std::string const &id, std::string const &data) {
 		start = tab + 1;
 	}
 
-	// Both numbers, because the screen shows one and every action takes the
-	// other: the slot is 2 on this page and No.022 on the plate under the
-	// cursor. Naming only the first leaves the two descriptions of one slot
-	// looking like two slots.
-	std::string message = "Slot " + std::to_string(position + 1);
-	// ProbeSaveWindow rather than SlotIndex: that helper answers the action
-	// itself when it fails, and this one has an answer of its own to send. A
-	// missing plate number is worth losing; two results for one action is not.
+	// Named the way the screen names it, which is also the way it was asked
+	// for. ProbeSaveWindow rather than SlotIndex: that helper answers the action
+	// itself when it fails, and this one has an answer of its own to send.
 	int base = -1;
 	int page = -1;
-	if (ProbeSaveWindow(base, page)) {
-		message += " (" + PlateLabel(base + position) + " on screen)";
-	}
+	std::string message =
+	    ProbeSaveWindow(base, page) ? PlateLabel(base + position) : "That slot";
 	message += ": " + fields[1] + ", saved " + fields[2] + ".";
 	// The comment replaces the last line on screen once it is set, so it is
 	// reported the same way round: what the player chose to see, and then what
@@ -611,7 +640,14 @@ void SendWindowContext(std::string const &opening,
 		if (secondTab == std::string::npos) {
 			continue;
 		}
-		std::string const slot = line.substr(0, firstTab);
+		// The probe numbers its rows 1..10 down the window; the screen numbers
+		// them by the plates. Everything Neuro is told and everything she can
+		// ask for uses the plates, so the row number is turned into one here.
+		int row = 0;
+		if (!ParseIntToken(line.substr(0, firstTab), row)) {
+			continue;
+		}
+		std::string const slot = std::to_string(ScreenNumber(base + row - 1));
 		std::string const what =
 		    line.substr(firstTab + 1, secondTab - firstTab - 1);
 		std::string const when = line.substr(secondTab + 1);
@@ -726,8 +762,8 @@ void AppendSwitchPageAction(ActionSet &set, int payload) {
 	set.add("switch_page",
 	        set.keep("Show another page of this list, 1 to " +
 	                 std::to_string(pages) + ". Page " + std::to_string(page) +
-	                 " is the one open, and the ten slot numbers always mean the "
-	                 "ten slots of the page on screen."),
+	                 " is the one open. Slots are numbered as the screen numbers "
+	                 "them, so another page brings another ten numbers."),
 	        set.keep(BoundedIntSchema("page", pages)));
 }
 
@@ -890,6 +926,16 @@ void SendEditMenuContext(int payload) {
 
 void AppendActions(ActionSet &set, Mode mode, int payload) {
 	int const copyMode = UnpackSlotPayload(payload).copyMode;
+	// The ten cells on screen, numbered the way the plates under them are. The
+	// window base follows the page, so both the schema's bounds and the wording
+	// change with it -- which is right: "slot 22" means one save, while "slot 2"
+	// means a different one on every page.
+	int const base = UnpackSlotPayload(payload).page * kVisibleSlots;
+	std::string const range =
+	    std::to_string(ScreenNumber(base)) + " to " +
+	    std::to_string(ScreenNumber(base + kVisibleSlots - 1));
+	char const *const slotSchema = set.keep(RangeIntSchema(
+	    "slot", ScreenNumber(base), ScreenNumber(base + kVisibleSlots - 1)));
 	if (copyMode != 0) {
 		// The screen keeps its grid but every press means something else: the
 		// slot is the destination now, not a save to load or a place to write.
@@ -899,10 +945,10 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 		// reads these pointers after this function has returned.
 		set.add("choose_destination",
 		        set.keep("Choose the slot the save is " + verb +
-		                 " into, by its number on screen. The game asks to "
-		                 "confirm, and asks again if the slot already holds a "
-		                 "save."),
-		        kSlotSchema);
+		                 " into, by its number on screen, " + range +
+		                 ". The game asks to confirm, and asks again if the slot "
+		                 "already holds a save."),
+		        slotSchema);
 		set.add("cancel_copy",
 		        set.keep("Cancel it: the save is not " + verb +
 		                 " anywhere, and the screen goes back to normal."),
@@ -929,31 +975,36 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	// over it.
 	if (mode != Mode::Voice) {
 		set.add("read_save_slot",
-		        "Read everything one slot holds -- its scene, when it was saved, "
-		        "the comment written on it and the line it was saved at -- by its "
-		        "slot number on screen, 1 to 10.",
-		        kSlotSchema);
+		        set.keep("Read everything one slot holds -- its scene, when it "
+		                 "was saved, the comment written on it and the line it "
+		                 "was saved at -- by its number on screen, " +
+		                 range + "."),
+		        slotSchema);
 	}
 	if (mode == Mode::Load) {
 		set.add("load_save",
-		        "Load a saved game by its slot number on screen, 1 to 10. Asks "
-		        "for confirmation first.",
-		        kSlotSchema);
+		        set.keep("Load a saved game by its number on screen, " + range +
+		                 ". Asks for confirmation first."),
+		        slotSchema);
 	} else if (mode == Mode::Save) {
 		set.add("save_game",
-		        "Save the current progress into an empty slot, by its slot number "
-		        "on screen, 1 to 10. Occupied slots are refused.",
-		        kSlotSchema);
+		        set.keep("Save the current progress into an empty slot, by its "
+		                 "number on screen, " +
+		                 range + ". Occupied slots are refused."),
+		        slotSchema);
 	} else if (ProbeVoiceSaveMode("voice mode")) {
 		// The same grid, opposite meanings: opened to keep the current line, a
 		// slot stores it; opened from Extra, a slot plays what is already kept.
 		set.add("save_voice_to_slot",
-		        "Keep the line in one of the ten slots on screen, by its number.",
-		        kSlotSchema);
+		        set.keep("Keep the line in one of the ten slots on screen, by its "
+		                 "number, " +
+		                 range + "."),
+		        slotSchema);
 	} else {
-		set.add("play_voice",
-		        "Replay a kept line by its slot number on screen, 1 to 10.",
-		        kSlotSchema);
+		set.add(
+		    "play_voice",
+		    set.keep("Replay a kept line by its number on screen, " + range + "."),
+		    slotSchema);
 	}
 	AppendSwitchTabAction(set, payload);
 	AppendSwitchPageAction(set, payload);
@@ -961,9 +1012,10 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	// screen was opened for. Which of its entries apply is decided when it
 	// opens, so nothing about the slot is checked here.
 	set.add("open_edit_menu",
-	        "Open the edit menu of a saved slot, by its slot number on screen: "
-	        "comment, copy, move or erase.",
-	        kEditMenuSchema);
+	        set.keep("Open the edit menu of a saved slot, by its number on "
+	                 "screen, " +
+	                 range + ": comment, copy, move or erase."),
+	        slotSchema);
 }
 
 void SendEnteringContext(Mode mode, int payload) {

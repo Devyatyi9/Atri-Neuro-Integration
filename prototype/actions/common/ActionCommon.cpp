@@ -54,6 +54,13 @@ std::string BoundedIntSchema(char const *field, int maximum) {
 	       "\"],\"additionalProperties\":false}";
 }
 
+std::string RangeIntSchema(char const *field, int minimum, int maximum) {
+	return std::string("{\"type\":\"object\",\"properties\":{\"") + field +
+	       "\":{\"type\":\"integer\",\"minimum\":" + std::to_string(minimum) +
+	       ",\"maximum\":" + std::to_string(maximum) + "}},\"required\":[\"" +
+	       field + "\"],\"additionalProperties\":false}";
+}
+
 std::string EnumStringSchema(char const *field,
                              std::vector<char const *> const &values) {
 	std::string schema = std::string("{\"type\":\"object\",\"properties\":{\"") +

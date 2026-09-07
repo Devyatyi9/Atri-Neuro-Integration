@@ -50,5 +50,8 @@ int ParseReadLanguage(std::string const &data);
 // Schemas whose bounds are only known at registration time, because they
 // describe what is on screen at that moment.
 std::string BoundedIntSchema(char const *field, int maximum);
+// The same, when the range does not start at one: the slot screens number their
+// ten cells by what is printed under them, so the page decides both ends.
+std::string RangeIntSchema(char const *field, int minimum, int maximum);
 std::string EnumStringSchema(char const *field,
                              std::vector<char const *> const &values);
