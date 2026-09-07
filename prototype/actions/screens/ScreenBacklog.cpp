@@ -10,6 +10,7 @@
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
 #include "ActionSet.h"
+#include "ContextPayload.h"
 #include "NeuroClient.h"
 
 namespace {
@@ -149,7 +150,7 @@ void HandleReadBacklogAction(std::string const &id, std::string const &data) {
 		    row.substr(firstTab + 1, secondTab - firstTab - 1);
 		bool const hasVoice = row[secondTab + 1] == '1';
 		message += " " + row.substr(0, firstTab) + ") ";
-		if (!speaker.empty()) {
+		if (HasVisibleCharacters(speaker)) {
 			message += speaker + ": ";
 		}
 		message += row.substr(thirdTab + 1);

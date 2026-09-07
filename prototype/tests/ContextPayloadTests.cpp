@@ -77,4 +77,43 @@ void RunContextPayloadTests() {
 	ContextPayload const empty =
 	    BuildContextPayload("[event] dialogue\tAtri\t\n");
 	CHECK(empty.Empty());
+
+	// A speaker the reader cannot see is no speaker. The prologue writes some
+	// names as an ideographic space, and the game draws no name plate for them,
+	// so a colon in front of the line would be ours rather than the game's.
+	ContextPayload const ideographic = BuildContextPayload(
+	    "[event] dialogue\t\xE3\x80\x80\tThis world is sinking.\n");
+	CHECK(ideographic.message == "This world is sinking.");
+
+	// Several of them, mixed with ordinary spaces, still show nothing.
+	ContextPayload const padded = BuildContextPayload(
+	    "[event] dialogue\t \xE3\x80\x80 \xE3\x80\x80\tStill nameless.\n");
+	CHECK(padded.message == "Still nameless.");
+
+	// A real name that merely starts with one keeps its colon: the question is
+	// whether anything shows, not whether it starts with a space.
+	// The literals are split because a hex escape in C++ swallows every hex
+	// digit that follows it, and "A" is one.
+	ContextPayload const paddedName = BuildContextPayload(
+	    "[event] dialogue\t\xE3\x80\x80"
+	    "Atri\tI am here.\n");
+	CHECK(paddedName.message ==
+	      "\xE3\x80\x80"
+	      "Atri: I am here.");
+}
+
+void RunVisibleCharacterTests() {
+	CHECK(!HasVisibleCharacters(""));
+	CHECK(!HasVisibleCharacters(" "));
+	CHECK(!HasVisibleCharacters("\t\r\n"));
+	CHECK(!HasVisibleCharacters("\xE3\x80\x80"));
+	CHECK(!HasVisibleCharacters("\xE3\x80\x80\xE3\x80\x80"));
+	CHECK(HasVisibleCharacters("A"));
+	CHECK(HasVisibleCharacters(" A "));
+	CHECK(
+	    HasVisibleCharacters("\xE3\x80\x80"
+	                         "A"));
+	// A truncated sequence is not the ideographic space and must not be eaten
+	// as one. Whatever it is, it is not nothing.
+	CHECK(HasVisibleCharacters("\xE3\x80"));
 }

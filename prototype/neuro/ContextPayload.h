@@ -21,3 +21,12 @@ struct ContextPayload {
 };
 
 ContextPayload BuildContextPayload(std::string const &monitorOutput);
+
+// Whether a string shows the reader anything at all.
+//
+// A speaker name is treated as absent when it is not, which is what this
+// answers: the scenario writes some names as an ideographic space, and the game
+// draws the name plate only when there is something to draw, so those lines
+// look nameless on screen. Testing for an empty string alone puts a colon in
+// front of narration.
+bool HasVisibleCharacters(std::string const &text);

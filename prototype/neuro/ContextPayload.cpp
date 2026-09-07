@@ -57,7 +57,7 @@ std::string DescribeDialogue(std::vector<std::string> const &fields) {
 	if (text.empty()) {
 		return {};
 	}
-	return speaker.empty() ? text : speaker + ": " + text;
+	return HasVisibleCharacters(speaker) ? speaker + ": " + text : text;
 }
 
 std::string DescribeChoiceShown(std::vector<std::string> const &fields) {
@@ -82,6 +82,26 @@ std::string DescribeChoiceMade(std::vector<std::string> const &fields) {
 }
 
 }  // namespace
+
+bool HasVisibleCharacters(std::string const &text) {
+	for (size_t index = 0; index < text.size(); ++index) {
+		unsigned char const byte = static_cast<unsigned char>(text[index]);
+		if (byte == ' ' || byte == '\t' || byte == '\r' || byte == '\n') {
+			continue;
+		}
+		// The ideographic space, U+3000, spelled out in UTF-8. It is the one the
+		// scenario actually uses for a nameless speaker, and it is the reason
+		// this function exists rather than a call to isspace.
+		if (byte == 0xE3 && index + 2 < text.size() &&
+		    static_cast<unsigned char>(text[index + 1]) == 0x80 &&
+		    static_cast<unsigned char>(text[index + 2]) == 0x80) {
+			index += 2;
+			continue;
+		}
+		return true;
+	}
+	return false;
+}
 
 ContextPayload BuildContextPayload(std::string const &monitorOutput) {
 	ContextPayload payload;

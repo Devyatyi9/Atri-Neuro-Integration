@@ -22,6 +22,7 @@ void RunActionJsonTests();
 void RunSlotPayloadTests();
 void RunPluginConfigTests();
 void RunContextPayloadTests();
+void RunVisibleCharacterTests();
 
 int main() {
 	RunParseNumberTests();
@@ -29,6 +30,7 @@ int main() {
 	RunSlotPayloadTests();
 	RunPluginConfigTests();
 	RunContextPayloadTests();
+	RunVisibleCharacterTests();
 
 	printf("%d checks, %d failed\n", g_TestChecks, g_TestFailures);
 	return g_TestFailures == 0 ? 0 : 1;
