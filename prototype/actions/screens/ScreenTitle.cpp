@@ -254,20 +254,12 @@ void SendEnteringContext(int payload) {
 	if ((payload & kFlagShowsExtra) != 0 && (payload & kFlagCanOpenExtra) == 0) {
 		message += " Extra is greyed out: it is not unlocked yet.";
 	}
-	// Where Continue would pick up. Hovering the button shows this on screen, but
-	// only as a drawn thumbnail with no text on it, so saying it is the only way
-	// it reaches her at all.
-	if ((payload & kFlagCanContinue) != 0) {
-		std::string chapter;
-		std::string date;
-		if (ProbeContinueSave(chapter, date) && !chapter.empty()) {
-			message += " Continue would resume in " + chapter;
-			if (!date.empty()) {
-				message += ", saved " + date;
-			}
-			message += ".";
-		}
-	}
+	// Where Continue would pick up is deliberately not said. Hovering the button
+	// draws a preview, and that preview carries a picture of the scene with
+	// "Continue" and "SAVE DATA" over it -- the chapter and the date are in the
+	// save record, not on the screen. Reading them out would be reminding her of
+	// the game rather than describing it, which is the line this whole surface
+	// keeps.
 	NeuroSendContext(message.c_str(), false);
 }
 

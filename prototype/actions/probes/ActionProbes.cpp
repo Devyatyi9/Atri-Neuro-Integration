@@ -333,29 +333,6 @@ bool ProbeScreenButtonHovered(char const *button, char const *tag) {
 	    tag, button);
 }
 
-bool ProbeContinueSave(std::string &chapter, std::string &date) {
-	// The record the title's Continue resumes from. Its tag is configurable, so
-	// it is read rather than spelled out; the popup that appears on hover draws
-	// this same record as a picture, with none of it as text.
-	std::string raw;
-	if (!QueryString(L"(function(){ try {"
-	                 L"if (!SystemAction.hasSuspendSaveData()) return '';"
-	                 L"var tag = SystemConfig.gameContSuspendSaveFileTag;"
-	                 L"return kag.getBookMarkPageName(tag) + '|' + "
-	                 L"kag.getBookMarkDate(tag);"
-	                 L"} catch (e) { return ''; } })()",
-	                 raw, "continue save")) {
-		return false;
-	}
-	size_t const separator = raw.find('|');
-	if (separator == std::string::npos) {
-		return false;
-	}
-	chapter = raw.substr(0, separator);
-	date = raw.substr(separator + 1);
-	return true;
-}
-
 bool DispatchScreenButton(char const *button, char const *tag) {
 	// A press a player makes is always preceded by the cursor arriving: the
 	// button lights up, its hover sound plays, and whatever it reveals appears

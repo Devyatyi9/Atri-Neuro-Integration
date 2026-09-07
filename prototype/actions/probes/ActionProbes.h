@@ -87,10 +87,6 @@ bool DispatchScreenButton(char const *button, char const *tag);
 bool DispatchScreenButtonHover(char const *button, bool on, char const *tag);
 // Whether the cursor is resting on the button as far as the game is concerned.
 bool ProbeScreenButtonHovered(char const *button, char const *tag);
-// The chapter and date of the save the title's Continue would resume, empty
-// when there is none. What the hover preview draws, in words.
-bool ProbeContinueSave(std::string &chapter, std::string &date);
-
 // The language screen the game opens once, on the very first launch. It reports
 // itself as "option" like the settings screen, so only the controls tell them
 // apart: it carries lang_text and no "title".
