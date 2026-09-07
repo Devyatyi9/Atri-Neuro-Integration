@@ -260,6 +260,9 @@ void SyncCapabilities(int kind, int payload = 0) {
 	    kind != kCapabilityStateEditMenu) {
 		ScreenSlots::ForgetPendingContext();
 	}
+	if (kind != kCapabilityStateGallery) {
+		ScreenGallery::ForgetMusicWindow();
+	}
 	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
 		// is not sent here: this state is entered during plugin init, before the
@@ -491,10 +494,14 @@ void RefreshPrototypeActionState() {
 		return;
 	}
 
-	// The slot screens hold their announcement back until the list stops
-	// moving, so it is sent from here rather than from the capability sync:
-	// that runs only when something changed, and waiting is the opposite.
+	// Both of these wait for a list to stop moving, so they are driven from
+	// here rather than from the capability sync: that runs only when something
+	// changed, and waiting is the opposite. The music one also has to notice
+	// scrolling that changes nothing else, which is why it polls.
 	ScreenSlots::SendPendingContext();
+	if (SyncedCapabilityKind() == kCapabilityStateGallery) {
+		ScreenGallery::PollMusicWindow();
+	}
 
 	// A modal dialog owns the screen: answering it is the only thing that can
 	// succeed, and leaving the other actions registered would invite calls that

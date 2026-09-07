@@ -250,12 +250,32 @@ std::string DescribeMusicList() {
 	return text;
 }
 
+// The last list announced, so the same one is not sent twice.
+std::string g_LastMusicList;
+
 void SendMusicListContext() {
 	std::string const text = DescribeMusicList();
-	if (!text.empty()) {
-		NeuroSendContext(text.c_str(), false);
+	if (text.empty() || text == g_LastMusicList) {
+		return;
 	}
+	g_LastMusicList = text;
+	NeuroSendContext(text.c_str(), false);
 }
+
+// Where the list was standing last time it was looked at, and when it moved.
+//
+// The numbers in the list are positions in the window, not track numbers, and
+// the action says so: "Those numbers are what switch_track takes." Scrolling
+// leaves the numbers alone and changes the tracks behind them, so a list sent
+// once and never again is worse than none -- it is wrong in a way nothing on
+// Neuro's side can notice.
+//
+// Her own scrolling is answered directly by the action. This is for the player
+// scrolling with the wheel, which nothing else reports.
+constexpr ULONGLONG kMusicSettleMs = 500;
+int g_LastMusicPosition = -1;
+bool g_MusicMoved = false;
+ULONGLONG g_MusicMovedAt = 0;
 
 void HandleMusicScrollBarAction(std::string const &id,
                                 std::string const &data) {
@@ -487,7 +507,37 @@ bool Handle(std::string const &id,
 }
 
 void SendEnteringContext() {
+	// A fresh arrival, so nothing carried over decides what is worth saying.
+	g_LastMusicList.clear();
+	g_LastMusicPosition = -1;
+	g_MusicMoved = false;
 	SendMusicListContext();
+}
+
+void PollMusicWindow() {
+	int position = 0;
+	int limit = 0;
+	if (!ProbeMusicScroll(position, limit, "music window poll")) {
+		return;
+	}
+	if (position != g_LastMusicPosition) {
+		g_LastMusicPosition = position;
+		g_MusicMoved = true;
+		// Restamped while it keeps moving, so a spin of the wheel ends in one
+		// announcement rather than one per step.
+		g_MusicMovedAt = GetTickCount64();
+		return;
+	}
+	if (g_MusicMoved && GetTickCount64() - g_MusicMovedAt >= kMusicSettleMs) {
+		g_MusicMoved = false;
+		SendMusicListContext();
+	}
+}
+
+void ForgetMusicWindow() {
+	g_MusicMoved = false;
+	g_LastMusicPosition = -1;
+	g_LastMusicList.clear();
 }
 
 void AppendActions(ActionSet &set, int payload) {

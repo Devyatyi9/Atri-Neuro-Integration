@@ -19,6 +19,13 @@ bool Handle(std::string const &id,
 // be read back.
 void SendEnteringContext();
 
+// Watches the music list for scrolling nobody told us about -- the player's
+// wheel -- and re-sends the list once it stops. The numbers in that list are
+// window positions, so a list that is not re-sent after a scroll says the wrong
+// thing rather than nothing.
+void PollMusicWindow();
+void ForgetMusicWindow();
+
 // What the screen offers right now, from the value the refresh stored.
 void AppendActions(ActionSet &set, int payload);
 
