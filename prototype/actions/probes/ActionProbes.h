@@ -133,6 +133,10 @@ bool DispatchChoice(int index, char const *tag);
 // open()/close() are empty stubs and showing/visible read 1 even while it is
 // retracted, so _dropdown is the only usable position flag.
 bool ProbeQuickMenuCanDropDown(char const *tag);
+// Whether the bar actually arrived, asked after pressing for it. The game lets
+// a hidden layer report itself opened, so this is the only reading that matches
+// what the player sees.
+bool ProbeQuickMenuCameOut(char const *tag);
 bool ProbeQuickMenuHasUpdown(char const *tag);
 // Both report whether the bar actually ended up in the requested position.
 // Retracting is not symmetric with opening: updown(0) only takes effect while

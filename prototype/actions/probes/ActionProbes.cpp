@@ -513,12 +513,20 @@ bool ProbeQuickMenuCanDropDown(char const *tag) {
 	    L"(function(){ if (typeof kag == 'undefined' || typeof "
 	    L"kag.QuickMenu != 'Object') return 0;"
 	    L"if (typeof kag.QuickMenu.updown != 'Object') return 0;"
-	    // A hidden layer still answers canDropDown and still sets _dropdown when
-	    // told to, so without this the bar reports itself opened while the
-	    // player sees nothing move.
-	    L"if (!kag.QuickMenu.visible) return 0;"
 	    L"if (!kag.QuickMenu.canDropDown) return 0;"
 	    L"return 1; })()",
+	    tag);
+}
+
+bool ProbeQuickMenuCameOut(char const *tag) {
+	// Asked after the press, not before it. A hidden layer answers canDropDown
+	// and sets _dropdown when told to, so the only honest way to know the bar
+	// arrived is to look at it afterwards -- which is also what the player does.
+	return Ask(
+	    L"(function(){ if (typeof kag == 'undefined' || typeof "
+	    L"kag.QuickMenu != 'Object') return 0;"
+	    L"if (!kag.QuickMenu.visible) return 0;"
+	    L"return kag.QuickMenu._dropdown ? 1 : 0; })()",
 	    tag);
 }
 

@@ -32,11 +32,6 @@ constexpr int kFlagChoice = 1 << 0;
 constexpr int kFlagPanelOut = 1 << 1;
 constexpr int kFlagAuto = 1 << 2;
 constexpr int kFlagSkip = 1 << 3;
-// Whether the bar can be used at all, which is not the same as whether it is
-// out. Its layer is hidden in scenes entered through the engine's own start
-// point, and then neither sliding it out nor pressing anything on it does
-// anything a player would see.
-constexpr int kFlagPanelUsable = 1 << 4;
 
 void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
@@ -113,12 +108,17 @@ void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	bool const ok = ProbeStateIs("game", "quick_menu state") &&
-	                ProbeQuickMenuCanDropDown("quick_menu dispatchable") &&
-	                DispatchQuickMenuOpen("quick_menu dispatch");
-	if (!ok) {
+	bool const pressed = ProbeStateIs("game", "quick_menu state") &&
+	                     ProbeQuickMenuCanDropDown("quick_menu dispatchable") &&
+	                     DispatchQuickMenuOpen("quick_menu dispatch");
+	// Pressed is not arrived. In a scene entered through the engine's own start
+	// point the layer was never built, and it takes the press without anything
+	// reaching the screen -- so the bar is looked at afterwards, the way the
+	// player would look at it, and a press that changed nothing is reported as
+	// the failure it is rather than as an opening nobody can see.
+	if (!pressed || !ProbeQuickMenuCameOut("quick_menu arrived")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "The quick menu is not on screen here.");
+		                      "Opening the quick menu is unavailable.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Opened the quick menu.");
@@ -380,14 +380,6 @@ void AppendActions(ActionSet &set, int payload) {
 // can be built from this same list: a reference assembled by hand would drift
 // from the bar the first time a button changed.
 void AppendQuickMenuActions(ActionSet &set, int payload) {
-	// Nothing about the bar is offered while its layer is hidden. Sliding out
-	// something the player cannot see is not an action, and the buttons on it
-	// cannot be reached either -- offering them would be advertising a control
-	// that is not on screen.
-	if ((payload & kFlagPanelUsable) == 0) {
-		return;
-	}
-
 	if ((payload & kFlagPanelOut) == 0) {
 		set.add("open_quick_menu",
 		        "Slide out the quick menu bar so its buttons are visible.",
@@ -460,7 +452,7 @@ std::string QuickMenuReference() {
 	// direction, so only one of each pair is listed -- which is what the bar
 	// itself shows.
 	ActionSet set;
-	AppendQuickMenuActions(set, kFlagPanelUsable | kFlagPanelOut);
+	AppendQuickMenuActions(set, kFlagPanelOut);
 
 	std::string reference;
 	for (int index = 0; index < set.count(); ++index) {
@@ -484,10 +476,11 @@ int ReadPayload(ScreenSnapshot const &screen) {
 	if (screen.choiceVisible) {
 		payload |= kFlagChoice;
 	}
-	if (screen.quickMenuVisible) {
-		payload |= kFlagPanelUsable;
-	}
-	if (screen.quickMenuOut) {
+	// Out means out where the player can see it. A layer that was never built
+	// still reports itself dropped down once pressed, and taking that reading
+	// alone put every button of the bar on offer with nothing on screen to
+	// press. Opening it is offered either way, and answers for itself.
+	if (screen.quickMenuOut && screen.quickMenuVisible) {
 		payload |= kFlagPanelOut;
 		// The modes live on the bar, so they only change the action set while it
 		// is out. Folding them in unconditionally would re-register an identical
