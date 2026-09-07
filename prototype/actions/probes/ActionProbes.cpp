@@ -856,6 +856,32 @@ bool ProbeSlotsShowBase(int base, char const *tag) {
 	    tag, base);
 }
 
+bool ProbeSlotDetails(int position, std::string &out) {
+	wchar_t probe[1024];
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
+	        L"return '';"
+	        L"var st = global.__cm_saveStore;"
+	        L"try { var idx = st.offset + %d;"
+	        L"if (idx >= st.count || !st.isExistData(idx)) return '0';"
+	        L"var d = st.getItemInfo(idx);"
+	        // Void where a save carries no comment, and a tab-separated record
+	        // cannot hold a void, so it becomes the empty field it means.
+	        L"var c = st.getCommentText(idx, null, 1);"
+	        L"if (c === void) c = '';"
+	        // The screen badges one slot "New": the one the store remembers as
+	        // written last. Nothing on the record itself says so.
+	        L"var fresh = (st.lastSaved == idx) ? '1' : '0';"
+	        L"return '1\\t' + d.title + '\\t' + d.realdate + '\\t' + c + '\\t' + "
+	        L"fresh + '\\t' + d.lastText; } catch (e) { return ''; } })()",
+	        position) < 0) {
+		Log("[Action] slot details probe did not fit\n");
+		return false;
+	}
+	return QueryString(probe, out, "slot details") && !out.empty();
+}
+
 bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out) {
 	wchar_t probe[1024];
 	if (_snwprintf_s(

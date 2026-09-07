@@ -58,6 +58,20 @@ char const *const kSaveTabNames[] = {"save", "load", "quick", "voice"};
 char const *const kSaveTabHolds[] = {"writing a new save", "saved games",
                                      "quick saves", "kept voice lines"};
 
+// The store holds the quick saves first and the numbered ones after them, in
+// one list: ten quick slots at indices 0..9, then the fifteen pages of ten the
+// screen numbers No.001 upward. So an index is nine ahead of the number printed
+// on the plate, and the two are easy to mistake for each other -- the third
+// page sits at indices 30..39 and shows No.021 to No.030.
+//
+// Every place that has an index and wants the printed number goes through here,
+// so the offset is written down once.
+constexpr int kQuickSlots = 10;
+
+int PlateNumber(int index) {
+	return index - kQuickSlots + 1;
+}
+
 bool PressSlot(int position, char const *tag) {
 	char itemButton[16];
 	sprintf_s(itemButton, "item%d%d", position / kSlotColumns,
@@ -104,6 +118,71 @@ bool SlotIndex(std::string const &id, int position, int &index) {
 	}
 	index = base + position;
 	return true;
+}
+
+// The slot list gives two fields per row so that ten rows stay readable. This
+// gives the rest of one slot: what the player wrote over it, and the line the
+// game was on when it was written -- which together are how a person tells two
+// saves of the same scene apart.
+void HandleReadSaveSlotAction(std::string const &id, std::string const &data) {
+	int position = -1;
+	if (!ParseSlot(id, data, "read_save_slot", position)) {
+		return;
+	}
+
+	std::string record;
+	if (!ProbeSlotDetails(position, record)) {
+		NeuroSendActionResult(id.c_str(), false, "Could not read that slot.");
+		return;
+	}
+	if (record[0] == '0') {
+		NeuroSendActionResult(id.c_str(), true, "That slot is empty.");
+		return;
+	}
+
+	std::string fields[6];
+	size_t start = 0;
+	for (int field = 0; field < 6; ++field) {
+		size_t const tab = record.find('\t', start);
+		fields[field] = record.substr(
+		    start, tab == std::string::npos ? std::string::npos : tab - start);
+		if (tab == std::string::npos) {
+			break;
+		}
+		start = tab + 1;
+	}
+
+	// Both numbers, because the screen shows one and every action takes the
+	// other: the slot is 2 on this page and No.022 on the plate under the
+	// cursor. Naming only the first leaves the two descriptions of one slot
+	// looking like two slots.
+	std::string message = "Slot " + std::to_string(position + 1);
+	// ProbeSaveWindow rather than SlotIndex: that helper answers the action
+	// itself when it fails, and this one has an answer of its own to send. A
+	// missing plate number is worth losing; two results for one action is not.
+	int base = -1;
+	int page = -1;
+	if (ProbeSaveWindow(base, page)) {
+		char plate[16];
+		sprintf_s(plate, "%03d", PlateNumber(base + position));
+		message += " (No." + std::string(plate) + " on screen)";
+	}
+	message += ": " + fields[1] + ", saved " + fields[2] + ".";
+	// The comment replaces the last line on screen once it is set, so it is
+	// reported the same way round: what the player chose to see, and then what
+	// it was written over.
+	if (!fields[3].empty()) {
+		message += " Comment: " + fields[3] + ".";
+	}
+	// The badge the screen shows, in words. It answers "which of these did I
+	// write last", which is the question a list of dates makes you work out.
+	if (fields[4] == "1") {
+		message += " Marked New: the most recent save.";
+	}
+	if (!fields[5].empty()) {
+		message += " Last line: " + fields[5];
+	}
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
 void HandleLoadSaveAction(std::string const &id, std::string const &data) {
@@ -667,6 +746,8 @@ bool Handle(std::string const &id,
             std::string const &data) {
 	if (name == "load_save") {
 		HandleLoadSaveAction(id, data);
+	} else if (name == "read_save_slot") {
+		HandleReadSaveSlotAction(id, data);
 	} else if (name == "save_game") {
 		HandleSaveGameAction(id, data);
 	} else if (name == "save_voice_to_slot") {
@@ -835,6 +916,16 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 		        "Leave the game and go back to the title screen. Asks for "
 		        "confirmation first.",
 		        kReturnToTitleSchema);
+	}
+	// Reading a slot is not loading it, so it is offered on the save screen too:
+	// the question "what is already in slot 4" comes up most when about to write
+	// over it.
+	if (mode != Mode::Voice) {
+		set.add("read_save_slot",
+		        "Read everything one slot holds -- its scene, when it was saved, "
+		        "the comment written on it and the line it was saved at -- by its "
+		        "slot number on screen, 1 to 10.",
+		        kSlotSchema);
 	}
 	if (mode == Mode::Load) {
 		set.add("load_save",

@@ -238,6 +238,16 @@ bool ProbeSlotsShowBase(int base, char const *tag);
 // tab. `voice` picks the fields, since the voice tab holds lines rather than
 // saves.
 bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out);
+// Everything one slot holds, as "<exists>	<title>	<date>	<comment>	<last
+// line>".
+//
+// The slot list carries two fields per row because ten rows of everything would
+// bury the screen; this is the rest, for one slot at a time. The comment is not
+// part of the record and comes from getCommentText, the same call the edit menu
+// writes through -- it is what the player types over the last line. `newest` is
+// the "New" badge the screen puts on the slot written last, which lives on the
+// store rather than on the record.
+bool ProbeSlotDetails(int position, std::string &out);
 
 // How many page buttons the screen carries. Unlike the settings tabs, the page
 // of the open window has a button too, so this is the page count as it stands.
