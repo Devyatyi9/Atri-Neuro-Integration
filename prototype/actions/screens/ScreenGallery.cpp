@@ -276,6 +276,10 @@ constexpr ULONGLONG kMusicSettleMs = 500;
 int g_LastMusicPosition = -1;
 bool g_MusicMoved = false;
 ULONGLONG g_MusicMovedAt = 0;
+// Whether a picture is covering the grid, from the last read of the screen. The
+// list is not announced while it is: the announcement ends by naming
+// switch_track, and that is not registered behind an open picture.
+bool g_ViewOpen = false;
 
 void HandleMusicScrollBarAction(std::string const &id,
                                 std::string const &data) {
@@ -515,6 +519,11 @@ void SendEnteringContext() {
 }
 
 void PollMusicWindow() {
+	// Left untouched rather than reset: the list has not moved behind the
+	// picture, so closing it finds the poll where it was.
+	if (g_ViewOpen) {
+		return;
+	}
 	int position = 0;
 	int limit = 0;
 	if (!ProbeMusicScroll(position, limit, "music window poll")) {
@@ -537,6 +546,7 @@ void PollMusicWindow() {
 void ForgetMusicWindow() {
 	g_MusicMoved = false;
 	g_LastMusicPosition = -1;
+	g_ViewOpen = false;
 	g_LastMusicList.clear();
 }
 
@@ -634,6 +644,7 @@ bool ReadPayload(int &payload) {
 			canScroll = scroll.canScroll;
 		}
 	}
+	g_ViewOpen = gallery.viewOpen;
 	payload = gallery.scrollMask | (gallery.viewOpen ? kViewOpenFlag : 0) |
 	          (gallery.variantsLeft > 0 ? kMoreViewsFlag : 0) |
 	          (gallery.squareCount << kSquareShift) |
