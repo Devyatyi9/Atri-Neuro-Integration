@@ -454,11 +454,14 @@ std::string QuickMenuReference() {
 	ActionSet set;
 	AppendQuickMenuActions(set, kFlagPanelOut);
 
+	// One per line. Joined by spaces this is a paragraph of fourteen entries
+	// whose boundaries are marked by nothing, and a reader that runs past the
+	// end of one lands mid-sentence in the next.
 	std::string reference;
 	for (int index = 0; index < set.count(); ++index) {
 		NeuroRegisteredAction const &action = set.data()[index];
 		if (!reference.empty()) {
-			reference += " ";
+			reference += "\n";
 		}
 		reference += std::string(action.name) + " -- " + action.description;
 	}

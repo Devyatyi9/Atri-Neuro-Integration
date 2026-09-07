@@ -65,7 +65,7 @@ void HandleReadShortcutsAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	NeuroSendContext(
-	    ("The quick menu carries these actions: " + reference).c_str(), false);
+	    ("The quick menu carries these actions:\n" + reference).c_str(), false);
 	NeuroSendActionResult(id.c_str(), true, "Listed the quick menu's actions.");
 }
 
