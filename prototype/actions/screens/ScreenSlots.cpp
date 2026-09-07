@@ -68,8 +68,17 @@ char const *const kSaveTabHolds[] = {"writing a new save", "saved games",
 // so the offset is written down once.
 constexpr int kQuickSlots = 10;
 
-int PlateNumber(int index) {
-	return index - kQuickSlots + 1;
+// What the plate under the slot reads. The two halves of the list are labelled
+// differently on screen -- the quick ones are "Quick 1" to "Quick 10" and the
+// rest "No.001" upward -- so subtracting the offset everywhere printed
+// "No.-09" on the quick tab.
+std::string PlateLabel(int index) {
+	if (index < kQuickSlots) {
+		return "Quick " + std::to_string(index + 1);
+	}
+	char plate[16];
+	sprintf_s(plate, "No.%03d", index - kQuickSlots + 1);
+	return plate;
 }
 
 bool PressSlot(int position, char const *tag) {
@@ -163,9 +172,7 @@ void HandleReadSaveSlotAction(std::string const &id, std::string const &data) {
 	int base = -1;
 	int page = -1;
 	if (ProbeSaveWindow(base, page)) {
-		char plate[16];
-		sprintf_s(plate, "%03d", PlateNumber(base + position));
-		message += " (No." + std::string(plate) + " on screen)";
+		message += " (" + PlateLabel(base + position) + " on screen)";
 	}
 	message += ": " + fields[1] + ", saved " + fields[2] + ".";
 	// The comment replaces the last line on screen once it is set, so it is
