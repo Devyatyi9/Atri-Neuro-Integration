@@ -59,6 +59,9 @@ char const *const kSaveTabNames[] = {"save", "load", "quick", "voice"};
 char const *const kSaveTabHolds[] = {"writing a new save", "saved games",
                                      "quick saves", "kept voice lines"};
 
+// The last list announced, so an identical one is not sent again.
+std::string g_LastAnnouncement;
+
 // The store holds the quick saves first and the numbered ones after them, in
 // one list: ten quick slots at indices 0..9, then the fifteen pages of ten the
 // screen numbers No.001 upward. So an index is nine ahead of the number printed
@@ -679,6 +682,14 @@ void SendWindowContext(std::string const &opening,
 	if (closing != nullptr) {
 		message += closing;
 	}
+	// The same list twice in a row says nothing the second time, and it happens:
+	// a change arriving just after one announcement went out queues another, and
+	// by the time it is due the screen is back where it was. Cleared on leaving
+	// the screen, so coming back to the same page still announces it.
+	if (message == g_LastAnnouncement) {
+		return;
+	}
+	g_LastAnnouncement = message;
 	NeuroSendContext(message.c_str(), false);
 }
 
@@ -1016,6 +1027,47 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	                 "screen, " +
 	                 range + ": comment, copy, move or erase."),
 	        slotSchema);
+}
+
+// The announcement is held back until the list stops moving.
+//
+// A page change is one message: the list, the slots on it and what they hold.
+// Turning pages with the mouse wheel walks through them one by one, and
+// seventeen seconds of it produced twenty-seven of these -- each one prompting
+// Neuro, and twenty-six of them describing a page she was already off. Waiting
+// for the window to settle turns a spin of the wheel into the one announcement
+// that is still true when it arrives.
+//
+// Anything a call of hers does is answered at once as always: this delays what
+// the screen says about itself, not what her actions return.
+namespace {
+constexpr ULONGLONG kSettleMs = 500;
+
+bool g_AnnouncementDue = false;
+Mode g_PendingMode = Mode::Load;
+int g_PendingPayload = 0;
+ULONGLONG g_PendingSince = 0;
+}  // namespace
+
+void QueueEnteringContext(Mode mode, int payload) {
+	g_AnnouncementDue = true;
+	g_PendingMode = mode;
+	g_PendingPayload = payload;
+	// Restamped on every change, so a burst collapses into the last one.
+	g_PendingSince = GetTickCount64();
+}
+
+void ForgetPendingContext() {
+	g_AnnouncementDue = false;
+	g_LastAnnouncement.clear();
+}
+
+void SendPendingContext() {
+	if (!g_AnnouncementDue || GetTickCount64() - g_PendingSince < kSettleMs) {
+		return;
+	}
+	g_AnnouncementDue = false;
+	SendEnteringContext(g_PendingMode, g_PendingPayload);
 }
 
 void SendEnteringContext(Mode mode, int payload) {

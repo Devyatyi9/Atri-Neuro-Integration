@@ -253,6 +253,13 @@ void SyncCapabilities(int kind, int payload = 0) {
 	g_DialogForcePending.store(
 	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu,
 	    std::memory_order_release);
+	// A slot list waiting to be announced describes a screen that is gone once
+	// we are somewhere else. The edit menu is not somewhere else -- it stands
+	// over the same screen and returns to it.
+	if (kind != kCapabilityStateLoad && kind != kCapabilityStateSave &&
+	    kind != kCapabilityStateEditMenu) {
+		ScreenSlots::ForgetPendingContext();
+	}
 	if (kind == kCapabilityStateTitleLoading) {
 		// No action can succeed yet, so advertise none. The explanatory context
 		// is not sent here: this state is entered during plugin init, before the
@@ -311,13 +318,13 @@ void SyncCapabilities(int kind, int payload = 0) {
 		ActionSet set;
 		ScreenSlots::AppendActions(set, ScreenSlots::Mode::Load, payload);
 		NeuroSetRegisteredActions(set.data(), set.count());
-		ScreenSlots::SendEnteringContext(ScreenSlots::Mode::Load, payload);
+		ScreenSlots::QueueEnteringContext(ScreenSlots::Mode::Load, payload);
 		Log(("[Action] Capabilities: load (" + set.names() + ")\n").c_str());
 	} else if (kind == kCapabilityStateSave) {
 		ActionSet set;
 		ScreenSlots::AppendActions(set, ScreenSlots::Mode::Save, payload);
 		NeuroSetRegisteredActions(set.data(), set.count());
-		ScreenSlots::SendEnteringContext(ScreenSlots::Mode::Save, payload);
+		ScreenSlots::QueueEnteringContext(ScreenSlots::Mode::Save, payload);
 		Log(("[Action] Capabilities: save (" + set.names() + ")\n").c_str());
 	} else if (kind == kCapabilityStateGallery) {
 		// Only on the way in. The payload changes whenever a picture opens or a
@@ -483,6 +490,11 @@ void RefreshPrototypeActionState() {
 	if (!ProbeScreen(screen)) {
 		return;
 	}
+
+	// The slot screens hold their announcement back until the list stops
+	// moving, so it is sent from here rather than from the capability sync:
+	// that runs only when something changed, and waiting is the opposite.
+	ScreenSlots::SendPendingContext();
 
 	// A modal dialog owns the screen: answering it is the only thing that can
 	// succeed, and leaving the other actions registered would invite calls that

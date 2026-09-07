@@ -28,6 +28,17 @@ bool Handle(std::string const &id,
 void AppendActions(ActionSet &set, Mode mode, int payload);
 void SendEnteringContext(Mode mode, int payload);
 
+// The same announcement, held until the list stops moving. Turning pages with
+// the wheel walks through them one at a time, and announcing each would prompt
+// Neuro with pages she is already past.
+//
+// QueueEnteringContext records what to say and restarts the wait;
+// SendPendingContext is called on every refresh and sends it once the wait is
+// over; ForgetPendingContext drops it when the screen is gone.
+void QueueEnteringContext(Mode mode, int payload);
+void SendPendingContext();
+void ForgetPendingContext();
+
 // The per-slot edit menu, which takes the screen the way a dialog does: its own
 // set, its own line, and a forced choice, because nothing else answers while it
 // stands. `payload` carries which of its entries can be used.
