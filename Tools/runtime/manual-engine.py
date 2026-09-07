@@ -25,6 +25,7 @@ and drive it from another shell:
     curl http://127.0.0.1:5150/turn                 what is on offer right now
     curl http://127.0.0.1:5150/context              what the game has been saying
     curl -X POST http://127.0.0.1:5150/act -d "{\\"action\\": \\"advance_text\\"}"
+    ... with "unchecked": true to send a name the game never registered
     curl -X POST http://127.0.0.1:5150/wait         pass this turn deliberately
     curl http://127.0.0.1:5150/stop                 end the server
 """
@@ -167,13 +168,23 @@ class Engine:
         # without a word -- which is the failure this whole tool exists to see.
         self.last = None
 
-    def place(self, action, data):
+    def place(self, action, data, forced=False):
+        """Leaves the order for the next turn.
+
+        `forced` skips the check that the action is on offer, for the one thing
+        a well-behaved client cannot otherwise do: name something the game never
+        registered. The API says to expect that of Neuro, so the game has to
+        answer for it, and nothing else here can produce one.
+        """
         with self.lock:
-            if action is not None and action not in self.actions:
+            if action is not None and not forced and action not in self.actions:
                 return False, (f"{action} is not on offer right now; "
                                f"offered: {', '.join(sorted(self.actions)) or 'nothing'}")
-            self.order = None if action is None else {"action": action, "data": data}
-            return True, "waiting this turn out" if action is None else f"{action} queued"
+            self.order = (None if action is None
+                          else {"action": action, "data": data, "forced": forced})
+            if action is None:
+                return True, "waiting this turn out"
+            return True, f"{action} queued" + (" (unchecked)" if forced else "")
 
     def observe(self, schema, messages):
         """Takes in the turn Gary is asking about."""
@@ -194,6 +205,12 @@ class Engine:
 
             if order is not None:
                 name = order["action"]
+                if order["forced"]:
+                    command = {"action": name}
+                    if order["data"] is not None:
+                        command["data"] = order["data"]
+                    self.last = f"sent {name} unchecked"
+                    return command, "ordered, unchecked"
                 if name not in self.actions:
                     # It was offered when it was placed and is not now. Saying so
                     # is the point: silently dropping it looks like the game
@@ -328,7 +345,8 @@ class Handler(BaseHTTPRequestHandler):
             if not path.endswith("/wait") and not action:
                 self._json(400, {"error": {"message": "give an \"action\""}})
                 return
-            placed, why = Handler.engine.place(action, body.get("data"))
+            placed, why = Handler.engine.place(action, body.get("data"),
+                                               bool(body.get("unchecked")))
             say(f"order: {why}")
             self._json(200 if placed else 409, {"placed": placed, "detail": why})
             return
