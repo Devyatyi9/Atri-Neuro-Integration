@@ -38,6 +38,9 @@ constexpr char const *const kCloseQuickMenuSchema =
 constexpr char const *const kReturnToTitleSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kReadShortcutsSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kHideUiSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

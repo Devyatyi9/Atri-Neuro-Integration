@@ -24,6 +24,13 @@ void AppendActions(ActionSet &set, int payload);
 // The one action left when the interface is hidden.
 void AppendHiddenActions(ActionSet &set);
 
+// Everything the quick menu bar carries, as one line of "name -- description"
+// pairs. The settings screen offers this the way the game offers its own key
+// reference there: a reminder of controls that are not in front of you.
+//
+// Built from the same list the bar registers, so the two cannot disagree.
+std::string QuickMenuReference();
+
 // The choice layer, the bar's position and its buttons, read into the
 // capability value.
 int ReadPayload(ScreenSnapshot const &screen);

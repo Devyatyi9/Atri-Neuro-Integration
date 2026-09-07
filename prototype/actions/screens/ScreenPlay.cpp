@@ -344,6 +344,9 @@ bool Handle(std::string const &id,
 	return true;
 }
 
+// Defined below, next to the reference that is built from it.
+void AppendQuickMenuActions(ActionSet &set, int payload);
+
 void AppendActions(ActionSet &set, int payload) {
 	// Reading the line on screen is not a quick menu affair -- it is about the
 	// dialogue itself, and it is the only way to get the original Japanese,
@@ -362,14 +365,21 @@ void AppendActions(ActionSet &set, int payload) {
 		        kAdvanceTextSchema);
 	}
 
-	// The quick menu is reachable during a choice too, so it is offered in every
-	// play state -- only its direction follows the bar's position.
-	//
-	// What is registered still mirrors the bar: with it retracted, its buttons
-	// are not on screen and are not offered. Reaching them is a separate matter
-	// -- the handlers no longer require the bar to be out, so a call that arrives
-	// for a button the bar is currently hiding is carried out rather than
-	// refused.
+	AppendQuickMenuActions(set, payload);
+}
+
+// The quick menu is reachable during a choice too, so it is offered in every
+// play state -- only its direction follows the bar's position.
+//
+// What is registered still mirrors the bar: with it retracted, its buttons are
+// not on screen and are not offered. Reaching them is a separate matter -- the
+// handlers no longer require the bar to be out, so a call that arrives for a
+// button the bar is currently hiding is carried out rather than refused.
+//
+// Kept apart from the rest of the play set so the settings screen's reference
+// can be built from this same list: a reference assembled by hand would drift
+// from the bar the first time a button changed.
+void AppendQuickMenuActions(ActionSet &set, int payload) {
 	// Nothing about the bar is offered while its layer is hidden. Sliding out
 	// something the player cannot see is not an action, and the buttons on it
 	// cannot be reached either -- offering them would be advertising a control
@@ -441,6 +451,26 @@ void AppendActions(ActionSet &set, int payload) {
 	set.add("open_backlog", "Open the backlog to re-read earlier lines.",
 	        kOpenBacklogSchema);
 	set.add("open_settings", "Open the settings screen.", kOpenSettingsSchema);
+}
+
+std::string QuickMenuReference() {
+	// Built with the bar treated as out and usable, because the question the
+	// reference answers is "what is on the bar", not "what can be pressed from
+	// where I am standing". Auto and skip each occupy one button that changes
+	// direction, so only one of each pair is listed -- which is what the bar
+	// itself shows.
+	ActionSet set;
+	AppendQuickMenuActions(set, kFlagPanelUsable | kFlagPanelOut);
+
+	std::string reference;
+	for (int index = 0; index < set.count(); ++index) {
+		NeuroRegisteredAction const &action = set.data()[index];
+		if (!reference.empty()) {
+			reference += " ";
+		}
+		reference += std::string(action.name) + " -- " + action.description;
+	}
+	return reference;
 }
 
 void AppendHiddenActions(ActionSet &set) {

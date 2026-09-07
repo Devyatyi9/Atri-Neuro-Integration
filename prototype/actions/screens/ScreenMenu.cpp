@@ -1,5 +1,7 @@
 #include "ScreenMenu.h"
 
+#include "ScreenPlay.h"
+
 #include <windows.h>
 
 #include <atomic>
@@ -40,6 +42,31 @@ void HandleSettingsTabAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Switched to that tab.");
+}
+
+// The settings screen's own seventh tab is the key reference: where a player
+// goes to be reminded of controls they use rarely and cannot see. This is the
+// same errand for actions -- the quick menu's buttons are not registered while
+// the bar is retracted, so without asking there is no way to know what is on
+// it.
+//
+// The list goes out as context rather than as the result message: the spec asks
+// that a result be small, and this is a page, not a sentence.
+void HandleReadShortcutsAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "read_shortcuts does not accept arguments.");
+		return;
+	}
+	std::string const reference = ScreenPlay::QuickMenuReference();
+	if (reference.empty()) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "There is nothing to list for the quick menu.");
+		return;
+	}
+	NeuroSendContext(
+	    ("The quick menu carries these actions: " + reference).c_str(), false);
+	NeuroSendActionResult(id.c_str(), true, "Listed the quick menu's actions.");
 }
 
 void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
@@ -212,6 +239,8 @@ bool Handle(std::string const &id,
 		HandleAnswerDialogAction(id, data);
 	} else if (name == "confirm_language") {
 		HandleConfirmLanguageAction(id, data);
+	} else if (name == "read_shortcuts") {
+		HandleReadShortcutsAction(id, data);
 	} else {
 		return false;
 	}
@@ -245,6 +274,12 @@ void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle) {
 	text += ".";
 	set.add("settings_tab", set.keep(text),
 	        set.keep(BoundedIntSchema("tab", tabs)));
+	// Offered alongside the tabs, because it answers the same need the seventh
+	// of them does: a reminder of controls that are not in front of you.
+	set.add("read_shortcuts",
+	        "List the quick menu's actions and what each one does. They are not "
+	        "offered while the bar is retracted, so this is how to see them.",
+	        kReadShortcutsSchema);
 }
 
 void AppendDialogActions(ActionSet &set) {
