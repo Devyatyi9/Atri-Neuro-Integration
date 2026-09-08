@@ -124,6 +124,35 @@ void HandleExitGameAction(std::string const &id, std::string const &data) {
 	                      "Asked to quit; confirm or cancel the dialog.");
 }
 
+// Its own handler rather than the shared button one, because that one answers a
+// wrong screen and a greyed-out button with the same sentence -- and the button
+// is greyed out for a reason worth naming, while being on the screen already is
+// not a refusal about the button at all.
+void HandleOpenExtraAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "open_extra does not accept arguments.");
+		return;
+	}
+	if (!ProbeStateIs("title", "open_extra state")) {
+		if (ProbeStateIs("cgmode", "open_extra already")) {
+			NeuroSendActionResult(id.c_str(), false,
+			                      "The Extra screen is already open.");
+			return;
+		}
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the title screen.");
+		return;
+	}
+	if (!ProbeScreenButtonReady("extra", "open_extra button") ||
+	    !DispatchScreenButton("extra", "open_extra dispatch")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Extra is greyed out: it is not unlocked yet.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Opened the Extra screen.");
+}
+
 void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -144,6 +173,23 @@ void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 		     DispatchQuickMenuButton("load", "open_load bar dispatch");
 	}
 	if (!ok) {
+		if (ProbeStateIs("load", "open_load already")) {
+			NeuroSendActionResult(id.c_str(), false,
+			                      "The load screen is already open.");
+			return;
+		}
+		// The save list and the voice collection are the same screen on another
+		// tab, not another screen, and the way across is switch_tab. Saying
+		// "unavailable" here would send her looking for a broken Load button
+		// while the list is in front of her.
+		if (ProbeStateIs("save", "open_load elsewhere") ||
+		    ProbeStateIs("voice", "open_load elsewhere")) {
+			NeuroSendActionResult(
+			    id.c_str(), false,
+			    "This screen is open on another tab; switch_tab reaches the load "
+			    "list.");
+			return;
+		}
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Opening the load screen is unavailable.");
 		return;
@@ -214,9 +260,7 @@ bool Handle(std::string const &id,
 	} else if (name == "open_settings") {
 		HandleOpenSettingsAction(id, data);
 	} else if (name == "open_extra") {
-		HandleScreenButtonAction(id, data, "open_extra", "title", "extra",
-		                         "Opened the Extra screen.",
-		                         "Extra is greyed out: it is not unlocked yet.");
+		HandleOpenExtraAction(id, data);
 	} else if (name == "exit_game") {
 		HandleExitGameAction(id, data);
 	} else {

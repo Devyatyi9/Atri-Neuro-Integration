@@ -293,6 +293,12 @@ void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	                ProbeQuickMenuButtonReady("log", "open_backlog button") &&
 	                DispatchQuickMenuButton("log", "open_backlog dispatch");
 	if (!ok) {
+		// One state covers both of the backlog's views: switching to the scene
+		// list leaves it "backlog", so this answers for either.
+		if (ProbeStateIs("backlog", "open_backlog already")) {
+			NeuroSendActionResult(id.c_str(), false, "The backlog is already open.");
+			return;
+		}
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Opening the backlog is unavailable.");
 		return;
