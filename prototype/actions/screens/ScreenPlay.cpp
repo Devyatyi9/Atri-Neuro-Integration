@@ -108,6 +108,14 @@ void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
 		return;
 	}
 
+	// Asked before pressing, unlike the check below: the press succeeds on a bar
+	// that is already out, and the game is none the worse for it -- but
+	// answering "opened" would claim a move that never happened.
+	if (ProbeQuickMenuCameOut("quick_menu already")) {
+		NeuroSendActionResult(id.c_str(), false, "The quick menu is already out.");
+		return;
+	}
+
 	bool const pressed = ProbeStateIs("game", "quick_menu state") &&
 	                     ProbeQuickMenuCanDropDown("quick_menu dispatchable") &&
 	                     DispatchQuickMenuOpen("quick_menu dispatch");
