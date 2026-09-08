@@ -11,6 +11,7 @@
 #include "ActionProbes.h"
 #include "ActionSchemas.h"
 #include "ActionSet.h"
+#include "ContextPayload.h"
 #include "NeuroClient.h"
 #include "ParseNumber.h"
 #include "SlotPayload.h"
@@ -358,7 +359,38 @@ void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
 	}
 	// Replaying only plays audio: no dialog, no screen change, nothing to wait
 	// for and nothing to undo.
-	NeuroSendActionResult(id.c_str(), true, "Replaying that line.");
+	//
+	// The line itself goes in the answer, because the sound does not reach her:
+	// the API's voice channel is for games with voice chat and forbids sending
+	// game audio at all. Without the text this action produces nothing she can
+	// use.
+	std::string record;
+	std::string message = "Replaying that line.";
+	if (ProbeVoiceLine(index, record) && !record.empty()) {
+		std::string fields[4];
+		size_t start = 0;
+		for (int field = 0; field < 4; ++field) {
+			size_t const tab = record.find('\t', start);
+			fields[field] = record.substr(
+			    start, tab == std::string::npos ? std::string::npos : tab - start);
+			if (tab == std::string::npos) {
+				break;
+			}
+			start = tab + 1;
+		}
+		if (!fields[2].empty()) {
+			message += HasVisibleCharacters(fields[0])
+			               ? " " + fields[0] + ": " + fields[2]
+			               : " " + fields[2];
+		}
+		if (!fields[1].empty()) {
+			message += " [" + fields[1] + "]";
+		}
+		if (fields[3] == "1") {
+			message += " Marked New: the most recently kept line.";
+		}
+	}
+	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
 // The tab name, as its index into kSaveTabNames, or -1. The value is quoted in

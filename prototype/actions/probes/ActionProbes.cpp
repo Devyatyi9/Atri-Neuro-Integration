@@ -839,6 +839,34 @@ bool ProbeVoiceExists(int index, char const *tag) {
 	    tag, index);
 }
 
+bool ProbeVoiceLine(int index, std::string &out) {
+	wchar_t probe[512];
+	// Speaker, scene and the line itself, as the record holds them. The text is
+	// one frozen string: it was written in whatever language the game was in
+	// when the line was kept, and nothing here can ask for another. The record
+	// has a `lang` field, but it names the language column of that moment, not
+	// the language of the string -- on a patched profile every entry reads
+	// lang = 1 while some of them hold Japanese -- so it is not reported.
+	//
+	// The last field is the "New" badge, which this screen puts on the entry
+	// written last exactly as the save list does. It lives on the store, not on
+	// the record.
+	if (_snwprintf_s(
+	        probe, _TRUNCATE,
+	        L"(function(){ var st = global.__cm_saveStore;"
+	        L"if (typeof st != 'Object') return '';"
+	        L"try { var d = st.getItemInfo(%d);"
+	        L"if (typeof d != 'Object') return '';"
+	        L"return ('' + d.name) + '\\t' + ('' + d.scene) + '\\t' + "
+	        L"('' + d.text) + '\\t' + (st.lastSaved == %d ? '1' : '0'); }"
+	        L"catch (e) { return ''; } })()",
+	        index, index) < 0) {
+		Log("[Action] voice line probe did not fit\n");
+		return false;
+	}
+	return QueryString(probe, out, "voice line");
+}
+
 bool ProbeSlotsShowBase(int base, char const *tag) {
 	return AskFormatted(
 	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "

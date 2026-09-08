@@ -262,6 +262,10 @@ int ProbeSavePageCount();
 // rows do -- speaker, scene and the line itself -- through the store's own
 // getItemInfo, which is why these do not go through the bookmark calls.
 bool ProbeVoiceExists(int index, char const *tag);
+// One kept line, as "<speaker>	<scene>	<text>	<newest>". The text is the one
+// the record holds and cannot be asked for in another language: it was frozen
+// in whatever language the game was in when it was kept.
+bool ProbeVoiceLine(int index, std::string &out);
 // Which way the voice collection was opened: keeping the current line, or
 // browsing what is already kept. The screen is the same either way, and the
 // slots do opposite things -- vsave leaves the line in tf.VoiceSave, vload
