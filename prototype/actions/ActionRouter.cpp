@@ -433,8 +433,11 @@ void SyncCapabilities(int kind, int payload = 0) {
 void ForgetSession() {
 	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
 	                              std::memory_order_release);
-	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
-	ScreenMenu::ResetLanguageNotice();
+	// The two notices are deliberately not reset here. What she was told
+	// survives a disconnect -- "Context survives disconnects: what you told her
+	// before is still known to her when you come back" -- so re-sending them on
+	// every reconnect would say the same thing twice. The forces below are the
+	// opposite: the new server never saw them, so they have to go again.
 	g_DialogForcePending.store(false, std::memory_order_release);
 	g_ForceOutstanding.store(false, std::memory_order_release);
 	g_ForceDeferredSaid.store(false, std::memory_order_release);
@@ -457,6 +460,10 @@ void ShutdownPrototypeActionRouter() {
 	NeuroSetActionHandler(nullptr);
 	NeuroSetSessionHandler(nullptr);
 	ForgetSession();
+	// Unloading is not a reconnect: nothing of ours survives it, notices
+	// included, and the next load starts a game that has said nothing yet.
+	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
+	ScreenMenu::ResetLanguageNotice();
 }
 
 // Retried every poll until accepted: the loading state starts before the SDK
