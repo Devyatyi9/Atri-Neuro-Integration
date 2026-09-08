@@ -1202,6 +1202,15 @@ bool ProbeGallery(GalleryState &state) {
 	        L"var b = kag.current.names['sitem' + i];"
 	        L"if (typeof b == 'Object' && b.visible) t = i + 1; }"
 	        L"s += t + '|';"
+	        // Where the visible rows sit in the whole list. The numbers the
+	        // actions use are absolute, and this is what turns one back into the
+	        // button that carries it.
+	        L"var off = 0;"
+	        L"try { var sm = global.SoundModeInstance;"
+	        L"if (typeof sm == 'Object' && isvalid sm &&"
+	        L" typeof sm.scutil == 'Object' && isvalid sm.scutil)"
+	        L" off = sm.scutil.offset; } catch (e) { }"
+	        L"s += off + '|';"
 	        L"var arrows = ['up', 'down', 'pageup', 'pagedown'];"
 	        L"for (var i = 0; i < arrows.count; i++) {"
 	        L"var b = kag.current.names[arrows[i]];"
@@ -1230,10 +1239,11 @@ bool ProbeGallery(GalleryState &state) {
 		return false;
 	}
 
-	// "<page>|<tracks>|<four arrow flags>|<open>|<variants left>"
-	int values[4] = {0, 0, 0, 0};
+	// "<page>|<pages>|<squares>|<tracks>|<offset>|<four arrow flags>|<open>|
+	// <variants left>"
+	int values[5] = {0, 0, 0, 0, 0};
 	size_t cursor = 0;
-	for (int field = 0; field < 4; ++field) {
+	for (int field = 0; field < 5; ++field) {
 		size_t const bar = raw.find('|', cursor);
 		if (bar == std::string::npos) {
 			return false;
@@ -1251,6 +1261,7 @@ bool ProbeGallery(GalleryState &state) {
 	state.pageCount = values[1];
 	state.squareCount = values[2];
 	state.trackCount = values[3];
+	state.trackOffset = values[4];
 	state.scrollMask = 0;
 	for (int i = 0; i < 4; ++i) {
 		if (raw[cursor + i] == '1') {
@@ -1354,6 +1365,11 @@ bool ProbeMusicList(std::string &rows, char const *tag) {
 	// The buttons on screen are the visible rows, and the list slides under them:
 	// button i shows track i + offset, which is the same sum the screen's own
 	// select() applies before it plays anything.
+	//
+	// Rows are numbered by that sum rather than by the button, so a number names
+	// one track whatever the list has been scrolled to. The offset rides in the
+	// header beside the total, because turning a number back into a button needs
+	// it.
 	return QueryString(
 	    L"(function(){ try { var s = global.SoundModeInstance;"
 	    L"if (typeof s != 'Object' || !isvalid s) return '';"
@@ -1366,10 +1382,10 @@ bool ProbeMusicList(std::string &rows, char const *tag) {
 	    L"var idx = off + i;"
 	    L"var t = s.getTitle(idx);"
 	    L"if (t === void) continue;"
-	    L"out += '\\n' + (i + 1) + '\\t' + s.storages[idx] + '\\t' + t"
+	    L"out += '\\n' + (idx + 1) + '\\t' + s.storages[idx] + '\\t' + t"
 	    L" + '\\t' + (s.isPlaying(idx) ? '1' : '0'); }"
 	    L"if (out == '') return '';"
-	    L"return '' + s.items.count + out;"
+	    L"return '' + s.items.count + '\\t' + off + out;"
 	    L"} catch (e) { return ''; } })()",
 	    rows, tag);
 }

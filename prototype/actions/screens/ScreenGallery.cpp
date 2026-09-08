@@ -36,6 +36,11 @@ constexpr int kCanScrollShift = 22;
 constexpr int kCanScrollMask = 0x3;
 constexpr int kTrackShift = 16;
 constexpr int kTrackMask = 0x3f;
+// Where the visible rows start in the whole list. Part of the value because the
+// numbers the actions take are absolute: scrolling moves the window, and with
+// it the range switch_track accepts.
+constexpr int kTrackOffsetShift = 24;
+constexpr int kTrackOffsetMask = 0x3f;
 
 // The list slides to its new place over about 200 ms; reading before it comes
 // to rest gives back where it started.
@@ -215,7 +220,11 @@ std::string DescribeMusicList() {
 	if (cursor == std::string::npos) {
 		return std::string();
 	}
-	std::string const total = rows.substr(0, cursor);
+	// Total and offset, tab separated. Only the total is spoken; the offset is
+	// what the numbers are already built from.
+	std::string header = rows.substr(0, cursor);
+	std::string::size_type const headerTab = header.find('	');
+	std::string const total = header.substr(0, headerTab);
 	std::string text = "The music list holds " + total +
 	                   " tracks and shows a few at a time. Showing now:";
 	while (cursor != std::string::npos) {
@@ -445,12 +454,31 @@ void HandleSwitchTrackAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	GalleryState gallery;
-	if (!ProbeGallery(gallery) || number > gallery.trackCount) {
-		NeuroSendActionResult(id.c_str(), false, "There is no such track.");
+	if (!ProbeGallery(gallery)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "Cannot tell what the gallery is showing.");
 		return;
 	}
-	HoverGalleryItem("sitem", number - 1, "switch_track hover");
-	if (!DispatchGalleryItem("mselect", number - 1, "switch_track dispatch")) {
+	// The number names a track in the whole list; the buttons only carry the
+	// window. A track outside it is refused with where it is, rather than
+	// scrolled to: moving the list is something the player sees happen, and
+	// doing it inside another action would hide it.
+	int const firstTrack = gallery.trackOffset + 1;
+	int const lastTrack = gallery.trackOffset + gallery.trackCount;
+	if (number < firstTrack || number > lastTrack) {
+		std::string message = "switch_track takes a track from " +
+		                      std::to_string(firstTrack) + " to " +
+		                      std::to_string(lastTrack) +
+		                      ", the ones on screen "
+		                      "now.";
+		message += number < firstTrack ? " Scroll up to reach that one."
+		                               : " Scroll down to reach that one.";
+		NeuroSendActionResult(id.c_str(), false, message.c_str());
+		return;
+	}
+	int const button = number - firstTrack;
+	HoverGalleryItem("sitem", button, "switch_track hover");
+	if (!DispatchGalleryItem("mselect", button, "switch_track dispatch")) {
 		NeuroSendActionResult(id.c_str(), false, "That track did not respond.");
 		return;
 	}
@@ -612,15 +640,24 @@ void AppendActions(ActionSet &set, int payload) {
 		        set.keep(BoundedIntSchema("page", pages)));
 	}
 	int const tracks = (payload >> kTrackShift) & kTrackMask;
+	int const trackOffset = (payload >> kTrackOffsetShift) & kTrackOffsetMask;
 	if (tracks > 0) {
+		// Numbered by the whole list, not by the window: a number means one track
+		// however far the list has been scrolled, the way a slot means one save.
+		// The range moves with the window, so the set re-registers on a scroll --
+		// which it already did, because the count changes too.
+		int const firstTrack = trackOffset + 1;
+		int const lastTrack = trackOffset + tracks;
 		// Not "play": the player is never silent, so the only thing a number
 		// here can do is move it off whatever is already going.
 		set.add("switch_track",
-		        set.keep("Switch the music player to one of the " +
-		                 std::to_string(tracks) +
-		                 " tracks the list beside the grid is showing. "
-		                 "Something is always playing; this changes which."),
-		        set.keep(BoundedIntSchema("track", tracks)));
+		        set.keep("Switch the music player to one of the tracks the list "
+		                 "beside the grid is showing, " +
+		                 std::to_string(firstTrack) + " to " +
+		                 std::to_string(lastTrack) +
+		                 " right now. Something is always playing; this changes "
+		                 "which."),
+		        set.keep(RangeIntSchema("track", firstTrack, lastTrack)));
 	}
 	int const scrollMask = payload & kScrollMask;
 	for (int index = 0; index < 4; ++index) {
@@ -650,6 +687,7 @@ bool ReadPayload(int &payload) {
 	          (gallery.squareCount << kSquareShift) |
 	          (gallery.pageCount << kPageShift) |
 	          (gallery.trackCount << kTrackShift) |
+	          ((gallery.trackOffset & kTrackOffsetMask) << kTrackOffsetShift) |
 	          ((canScroll & kCanScrollMask) << kCanScrollShift);
 	return true;
 }

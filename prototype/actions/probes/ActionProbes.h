@@ -346,6 +346,9 @@ struct GalleryState {
 	int pageCount = 0;
 	int squareCount = 0;
 	int trackCount = 0;
+	// Where the visible rows start in the whole list. Track numbers are absolute,
+	// so this is what ties one to the button showing it.
+	int trackOffset = 0;
 	int scrollMask = 0;
 	int variantsLeft = 0;
 	bool viewOpen = false;
@@ -388,9 +391,14 @@ bool ProbeMusicScroll(int &position, int &limit, char const *tag);
 // it returns where the bar started.
 bool DispatchMusicScroll(int position, char const *tag);
 
-// The rows the music list is showing, one per line, as slot number, sound file
+// The rows the music list is showing, one per line, as track number, sound file
 // name and title separated by tabs, with a trailing 1 on the one playing. The
-// first line is how many tracks the list holds in all.
+// number is the track's place in the whole list, not its place on screen, so it
+// means the same track however far the list has been scrolled.
+//
+// The first line is the total and the window's offset, tab separated: the total
+// for saying how long the list is, the offset for turning a number back into
+// the button that carries it.
 //
 // The titles are the Japanese ones the game stores; the English words on the
 // buttons are pictures out of the interface atlas, keyed by file name, and
