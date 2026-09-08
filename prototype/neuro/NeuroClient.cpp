@@ -77,6 +77,7 @@ std::mutex g_OutboundMessagesMutex;
 
 NeuroActionHandler g_ActionHandler = nullptr;
 std::mutex g_ActionHandlerMutex;
+NeuroSessionHandler g_SessionHandler = nullptr;
 
 void LogError(char const *operation, neurosdk_error_e error) {
 	char message[256];
@@ -423,6 +424,19 @@ bool CreateSession() {
 		return false;
 	}
 
+	// Told before anything is sent, so whoever fills the set and answers the
+	// actions starts this session having forgotten the last one. Held under the
+	// handler mutex only long enough to read the pointer: the callback itself
+	// runs outside it, because it reaches back into the caller's own state.
+	NeuroSessionHandler sessionHandler = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(g_ActionHandlerMutex);
+		sessionHandler = g_SessionHandler;
+	}
+	if (sessionHandler) {
+		sessionHandler();
+	}
+
 	// Queue the current action snapshot to be sent by the poll thread.
 	{
 		std::lock_guard<std::mutex> lock(g_ActionsMutex);
@@ -501,6 +515,11 @@ void NeuroPollThread() {
 void NeuroSetActionHandler(NeuroActionHandler handler) {
 	std::lock_guard<std::mutex> lock(g_ActionHandlerMutex);
 	g_ActionHandler = handler;
+}
+
+void NeuroSetSessionHandler(NeuroSessionHandler handler) {
+	std::lock_guard<std::mutex> lock(g_ActionHandlerMutex);
+	g_SessionHandler = handler;
 }
 
 bool NeuroConnect(char const *url, char const *gameName) {

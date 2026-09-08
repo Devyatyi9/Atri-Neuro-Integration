@@ -12,6 +12,14 @@ using NeuroActionHandler = void (*)(std::string const &id,
 
 void NeuroSetActionHandler(NeuroActionHandler handler);
 
+// Called on the polling thread each time a session is established, including
+// every reconnect after a drop. Whatever a caller remembers about the server it
+// was talking to belongs to that session and not to the next one: the new
+// server never saw the actions it was sent, the forces it was owed, or the ids
+// it handed out.
+using NeuroSessionHandler = void (*)();
+void NeuroSetSessionHandler(NeuroSessionHandler handler);
+
 bool NeuroConnect(char const *url, char const *gameName);
 void NeuroAutoConnect();
 void NeuroDisconnect();

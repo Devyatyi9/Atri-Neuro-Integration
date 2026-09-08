@@ -394,8 +394,33 @@ void SyncCapabilities(int kind, int payload = 0) {
 
 }  // namespace
 
+// Everything we hold that belongs to one server rather than to the game.
+//
+// A reconnect brings a server that never saw any of it: not the set we sent,
+// not the force it still owes us, not the ids it handed out. Left standing,
+// `g_ForceOutstanding` is the worst of them -- only a successful answer to a
+// forced action clears it, so a drop while a force was unanswered leaves every
+// later force refused by our own check for the rest of the session, and from
+// outside that looks like Neuro ignoring dialogs.
+//
+// Clearing the synced capability state is what makes the next refresh treat the
+// screen as new, re-register the set and arm whatever force it deserves.
+void ForgetSession() {
+	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
+	                              std::memory_order_release);
+	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
+	ScreenMenu::ResetLanguageNotice();
+	g_DialogForcePending.store(false, std::memory_order_release);
+	g_ForceOutstanding.store(false, std::memory_order_release);
+	g_ActionInFlight.store(false, std::memory_order_release);
+	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
+	g_ActionIds.clear();
+	g_ActionIdSet.clear();
+}
+
 void InitializePrototypeActionRouter() {
 	NeuroSetActionHandler(HandleNeuroAction);
+	NeuroSetSessionHandler(ForgetSession);
 	// Init runs during the startup splashes, so nothing is dispatchable yet;
 	// the monitor promotes this to the real title state once the menu is usable.
 	SyncCapabilities(kCapabilityStateTitleLoading);
@@ -403,17 +428,8 @@ void InitializePrototypeActionRouter() {
 
 void ShutdownPrototypeActionRouter() {
 	NeuroSetActionHandler(nullptr);
-	g_SyncedCapabilityState.store(kCapabilityStateUnknown,
-	                              std::memory_order_release);
-	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
-	ScreenMenu::ResetLanguageNotice();
-	// A reconnect starts a server that knows nothing of our earlier force.
-	g_DialogForcePending.store(false, std::memory_order_release);
-	g_ForceOutstanding.store(false, std::memory_order_release);
-	g_ActionInFlight.store(false, std::memory_order_release);
-	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
-	g_ActionIds.clear();
-	g_ActionIdSet.clear();
+	NeuroSetSessionHandler(nullptr);
+	ForgetSession();
 }
 
 // Retried every poll until accepted: the loading state starts before the SDK
@@ -482,7 +498,7 @@ void SyncScreenByControls(bool stateChanged) {
 // deferring puts the force behind the result without having to guess at thread
 // timing.
 template <typename Send>
-void TryIssuePendingForce(Send send) {
+void TryIssuePendingForce(char const *what, Send send) {
 	if (!g_DialogForcePending.load(std::memory_order_acquire)) {
 		return;
 	}
@@ -496,6 +512,10 @@ void TryIssuePendingForce(Send send) {
 	}
 	g_DialogForcePending.store(false, std::memory_order_release);
 	g_ForceOutstanding.store(true, std::memory_order_release);
+	// Logged because the refusal below already was, and only one of the two
+	// being visible made a force that went out look like one that never did --
+	// which is exactly the question a reconnect raises.
+	Log((std::string("[Action] Forced: ") + what + "\n").c_str());
 	send();
 }
 
@@ -541,7 +561,7 @@ void RefreshPrototypeActionState() {
 
 	if (screen.dialogVisible) {
 		SyncCapabilities(kCapabilityStateDialog);
-		TryIssuePendingForce([]() { ScreenMenu::ForceDialogAnswer(); });
+		TryIssuePendingForce("dialog", []() { ScreenMenu::ForceDialogAnswer(); });
 		return;
 	}
 
@@ -599,8 +619,9 @@ void RefreshPrototypeActionState() {
 		ScreenSlots::ReadPayload(screen, payload);
 		if (ScreenSlots::PayloadHasEditMenu(payload)) {
 			SyncCapabilities(kCapabilityStateEditMenu, payload);
-			TryIssuePendingForce(
-			    [payload]() { ScreenSlots::ForceEditMenuChoice(payload); });
+			TryIssuePendingForce("edit menu", [payload]() {
+				ScreenSlots::ForceEditMenuChoice(payload);
+			});
 		} else {
 			SyncCapabilities(mode == ScreenSlots::Mode::Load ? kCapabilityStateLoad
 			                 : mode == ScreenSlots::Mode::Save
