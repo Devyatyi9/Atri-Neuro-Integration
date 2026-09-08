@@ -108,7 +108,7 @@ void HandleExitGameAction(std::string const &id, std::string const &data) {
 	}
 	if (!ProbeStateIs("title", "exit_game state")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "Quitting is only offered from the title screen.");
+		                      "That only works on the title screen.");
 		return;
 	}
 	if (!DispatchExitRequest("exit_game dispatch")) {

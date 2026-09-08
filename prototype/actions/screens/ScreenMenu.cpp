@@ -64,8 +64,16 @@ void HandleReadShortcutsAction(std::string const &id, std::string const &data) {
 		                      "There is nothing to list for the quick menu.");
 		return;
 	}
-	NeuroSendContext(
-	    ("The quick menu carries these actions:\n" + reference).c_str(), false);
+	// What used to be the second half of the action's description. It belongs
+	// here rather than there: a description is read while the action is on
+	// offer and goes with the screen, while this stays in context, and it is
+	// the part that makes the list worth having.
+	NeuroSendContext(("The quick menu carries these actions:\n" + reference +
+	                  "\nThey are not offered while the bar is retracted, but "
+	                  "they still work then, the way a player's shortcut keys "
+	                  "do.")
+	                     .c_str(),
+	                 false);
 	NeuroSendActionResult(id.c_str(), true, "Listed the quick menu's actions.");
 }
 
@@ -277,8 +285,7 @@ void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle) {
 	// Offered alongside the tabs, because it answers the same need the seventh
 	// of them does: a reminder of controls that are not in front of you.
 	set.add("read_shortcuts",
-	        "List the quick menu's actions and what each one does. They are not "
-	        "offered while the bar is retracted, so this is how to see them.",
+	        "List the quick menu's actions and what each one does.",
 	        kReadShortcutsSchema);
 }
 

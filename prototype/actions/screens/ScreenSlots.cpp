@@ -225,16 +225,17 @@ void HandleReadSaveSlotAction(std::string const &id, std::string const &data) {
 }
 
 void HandleLoadSaveAction(std::string const &id, std::string const &data) {
+	if (!ProbeScenarioIs(kLoadScenario, "load_save screen")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the load screen.");
+		return;
+	}
+
 	int position = -1;
 	if (!ParseSlot(id, data, "load_save", position)) {
 		return;
 	}
 
-	if (!ProbeScenarioIs(kLoadScenario, "load_save screen")) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Saves can only be loaded from the load screen.");
-		return;
-	}
 	int index = -1;
 	if (!SlotIndex(id, position, index)) {
 		return;
@@ -265,16 +266,17 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 }
 
 void HandleSaveGameAction(std::string const &id, std::string const &data) {
+	if (!ProbeScenarioIs(kSaveScenario, "save_game screen")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the save screen.");
+		return;
+	}
+
 	int position = -1;
 	if (!ParseSlot(id, data, "save_game", position)) {
 		return;
 	}
 
-	if (!ProbeScenarioIs(kSaveScenario, "save_game screen")) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Saving is only possible from the save screen.");
-		return;
-	}
 	int index = -1;
 	if (!SlotIndex(id, position, index)) {
 		return;
@@ -309,15 +311,17 @@ void HandleSaveGameAction(std::string const &id, std::string const &data) {
 // slot stores instead of playing.
 void HandleSaveVoiceToSlotAction(std::string const &id,
                                  std::string const &data) {
-	int position = -1;
-	if (!ParseSlot(id, data, "save_voice_to_slot", position)) {
-		return;
-	}
 	if (!ProbeScenarioIs(kVoiceScenario, "save_voice_to_slot screen")) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "That only works on the voice collection screen.");
 		return;
 	}
+
+	int position = -1;
+	if (!ParseSlot(id, data, "save_voice_to_slot", position)) {
+		return;
+	}
+
 	if (!PressSlot(position, "save_voice_to_slot slot")) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "That slot is not selectable right now.");
@@ -327,17 +331,17 @@ void HandleSaveVoiceToSlotAction(std::string const &id,
 }
 
 void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
+	if (!ProbeScenarioIs(kVoiceScenario, "play_voice screen")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the voice collection screen.");
+		return;
+	}
+
 	int position = -1;
 	if (!ParseSlot(id, data, "play_voice", position)) {
 		return;
 	}
 
-	if (!ProbeScenarioIs(kVoiceScenario, "play_voice screen")) {
-		NeuroSendActionResult(
-		    id.c_str(), false,
-		    "Voice lines can only be replayed from the voice screen.");
-		return;
-	}
 	int index = -1;
 	if (!SlotIndex(id, position, index)) {
 		return;
@@ -456,7 +460,7 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 	int position = 0;
 	if (!ProbeEditMenuSlot(position, "edit_comment slot")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "Could not tell which save the menu belongs to.");
+		                      "Cannot tell which save the menu belongs to.");
 		return;
 	}
 
