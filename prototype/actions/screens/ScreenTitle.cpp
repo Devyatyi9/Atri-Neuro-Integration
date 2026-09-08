@@ -180,6 +180,15 @@ void HandleOpenSettingsAction(std::string const &id, std::string const &data) {
 	                ProbeQuickMenuButtonReady("option", "open_settings button") &&
 	                DispatchQuickMenuButton("option", "open_settings dispatch");
 	if (!ok) {
+		// Asked only once the press has not happened, so an ordinary opening
+		// costs nothing. Being there already is not the same failure as a
+		// control that would not respond, and answering both the same way sends
+		// her looking for a broken button that is working fine.
+		if (ProbeStateIsSettingsScreen("open_settings already")) {
+			NeuroSendActionResult(id.c_str(), false,
+			                      "The settings screen is already open.");
+			return;
+		}
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Opening the settings menu is unavailable.");
 		return;

@@ -26,6 +26,10 @@ bool ProbeScenarioIs(char const *expected, char const *tag);
 // and backlog. Only some of them also carry a "title" control, so
 // return_to_title still stands on its own button probe.
 bool ProbeStateIsMenuScreen(char const *tag);
+// Whether the settings screen is the one showing, its own sub-pages included.
+// Narrower than the menu-screen test above, which counts the save list and the
+// backlog as menus too.
+bool ProbeStateIsSettingsScreen(char const *tag);
 
 // One poll of everything the capability refresh needs. Runs at 5 Hz on the game
 // main thread, so it is deliberately a single round trip.

@@ -180,6 +180,18 @@ bool ProbeStateIs(char const *expected, char const *tag) {
 	return state == expected;
 }
 
+bool ProbeStateIsSettingsScreen(char const *tag) {
+	std::string state;
+	if (!QueryString(L"typeof SystemHook != 'undefined' ? "
+	                 L"SystemHook.currentState : ''",
+	                 state, tag)) {
+		return false;
+	}
+	// The settings screen and the two pages that carry their own state. The
+	// other tabs live inside "option" and do not change it.
+	return state == "option" || state == "soundmode" || state == "voicemode";
+}
+
 bool ProbeScenarioIs(char const *expected, char const *tag) {
 	std::string storage;
 	if (!QueryString(L"(function(){ try { return '' + kag.conductor.curStorage; }"
