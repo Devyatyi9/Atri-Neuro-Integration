@@ -383,9 +383,6 @@ void HandlePlayVoiceAction(std::string const &id, std::string const &data) {
 			               ? " " + fields[0] + ": " + fields[2]
 			               : " " + fields[2];
 		}
-		if (!fields[1].empty()) {
-			message += " [" + fields[1] + "]";
-		}
 		if (fields[3] == "1") {
 			message += " Marked New: the most recently kept line.";
 		}
