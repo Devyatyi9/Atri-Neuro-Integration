@@ -284,7 +284,11 @@ void SyncCapabilities(int kind, int payload = 0) {
 	// The modal that was forced is gone, so the next one is a new episode and
 	// deserves its own force. Leaving this set would silence every modal for the
 	// rest of the session.
-	if (!modal) {
+	//
+	// The language screen counts as a modal here but is not armed above: its
+	// force waits for its notice to land, so the arming happens where that is
+	// known. Clearing, though, has to cover it like any other.
+	if (!modal && kind != kCapabilityStateLanguageSelect) {
 		g_ForceSentHere.store(false, std::memory_order_release);
 	}
 	// A slot list waiting to be announced describes a screen that is gone once
@@ -469,6 +473,10 @@ void TrySendTitleLoadingNotice() {
 	}
 }
 
+// Defined below, beside the force machinery it uses; called from the screen
+// resolver that follows.
+void ForceLanguageOnceNoticed();
+
 // Resolves any screen that is not the title, play, or one the refresh knows
 // by name. Also the fallback when a known screen cannot be read: leaving the
 // previous set registered would advertise actions from another screen.
@@ -494,7 +502,7 @@ void SyncScreenByControls(bool stateChanged) {
 		// Sitting on the first-run screen. Nothing about it can change without
 		// leaving it, and leaving changes the state string, so the only work
 		// left here is landing the notice if the SDK was not ready for it yet.
-		ScreenMenu::TrySendLanguageNotice();
+		ForceLanguageOnceNoticed();
 		return;
 	}
 	if (settled && !stateChanged) {
@@ -505,7 +513,7 @@ void SyncScreenByControls(bool stateChanged) {
 		// apart from the backlog: both carry "back" and neither carries
 		// "title".
 		SyncCapabilities(kCapabilityStateLanguageSelect);
-		ScreenMenu::TrySendLanguageNotice();
+		ForceLanguageOnceNoticed();
 	} else if (!ProbeScreenButtonReady("back", "screen back button")) {
 		SyncCapabilities(kCapabilityStateBare);
 	} else if (ProbeScreenButtonReady("title", "screen title button")) {
@@ -551,6 +559,21 @@ void TryIssuePendingForce(char const *what, Send send) {
 	// which is exactly the question a reconnect raises.
 	Log((std::string("[Action] Forced: ") + what + "\n").c_str());
 	send();
+}
+
+// The first-run language screen, forced through the same path as the other
+// modals -- but only once its notice has been accepted. Ordering matters: the
+// screen is up while the SDK may still be connecting, and a force sent then is
+// dropped while the notice is the thing that retries.
+void ForceLanguageOnceNoticed() {
+	if (!ScreenMenu::TrySendLanguageNotice()) {
+		return;
+	}
+	if (!g_ForceSentHere.load(std::memory_order_acquire)) {
+		g_DialogForcePending.store(true, std::memory_order_release);
+	}
+	TryIssuePendingForce("language",
+	                     []() { ScreenMenu::ForceLanguageConfirm(); });
 }
 
 void RefreshPrototypeActionState() {

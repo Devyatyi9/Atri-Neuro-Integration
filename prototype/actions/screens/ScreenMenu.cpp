@@ -375,21 +375,28 @@ bool TrySendLanguageNotice() {
 	        "it will use; confirming them is what gets past this screen.",
 	        false)) {
 		g_LanguageNoticeSent.store(true, std::memory_order_release);
-		// The screen is modal in the same sense the confirmation dialog is: the
-		// game holds still until it is answered, and nothing else is on offer. The
-		// force rides on the notice rather than on entering the state, because this
-		// screen is up while the SDK may still be connecting -- a force sent then
-		// is dropped, and the notice is already the thing that retries until the
-		// connection exists. Until it does, the action is simply registered and
-		// works as an ordinary one.
-		char const *names[] = {"confirm_language"};
-		// Ephemeral: the notice just above carries the explanation into context
-		// already, and repeating it there would say the same thing twice.
-		NeuroForceAction("The game is waiting for the languages to be confirmed.",
-		                 "Confirm them to get past this screen.", names, 1, true);
 		return true;
 	}
 	return false;
+}
+
+// The screen is modal in the same sense the confirmation dialog is: the game
+// holds still until it is answered, and nothing else is on offer. So the force
+// goes out through the same path as the other modals, and is counted the same
+// way -- one per appearance, retried until it lands, forgotten with the
+// session.
+//
+// It still waits on the notice above rather than on entering the state, and
+// that ordering is the reason this is a function of its own: the screen is up
+// while the SDK may still be connecting, and a force sent then is dropped. The
+// notice is what retries until the connection exists; until it does, the action
+// is simply registered and works as an ordinary one.
+void ForceLanguageConfirm() {
+	char const *names[] = {"confirm_language"};
+	// Ephemeral: the notice carries the explanation into context already, and
+	// repeating it there would say the same thing twice.
+	NeuroForceAction("The game is waiting for the languages to be confirmed.",
+	                 "Confirm them to get past this screen.", names, 1, true);
 }
 
 void ResetLanguageNotice() {

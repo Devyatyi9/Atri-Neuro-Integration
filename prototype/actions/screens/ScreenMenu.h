@@ -24,9 +24,11 @@ void AppendDialogActions(ActionSet &set);
 void ForceDialogAnswer();
 
 // The first-run language screen, and the notice that explains it. The notice is
-// retried because that screen is up while the SDK may still be connecting.
+// retried because that screen is up while the SDK may still be connecting; it
+// answers whether it has landed, because the force below belongs after it.
 void AppendLanguageActions(ActionSet &set);
 bool TrySendLanguageNotice();
+void ForceLanguageConfirm();
 void ResetLanguageNotice();
 
 }  // namespace ScreenMenu
