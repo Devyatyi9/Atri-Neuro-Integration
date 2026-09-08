@@ -448,10 +448,15 @@ void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
 		NeuroSendActionResult(id.c_str(), false, "The edit menu did not open.");
 		return;
 	}
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    ("Opened the edit menu for slot " + std::to_string(position + 1) + ".")
-	        .c_str());
+	// Named by the plate, not by the cell. The cell number is what the press
+	// needed, and printing it answered "slot 19" with "slot 9" -- the ninth cell
+	// of the second page, which is a different thing entirely.
+	int base = -1;
+	int page = -1;
+	std::string const label =
+	    ProbeSaveWindow(base, page) ? PlateLabel(base + position) : "that slot";
+	NeuroSendActionResult(id.c_str(), true,
+	                      ("Opened the edit menu for " + label + ".").c_str());
 }
 
 constexpr int kEditCommentLimit = 120;
