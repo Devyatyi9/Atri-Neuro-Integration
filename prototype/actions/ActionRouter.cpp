@@ -32,9 +32,11 @@ constexpr size_t kMaxRememberedActionIds = 256;
 // force below waits for this to clear.
 std::atomic<bool> g_ActionInFlight(false);
 
-// A dialog appeared and its force has not gone out yet. Set when the dialog
-// state is entered, cleared when it is sent or when any other screen takes
-// over.
+// A modal is on screen and its force has not gone out yet. Set from the screen
+// on every poll while the modal stands, not once when it appeared: a force that
+// could not go out on the tick it arrived has to be tried again, and the screen
+// is what says it is still wanted. Cleared when it is sent, and when any other
+// screen takes over.
 std::atomic<bool> g_DialogForcePending(false);
 
 // A force of ours the server has not worked through yet. It takes one at a
@@ -46,6 +48,19 @@ std::atomic<bool> g_DialogForcePending(false);
 // clears this -- including a late one, answered with a failure because the
 // dialog is long gone, which is what drains the queue on the server side.
 std::atomic<bool> g_ForceOutstanding(false);
+
+// Whether the deferral above has already been reported for this wait.
+std::atomic<bool> g_ForceDeferredSaid(false);
+
+// Whether a force has already gone out for the modal now on screen.
+//
+// The modal is what says a force is wanted, but it says so for as long as it
+// stands -- including the moment after the answer, when the dialog is still
+// drawn and the earlier force has just been retired. Arming from the screen
+// alone sent a second force into that gap, and the server answered "Multiple
+// actions/force at once". So the screen decides that a force is due, and this
+// decides that it is due only once.
+std::atomic<bool> g_ForceSentHere(false);
 
 // Kind in the high half, payload in the low half. Sharing one half lets a
 // payload reach a kind constant, which registers the wrong screen entirely.
@@ -263,9 +278,15 @@ void SyncCapabilities(int kind, int payload = 0) {
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
-	g_DialogForcePending.store(
-	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu,
-	    std::memory_order_release);
+	bool const modal =
+	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu;
+	g_DialogForcePending.store(modal, std::memory_order_release);
+	// The modal that was forced is gone, so the next one is a new episode and
+	// deserves its own force. Leaving this set would silence every modal for the
+	// rest of the session.
+	if (!modal) {
+		g_ForceSentHere.store(false, std::memory_order_release);
+	}
 	// A slot list waiting to be announced describes a screen that is gone once
 	// we are somewhere else. The edit menu is not somewhere else -- it stands
 	// over the same screen and returns to it.
@@ -412,6 +433,8 @@ void ForgetSession() {
 	ScreenMenu::ResetLanguageNotice();
 	g_DialogForcePending.store(false, std::memory_order_release);
 	g_ForceOutstanding.store(false, std::memory_order_release);
+	g_ForceDeferredSaid.store(false, std::memory_order_release);
+	g_ForceSentHere.store(false, std::memory_order_release);
 	g_ActionInFlight.store(false, std::memory_order_release);
 	std::lock_guard<std::mutex> lock(g_ActionIdsMutex);
 	g_ActionIds.clear();
@@ -503,15 +526,26 @@ void TryIssuePendingForce(char const *what, Send send) {
 		return;
 	}
 	if (g_ForceOutstanding.load(std::memory_order_acquire)) {
-		g_DialogForcePending.store(false, std::memory_order_release);
-		Log("[Action] Not forced: an earlier force is still unanswered\n");
+		// Kept pending rather than dropped. The modal is still on screen, so it
+		// still deserves a force; what stands in the way is the earlier one, and
+		// that can clear at any moment. Dropping it here meant the dialog went
+		// unforced for as long as it stood, and only a reconnect ever put that
+		// right.
+		//
+		// Said once per episode: this runs five times a second, and the same
+		// line at that rate buries everything around it.
+		if (!g_ForceDeferredSaid.exchange(true, std::memory_order_acq_rel)) {
+			Log("[Action] Not forced yet: an earlier force is still unanswered\n");
+		}
 		return;
 	}
+	g_ForceDeferredSaid.store(false, std::memory_order_release);
 	if (g_ActionInFlight.load(std::memory_order_acquire)) {
 		return;
 	}
 	g_DialogForcePending.store(false, std::memory_order_release);
 	g_ForceOutstanding.store(true, std::memory_order_release);
+	g_ForceSentHere.store(true, std::memory_order_release);
 	// Logged because the refusal below already was, and only one of the two
 	// being visible made a force that went out look like one that never did --
 	// which is exactly the question a reconnect raises.
@@ -561,6 +595,13 @@ void RefreshPrototypeActionState() {
 
 	if (screen.dialogVisible) {
 		SyncCapabilities(kCapabilityStateDialog);
+		// Armed from the screen, not from the moment it appeared: a dialog that
+		// is still up still wants an answer, and a force that could not go out
+		// on the tick it arrived would otherwise never be tried again. Once one
+		// has gone out for this dialog, no more are armed for it.
+		if (!g_ForceSentHere.load(std::memory_order_acquire)) {
+			g_DialogForcePending.store(true, std::memory_order_release);
+		}
 		TryIssuePendingForce("dialog", []() { ScreenMenu::ForceDialogAnswer(); });
 		return;
 	}
@@ -619,6 +660,9 @@ void RefreshPrototypeActionState() {
 		ScreenSlots::ReadPayload(screen, payload);
 		if (ScreenSlots::PayloadHasEditMenu(payload)) {
 			SyncCapabilities(kCapabilityStateEditMenu, payload);
+			if (!g_ForceSentHere.load(std::memory_order_acquire)) {
+				g_DialogForcePending.store(true, std::memory_order_release);
+			}
 			TryIssuePendingForce("edit menu", [payload]() {
 				ScreenSlots::ForceEditMenuChoice(payload);
 			});
