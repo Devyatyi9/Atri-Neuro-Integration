@@ -294,9 +294,16 @@ void HandleOpenBacklogAction(std::string const &id, std::string const &data) {
 	                DispatchQuickMenuButton("log", "open_backlog dispatch");
 	if (!ok) {
 		// One state covers both of the backlog's views: switching to the scene
-		// list leaves it "backlog", so this answers for either.
+		// list leaves it "backlog". Which view is showing still has to be said --
+		// from the scene list the lines are not on screen, and "already open"
+		// alone would be true and useless.
 		if (ProbeStateIs("backlog", "open_backlog already")) {
-			NeuroSendActionResult(id.c_str(), false, "The backlog is already open.");
+			NeuroSendActionResult(
+			    id.c_str(), false,
+			    SceneListIsShowing()
+			        ? "The backlog is open on its scene list. Switch to the lines "
+			          "with show_backlog_lines."
+			        : "The backlog is already open.");
 			return;
 		}
 		NeuroSendActionResult(id.c_str(), false,
@@ -393,7 +400,8 @@ void SendEnteringContext() {
 		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
 		NeuroSendContext(
 		    ("The backlog is open. It holds " + std::to_string(total) + held +
-		     "; read_backlog reads the ones on screen, or elsewhere on request.")
+		     ", and read_backlog reads the ones on screen, or elsewhere on "
+		     "request.")
 		        .c_str(),
 		    false);
 	}
