@@ -630,6 +630,19 @@ bool NeuroSetRegisteredActions(NeuroRegisteredAction const *actions,
 	return true;
 }
 
+bool NeuroActionIsRegistered(char const *name) {
+	if (!name || !*name) {
+		return false;
+	}
+	std::lock_guard<std::mutex> lock(g_ActionsMutex);
+	for (RegisteredAction const &action : g_RegisteredActions) {
+		if (action.name == name) {
+			return true;
+		}
+	}
+	return false;
+}
+
 bool NeuroRegisterAction(char const *name,
                          char const *description,
                          char const *jsonSchema) {

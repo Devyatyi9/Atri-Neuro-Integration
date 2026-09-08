@@ -153,6 +153,15 @@ void HandleNeuroAction(std::string const &id,
 		Log("[Action] Ignoring duplicate action ID\n");
 		return;
 	}
+	// Noted, not refused. A name that was never offered still reaches its
+	// handler, which answers for it the way it answers for anything else --
+	// that is deliberate, and it is how the quick menu's buttons stay reachable
+	// while the bar is retracted. What we did not have is any idea of how often
+	// this happens and to which actions, and a line in the log is the cheapest
+	// way to find out before deciding whether it should be refused at all.
+	if (!NeuroActionIsRegistered(name.c_str())) {
+		Log(("[Action] Unoffered: " + name + "\n").c_str());
+	}
 	// The force is retired when the answer has been carried out, not when it
 	// arrives: the server retires its own only once the action is complete, and
 	// clearing on arrival let a fast open-close-open send the next force while

@@ -35,6 +35,11 @@ bool NeuroRegisterAction(char const *name,
                          char const *jsonSchema);
 bool NeuroUnregisterAction(char const *name);
 bool NeuroReregisterActions();
+// Whether the name is in the set as it was last sent. For reporting only: an
+// action that arrives without being offered is answered exactly as any other,
+// because the buttons behind the quick menu are reachable whether or not the
+// bar is out, the way a player's shortcut keys are.
+bool NeuroActionIsRegistered(char const *name);
 bool NeuroSendActionResult(char const *id, bool success, char const *message);
 // Set by the call above. One action is handled at a time, so this describes the
 // action that has just been answered.
