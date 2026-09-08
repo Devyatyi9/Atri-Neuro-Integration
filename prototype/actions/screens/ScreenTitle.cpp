@@ -121,7 +121,7 @@ void HandleExitGameAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true,
-	                      "Asked to quit; confirm or cancel the dialog.");
+	                      "Asked to quit. Confirm or cancel the dialog.");
 }
 
 // Its own handler rather than the shared button one, because that one answers a
@@ -186,8 +186,8 @@ void HandleOpenLoadAction(std::string const &id, std::string const &data) {
 		    ProbeStateIs("voice", "open_load elsewhere")) {
 			NeuroSendActionResult(
 			    id.c_str(), false,
-			    "This screen is open on another tab; switch_tab reaches the load "
-			    "list.");
+			    "This screen is open on another tab. Reach the load list with "
+			    "switch_tab.");
 			return;
 		}
 		NeuroSendActionResult(id.c_str(), false,

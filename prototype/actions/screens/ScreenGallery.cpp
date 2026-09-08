@@ -350,7 +350,7 @@ void HandleScrollCgAction(std::string const &id, std::string const &data) {
 	CgScrollState before;
 	if (!ProbeCgScroll(before, "scroll_cg before") || before.canScroll == 0) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "This picture fits the frame; there is nothing to "
+		                      "This picture fits the frame. There is nothing to "
 		                      "move.");
 		return;
 	}

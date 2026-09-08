@@ -142,7 +142,7 @@ bool ParseSlot(std::string const &id,
 		if (number >= 1 && base >= kQuickSlots) {
 			int const wanted = (number - 1) / kVisibleSlots + 1;
 			message += " Slot " + std::to_string(number) + " is on page " +
-			           std::to_string(wanted) + "; switch_page opens it.";
+			           std::to_string(wanted) + ". Open it with switch_page.";
 		}
 		NeuroSendActionResult(id.c_str(), false, message.c_str());
 		return false;
@@ -262,7 +262,7 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 	}
 	NeuroSendActionResult(
 	    id.c_str(), true,
-	    "Selected the save; confirm or cancel the dialog to load it.");
+	    "Selected the save. Confirm or cancel the dialog to load it.");
 }
 
 void HandleSaveGameAction(std::string const &id, std::string const &data) {
