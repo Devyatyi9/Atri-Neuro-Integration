@@ -539,8 +539,12 @@ class Engine:
         self.turns = 0
         # Only the last route may close the game: an exit_when_done in the
         # middle of a chain would end the run with routes still unplayed.
-        self.finish = options.exit_when_done or bool(
-            (self.routes[-1] if self.routes else {}).get("exit_when_done"))
+        # A route file may ask for the game to be closed at its end, and the
+        # last one here does. --keep-game overrides both that and the switch,
+        # for the measurements that can only be taken on the loaded process.
+        self.finish = not options.keep_game and (options.exit_when_done or bool(
+            (self.routes[-1] if self.routes else {}).get("exit_when_done")))
+        self.keep_game = options.keep_game
         self.load_route()
         self.last_sent = None
         self.pending = False
@@ -915,6 +919,15 @@ class Engine:
             return None, (f"route: {self.route_name()} asks for "
                           f"{self.start_action!r}, which the title is not offering")
 
+        if route_done and self.keep_game and at_title and not self.stopping:
+            self.stopping = True
+            say("the routes are played out; the game is left running")
+            self.note_memory("finished")
+            self.restore_speed()
+            if self.on_stop:
+                self.on_stop()
+            return None, ROUTE_IDLE
+
         if route_done and self.finish:
             # Quitting asks for confirmation, and the schema for answering it
             # takes a boolean. Filled from the schema alone that boolean comes
@@ -1250,6 +1263,13 @@ def main():
                              "its own way in")
     parser.add_argument("--exit-when-done", action="store_true",
                         help="close the game once the run is over")
+    parser.add_argument("--keep-game", action="store_true",
+                        help="leave the game running when the routes are played "
+                             "out, and stop the run there. Overrides both "
+                             "--exit-when-done and a route file that asks to "
+                             "close the game, which the chain's last route does. "
+                             "For anything that has to be measured on the loaded "
+                             "process")
     parser.add_argument("--watch-game-log", metavar="FILE",
                         help="the game's game_debug_log.txt. The run stops on the "
                              "first sign of trouble in it, leaving the game alive "
