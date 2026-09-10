@@ -36,6 +36,12 @@ constexpr int kCreateTextureSlot = 23;
 // cannot find room for is the copy it hands back to be written into.
 constexpr int kLockRectSlot = 19;
 
+// UnlockRect is the next one along, and it is counted for one reason: a lock
+// that is never released is a buffer the driver cannot take back. If these two
+// counts part company, what runs out is the driver's own room rather than the
+// process's.
+constexpr int kUnlockRectSlot = 20;
+
 using CreateTextureFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *,
                                                      UINT,
                                                      UINT,
@@ -52,6 +58,8 @@ using LockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *,
                                                 RECT const *,
                                                 DWORD);
 
+using UnlockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *, UINT);
+
 CreateTextureFn g_OriginalCreateTexture = nullptr;
 
 // Textures do not all share one table -- a pooled one and a driver-backed one
@@ -61,17 +69,18 @@ CreateTextureFn g_OriginalCreateTexture = nullptr;
 struct PatchedTable {
 	void **table;
 	LockRectFn original;
+	UnlockRectFn originalUnlock;
 };
 
 constexpr int kTableSlots = 4;
 PatchedTable g_LockTables[kTableSlots] = {};
 int g_LockTableCount = 0;
 
-LockRectFn OriginalLockRectFor(IDirect3DTexture9 *texture) {
+PatchedTable *PatchedTableFor(IDirect3DTexture9 *texture) {
 	void **table = *reinterpret_cast<void ***>(texture);
 	for (int i = 0; i < g_LockTableCount; ++i) {
 		if (g_LockTables[i].table == table) {
-			return g_LockTables[i].original;
+			return &g_LockTables[i];
 		}
 	}
 	return nullptr;
@@ -85,6 +94,7 @@ std::atomic<long long> g_Refused(0);
 std::atomic<long long> g_Bytes(0);
 std::atomic<long long> g_Locked(0);
 std::atomic<long long> g_LockRefused(0);
+std::atomic<long long> g_Unlocked(0);
 
 // The last stretch of lock times, in ticks, kept as a ring so that reading them
 // costs nothing the frame path can feel. A window rather than an average since
@@ -219,7 +229,8 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
                                           RECT const *rect,
                                           DWORD flags) {
 	void *const caller = _ReturnAddress();
-	LockRectFn const original = OriginalLockRectFor(texture);
+	PatchedTable const *const patched = PatchedTableFor(texture);
+	LockRectFn const original = patched ? patched->original : nullptr;
 	if (!original) {
 		// Nothing sane is left to do: this table was never patched here, so
 		// there is no original to forward to.
@@ -261,6 +272,19 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 		          static_cast<unsigned long>(flags), static_cast<unsigned long>(hr),
 		          where, refused + 1, g_Locked.load(std::memory_order_relaxed));
 		Log(line);
+	}
+	return hr;
+}
+
+HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
+                                            UINT level) {
+	PatchedTable const *const patched = PatchedTableFor(texture);
+	if (!patched || !patched->originalUnlock) {
+		return E_FAIL;
+	}
+	HRESULT const hr = patched->originalUnlock(texture, level);
+	if (SUCCEEDED(hr)) {
+		g_Unlocked.fetch_add(1, std::memory_order_relaxed);
 	}
 	return hr;
 }
@@ -334,13 +358,23 @@ void WatchTextureTable(IDirect3DDevice9 *device, DWORD usage, D3DPOOL pool) {
 		}
 	}
 	void *displaced = nullptr;
-	if (PatchSlot(table, kLockRectSlot,
-	              reinterpret_cast<void *>(&WatchedLockRect), &displaced)) {
-		g_LockTables[g_LockTableCount].table = table;
-		g_LockTables[g_LockTableCount].original =
-		    reinterpret_cast<LockRectFn>(displaced);
-		g_LockTableCount += 1;
+	if (!PatchSlot(table, kLockRectSlot,
+	               reinterpret_cast<void *>(&WatchedLockRect), &displaced)) {
+		return;
 	}
+	g_LockTables[g_LockTableCount].table = table;
+	g_LockTables[g_LockTableCount].original =
+	    reinterpret_cast<LockRectFn>(displaced);
+	// Read out of the table rather than taken from the patch: the unlock hook
+	// finds its way back through this entry, so the entry has to be finished
+	// and counted before the slot starts pointing at the hook.
+	g_LockTables[g_LockTableCount].originalUnlock =
+	    reinterpret_cast<UnlockRectFn>(table[kUnlockRectSlot]);
+	g_LockTableCount += 1;
+
+	void *displacedUnlock = nullptr;
+	PatchSlot(table, kUnlockRectSlot,
+	          reinterpret_cast<void *>(&WatchedUnlockRect), &displacedUnlock);
 }
 
 }  // namespace
@@ -405,9 +439,10 @@ void D3DWatchPressure(char *out, size_t size) {
 	double const scale =
 	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
 	sprintf_s(out, size,
-	          "locks=%lld refused=%lld window=%d avg_us=%.0f worst_us=%.0f"
-	          " peak_us=%.0f",
+	          "locks=%lld unlocks=%lld refused=%lld window=%d avg_us=%.0f"
+	          " worst_us=%.0f peak_us=%.0f",
 	          g_Locked.load(std::memory_order_relaxed),
+	          g_Unlocked.load(std::memory_order_relaxed),
 	          g_LockRefused.load(std::memory_order_relaxed), held,
 	          held ? sum * scale / held : 0.0, worst * scale,
 	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale);
@@ -425,6 +460,7 @@ void D3DWatchReport() {
 	          g_Refused.load(std::memory_order_relaxed),
 	          g_Bytes.load(std::memory_order_relaxed) / (1024 * 1024),
 	          g_Locked.load(std::memory_order_relaxed),
+	          g_Unlocked.load(std::memory_order_relaxed),
 	          g_LockRefused.load(std::memory_order_relaxed));
 	Log(line);
 
