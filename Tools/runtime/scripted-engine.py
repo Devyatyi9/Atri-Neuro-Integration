@@ -236,6 +236,70 @@ def layer_count(port):
         return None
 
 
+def file_version(path):
+    """The version stamped into a Windows binary, or None.
+
+    Worth recording next to the build stamp, because the two answer different
+    questions: this says which upstream release it is, the stamp says which of
+    our builds of it. Ours all report the same version -- it is a number the
+    author sets by hand in the manifest, not something a rebuild moves.
+    """
+    size = ctypes.windll.version.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    buffer = ctypes.create_string_buffer(size)
+    if not ctypes.windll.version.GetFileVersionInfoW(path, 0, size, buffer):
+        return None
+    block = ctypes.c_void_p()
+    length = ctypes.c_uint()
+    if not ctypes.windll.version.VerQueryValueW(
+            buffer, "\\", ctypes.byref(block), ctypes.byref(length)):
+        return None
+    # VS_FIXEDFILEINFO: the two version words sit at offsets 8 and 12, most
+    # significant half first.
+    fixed = (ctypes.c_uint * 4).from_address(block.value)
+    if fixed[0] != 0xFEEF04BD:
+        return None
+    most, least = fixed[2], fixed[3]
+    return (f"{most >> 16}.{most & 0xFFFF}."
+            f"{least >> 16}.{least & 0xFFFF}")
+
+
+def build_stamp(path):
+    """Size and mtime of a file, as one string.
+
+    Not its version number: every build of Gary we make calls itself 1.0.1, and
+    the plugin has reported 100 for months. What actually tells two builds apart
+    is when the file was written.
+    """
+    try:
+        info = os.stat(path)
+    except OSError:
+        return None
+    when = datetime.fromtimestamp(info.st_mtime).strftime("%Y-%m-%d %H:%M")
+    return f"{info.st_size} bytes, built {when}"
+
+
+def game_directory(port):
+    """Where the game is installed, asked of the game itself.
+
+    System.exePath comes back as a file:// URL with forward slashes, which is
+    not a path anything else here can open.
+    """
+    try:
+        raw = send_tjs(port, "System.exePath").strip()
+    except OSError:
+        return None
+    if not raw.startswith("file://"):
+        return None
+    rest = raw[len("file://"):].lstrip("./")
+    parts = rest.split("/", 1)
+    if not parts or not parts[0]:
+        return None
+    tail = parts[1] if len(parts) > 1 else ""
+    return os.path.join(parts[0].upper() + ":\\", tail.replace("/", "\\"))
+
+
 class MemoryRegion(ctypes.Structure):
     """MEMORY_BASIC_INFORMATION as a 64-bit caller sees it.
 
@@ -563,6 +627,35 @@ class Engine:
         say("the game is gone; stopping the run")
         if self.on_stop:
             self.on_stop()
+
+    def say_run_header(self):
+        """Writes down what this run is, before it starts running.
+
+        A run's numbers are only worth comparing against another run's when the
+        two were made under the same conditions -- and those conditions were
+        being kept in someone's head. The log records what happened; this
+        records what it happened under.
+        """
+        options = self.options
+        routes = ", ".join(r.get("name", "(unnamed)") for r in self.routes)
+        say(f"run: mode={options.mode} fast={bool(options.fast)} "
+            f"routes=[{routes or 'none'}] tjs_port={options.tjs_port} "
+            f"engine_port={options.port}")
+        say(f"run: watch_tag_log={bool(self.tag_log)} "
+            f"watch_game_log={bool(self.watch_log)} "
+            f"memory_limit={options.memory_limit or 'off'}")
+        try:
+            version = send_tjs(options.tjs_port, "neuroGetVersion()").strip()
+        except OSError:
+            version = "unknown"
+        directory = game_directory(options.tjs_port)
+        stamp = build_stamp(os.path.join(directory, "Neuro-Integration.dll")) \
+            if directory else None
+        say(f"run: plugin version={version} dll=({stamp or 'not found'})")
+        if options.gary_exe:
+            version = file_version(options.gary_exe) or "version unknown"
+            say(f"run: gary=({version}, "
+                f"{build_stamp(options.gary_exe) or 'not found'})")
 
     def note_scene_changes(self):
         """Takes a snapshot whenever the game says it entered another scene.
@@ -1160,6 +1253,10 @@ def main():
                         help="the game's neuro_tag_log.txt. A memory snapshot is "
                              "taken on every scene change it reports, which is "
                              "what makes the curve fine enough to name a scene")
+    parser.add_argument("--gary-exe", metavar="FILE",
+                        help="path to the gary.exe this run is driven by. Only "
+                             "for the run header: every build calls itself the "
+                             "same version, so what identifies one is the file")
     parser.add_argument("--memory-limit", type=int, default=0, metavar="MB",
                         help="stop when the game holds this many megabytes of "
                              "private bytes; 0 means never. The game is 32-bit, so "
@@ -1201,6 +1298,7 @@ def main():
         probe.close()
 
     Handler.engine = Engine(options, routes)
+    Handler.engine.say_run_header()
     prepare_game(options)
 
     server = HTTPServer(("127.0.0.1", options.port), Handler)
