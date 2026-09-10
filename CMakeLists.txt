@@ -137,6 +137,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/screens/ScreenSlots.h
         prototype/actions/screens/ScreenTitle.cpp
         prototype/actions/screens/ScreenTitle.h
+        prototype/diagnostics/D3DWatch.cpp
+        prototype/diagnostics/D3DWatch.h
         prototype/plugin/PluginLifecycle.cpp
         prototype/neuro/ContextPayload.cpp
         prototype/neuro/ContextPayload.h
@@ -176,6 +178,7 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/probes
         prototype/actions/screens
         prototype/plugin
+        prototype/diagnostics
         prototype/neuro
         prototype/tooling
         lib/krkr-sdk
@@ -183,6 +186,9 @@ if(ATRI_BUILD_PROTOTYPE)
     )
     target_link_libraries(atri_neuro_prototype PRIVATE
         neurosdk
+        # The D3D watch reads the device's own table; creating the throwaway
+        # device it reads from is the only thing d3d9 is needed for.
+        d3d9
     )
     target_link_options(atri_neuro_prototype PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/neuro.def"

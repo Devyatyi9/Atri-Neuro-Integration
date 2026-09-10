@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "ActionRouter.h"
+#include "D3DWatch.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroClient.h"
@@ -68,6 +69,10 @@ static void DeferredTJSInitThread() {
 		RegisterTJSBindings();
 		Log("Functions registered via ncbind\n");
 		InitializePrototypeActionRouter();
+		// Before the game builds its own device, so the table is already patched
+		// when it does. Failing to install is reported and otherwise ignored: a
+		// watch that cannot be set up must not keep the game from starting.
+		D3DWatchInstall();
 
 		Log("Setting up Debug.addLoggingHandler...\n");
 		// Keep the registered callback in TJS so it cannot reference an unloaded
@@ -314,6 +319,9 @@ void ShutdownPluginWorkers() {
 		stepAt = now;
 	};
 
+	// Said once on the way out: the totals are what turn "it refused" into "it
+	// refused after this many, of this size".
+	D3DWatchReport();
 	ShutdownPrototypeActionRouter();
 	step("action router");
 
