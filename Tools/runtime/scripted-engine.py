@@ -87,8 +87,10 @@ ADVANCE_REFUSED = ("Text advance is unavailable", "A movie is playing")
 # only after enough refusals in a row that something is clearly stuck.
 REFUSALS_BEFORE_ASKING = 3
 
-# How often to record the game's memory while nothing else marks the run. Often
-# enough to show a slope, rare enough to stay out of the way of reading the log.
+# How often to record the game's memory when nothing better marks the run. This
+# is the fallback: with --watch-tag-log the samples go on scene changes instead,
+# which is where the evidence is. Without it, a slope every so often is all
+# there is.
 MEMORY_EVERY_TURNS = 500
 
 # How often to check the game is still there. Cheap, but not free, and a run
@@ -547,6 +549,16 @@ class Engine:
             return
         if process_is_alive(self.game_pid):
             return
+        # The process this run started against is gone, which is not the same as
+        # there being no game: restarting it is a normal thing to do, and the
+        # chain does it between routes on purpose. So the port is asked again --
+        # whoever holds it now is the game to follow.
+        replacement = game_pid(self.options.tjs_port)
+        if replacement is not None and replacement != self.game_pid:
+            say(f"the game was replaced: pid {self.game_pid} -> {replacement}; "
+                "following the new one")
+            self.game_pid = replacement
+            return
         self.stopping = True
         say("the game is gone; stopping the run")
         if self.on_stop:
@@ -967,7 +979,11 @@ class Engine:
             except OSError:
                 self.cache_limit = None
             self.note_memory("start")
-        elif self.turns % MEMORY_EVERY_TURNS == 0:
+        elif not self.tag_log and self.turns % MEMORY_EVERY_TURNS == 0:
+            # Only when scene changes are not being watched. Both at once would
+            # put two readings on the curve for the same stretch, and the timed
+            # one says less: it lands wherever the count falls, not where
+            # anything happened.
             self.note_memory("running")
         self.stop_if_the_game_is_gone()
         self.stop_on_trouble()
