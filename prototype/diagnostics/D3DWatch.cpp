@@ -4,7 +4,10 @@
 
 #include <atomic>
 #include <cstdio>
+#include <mutex>
 #include <string>
+
+#include <intrin.h>
 
 #include <d3d9.h>
 
@@ -42,6 +45,58 @@ std::atomic<long long> g_Created(0);
 std::atomic<long long> g_Refused(0);
 std::atomic<long long> g_Bytes(0);
 
+// Which call site asked. The address is the game's own code, so it is written
+// as module+offset: that is what a disassembler wants, and it survives the
+// module being loaded somewhere else next time.
+struct CallerSite {
+	void *address;
+	long long calls;
+	long long bytes;
+};
+
+constexpr int kCallerSlots = 16;
+CallerSite g_Callers[kCallerSlots] = {};
+std::mutex g_CallersLock;
+
+void NoteCaller(void *address, long long bytes) {
+	std::lock_guard<std::mutex> hold(g_CallersLock);
+	for (int i = 0; i < kCallerSlots; ++i) {
+		if (g_Callers[i].address == address) {
+			g_Callers[i].calls += 1;
+			g_Callers[i].bytes += bytes;
+			return;
+		}
+		if (!g_Callers[i].address) {
+			g_Callers[i].address = address;
+			g_Callers[i].calls = 1;
+			g_Callers[i].bytes = bytes;
+			return;
+		}
+	}
+	// Full. Only a handful of places load pictures, so a table this size holds
+	// them all; a latecomer past that is noise and is dropped rather than
+	// evicting a site that has been counted since the run began.
+}
+
+void DescribeAddress(void *address, char *out, size_t size) {
+	HMODULE module = nullptr;
+	if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+	                           GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	                       reinterpret_cast<LPCWSTR>(address), &module) &&
+	    module) {
+		wchar_t path[MAX_PATH];
+		if (GetModuleFileNameW(module, path, MAX_PATH)) {
+			wchar_t const *name = wcsrchr(path, L'\\');
+			name = name ? name + 1 : path;
+			sprintf_s(out, size, "%ls+0x%lX", name,
+			          static_cast<unsigned long>(reinterpret_cast<char *>(address) -
+			                                     reinterpret_cast<char *>(module)));
+			return;
+		}
+	}
+	sprintf_s(out, size, "0x%p", address);
+}
+
 int BytesPerPixel(D3DFORMAT format) {
 	switch (format) {
 		case D3DFMT_A8R8G8B8:
@@ -72,6 +127,7 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
                                                D3DPOOL pool,
                                                IDirect3DTexture9 **texture,
                                                HANDLE *shared) {
+	void *const caller = _ReturnAddress();
 	HRESULT const hr = g_OriginalCreateTexture(
 	    device, width, height, levels, usage, format, pool, texture, shared);
 	long long const bytes =
@@ -79,6 +135,7 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
 	if (SUCCEEDED(hr)) {
 		g_Created.fetch_add(1, std::memory_order_relaxed);
 		g_Bytes.fetch_add(bytes, std::memory_order_relaxed);
+		NoteCaller(caller, bytes);
 		return hr;
 	}
 
@@ -91,14 +148,16 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
 		if (device) {
 			available = device->GetAvailableTextureMem();
 		}
-		char line[256];
+		char where[128];
+		DescribeAddress(caller, where, sizeof(where));
+		char line[384];
 		sprintf_s(line,
 		          "[D3D] CreateTexture refused: %ux%u fmt=%d usage=0x%lx pool=%d"
-		          " hr=0x%08lX available=%uMB refusals=%lld created=%lld\n",
+		          " hr=0x%08lX available=%uMB from=%s refusals=%lld created=%lld\n",
 		          width, height, static_cast<int>(format),
 		          static_cast<unsigned long>(usage), static_cast<int>(pool),
 		          static_cast<unsigned long>(hr), available / (1024u * 1024u),
-		          refused + 1, g_Created.load(std::memory_order_relaxed));
+		          where, refused + 1, g_Created.load(std::memory_order_relaxed));
 		Log(line);
 	}
 	return hr;
@@ -186,10 +245,36 @@ void D3DWatchReport() {
 	if (!g_OriginalCreateTexture) {
 		return;
 	}
-	char line[192];
+	char line[256];
 	sprintf_s(line, "[D3D] textures created=%lld refused=%lld total=%lldMB\n",
 	          g_Created.load(std::memory_order_relaxed),
 	          g_Refused.load(std::memory_order_relaxed),
 	          g_Bytes.load(std::memory_order_relaxed) / (1024 * 1024));
 	Log(line);
+
+	// Who asked, biggest first: the point of the whole watch is to name the code
+	// that fills Direct3D up, and one sorted list says it more plainly than the
+	// refusals do.
+	std::lock_guard<std::mutex> hold(g_CallersLock);
+	for (int printed = 0; printed < kCallerSlots; ++printed) {
+		int best = -1;
+		for (int i = 0; i < kCallerSlots; ++i) {
+			if (!g_Callers[i].address || g_Callers[i].bytes < 0) {
+				continue;
+			}
+			if (best < 0 || g_Callers[i].bytes > g_Callers[best].bytes) {
+				best = i;
+			}
+		}
+		if (best < 0) {
+			break;
+		}
+		char where[128];
+		DescribeAddress(g_Callers[best].address, where, sizeof(where));
+		sprintf_s(line, "[D3D] from %s: calls=%lld total=%lldMB\n", where,
+		          g_Callers[best].calls, g_Callers[best].bytes / (1024 * 1024));
+		Log(line);
+		// Marked as spent so the next pass picks the one below it.
+		g_Callers[best].bytes = -1;
+	}
 }
