@@ -201,6 +201,91 @@ def process_memory(pid):
         ctypes.windll.kernel32.CloseHandle(handle)
 
 
+# Counting the layers the game is holding, asked of the engine.
+#
+# Bytes alone cannot tell "more objects" from "the same objects holding more",
+# and that is the fork the crash left open. This counts what is reachable from
+# the primary layer, which is what a leak inside the tree would show up in.
+#
+# What it cannot show: a layer that fell out of the tree and was never freed.
+# For that the engine's own lists would have to be read, and those are C++
+# internals with no way in from here.
+#
+# The walker lives in `global` because a local function in TJS cannot find
+# itself by name to recurse.
+LAYER_COUNT_TJS = (
+    "(function(){ global.__mem_n = 0;"
+    " global.__mem_walk = function(l) { global.__mem_n++;"
+    " var c = l.children;"
+    " for (var i = 0; i < c.count; i++) global.__mem_walk(c[i]); };"
+    " global.__mem_walk(kag.primaryLayer);"
+    " return global.__mem_n; })()")
+
+
+def layer_count(port):
+    """How many layers hang off the primary layer, or None if it cannot be asked."""
+    try:
+        answer = send_tjs(port, LAYER_COUNT_TJS).strip()
+    except OSError:
+        return None
+    try:
+        return int(answer)
+    except ValueError:
+        return None
+
+
+class MemoryRegion(ctypes.Structure):
+    """MEMORY_BASIC_INFORMATION as a 64-bit caller sees it.
+
+    The game is 32-bit, but this process is not, and the fields are laid out for
+    the caller. Walking stops at the end of the 32-bit user range, which is all
+    the game can ever use.
+    """
+    _fields_ = [("BaseAddress", ctypes.c_ulonglong),
+                ("AllocationBase", ctypes.c_ulonglong),
+                ("AllocationProtect", ctypes.c_ulong),
+                ("__alignment1", ctypes.c_ulong),
+                ("RegionSize", ctypes.c_ulonglong),
+                ("State", ctypes.c_ulong),
+                ("Protect", ctypes.c_ulong),
+                ("Type", ctypes.c_ulong),
+                ("__alignment2", ctypes.c_ulong)]
+
+
+def largest_free_block(pid):
+    """The biggest run of free address space in that process, in megabytes.
+
+    This is the axis the crash was on: the engine asked for 33MB in one piece
+    and did not get it, while the process was nowhere near out of memory in
+    total. Total bytes cannot show that, and neither can private bytes.
+    """
+    PROCESS_QUERY_INFORMATION = 0x0400
+    MEM_FREE = 0x10000
+    # The end of the user-mode range a 32-bit process gets with LARGEADDRESSAWARE.
+    limit = 0xFFFF0000
+    handle = ctypes.windll.kernel32.OpenProcess(
+        PROCESS_QUERY_INFORMATION, False, pid)
+    if not handle:
+        return None
+    try:
+        region = MemoryRegion()
+        address = 0
+        biggest = 0
+        while address < limit:
+            written = ctypes.windll.kernel32.VirtualQueryEx(
+                handle, ctypes.c_void_p(address), ctypes.byref(region),
+                ctypes.sizeof(region))
+            if not written:
+                break
+            if region.State == MEM_FREE and region.RegionSize > biggest:
+                biggest = region.RegionSize
+            step = region.RegionSize or 0x1000
+            address = region.BaseAddress + step
+        return biggest / (1024 * 1024)
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
 def send_tjs(port, code):
     """Runs TJS in the game through the plugin's TCP port.
 
@@ -416,11 +501,22 @@ class Engine:
         # Set once the server exists, so the run can end itself.
         self.on_stop = None
         self.watch_log = options.watch_game_log
+        self.tag_log = options.watch_tag_log
+        self.tag_read_to = 0
         self.memory_limit = options.memory_limit
         self.dump_with = options.dump_with
         # Only what the run itself produces is read: whatever the file already
         # held belongs to an earlier session and would stop this one at once.
         self.watched_to = 0
+        if self.tag_log:
+            # Same reason as below: what the file already holds is an older
+            # session, and sampling on its scenes would describe nothing.
+            try:
+                self.tag_read_to = os.path.getsize(self.tag_log)
+                say(f"watching {self.tag_log} for scene changes")
+            except OSError as error:
+                say(f"could not read the tag log: {error}")
+                self.tag_log = None
         if self.watch_log:
             try:
                 self.watched_to = os.path.getsize(self.watch_log)
@@ -455,6 +551,37 @@ class Engine:
         say("the game is gone; stopping the run")
         if self.on_stop:
             self.on_stop()
+
+    def note_scene_changes(self):
+        """Takes a snapshot whenever the game says it entered another scene.
+
+        The step in memory happened on one scene, and a sample every 500 turns
+        could only place it inside a two-minute window. The game already
+        announces each scene in its tag log, so the sample goes where the
+        evidence is rather than on a timer.
+        """
+        if not self.tag_log or self.stopping:
+            return
+        try:
+            size = os.path.getsize(self.tag_log)
+            if size <= self.tag_read_to:
+                return
+            with open(self.tag_log, encoding="utf-8", errors="replace") as handle:
+                handle.seek(self.tag_read_to)
+                fresh = handle.read()
+            self.tag_read_to = size
+        except OSError as error:
+            say(f"could not read the tag log: {error}")
+            self.tag_log = None
+            return
+        # Only the last one: several scenes can land between two polls, and a
+        # snapshot per line would describe the same moment several times over.
+        scene = None
+        for line in fresh.splitlines():
+            if line.startswith("[scenario] "):
+                scene = line[len("[scenario] "):].strip()
+        if scene:
+            self.note_memory(f"scene {scene}")
 
     def stop_on_trouble(self):
         """Ends the run while the game is still there to look at.
@@ -552,8 +679,17 @@ class Engine:
         cache = ""
         if self.cache_limit is not None:
             cache = f" cache_limit={self.cache_limit}"
+        # The three axes travel together because they answer different halves of
+        # the same question: bytes say how much is held, the largest free block
+        # says whether a big image would still fit -- which is what actually
+        # failed -- and the layer count says whether the growth is more objects
+        # or the same ones holding more.
+        block = largest_free_block(self.game_pid)
+        free = f" free_block={block:.0f}MB" if block is not None else ""
+        layers = layer_count(self.options.tjs_port)
+        tree = f" layers={layers}" if layers is not None else ""
         say(f"memory: {occasion} working={working:.0f}MB private={private:.0f}MB"
-            f"{cache} turn={self.turns}")
+            f"{free}{tree}{cache} turn={self.turns}")
 
     def load_route(self):
         """Takes up the route at the current index, from its first decision."""
@@ -835,6 +971,7 @@ class Engine:
             self.note_memory("running")
         self.stop_if_the_game_is_gone()
         self.stop_on_trouble()
+        self.note_scene_changes()
         actions = offered_actions(schema)
         self.arm_auto_mode(actions)
         if self.options.action in actions:
@@ -1003,6 +1140,10 @@ def main():
                         help="the game's game_debug_log.txt. The run stops on the "
                              "first sign of trouble in it, leaving the game alive "
                              "to be attached to")
+    parser.add_argument("--watch-tag-log", metavar="FILE",
+                        help="the game's neuro_tag_log.txt. A memory snapshot is "
+                             "taken on every scene change it reports, which is "
+                             "what makes the curve fine enough to name a scene")
     parser.add_argument("--memory-limit", type=int, default=0, metavar="MB",
                         help="stop when the game holds this many megabytes of "
                              "private bytes; 0 means never. The game is 32-bit, so "
