@@ -440,16 +440,131 @@ def run_checks(streams):
 
     return checker.report()
 
+def spread(values):
+    """min / median / max of a list, as one string."""
+    if not values:
+        return "none"
+    ordered = sorted(values)
+    middle = ordered[len(ordered) // 2]
+    return f"{ordered[0]} / {middle} / {ordered[-1]}"
+
+
+def numbers_in(text):
+    """Every whole number in a piece of text, as a set."""
+    return set(int(found) for found in re.findall(r"\d+", text or ""))
+
+
+def run_stats(streams):
+    """Measures the run instead of judging it.
+
+    The checks next door ask whether the protocol held. These ask what the run
+    was like -- how big the action set got, how long the descriptions ran, how
+    much context went out -- because those are the numbers we kept measuring by
+    hand, one question at a time, and then losing.
+    """
+    actions = streams["actions"]
+    contexts = streams["context"]
+
+    registers = [r for r in actions if r.get("key") == "api/game/register"]
+    results = [r for r in actions if r.get("key") == "api/game/action_result"]
+    sent = [r for r in actions if r.get("key") == "api/game/act/actor"]
+
+    print("Action set")
+    sizes = [len((r.get("data") or {}).get("actions") or []) for r in registers]
+    print(f"  snapshots sent          {len(registers)}")
+    print(f"  actions per snapshot    {spread(sizes)}  (min / median / max)")
+    span = 0.0
+    if registers and registers[-1]["at"] and registers[0]["at"]:
+        span = (registers[-1]["at"] - registers[0]["at"]).total_seconds() / 60
+    if span > 0:
+        print(f"  snapshots per minute    {len(registers) / span:.1f}")
+
+    # Descriptions, keyed by name: the same action is registered many times over
+    # a run, and only its longest wording matters for the limit.
+    longest = {}
+    for row in registers:
+        for action in (row.get("data") or {}).get("actions") or []:
+            name = action.get("name")
+            text = action.get("description") or ""
+            if name and len(text) > len(longest.get(name, "")):
+                longest[name] = text
+    print()
+    print("Descriptions")
+    if longest:
+        lengths = [len(t) for t in longest.values()]
+        print(f"  actions seen            {len(longest)}")
+        print(f"  characters              {spread(lengths)}")
+        over = sorted(((len(t), n) for n, t in longest.items()), reverse=True)[:5]
+        for size, name in over:
+            print(f"    {size:5d}  {name}")
+    else:
+        print("  none registered")
+
+    print()
+    print("Context")
+    silent = sum(1 for r in contexts
+                 if (r.get("data") or {}).get("silent"))
+    texts = [(r.get("data") or {}).get("message") or "" for r in contexts]
+    said = [len(t) for t in texts if t]
+    print(f"  messages                {len(contexts)}, {silent} silent")
+    if said:
+        print(f"  characters              {spread(said)}")
+
+    print()
+    print("Results")
+    failed = sum(1 for r in results
+                 if not (r.get("data") or {}).get("success"))
+    print(f"  actions sent            {len(sent)}")
+    print(f"  results                 {len(results)}, {failed} refused")
+
+    # The pairing check: an answer that quotes a different number than the
+    # request did. `open_edit_menu` with slot 19 once answered "slot 9", and
+    # nothing in a stream of plausible numbers made that stand out.
+    asked = {}
+    for row in sent:
+        act = (row.get("data") or {}).get("act") or {}
+        raw = act.get("data")
+        if not raw:
+            continue
+        try:
+            fields = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        wanted = set(v for v in (fields or {}).values() if isinstance(v, int))
+        if wanted:
+            asked[act.get("id")] = (act.get("name"), wanted)
+
+    mismatched = []
+    for row in results:
+        data = row.get("data") or {}
+        act = data.get("act") or {}
+        pair = asked.get(act.get("id"))
+        if not pair or not data.get("success"):
+            continue
+        name, wanted = pair
+        found = numbers_in(data.get("message"))
+        if found and not (wanted & found):
+            mismatched.append((name, sorted(wanted), sorted(found),
+                               data.get("message")))
+    print(f"  answers quoting another number  {len(mismatched)}")
+    for name, wanted, found, message in mismatched[:5]:
+        print(f"    {name}: asked {wanted}, answered {found} -- {message}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", required=True,
                         help="a client run directory holding events/context/actions.jsonl")
-    parser.add_argument("--tag-log", required=True,
+    parser.add_argument("--tag-log",
                         help="the plugin's neuro_tag_log.txt, written with log_timestamps = on")
     parser.add_argument("--at", help="the moment, as a timestamp from either log")
     parser.add_argument("--choice", type=int, help="the moment the Nth choice appeared")
     parser.add_argument("--text", help="the moment an event first mentions this text")
+    parser.add_argument("--stats", action="store_true",
+                        help="measure the run: action set size, description "
+                             "lengths, context volume, and answers that quote a "
+                             "different number than the request did")
     parser.add_argument("--check", action="store_true",
                         help="ask the run whether the protocol held, and stop. "
                              "Exits non-zero if any check failed")
@@ -462,7 +577,19 @@ def main():
                         help="how many seconds either side to show (default 5)")
     args = parser.parse_args()
 
+    # Every mode but --stats reads the game's own log as well, and reads it
+    # first, so say what is missing rather than failing inside a path join.
+    if not args.stats and not args.tag_log:
+        parser.error("--tag-log is required for everything except --stats")
+
     streams = load_run(args.run)
+    # Measuring the client's own record needs nothing from the game's tag log,
+    # and asking for a file that will not be read is a way to make a tool look
+    # harder to use than it is.
+    if args.stats:
+        run_stats(streams)
+        return
+
     tag_rows, unstamped, banner = load_tag_log(args.tag_log)
     print(banner or "note: the tag log names no instance -- an older build wrote it")
     if unstamped:
