@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 // Watching what the game asks Direct3D for.
 //
 // The engine logs `Direct3D could not allocate sufficient memory` and nothing
@@ -17,3 +19,9 @@
 // untouched and the answer is passed back as it came.
 bool D3DWatchInstall();
 void D3DWatchReport();
+
+// How hard the frame path is having to push. A lock that has to wait is the
+// driver saying its queue of discarded buffers is not coming back fast enough,
+// and that wait grows long before a lock is refused outright -- so this is the
+// warning the refusal itself arrives too late to give.
+void D3DWatchPressure(char *out, size_t size);

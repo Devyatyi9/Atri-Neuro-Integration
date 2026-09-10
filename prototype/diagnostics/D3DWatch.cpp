@@ -86,6 +86,15 @@ std::atomic<long long> g_Bytes(0);
 std::atomic<long long> g_Locked(0);
 std::atomic<long long> g_LockRefused(0);
 
+// The last stretch of lock times, in ticks, kept as a ring so that reading them
+// costs nothing the frame path can feel. A window rather than an average since
+// the run began: what matters is how the last second or so went, not how the
+// game was doing ten minutes ago.
+constexpr int kWindowSlots = 128;
+std::atomic<long long> g_LockTicks[kWindowSlots] = {};
+std::atomic<long long> g_LockWrites(0);
+std::atomic<long long> g_LockTicksWorst(0);
+
 // Which call site asked. The address is the game's own code, so it is written
 // as module+offset: that is what a disassembler wants, and it survives the
 // module being loaded somewhere else next time.
@@ -216,8 +225,18 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 		// there is no original to forward to.
 		return E_FAIL;
 	}
+	LARGE_INTEGER before = {};
+	QueryPerformanceCounter(&before);
 	HRESULT const hr = original(texture, level, locked, rect, flags);
 	if (SUCCEEDED(hr)) {
+		LARGE_INTEGER after = {};
+		QueryPerformanceCounter(&after);
+		long long const spot = g_LockWrites.fetch_add(1, std::memory_order_relaxed);
+		long long const ticks = after.QuadPart - before.QuadPart;
+		g_LockTicks[spot % kWindowSlots].store(ticks, std::memory_order_relaxed);
+		if (ticks > g_LockTicksWorst.load(std::memory_order_relaxed)) {
+			g_LockTicksWorst.store(ticks, std::memory_order_relaxed);
+		}
 		g_Locked.fetch_add(1, std::memory_order_relaxed);
 		return hr;
 	}
@@ -366,6 +385,32 @@ bool D3DWatchInstall() {
 	          installed ? "yes" : "no", g_LockTableCount);
 	Log(line);
 	return installed || g_LockTableCount > 0;
+}
+
+void D3DWatchPressure(char *out, size_t size) {
+	LARGE_INTEGER frequency = {};
+	QueryPerformanceFrequency(&frequency);
+	long long const written = g_LockWrites.load(std::memory_order_relaxed);
+	int const held = static_cast<int>(
+	    written < kWindowSlots ? written : static_cast<long long>(kWindowSlots));
+	long long sum = 0;
+	long long worst = 0;
+	for (int i = 0; i < held; ++i) {
+		long long const ticks = g_LockTicks[i].load(std::memory_order_relaxed);
+		sum += ticks;
+		if (ticks > worst) {
+			worst = ticks;
+		}
+	}
+	double const scale =
+	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
+	sprintf_s(out, size,
+	          "locks=%lld refused=%lld window=%d avg_us=%.0f worst_us=%.0f"
+	          " peak_us=%.0f",
+	          g_Locked.load(std::memory_order_relaxed),
+	          g_LockRefused.load(std::memory_order_relaxed), held,
+	          held ? sum * scale / held : 0.0, worst * scale,
+	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale);
 }
 
 void D3DWatchReport() {

@@ -638,7 +638,10 @@ class Engine:
         """
         options = self.options
         routes = ", ".join(r.get("name", "(unnamed)") for r in self.routes)
-        say(f"run: mode={options.mode} fast={bool(options.fast)} "
+        fast = f"{bool(options.fast)}"
+        if options.fast:
+            fast += f" draw_speed={options.draw_speed}"
+        say(f"run: mode={options.mode} fast={fast} "
             f"routes=[{routes or 'none'}] tjs_port={options.tjs_port} "
             f"engine_port={options.port}")
         say(f"run: watch_tag_log={bool(self.tag_log)} "
@@ -1212,6 +1215,8 @@ def prepare_game(options):
         return
     try:
         if options.fast:
+            send_tjs(options.tjs_port,
+                     f"global.__neuroDrawSpeed = {options.draw_speed}")
             with open(REPO_TJS_FAST, encoding="utf-8") as handle:
                 say("fast playback: " + send_tjs(options.tjs_port, handle.read()).strip())
         if options.mode == "auto" and not options.route:
@@ -1257,6 +1262,12 @@ def main():
                         help="path to the gary.exe this run is driven by. Only "
                              "for the run header: every build calls itself the "
                              "same version, so what identifies one is the file")
+    parser.add_argument("--draw-speed", type=float, default=0.1, metavar="V",
+                        help="how fast transitions are drawn under --fast: an "
+                             "inverse multiplier, so 0.1 is ten times normal and "
+                             "1 is what a player sees. The rest of --fast only "
+                             "removes waiting, so this is the one knob that "
+                             "changes how densely frames reach the driver")
     parser.add_argument("--memory-limit", type=int, default=0, metavar="MB",
                         help="stop when the game holds this many megabytes of "
                              "private bytes; 0 means never. The game is 32-bit, so "

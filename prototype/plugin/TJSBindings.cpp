@@ -14,6 +14,7 @@
 #include "ActionCommon.h"
 #include "ActionRouter.h"
 #include "ContextPayload.h"
+#include "D3DWatch.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
 #include "NeuroClient.h"
@@ -744,6 +745,21 @@ static tjs_error TJS_INTF_METHOD NeuroDump(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
+// Read from outside the game, once a turn, the way memory already is: a driver
+// that can see the frame path straining can slow down before anything is
+// refused, instead of finding out from a log line afterwards.
+static tjs_error TJS_INTF_METHOD NeuroD3DPressure(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	char line[192];
+	D3DWatchPressure(line, sizeof(line));
+	if (result) {
+		*result = ttstr(line);
+	}
+	return TJS_S_OK;
+}
+
 static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
                                            tjs_int numparams,
                                            tTJSVariant **param,
@@ -792,6 +808,7 @@ NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);
 NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
 NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
 NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
+NCB_REGISTER_FUNCTION(neuroD3DPressure, NeuroD3DPressure);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);

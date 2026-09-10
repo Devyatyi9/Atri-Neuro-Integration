@@ -26,7 +26,11 @@ if (typeof kag.__neuroSpeedOriginal != "Object") {
 // engine rather than assuming 100.
 kag.textspeed = 100;
 kag.autospeed = kag._autoSpeedMax;
-kag.drawspeed = 0.1;
+// The one knob that changes how densely frames reach the driver, so a caller
+// that is measuring the drawing itself can set its own value first; everything
+// else here only removes waiting.
+kag.drawspeed = (typeof global.__neuroDrawSpeed == "Real" ||
+    typeof global.__neuroDrawSpeed == "Integer") ? global.__neuroDrawSpeed : 0.1;
 kag.autoModeWaitVoice = 0;
 return "textspeed=" + kag.textspeed + " autospeed=" + kag.autospeed +
     " pageWait=" + kag.autoModePageWait + " lineWait=" + kag.autoModeLineWait +
