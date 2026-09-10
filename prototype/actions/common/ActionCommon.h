@@ -47,6 +47,20 @@ void HandleScreenButtonAction(std::string const &id,
 // whatever the game is displaying. Both readers take the same optional field.
 int ParseReadLanguage(std::string const &data);
 
+// A screen describing itself on the way in.
+//
+// The same description twice in a row says nothing the second time, and that
+// happens for a reason worth keeping: a reconnect makes the plugin forget which
+// screen it had synced, so every screen introduces itself again -- while the
+// context it is repeating survived the disconnect on Neuro's side. So the last
+// announcement is remembered and an identical one is dropped.
+//
+// Forgotten when the screen actually changes, not when the session restarts:
+// leaving a screen and coming back is a new arrival and deserves saying again,
+// even if the words match.
+bool SendScreenAnnouncement(std::string const &text);
+void ForgetScreenAnnouncement();
+
 // Schemas whose bounds are only known at registration time, because they
 // describe what is on screen at that moment.
 std::string BoundedIntSchema(char const *field, int maximum);

@@ -313,7 +313,7 @@ void SendEnteringContext(int payload) {
 	// save record, not on the screen. Reading them out would be reminding her of
 	// the game rather than describing it, which is the line this whole surface
 	// keeps.
-	NeuroSendContext(message.c_str(), false);
+	SendScreenAnnouncement(message);
 }
 
 int ReadPayload(ScreenSnapshot const &screen, bool &ready) {

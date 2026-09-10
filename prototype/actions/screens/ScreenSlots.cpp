@@ -970,7 +970,7 @@ void SendEditMenuContext(int payload) {
 		message +=
 		    " Also on the menu but greyed out for this slot: " + refused + ".";
 	}
-	NeuroSendContext(message.c_str(), false);
+	SendScreenAnnouncement(message);
 }
 
 void AppendActions(ActionSet &set, Mode mode, int payload) {

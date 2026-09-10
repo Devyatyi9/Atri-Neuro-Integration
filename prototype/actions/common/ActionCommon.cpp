@@ -43,6 +43,24 @@ void HandleScreenButtonAction(std::string const &id,
 	NeuroSendActionResult(id.c_str(), ok, ok ? okMessage : failMessage);
 }
 
+namespace {
+// The last thing a screen said about itself. Not cleared on reconnect: that is
+// the case this exists for.
+std::string g_LastScreenAnnouncement;
+}  // namespace
+
+bool SendScreenAnnouncement(std::string const &text) {
+	if (text.empty() || text == g_LastScreenAnnouncement) {
+		return false;
+	}
+	g_LastScreenAnnouncement = text;
+	return NeuroSendContext(text.c_str(), false);
+}
+
+void ForgetScreenAnnouncement() {
+	g_LastScreenAnnouncement.clear();
+}
+
 int ParseReadLanguage(std::string const &data) {
 	return data.find("japanese") == std::string::npos ? -1 : 0;
 }

@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "ActionCommon.h"
 #include "ActionProbes.h"
 #include "ActionSet.h"
 #include "Logging.h"
@@ -277,6 +278,14 @@ void SyncCapabilities(int kind, int payload = 0) {
 	int const previousKind = SyncedCapabilityKind();
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
+	}
+	// A screen that is genuinely being left forgets what it said, so arriving
+	// somewhere again describes it again. A session starting over is not that:
+	// there the previous kind is Unknown because we forgot it, while Neuro still
+	// remembers every word -- and repeating it all is exactly what we are trying
+	// not to do.
+	if (previousKind != kind && previousKind != kCapabilityStateUnknown) {
+		ForgetScreenAnnouncement();
 	}
 	bool const modal =
 	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu;

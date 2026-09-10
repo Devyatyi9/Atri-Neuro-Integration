@@ -398,12 +398,10 @@ void SendEnteringContext() {
 		// Named for what is on screen: the backlog opens on whichever mode it
 		// was left in, so "lines" is not a safe assumption.
 		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
-		NeuroSendContext(
-		    ("The backlog is open. It holds " + std::to_string(total) + held +
-		     ", and read_backlog reads the ones on screen, or elsewhere on "
-		     "request.")
-		        .c_str(),
-		    false);
+		SendScreenAnnouncement(
+		    "The backlog is open. It holds " + std::to_string(total) + held +
+		    ", and read_backlog reads the ones on screen, or elsewhere on "
+		    "request.");
 	}
 }
 
