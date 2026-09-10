@@ -96,6 +96,7 @@ MEMORY_EVERY_TURNS = 500
 # How often to check the game is still there. Cheap, but not free, and a run
 # that ended does not need noticing within the same second.
 GAME_CHECK_EVERY_TURNS = 50
+GAME_CHECK_SECONDS = 15
 
 # Lines the engine writes when it is in trouble but still running. The first one
 # ran for three minutes and several hundred lines before the game gave up.
@@ -234,6 +235,20 @@ def layer_count(port):
         return int(answer)
     except ValueError:
         return None
+
+
+def lock_pressure(port):
+    """What the frame path is costing, or None from a build without the reading.
+
+    A lock that has to wait is the driver saying it cannot recycle buffers fast
+    enough, and that wait grows long before one is refused outright -- so this
+    is the half of the curve that arrives in time to act on.
+    """
+    try:
+        answer = send_tjs(port, "neuroD3DPressure()").strip()
+    except OSError:
+        return None
+    return answer if answer.startswith("locks=") else None
 
 
 def file_version(path):
@@ -602,7 +617,7 @@ class Engine:
     def route_name(self):
         return self.route.get("name", f"route {self.route_index + 1}")
 
-    def stop_if_the_game_is_gone(self):
+    def stop_if_the_game_is_gone(self, on_a_clock=False):
         """Ends the run once there is no game left to play.
 
         Nothing else notices. The client keeps asking, this keeps answering, and
@@ -613,7 +628,10 @@ class Engine:
         """
         if self.game_pid is None or self.stopping:
             return
-        if self.turns % GAME_CHECK_EVERY_TURNS:
+        # Counting turns is no way to notice a game that closed: the turns stop
+        # arriving at exactly that moment. So the count gates the cheap check
+        # that rides along with a turn, and a clock covers the silence.
+        if not on_a_clock and self.turns % GAME_CHECK_EVERY_TURNS:
             return
         if process_is_alive(self.game_pid):
             return
@@ -800,8 +818,10 @@ class Engine:
         free = f" free_block={block:.0f}MB" if block is not None else ""
         layers = layer_count(self.options.tjs_port)
         tree = f" layers={layers}" if layers is not None else ""
+        pressure = lock_pressure(self.options.tjs_port)
+        strain = f" {pressure}" if pressure else ""
         say(f"memory: {occasion} working={working:.0f}MB private={private:.0f}MB"
-            f"{free}{tree}{cache} turn={self.turns}")
+            f"{free}{tree}{cache}{strain} turn={self.turns}")
 
     def load_route(self):
         """Takes up the route at the current index, from its first decision."""
@@ -1337,6 +1357,12 @@ def main():
     # it is called while a request is being served.
     Handler.engine.on_stop = lambda: threading.Thread(
         target=server.shutdown, daemon=True).start()
+    def keep_an_eye_out():
+        while not Handler.engine.stopping:
+            time.sleep(GAME_CHECK_SECONDS)
+            Handler.engine.stop_if_the_game_is_gone(on_a_clock=True)
+
+    threading.Thread(target=keep_an_eye_out, daemon=True).start()
     say(f"scripted engine on http://127.0.0.1:{options.port}/v1 in {options.mode} mode")
     say("add it in Gary as an OpenAI-compatible engine with that Server URL")
     # Asking the server to stop, rather than letting an exception unwind out of
