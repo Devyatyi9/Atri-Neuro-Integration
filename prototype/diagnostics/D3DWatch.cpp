@@ -12,7 +12,6 @@
 #include <d3d9.h>
 
 #include "Logging.h"
-#include "tp_stub.h"
 
 namespace {
 
@@ -62,6 +61,17 @@ using LockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *,
 using UnlockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *, UINT);
 
 CreateTextureFn g_OriginalCreateTexture = nullptr;
+
+// The table our own device carries, and the game's if it turns out to differ.
+// The game's device is created before this plugin can watch anything, so its
+// table is only learned from the first texture of its that gets locked; until
+// then a CreateTexture on it goes unseen.
+void **g_OurDeviceTable = nullptr;
+void **g_GameDeviceTable = nullptr;
+CreateTextureFn g_GameOriginalCreateTexture = nullptr;
+std::atomic<bool> g_GameDeviceChecked(false);
+
+void WatchGameDevice(IDirect3DDevice9 *game);
 
 // Textures do not all share one table -- a pooled one and a driver-backed one
 // can be different classes inside d3d9 -- so each table that gets patched is
@@ -189,8 +199,13 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
                                                IDirect3DTexture9 **texture,
                                                HANDLE *shared) {
 	void *const caller = _ReturnAddress();
-	HRESULT const hr = g_OriginalCreateTexture(
-	    device, width, height, levels, usage, format, pool, texture, shared);
+	CreateTextureFn const original =
+	    (g_GameDeviceTable &&
+	     *reinterpret_cast<void ***>(device) == g_GameDeviceTable)
+	        ? g_GameOriginalCreateTexture
+	        : g_OriginalCreateTexture;
+	HRESULT const hr = original(device, width, height, levels, usage, format,
+	                            pool, texture, shared);
 	long long const bytes =
 	    static_cast<long long>(width) * height * BytesPerPixel(format);
 	if (SUCCEEDED(hr)) {
@@ -232,6 +247,13 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 	void *const caller = _ReturnAddress();
 	PatchedTable const *const patched = PatchedTableFor(texture);
 	LockRectFn const original = patched ? patched->original : nullptr;
+	if (!g_GameDeviceChecked.exchange(true)) {
+		IDirect3DDevice9 *game = nullptr;
+		if (SUCCEEDED(texture->GetDevice(&game)) && game) {
+			WatchGameDevice(game);
+			game->Release();
+		}
+	}
 	if (!original) {
 		// Nothing sane is left to do: this table was never patched here, so
 		// there is no original to forward to.
@@ -290,23 +312,13 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 	return hr;
 }
 
-// The table to patch belongs to the class, not to one device, so a device of
-// our own will do to find it -- as long as it is the same class as the game's.
-// d3d9 gives a multithreaded device a class of its own, and SteamDrawDevice
-// asks for one on the engine's Direct3D object, so the throwaway is made the
-// same way. The window is there because D3D9 will not create a device without
-// one.
+// The texture tables are shared by every device, so a device of our own is
+// enough to reach them. It is not enough for CreateTexture: the game's device
+// is a class of its own, and that one is watched through WatchGameDevice once
+// its first texture is locked. The window is there because D3D9 will not
+// create a device without one.
 IDirect3DDevice9 *MakeThrowawayDevice(IDirect3D9 *&d3d, HWND &window) {
-	TVPEnsureDirect3DObject();
-	d3d = TVPGetDirect3DObjectNoAddRef();
-	if (d3d) {
-		// Handed over without a reference; one is added so the caller's Release
-		// balances it the same way as for an object of our own.
-		d3d->AddRef();
-	} else {
-		Log("[D3D] the engine has no Direct3D object; using one of our own\n");
-		d3d = Direct3DCreate9(D3D_SDK_VERSION);
-	}
+	d3d = Direct3DCreate9(D3D_SDK_VERSION);
 	if (!d3d) {
 		return nullptr;
 	}
@@ -350,6 +362,28 @@ bool PatchSlot(void **table, int slot, void *replacement, void **displaced) {
 	table[slot] = replacement;
 	VirtualProtect(&table[slot], sizeof(void *), previous, &previous);
 	return true;
+}
+
+// Compares the game's device with the one the watch was set up through, and if
+// they are different classes, watches the game's directly. The original is
+// stored before the slot is switched: the hook picks it by table, so it has to
+// be there by the time the first call arrives.
+void WatchGameDevice(IDirect3DDevice9 *game) {
+	void **gameTable = *reinterpret_cast<void ***>(game);
+	if (gameTable == g_OurDeviceTable) {
+		Log("[D3D] the game's device is the class being watched\n");
+		return;
+	}
+	g_GameOriginalCreateTexture =
+	    reinterpret_cast<CreateTextureFn>(gameTable[kCreateTextureSlot]);
+	g_GameDeviceTable = gameTable;
+	void *displaced = nullptr;
+	bool const patched =
+	    PatchSlot(gameTable, kCreateTextureSlot,
+	              reinterpret_cast<void *>(&WatchedCreateTexture), &displaced);
+	Log(patched ? "[D3D] the game's device is another class; watching it too\n"
+	            : "[D3D] the game's device is another class, and its table "
+	              "would not open\n");
 }
 
 void WatchTextureTable(IDirect3DDevice9 *device, DWORD usage, D3DPOOL pool) {
@@ -404,6 +438,7 @@ bool D3DWatchInstall() {
 	}
 
 	void **table = *reinterpret_cast<void ***>(device);
+	g_OurDeviceTable = table;
 	void *displaced = nullptr;
 	bool installed =
 	    PatchSlot(table, kCreateTextureSlot,
