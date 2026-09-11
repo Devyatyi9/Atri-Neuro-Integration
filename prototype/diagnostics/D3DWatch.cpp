@@ -12,6 +12,7 @@
 #include <d3d9.h>
 
 #include "Logging.h"
+#include "tp_stub.h"
 
 namespace {
 
@@ -289,12 +290,23 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 	return hr;
 }
 
-// The table to patch belongs to the class, not to one device, so any device
-// will do to find it -- including one of ours, made and thrown away. That is
-// the reason for the window below: D3D9 will not create a device without one,
-// and borrowing the game's would mean waiting for it to exist.
+// The table to patch belongs to the class, not to one device, so a device of
+// our own will do to find it -- as long as it is the same class as the game's.
+// d3d9 gives a multithreaded device a class of its own, and SteamDrawDevice
+// asks for one on the engine's Direct3D object, so the throwaway is made the
+// same way. The window is there because D3D9 will not create a device without
+// one.
 IDirect3DDevice9 *MakeThrowawayDevice(IDirect3D9 *&d3d, HWND &window) {
-	d3d = Direct3DCreate9(D3D_SDK_VERSION);
+	TVPEnsureDirect3DObject();
+	d3d = TVPGetDirect3DObjectNoAddRef();
+	if (d3d) {
+		// Handed over without a reference; one is added so the caller's Release
+		// balances it the same way as for an object of our own.
+		d3d->AddRef();
+	} else {
+		Log("[D3D] the engine has no Direct3D object; using one of our own\n");
+		d3d = Direct3DCreate9(D3D_SDK_VERSION);
+	}
 	if (!d3d) {
 		return nullptr;
 	}
@@ -439,8 +451,9 @@ void D3DWatchPressure(char *out, size_t size) {
 	double const scale =
 	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
 	sprintf_s(out, size,
-	          "locks=%lld unlocks=%lld refused=%lld window=%d avg_us=%.0f"
-	          " worst_us=%.0f peak_us=%.0f",
+	          "textures=%lld locks=%lld unlocks=%lld refused=%lld window=%d"
+	          " avg_us=%.0f worst_us=%.0f peak_us=%.0f",
+	          g_Created.load(std::memory_order_relaxed),
 	          g_Locked.load(std::memory_order_relaxed),
 	          g_Unlocked.load(std::memory_order_relaxed),
 	          g_LockRefused.load(std::memory_order_relaxed), held,
@@ -455,7 +468,7 @@ void D3DWatchReport() {
 	char line[256];
 	sprintf_s(line,
 	          "[D3D] textures created=%lld refused=%lld total=%lldMB"
-	          " locks=%lld refused=%lld\n",
+	          " locks=%lld unlocks=%lld refused=%lld\n",
 	          g_Created.load(std::memory_order_relaxed),
 	          g_Refused.load(std::memory_order_relaxed),
 	          g_Bytes.load(std::memory_order_relaxed) / (1024 * 1024),

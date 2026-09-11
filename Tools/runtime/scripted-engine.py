@@ -255,7 +255,7 @@ def lock_pressure(port):
         answer = send_tjs(port, "neuroD3DPressure()").strip()
     except OSError:
         return None
-    return answer if answer.startswith("locks=") else None
+    return answer if "locks=" in answer else None
 
 
 def file_version(path):
