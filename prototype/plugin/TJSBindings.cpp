@@ -748,6 +748,19 @@ static tjs_error TJS_INTF_METHOD NeuroDump(tTJSVariant *result,
 // Read from outside the game, once a turn, the way memory already is: a driver
 // that can see the frame path straining can slow down before anything is
 // refused, instead of finding out from a log line afterwards.
+// Fails one frame on purpose, so the draw device's recovery path can be tried
+// on a game that is drawing normally instead of waiting for a real refusal.
+static tjs_error TJS_INTF_METHOD NeuroD3DFailLockOnce(tTJSVariant *result,
+                                                      tjs_int numparams,
+                                                      tTJSVariant **param,
+                                                      iTJSDispatch2 *objthis) {
+	D3DWatchFailNextLock();
+	if (result) {
+		*result = TJS_W("armed");
+	}
+	return TJS_S_OK;
+}
+
 // Switches the one thing the D3D watch is allowed to change. Kept out here
 // rather than turned on at startup so that one build can be run both ways.
 static tjs_error TJS_INTF_METHOD NeuroD3DFixReset(tTJSVariant *result,
@@ -825,6 +838,7 @@ NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
 NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
 NCB_REGISTER_FUNCTION(neuroD3DPressure, NeuroD3DPressure);
 NCB_REGISTER_FUNCTION(neuroD3DFixReset, NeuroD3DFixReset);
+NCB_REGISTER_FUNCTION(neuroD3DFailLockOnce, NeuroD3DFailLockOnce);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);

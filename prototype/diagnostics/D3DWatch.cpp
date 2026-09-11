@@ -85,6 +85,13 @@ std::atomic<bool> g_NudgeEnabled(false);
 std::atomic<bool> g_NudgeArmed(false);
 std::atomic<long long> g_Nudges(0);
 
+// How often the game asks about its device at all. Without this there is no
+// telling whether an armed nudge is waiting for a question that never comes.
+std::atomic<long long> g_Tests(0);
+
+// Set to refuse one lock on purpose; cleared by the refusal it causes.
+std::atomic<bool> g_FailNextLock(false);
+
 void WatchGameDevice(IDirect3DDevice9 *game);
 
 // Textures do not all share one table -- a pooled one and a driver-backed one
@@ -275,7 +282,11 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 	}
 	LARGE_INTEGER before = {};
 	QueryPerformanceCounter(&before);
-	HRESULT const hr = original(texture, level, locked, rect, flags);
+	// A refused lock never happened, so the forwarding is skipped entirely:
+	// nothing is locked, and the game has nothing to unlock afterwards.
+	bool const faked = g_FailNextLock.exchange(false);
+	HRESULT const hr =
+	    faked ? E_OUTOFMEMORY : original(texture, level, locked, rect, flags);
 	if (SUCCEEDED(hr)) {
 		LARGE_INTEGER after = {};
 		QueryPerformanceCounter(&after);
@@ -334,6 +345,7 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 // which is the game's own way out and is then left alone again.
 HRESULT STDMETHODCALLTYPE
 WatchedTestCooperativeLevel(IDirect3DDevice9 *device) {
+	g_Tests.fetch_add(1, std::memory_order_relaxed);
 	HRESULT const hr = g_GameOriginalTest ? g_GameOriginalTest(device) : D3D_OK;
 	if (hr != D3D_OK || !g_NudgeArmed.exchange(false)) {
 		return hr;
@@ -528,12 +540,13 @@ void D3DWatchPressure(char *out, size_t size) {
 	double const scale =
 	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
 	sprintf_s(out, size,
-	          "textures=%lld locks=%lld unlocks=%lld refused=%lld nudges=%lld"
-	          " window=%d avg_us=%.0f worst_us=%.0f peak_us=%.0f",
+	          "textures=%lld locks=%lld unlocks=%lld refused=%lld tests=%lld"
+	          " nudges=%lld window=%d avg_us=%.0f worst_us=%.0f peak_us=%.0f",
 	          g_Created.load(std::memory_order_relaxed),
 	          g_Locked.load(std::memory_order_relaxed),
 	          g_Unlocked.load(std::memory_order_relaxed),
 	          g_LockRefused.load(std::memory_order_relaxed),
+	          g_Tests.load(std::memory_order_relaxed),
 	          g_Nudges.load(std::memory_order_relaxed), held,
 	          held ? sum * scale / held : 0.0, worst * scale,
 	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale);
@@ -546,6 +559,11 @@ void D3DWatchNudgeResetOnRefusal(bool on) {
 	}
 	Log(on ? "[D3D] a refusal will now ask the game to reset its device\n"
 	       : "[D3D] refusals are watched and nothing else\n");
+}
+
+void D3DWatchFailNextLock() {
+	g_FailNextLock.store(true, std::memory_order_relaxed);
+	Log("[D3D] the next frame will be refused on purpose\n");
 }
 
 void D3DWatchReport() {

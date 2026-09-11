@@ -35,3 +35,12 @@ void D3DWatchPressure(char *out, size_t size);
 // to "needs a reset" after a refusal, and the game takes its own path from
 // there.
 void D3DWatchNudgeResetOnRefusal(bool on);
+
+// Refuses one lock on purpose, as Direct3D would.
+//
+// A healthy game never asks whether its device is lost, so the intervention
+// above has nothing to answer until something fails. This makes one frame fail
+// the way a real refusal does, which sends the draw device down its recovery
+// path -- and that path is what needs trying before a real refusal is there to
+// try it on. One frame is lost.
+void D3DWatchFailNextLock();
