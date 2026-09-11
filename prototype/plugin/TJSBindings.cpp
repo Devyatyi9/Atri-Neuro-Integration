@@ -748,6 +748,21 @@ static tjs_error TJS_INTF_METHOD NeuroDump(tTJSVariant *result,
 // Read from outside the game, once a turn, the way memory already is: a driver
 // that can see the frame path straining can slow down before anything is
 // refused, instead of finding out from a log line afterwards.
+// Switches the one thing the D3D watch is allowed to change. Kept out here
+// rather than turned on at startup so that one build can be run both ways.
+static tjs_error TJS_INTF_METHOD NeuroD3DFixReset(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	bool const on = numparams >= 1 && param && param[0] &&
+	                static_cast<tjs_int>(*param[0]) != 0;
+	D3DWatchNudgeResetOnRefusal(on);
+	if (result) {
+		*result = on ? TJS_W("on") : TJS_W("off");
+	}
+	return TJS_S_OK;
+}
+
 static tjs_error TJS_INTF_METHOD NeuroD3DPressure(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
@@ -809,6 +824,7 @@ NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
 NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
 NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
 NCB_REGISTER_FUNCTION(neuroD3DPressure, NeuroD3DPressure);
+NCB_REGISTER_FUNCTION(neuroD3DFixReset, NeuroD3DFixReset);
 NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
 NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
 NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);

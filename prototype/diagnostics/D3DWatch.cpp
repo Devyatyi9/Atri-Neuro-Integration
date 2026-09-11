@@ -42,6 +42,11 @@ constexpr int kLockRectSlot = 19;
 // process's.
 constexpr int kUnlockRectSlot = 20;
 
+// TestCooperativeLevel is the fourth entry of IDirect3DDevice9's table, right
+// after IUnknown's three. The draw device asks it after a failed frame and
+// resets only when the answer says the device needs one.
+constexpr int kTestCooperativeLevelSlot = 3;
+
 using CreateTextureFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *,
                                                      UINT,
                                                      UINT,
@@ -60,6 +65,8 @@ using LockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *,
 
 using UnlockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *, UINT);
 
+using TestCooperativeLevelFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *);
+
 CreateTextureFn g_OriginalCreateTexture = nullptr;
 
 // The table our own device carries, and the game's if it turns out to differ.
@@ -70,6 +77,13 @@ void **g_OurDeviceTable = nullptr;
 void **g_GameDeviceTable = nullptr;
 CreateTextureFn g_GameOriginalCreateTexture = nullptr;
 std::atomic<bool> g_GameDeviceChecked(false);
+
+// The intervention: off unless asked for, armed by a refusal, and spent on the
+// next question the draw device asks about its device.
+TestCooperativeLevelFn g_GameOriginalTest = nullptr;
+std::atomic<bool> g_NudgeEnabled(false);
+std::atomic<bool> g_NudgeArmed(false);
+std::atomic<long long> g_Nudges(0);
 
 void WatchGameDevice(IDirect3DDevice9 *game);
 
@@ -277,6 +291,9 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 
 	long long const refused =
 	    g_LockRefused.fetch_add(1, std::memory_order_relaxed);
+	if (g_NudgeEnabled.load(std::memory_order_relaxed)) {
+		g_NudgeArmed.store(true, std::memory_order_relaxed);
+	}
 	if (refused < 20 || refused % 100 == 0) {
 		// What was being locked matters as much as that it failed, and the
 		// texture itself is the only one who knows.
@@ -310,6 +327,23 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 		g_Unlocked.fetch_add(1, std::memory_order_relaxed);
 	}
 	return hr;
+}
+
+// The device is fine, and that is the problem: the draw device resets only what
+// it believes is lost. After a refusal this says the device needs a reset once,
+// which is the game's own way out and is then left alone again.
+HRESULT STDMETHODCALLTYPE
+WatchedTestCooperativeLevel(IDirect3DDevice9 *device) {
+	HRESULT const hr = g_GameOriginalTest ? g_GameOriginalTest(device) : D3D_OK;
+	if (hr != D3D_OK || !g_NudgeArmed.exchange(false)) {
+		return hr;
+	}
+	long long const nudges = g_Nudges.fetch_add(1, std::memory_order_relaxed);
+	char line[128];
+	sprintf_s(line, "[D3D] telling the game its device needs a reset (%lld)\n",
+	          nudges + 1);
+	Log(line);
+	return D3DERR_DEVICENOTRESET;
 }
 
 // The texture tables are shared by every device, so a device of our own is
@@ -381,6 +415,14 @@ void WatchGameDevice(IDirect3DDevice9 *game) {
 	bool const patched =
 	    PatchSlot(gameTable, kCreateTextureSlot,
 	              reinterpret_cast<void *>(&WatchedCreateTexture), &displaced);
+	// Read out of the table before the slot is switched: the hook forwards
+	// through what it displaced.
+	g_GameOriginalTest = reinterpret_cast<TestCooperativeLevelFn>(
+	    gameTable[kTestCooperativeLevelSlot]);
+	void *displacedTest = nullptr;
+	PatchSlot(gameTable, kTestCooperativeLevelSlot,
+	          reinterpret_cast<void *>(&WatchedTestCooperativeLevel),
+	          &displacedTest);
 	Log(patched ? "[D3D] the game's device is another class; watching it too\n"
 	            : "[D3D] the game's device is another class, and its table "
 	              "would not open\n");
@@ -486,14 +528,24 @@ void D3DWatchPressure(char *out, size_t size) {
 	double const scale =
 	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
 	sprintf_s(out, size,
-	          "textures=%lld locks=%lld unlocks=%lld refused=%lld window=%d"
-	          " avg_us=%.0f worst_us=%.0f peak_us=%.0f",
+	          "textures=%lld locks=%lld unlocks=%lld refused=%lld nudges=%lld"
+	          " window=%d avg_us=%.0f worst_us=%.0f peak_us=%.0f",
 	          g_Created.load(std::memory_order_relaxed),
 	          g_Locked.load(std::memory_order_relaxed),
 	          g_Unlocked.load(std::memory_order_relaxed),
-	          g_LockRefused.load(std::memory_order_relaxed), held,
+	          g_LockRefused.load(std::memory_order_relaxed),
+	          g_Nudges.load(std::memory_order_relaxed), held,
 	          held ? sum * scale / held : 0.0, worst * scale,
 	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale);
+}
+
+void D3DWatchNudgeResetOnRefusal(bool on) {
+	g_NudgeEnabled.store(on, std::memory_order_relaxed);
+	if (!on) {
+		g_NudgeArmed.store(false, std::memory_order_relaxed);
+	}
+	Log(on ? "[D3D] a refusal will now ask the game to reset its device\n"
+	       : "[D3D] refusals are watched and nothing else\n");
 }
 
 void D3DWatchReport() {

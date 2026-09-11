@@ -15,8 +15,9 @@
 // only place both are visible is the interface between them, which is why this
 // sits on d3d9 rather than on anything of ours.
 //
-// It watches. It does not change what the game does: every call is forwarded
-// untouched and the answer is passed back as it came.
+// It watches, and by default changes nothing: every call is forwarded untouched
+// and the answer is passed back as it came. The one exception has to be asked
+// for -- see D3DWatchNudgeResetOnRefusal below.
 bool D3DWatchInstall();
 void D3DWatchReport();
 
@@ -25,3 +26,12 @@ void D3DWatchReport();
 // and that wait grows long before a lock is refused outright -- so this is the
 // warning the refusal itself arrives too late to give.
 void D3DWatchPressure(char *out, size_t size);
+
+// Turns the one intervention on or off; off is how it starts.
+//
+// Once a lock is refused, every later one is too, and the draw device never
+// recovers: it asks the device whether it is lost, hears that it is fine, and
+// so never resets it. With this on, the answer to that one question is changed
+// to "needs a reset" after a refusal, and the game takes its own path from
+// there.
+void D3DWatchNudgeResetOnRefusal(bool on);
