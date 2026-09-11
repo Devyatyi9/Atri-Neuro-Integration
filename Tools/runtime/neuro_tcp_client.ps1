@@ -45,7 +45,9 @@ $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $PluginDll = Join-Path $RepoRoot "build\prototype\Debug\Neuro-Integration.dll"
 $GameDir = Split-Path -Parent $GameExe
 $ProcDump = "C:\ProgramData\procdump\procdump.exe"
-$DumpDir = "C:\Temp\dumps"
+# The folder the engine writes its own crash dumps into. A temporary folder gets
+# emptied, and a dump is only worth taking if it is still there next week.
+$DumpDir = Join-Path $env:APPDATA "Aniplex\ATRI-MyDearMoments-"
 
 function Start-CrashWatcher {
     if (-not (Test-Path $ProcDump)) {

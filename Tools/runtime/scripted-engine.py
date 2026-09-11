@@ -63,6 +63,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 REPO_TJS_FAST = "Tools/tjs/fast-playback-on.tjs"
 REPO_TJS_SLOW = "Tools/tjs/fast-playback-off.tjs"
 
+# Where dumps go: the folder the engine writes its own crash dumps into, which
+# neuro_tcp_client.ps1 arms its crash watcher with too, so every dump of the game
+# is found in one place. Without a path procdump writes into the current
+# directory, which is the repository; and a temporary folder gets emptied.
+DUMP_DIR = os.path.join(os.environ.get("APPDATA", ""), "Aniplex",
+                        "ATRI-MyDearMoments-")
+
 # "A choice appeared: 1) Let Atri go. 2) Take care of Atri." -- built by
 # DescribeChoiceShown on the plugin side, and the numbering is what
 # select_choice takes, so the two cannot drift apart.
@@ -778,13 +785,21 @@ class Engine:
 
     def take_a_dump(self):
         """Captures the game's memory while it is still there to capture."""
-        say(f"writing a dump of pid {self.game_pid} with {self.dump_with}")
+        target = os.path.join(
+            DUMP_DIR, f"atri-{datetime.now():%Y%m%d-%H%M%S}.dmp")
+        say(f"writing a dump of pid {self.game_pid} to {target}")
         try:
+            os.makedirs(DUMP_DIR, exist_ok=True)
+            # procdump's own output is UTF-16 and says nothing the file does
+            # not, so the answer is whether the file is there.
             done = subprocess.run(
-                [self.dump_with, "-accepteula", "-ma", str(self.game_pid)],
-                capture_output=True, text=True, timeout=300)
-            tail = (done.stdout or done.stderr or "").strip().splitlines()
-            say("dump: " + (tail[-1] if tail else f"exit {done.returncode}"))
+                [self.dump_with, "-accepteula", "-ma", str(self.game_pid), target],
+                capture_output=True, timeout=300)
+            if os.path.exists(target):
+                size = os.path.getsize(target) / (1024 * 1024)
+                say(f"dump: {target} ({size:.0f}MB)")
+            else:
+                say(f"dump: nothing written, procdump exit {done.returncode}")
         except (OSError, subprocess.SubprocessError) as error:
             say(f"could not write a dump: {error}")
 
