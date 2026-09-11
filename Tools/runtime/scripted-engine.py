@@ -135,8 +135,32 @@ def stamp():
     return datetime.now().astimezone().isoformat(timespec="milliseconds")
 
 
+# The run's own record, beside the game's logs. The console alone is not enough:
+# it is often a background job's output, kept only as long as whatever started
+# the job keeps it, and the memory readings exist nowhere else.
+DRIVER_LOG = None
+
+
 def say(text):
-    print(f"{stamp()} {text}", flush=True)
+    line = f"{stamp()} {text}"
+    print(line, flush=True)
+    if DRIVER_LOG is not None:
+        DRIVER_LOG.write(line + "\n")
+        DRIVER_LOG.flush()
+
+
+def open_driver_log(options):
+    """Starts the run's record: --log if given, else beside the tag log."""
+    global DRIVER_LOG
+    path = options.log
+    if not path and options.watch_tag_log:
+        path = os.path.join(
+            os.path.dirname(os.path.abspath(options.watch_tag_log)),
+            f"driver-{datetime.now():%Y%m%d-%H%M%S}.log")
+    if not path:
+        return
+    DRIVER_LOG = open(path, "a", encoding="utf-8")
+    say(f"run log: {path}")
 
 
 def game_pid(port):
@@ -1317,6 +1341,11 @@ def main():
                         help="path to the gary.exe this run is driven by. Only "
                              "for the run header: every build calls itself the "
                              "same version, so what identifies one is the file")
+    parser.add_argument("--log", metavar="FILE",
+                        help="where to keep this run's record. Defaults to a "
+                             "driver-<time>.log beside the tag log when "
+                             "--watch-tag-log is given. run-timeline.py reads "
+                             "it as --driver-log")
     parser.add_argument("--draw-speed", type=float, default=0.1, metavar="V",
                         help="how fast transitions are drawn under --fast: an "
                              "inverse multiplier, so 0.1 is ten times normal and "
@@ -1334,6 +1363,7 @@ def main():
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
     options = parser.parse_args()
+    open_driver_log(options)
 
     routes = []
     for path in options.route or []:
