@@ -76,7 +76,12 @@ CreateTextureFn g_OriginalCreateTexture = nullptr;
 void **g_OurDeviceTable = nullptr;
 void **g_GameDeviceTable = nullptr;
 CreateTextureFn g_GameOriginalCreateTexture = nullptr;
-std::atomic<bool> g_GameDeviceChecked(false);
+// The device the game's textures last reported, and how many times that has
+// changed. A recreated device can land at the address of the one it replaced,
+// in which case the change goes unseen here; the CreateTexture count is the
+// other witness of a rebuild.
+std::atomic<void *> g_LastGameDevice(nullptr);
+std::atomic<long long> g_DeviceChanges(0);
 
 // The intervention: off unless asked for, armed by a refusal, and spent on the
 // next question the draw device asks about its device.
@@ -93,6 +98,7 @@ std::atomic<long long> g_Tests(0);
 std::atomic<bool> g_FailNextLock(false);
 
 void WatchGameDevice(IDirect3DDevice9 *game);
+void NoteGameDevice(IDirect3DTexture9 *texture);
 
 // Textures do not all share one table -- a pooled one and a driver-backed one
 // can be different classes inside d3d9 -- so each table that gets patched is
@@ -268,13 +274,7 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 	void *const caller = _ReturnAddress();
 	PatchedTable const *const patched = PatchedTableFor(texture);
 	LockRectFn const original = patched ? patched->original : nullptr;
-	if (!g_GameDeviceChecked.exchange(true)) {
-		IDirect3DDevice9 *game = nullptr;
-		if (SUCCEEDED(texture->GetDevice(&game)) && game) {
-			WatchGameDevice(game);
-			game->Release();
-		}
-	}
+	NoteGameDevice(texture);
 	if (!original) {
 		// Nothing sane is left to do: this table was never patched here, so
 		// there is no original to forward to.
@@ -440,6 +440,33 @@ void WatchGameDevice(IDirect3DDevice9 *game) {
 	              "would not open\n");
 }
 
+// Called on every lock, since a lock is the only place the game's device shows
+// itself. The first device seen is set up for watching; after that a different
+// one means the device was rebuilt, and whether it is the same class says
+// whether its CreateTexture calls are still being counted.
+void NoteGameDevice(IDirect3DTexture9 *texture) {
+	IDirect3DDevice9 *game = nullptr;
+	if (FAILED(texture->GetDevice(&game)) || !game) {
+		return;
+	}
+	void *const previous = g_LastGameDevice.exchange(game);
+	if (previous == nullptr) {
+		WatchGameDevice(game);
+	} else if (previous != game) {
+		long long const changes =
+		    g_DeviceChanges.fetch_add(1, std::memory_order_relaxed) + 1;
+		void **const table = *reinterpret_cast<void ***>(game);
+		char line[224];
+		sprintf_s(line, "[D3D] the game's device changed (%lld): %p -> %p, %s\n",
+		          changes, previous, static_cast<void *>(game),
+		          table == g_GameDeviceTable
+		              ? "same class"
+		              : "another class, its CreateTexture is not watched");
+		Log(line);
+	}
+	game->Release();
+}
+
 void WatchTextureTable(IDirect3DDevice9 *device, DWORD usage, D3DPOOL pool) {
 	if (g_LockTableCount >= kTableSlots) {
 		return;
@@ -540,9 +567,11 @@ void D3DWatchPressure(char *out, size_t size) {
 	double const scale =
 	    frequency.QuadPart ? 1000000.0 / frequency.QuadPart : 0.0;
 	sprintf_s(out, size,
-	          "textures=%lld locks=%lld unlocks=%lld refused=%lld tests=%lld"
-	          " nudges=%lld window=%d avg_us=%.0f worst_us=%.0f peak_us=%.0f",
+	          "textures=%lld devices=%lld locks=%lld unlocks=%lld refused=%lld"
+	          " tests=%lld nudges=%lld window=%d avg_us=%.0f worst_us=%.0f"
+	          " peak_us=%.0f",
 	          g_Created.load(std::memory_order_relaxed),
+	          g_DeviceChanges.load(std::memory_order_relaxed),
 	          g_Locked.load(std::memory_order_relaxed),
 	          g_Unlocked.load(std::memory_order_relaxed),
 	          g_LockRefused.load(std::memory_order_relaxed),
