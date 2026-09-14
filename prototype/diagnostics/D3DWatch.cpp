@@ -69,13 +69,35 @@ using TestCooperativeLevelFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *);
 
 CreateTextureFn g_OriginalCreateTexture = nullptr;
 
-// The table our own device carries, and the game's if it turns out to differ.
-// The game's device is created before this plugin can watch anything, so its
-// table is only learned from the first texture of its that gets locked; until
-// then a CreateTexture on it goes unseen.
+// The table our own device carries.
 void **g_OurDeviceTable = nullptr;
-void **g_GameDeviceTable = nullptr;
-CreateTextureFn g_GameOriginalCreateTexture = nullptr;
+
+// Every class of device the game has used, with the functions displaced from
+// its table. A rebuilt device can be a different class from the one it
+// replaced, so one entry is not enough: each class found is added here, and
+// the hooks find their way back through the entry for their own table. The
+// game's first device exists before this plugin can watch anything, so classes
+// are only learned from textures the game locks.
+struct WatchedDeviceTable {
+	void **table;
+	CreateTextureFn createTexture;
+	TestCooperativeLevelFn test;
+};
+
+constexpr int kDeviceTableSlots = 4;
+WatchedDeviceTable g_DeviceTables[kDeviceTableSlots] = {};
+std::atomic<int> g_DeviceTableCount(0);
+
+WatchedDeviceTable const *DeviceTableFor(IDirect3DDevice9 *device) {
+	void **const table = *reinterpret_cast<void ***>(device);
+	int const count = g_DeviceTableCount.load(std::memory_order_acquire);
+	for (int i = 0; i < count; ++i) {
+		if (g_DeviceTables[i].table == table) {
+			return &g_DeviceTables[i];
+		}
+	}
+	return nullptr;
+}
 // The device the game's textures last reported, and how many times that has
 // changed. A recreated device can land at the address of the one it replaced,
 // in which case the change goes unseen here; the CreateTexture count is the
@@ -85,7 +107,6 @@ std::atomic<long long> g_DeviceChanges(0);
 
 // The intervention: off unless asked for, armed by a refusal, and spent on the
 // next question the draw device asks about its device.
-TestCooperativeLevelFn g_GameOriginalTest = nullptr;
 std::atomic<bool> g_NudgeEnabled(false);
 std::atomic<bool> g_NudgeArmed(false);
 std::atomic<long long> g_Nudges(0);
@@ -97,7 +118,7 @@ std::atomic<long long> g_Tests(0);
 // Set to refuse one lock on purpose; cleared by the refusal it causes.
 std::atomic<bool> g_FailNextLock(false);
 
-void WatchGameDevice(IDirect3DDevice9 *game);
+bool WatchGameDevice(IDirect3DDevice9 *game);
 void NoteGameDevice(IDirect3DTexture9 *texture);
 
 // Textures do not all share one table -- a pooled one and a driver-backed one
@@ -226,11 +247,10 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
                                                IDirect3DTexture9 **texture,
                                                HANDLE *shared) {
 	void *const caller = _ReturnAddress();
-	CreateTextureFn const original =
-	    (g_GameDeviceTable &&
-	     *reinterpret_cast<void ***>(device) == g_GameDeviceTable)
-	        ? g_GameOriginalCreateTexture
-	        : g_OriginalCreateTexture;
+	WatchedDeviceTable const *const watched = DeviceTableFor(device);
+	CreateTextureFn const original = (watched && watched->createTexture)
+	                                     ? watched->createTexture
+	                                     : g_OriginalCreateTexture;
 	HRESULT const hr = original(device, width, height, levels, usage, format,
 	                            pool, texture, shared);
 	long long const bytes =
@@ -346,7 +366,9 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 HRESULT STDMETHODCALLTYPE
 WatchedTestCooperativeLevel(IDirect3DDevice9 *device) {
 	g_Tests.fetch_add(1, std::memory_order_relaxed);
-	HRESULT const hr = g_GameOriginalTest ? g_GameOriginalTest(device) : D3D_OK;
+	WatchedDeviceTable const *const watched = DeviceTableFor(device);
+	HRESULT const hr =
+	    (watched && watched->test) ? watched->test(device) : D3D_OK;
 	if (hr != D3D_OK || !g_NudgeArmed.exchange(false)) {
 		return hr;
 	}
@@ -410,59 +432,69 @@ bool PatchSlot(void **table, int slot, void *replacement, void **displaced) {
 	return true;
 }
 
-// Compares the game's device with the one the watch was set up through, and if
-// they are different classes, watches the game's directly. The original is
-// stored before the slot is switched: the hook picks it by table, so it has to
-// be there by the time the first call arrives.
-void WatchGameDevice(IDirect3DDevice9 *game) {
-	void **gameTable = *reinterpret_cast<void ***>(game);
-	if (gameTable == g_OurDeviceTable) {
+// Takes on a class of the game's device that is not watched yet, and says
+// whether it did. The entry goes into the registry before either slot is
+// switched: the hooks find their originals through it, so it has to be there
+// by the time the first call arrives.
+bool WatchGameDevice(IDirect3DDevice9 *game) {
+	void **const table = *reinterpret_cast<void ***>(game);
+	if (table == g_OurDeviceTable) {
 		Log("[D3D] the game's device is the class being watched\n");
-		return;
+		return false;
 	}
-	g_GameOriginalCreateTexture =
-	    reinterpret_cast<CreateTextureFn>(gameTable[kCreateTextureSlot]);
-	g_GameDeviceTable = gameTable;
+	if (DeviceTableFor(game)) {
+		return false;
+	}
+	int const index = g_DeviceTableCount.load(std::memory_order_acquire);
+	if (index >= kDeviceTableSlots) {
+		Log("[D3D] the game's device is another class, and there is no room to "
+		    "watch it\n");
+		return false;
+	}
+	g_DeviceTables[index].table = table;
+	g_DeviceTables[index].createTexture =
+	    reinterpret_cast<CreateTextureFn>(table[kCreateTextureSlot]);
+	g_DeviceTables[index].test = reinterpret_cast<TestCooperativeLevelFn>(
+	    table[kTestCooperativeLevelSlot]);
+	g_DeviceTableCount.store(index + 1, std::memory_order_release);
+
 	void *displaced = nullptr;
 	bool const patched =
-	    PatchSlot(gameTable, kCreateTextureSlot,
-	              reinterpret_cast<void *>(&WatchedCreateTexture), &displaced);
-	// Read out of the table before the slot is switched: the hook forwards
-	// through what it displaced.
-	g_GameOriginalTest = reinterpret_cast<TestCooperativeLevelFn>(
-	    gameTable[kTestCooperativeLevelSlot]);
-	void *displacedTest = nullptr;
-	PatchSlot(gameTable, kTestCooperativeLevelSlot,
-	          reinterpret_cast<void *>(&WatchedTestCooperativeLevel),
-	          &displacedTest);
-	Log(patched ? "[D3D] the game's device is another class; watching it too\n"
-	            : "[D3D] the game's device is another class, and its table "
-	              "would not open\n");
+	    PatchSlot(table, kCreateTextureSlot,
+	              reinterpret_cast<void *>(&WatchedCreateTexture), &displaced) &&
+	    PatchSlot(table, kTestCooperativeLevelSlot,
+	              reinterpret_cast<void *>(&WatchedTestCooperativeLevel),
+	              &displaced);
+	char line[128];
+	sprintf_s(line,
+	          patched ? "[D3D] watching game device class %d\n"
+	                  : "[D3D] game device class %d: its table would not open\n",
+	          index + 1);
+	Log(line);
+	return patched;
 }
 
 // Called on every lock, since a lock is the only place the game's device shows
-// itself. The first device seen is set up for watching; after that a different
-// one means the device was rebuilt, and whether it is the same class says
-// whether its CreateTexture calls are still being counted.
+// itself. Whenever the device differs from the last one seen, its class is
+// taken on if it is new, so a rebuilt device stays watched.
 void NoteGameDevice(IDirect3DTexture9 *texture) {
 	IDirect3DDevice9 *game = nullptr;
 	if (FAILED(texture->GetDevice(&game)) || !game) {
 		return;
 	}
 	void *const previous = g_LastGameDevice.exchange(game);
-	if (previous == nullptr) {
-		WatchGameDevice(game);
-	} else if (previous != game) {
-		long long const changes =
-		    g_DeviceChanges.fetch_add(1, std::memory_order_relaxed) + 1;
-		void **const table = *reinterpret_cast<void ***>(game);
-		char line[224];
-		sprintf_s(line, "[D3D] the game's device changed (%lld): %p -> %p, %s\n",
-		          changes, previous, static_cast<void *>(game),
-		          table == g_GameDeviceTable
-		              ? "same class"
-		              : "another class, its CreateTexture is not watched");
-		Log(line);
+	if (previous != game) {
+		bool const newClass = WatchGameDevice(game);
+		if (previous != nullptr) {
+			long long const changes =
+			    g_DeviceChanges.fetch_add(1, std::memory_order_relaxed) + 1;
+			char line[224];
+			sprintf_s(line, "[D3D] the game's device changed (%lld): %p -> %p, %s\n",
+			          changes, previous, static_cast<void *>(game),
+			          newClass ? "a new class, now watched too"
+			                   : "a class already watched");
+			Log(line);
+		}
 	}
 	game->Release();
 }
