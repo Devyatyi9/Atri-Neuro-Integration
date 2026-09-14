@@ -72,32 +72,45 @@ CreateTextureFn g_OriginalCreateTexture = nullptr;
 // The table our own device carries.
 void **g_OurDeviceTable = nullptr;
 
-// Every class of device the game has used, with the functions displaced from
-// its table. A rebuilt device can be a different class from the one it
-// replaced, so one entry is not enough: each class found is added here, and
-// the hooks find their way back through the entry for their own table. The
-// game's first device exists before this plugin can watch anything, so classes
-// are only learned from textures the game locks.
-struct WatchedDeviceTable {
-	void **table;
+// The functions displaced from the game's device tables, one entry per distinct
+// pair. A rebuilt device can come with a table of its own while its functions
+// stay the same, so entries are kept by function: tables come and go, the
+// functions behind them do not.
+struct DisplacedFunctions {
 	CreateTextureFn createTexture;
 	TestCooperativeLevelFn test;
 };
 
-constexpr int kDeviceTableSlots = 4;
-WatchedDeviceTable g_DeviceTables[kDeviceTableSlots] = {};
-std::atomic<int> g_DeviceTableCount(0);
+constexpr int kDisplacedSlots = 4;
+DisplacedFunctions g_Displaced[kDisplacedSlots] = {};
+std::atomic<int> g_DisplacedCount(0);
 
-WatchedDeviceTable const *DeviceTableFor(IDirect3DDevice9 *device) {
+// Recent tables and the entry each one displaced. Only needed when more than
+// one distinct pair exists; oldest is overwritten, since a freed table's
+// address may be handed to the next device.
+struct TableToDisplaced {
+	void **table;
+	int index;
+};
+
+constexpr int kRecentTableSlots = 8;
+TableToDisplaced g_RecentTables[kRecentTableSlots] = {};
+int g_RecentTableNext = 0;
+
+DisplacedFunctions const *DisplacedFor(IDirect3DDevice9 *device) {
+	int const count = g_DisplacedCount.load(std::memory_order_acquire);
+	if (count == 1) {
+		return &g_Displaced[0];
+	}
 	void **const table = *reinterpret_cast<void ***>(device);
-	int const count = g_DeviceTableCount.load(std::memory_order_acquire);
-	for (int i = 0; i < count; ++i) {
-		if (g_DeviceTables[i].table == table) {
-			return &g_DeviceTables[i];
+	for (TableToDisplaced const &recent : g_RecentTables) {
+		if (recent.table == table) {
+			return &g_Displaced[recent.index];
 		}
 	}
 	return nullptr;
 }
+
 // The device the game's textures last reported, and how many times that has
 // changed. A recreated device can land at the address of the one it replaced,
 // in which case the change goes unseen here; the CreateTexture count is the
@@ -247,7 +260,7 @@ HRESULT STDMETHODCALLTYPE WatchedCreateTexture(IDirect3DDevice9 *device,
                                                IDirect3DTexture9 **texture,
                                                HANDLE *shared) {
 	void *const caller = _ReturnAddress();
-	WatchedDeviceTable const *const watched = DeviceTableFor(device);
+	DisplacedFunctions const *const watched = DisplacedFor(device);
 	CreateTextureFn const original = (watched && watched->createTexture)
 	                                     ? watched->createTexture
 	                                     : g_OriginalCreateTexture;
@@ -366,7 +379,7 @@ HRESULT STDMETHODCALLTYPE WatchedUnlockRect(IDirect3DTexture9 *texture,
 HRESULT STDMETHODCALLTYPE
 WatchedTestCooperativeLevel(IDirect3DDevice9 *device) {
 	g_Tests.fetch_add(1, std::memory_order_relaxed);
-	WatchedDeviceTable const *const watched = DeviceTableFor(device);
+	DisplacedFunctions const *const watched = DisplacedFor(device);
 	HRESULT const hr =
 	    (watched && watched->test) ? watched->test(device) : D3D_OK;
 	if (hr != D3D_OK || !g_NudgeArmed.exchange(false)) {
@@ -432,31 +445,45 @@ bool PatchSlot(void **table, int slot, void *replacement, void **displaced) {
 	return true;
 }
 
-// Takes on a class of the game's device that is not watched yet, and says
-// whether it did. The entry goes into the registry before either slot is
-// switched: the hooks find their originals through it, so it has to be there
-// by the time the first call arrives.
+// Patches the table of a game device that is not patched yet, and says whether
+// it did. Whether a table is patched is read from the slot itself, so a table
+// at a reused address is still seen as new. The displaced pair is recorded
+// before either slot is switched: the hooks find their originals through it,
+// so it has to be there by the time the first call arrives.
 bool WatchGameDevice(IDirect3DDevice9 *game) {
 	void **const table = *reinterpret_cast<void ***>(game);
 	if (table == g_OurDeviceTable) {
 		Log("[D3D] the game's device is the class being watched\n");
 		return false;
 	}
-	if (DeviceTableFor(game)) {
+	if (table[kCreateTextureSlot] ==
+	    reinterpret_cast<void *>(&WatchedCreateTexture)) {
 		return false;
 	}
-	int const index = g_DeviceTableCount.load(std::memory_order_acquire);
-	if (index >= kDeviceTableSlots) {
-		Log("[D3D] the game's device is another class, and there is no room to "
-		    "watch it\n");
-		return false;
+	DisplacedFunctions const pair = {
+	    reinterpret_cast<CreateTextureFn>(table[kCreateTextureSlot]),
+	    reinterpret_cast<TestCooperativeLevelFn>(
+	        table[kTestCooperativeLevelSlot])};
+	int const count = g_DisplacedCount.load(std::memory_order_acquire);
+	int index = 0;
+	while (index < count &&
+	       (g_Displaced[index].createTexture != pair.createTexture ||
+	        g_Displaced[index].test != pair.test)) {
+		++index;
 	}
-	g_DeviceTables[index].table = table;
-	g_DeviceTables[index].createTexture =
-	    reinterpret_cast<CreateTextureFn>(table[kCreateTextureSlot]);
-	g_DeviceTables[index].test = reinterpret_cast<TestCooperativeLevelFn>(
-	    table[kTestCooperativeLevelSlot]);
-	g_DeviceTableCount.store(index + 1, std::memory_order_release);
+	if (index == count) {
+		if (count >= kDisplacedSlots) {
+			Log("[D3D] the game's device has other functions, and there is no "
+			    "room to watch it\n");
+			return false;
+		}
+		g_Displaced[index] = pair;
+	}
+	g_RecentTables[g_RecentTableNext] = {table, index};
+	g_RecentTableNext = (g_RecentTableNext + 1) % kRecentTableSlots;
+	if (index == count) {
+		g_DisplacedCount.store(count + 1, std::memory_order_release);
+	}
 
 	void *displaced = nullptr;
 	bool const patched =
@@ -465,11 +492,13 @@ bool WatchGameDevice(IDirect3DDevice9 *game) {
 	    PatchSlot(table, kTestCooperativeLevelSlot,
 	              reinterpret_cast<void *>(&WatchedTestCooperativeLevel),
 	              &displaced);
-	char line[128];
+	char line[160];
 	sprintf_s(line,
-	          patched ? "[D3D] watching game device class %d\n"
-	                  : "[D3D] game device class %d: its table would not open\n",
-	          index + 1);
+	          patched
+	              ? "[D3D] watching game device table %p (functions %d of %d)\n"
+	              : "[D3D] game device table %p: would not open (%d of %d)\n",
+	          static_cast<void *>(table), index + 1,
+	          g_DisplacedCount.load(std::memory_order_acquire));
 	Log(line);
 	return patched;
 }
@@ -491,8 +520,8 @@ void NoteGameDevice(IDirect3DTexture9 *texture) {
 			char line[224];
 			sprintf_s(line, "[D3D] the game's device changed (%lld): %p -> %p, %s\n",
 			          changes, previous, static_cast<void *>(game),
-			          newClass ? "a new class, now watched too"
-			                   : "a class already watched");
+			          newClass ? "a new table, now watched too"
+			                   : "a table already watched");
 			Log(line);
 		}
 	}
