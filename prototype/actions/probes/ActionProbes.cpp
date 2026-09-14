@@ -380,18 +380,36 @@ bool ProbeCanContinue(char const *tag) {
 	    tag);
 }
 
+// This runs from the engine's continuous-event callback, so the click itself is
+// handed to runOnceDelayedTrigger instead of being made here: clicking in place
+// lets the conductor re-enter from inside that callback. The four readiness
+// checks are the ones the conductor applies to its own click wait. A pending
+// flag keeps a second request from queueing another click before the first has
+// run; the deferred function clears it before clicking, and leaving the story
+// clears it too, so it cannot stay set.
 AdvanceResult AdvanceDialogue(char const *tag) {
 	std::string answer;
 	if (!QueryString(L"(function(){"
 	                 L" if (typeof SystemHook == 'undefined' || "
-	                 L"SystemHook.currentState != 'game') return 2;"
+	                 L"SystemHook.currentState != 'game') {"
+	                 L" global.__neuroAdvancePending = false; return 2; }"
 	                 L" if (typeof kag == 'undefined' || typeof "
 	                 L"kag.onPrimaryClick != 'Object') return 2;"
 	                 L" if (typeof kag.isMoviePlaying == 'Object' && "
 	                 L"kag.isMoviePlaying()) return 3;"
+	                 L" if (typeof global.__neuroAdvancePending != 'undefined' &&"
+	                 L" global.__neuroAdvancePending) return 4;"
 	                 L" if (typeof kag.clickWaiting == 'undefined' || "
 	                 L"!kag.clickWaiting) return 4;"
-	                 L" kag.onPrimaryClick();"
+	                 L" if (typeof kag.inStable != 'undefined' && !kag.inStable)"
+	                 L" return 4;"
+	                 L" var c = kag.conductor;"
+	                 L" if (c.status != c.mWait || c.waitUntil['click'] === void)"
+	                 L" return 4;"
+	                 L" runOnceDelayedTrigger(function {"
+	                 L" global.__neuroAdvancePending = false;"
+	                 L" kag.onPrimaryClick(); } incontextof global);"
+	                 L" global.__neuroAdvancePending = true;"
 	                 L" return 1; })()",
 	                 answer, tag)) {
 		return AdvanceResult::Unavailable;
