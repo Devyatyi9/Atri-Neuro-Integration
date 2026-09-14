@@ -56,6 +56,12 @@ kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
 kag.sflags = %[];
 kag.__stubSystemSaves = 0;
 kag.saveSystemVariables = function() { global.kag.__stubSystemSaves++; };
+// The game's switch for engine arguments, the way its options screen sets them.
+// Calls are recorded as "name=value".
+global.__stubSysArgCalls = [];
+global.setSysArgMenuItem = function(name, value) {
+	global.__stubSysArgCalls.add(name + "=" + value);
+};
 kag.voices = [ %[ storage: "ATR_b999_001.opus", status: "stop" ] ];
 // Where the game currently is. The sweep collector stamps every event with it,
 // so a stub that never changes would hide a collector that reads it once.

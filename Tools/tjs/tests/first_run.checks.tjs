@@ -7,6 +7,8 @@
 
 assert(typeof global.__neuroFirstRun == "Object", "the first-run function was not defined");
 assert(kag.sflags.neuroFirstRunApplied, "the mark was not written");
+assert(global.__stubSysArgCalls.count == 1 && global.__stubSysArgCalls[0] == "curmove=no",
+	"cursor placement was not turned off once, calls: " + global.__stubSysArgCalls.join(","));
 assert(kag.__stubSystemSaves == 1,
 	"the mark was not saved exactly once, saves " + kag.__stubSystemSaves);
 
@@ -15,6 +17,10 @@ var again = global.__neuroFirstRun();
 assert(again == 1, "an applied run was applied again, got " + again);
 assert(kag.__stubSystemSaves == 1,
 	"an applied run saved again, saves " + kag.__stubSystemSaves);
+// Above all it must not turn the setting off again: by then the player may have
+// turned it back on in the options screen.
+assert(global.__stubSysArgCalls.count == 1,
+	"an applied run changed the setting again, calls: " + global.__stubSysArgCalls.join(","));
 
 // A lost or restored-from-backup file has no mark: apply again.
 delete kag.sflags.neuroFirstRunApplied;

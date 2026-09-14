@@ -11,9 +11,11 @@
     // it and apply everything again.
     global.__neuroFirstRun = function() {
         // Without the save there is no point writing the mark: it would be lost
-        // at the next crash, so this counts as not ready.
+        // at the next crash, so this counts as not ready. The same for the
+        // function the settings go through.
         if (typeof global.kag != "Object" || typeof global.kag.sflags != "Object" ||
-            typeof global.kag.saveSystemVariables != "Object") {
+            typeof global.kag.saveSystemVariables != "Object" ||
+            typeof global.setSysArgMenuItem != "Object") {
             return 0;
         }
         var s = global.kag.sflags;
@@ -21,10 +23,11 @@
             return 1;
         }
 
-        // The settings themselves come with the plugin config, which can
-        // override each of them. Planned: turn off the game's Automatic Cursor
-        // Placement, so a dialog does not move the mouse.
-        // MyYesNoDialog.setCursorMoveTime("no");
+        // Automatic Cursor Placement off, so a dialog does not move the mouse.
+        // The same call the options screen makes for its checkbox: it sets the
+        // engine argument the game reads, and the engine keeps it in its own
+        // user config, not in sf. The plugin config will be able to override it.
+        global.setSysArgMenuItem("curmove", "no");
 
         s.neuroFirstRunApplied = true;
         global.kag.saveSystemVariables();
