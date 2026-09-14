@@ -507,12 +507,28 @@ bool DispatchChoice(int index, char const *tag) {
 		Sleep(kHoverPreviewMs);
 	}
 	// Nothing is sent to leave again: the choice disappears with the press,
-	// taking its buttons along.
+	// taking its buttons along. The press goes through runOnceDelayedTrigger
+	// for the same reason as the advance click: made in place, it runs the
+	// conductor from inside the engine's callback. The button is checked again
+	// here, after the hover pause, and once more when the press runs. A pending
+	// flag keeps a second request from queueing another press; it is cleared by
+	// the press itself, and by any request that finds the choice gone.
 	return AskFormatted(
 	    L"(function(){ var layer = kag.selectLayer;"
-	    L"var button = layer.selects[%d];"
-	    L"layer.onButtonClick(button); return 1; })()",
-	    tag, index);
+	    L" if (layer.selects == void || layer.selects.count <= %d) {"
+	    L" global.__neuroChoicePending = false; return 0; }"
+	    L" if (typeof global.__neuroChoicePending != 'undefined' &&"
+	    L" global.__neuroChoicePending) return 0;"
+	    L" if (!isvalid layer.selects[%d]) return 0;"
+	    L" runOnceDelayedTrigger(function {"
+	    L" global.__neuroChoicePending = false;"
+	    L" var l = kag.selectLayer;"
+	    L" if (l.selects == void || l.selects.count <= %d) return;"
+	    L" var b = l.selects[%d]; if (isvalid b) l.onButtonClick(b); }"
+	    L" incontextof global);"
+	    L" global.__neuroChoicePending = true;"
+	    L" return 1; })()",
+	    tag, index, index, index, index);
 }
 
 bool ProbeQuickMenuCanDropDown(char const *tag) {
