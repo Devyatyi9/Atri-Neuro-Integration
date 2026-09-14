@@ -62,6 +62,45 @@ bool AskFormatted(wchar_t const *format, char const *tag, ...) {
 	return Ask(probe, tag);
 }
 
+std::wstring Format(wchar_t const *format, ...) {
+	wchar_t text[768];
+	va_list args;
+	va_start(args, format);
+	int const written = _vsnwprintf_s(text, _TRUNCATE, format, args);
+	va_end(args);
+	return written < 0 ? std::wstring() : std::wstring(text);
+}
+
+// Hands a press to the engine's idle queue through runOnceDelayedTrigger
+// instead of running it here, inside the engine's continuous callback, where a
+// press that wakes the conductor re-enters it. `guard` runs now and may
+// `return 0` to refuse; `press` runs later on its own, so it resolves every
+// object again and returns early if the control is gone. The inner function
+// sees no locals of the outer one. A shared pending flag refuses a second
+// press until the first has run. A throw in the press is caught there: the
+// engine calls it with nothing above to catch it.
+bool AskDeferred(std::wstring const &guard,
+                 std::wstring const &press,
+                 char const *tag) {
+	if (press.empty()) {
+		Log(("[Action] " + std::string(tag) + " press did not fit\n").c_str());
+		return false;
+	}
+	std::wstring code =
+	    L"(function(){ if (typeof global.__neuroPressPending != 'undefined' &&"
+	    L" global.__neuroPressPending) return 0; ";
+	code += guard;
+	code +=
+	    L" runOnceDelayedTrigger(function {"
+	    L" global.__neuroPressPending = false; try { ";
+	code += press;
+	code +=
+	    L" } catch (e) { Debug.message('[neuro] deferred press failed: ' +"
+	    L" e.message); } } incontextof global);"
+	    L" global.__neuroPressPending = true; return 1; })()";
+	return Ask(code.c_str(), tag);
+}
+
 wchar_t const *const kScreenButtonReady =
     L"(function(){ if (typeof kag == 'undefined' || typeof kag.current != "
     L"'Object' || typeof kag.current.names == 'undefined') return 0;"
@@ -88,9 +127,10 @@ wchar_t const *const kScreenButtonHover =
     L"return 0;"
     L"button.%hs(); return 1; })()";
 
-wchar_t const *const kScreenButtonDispatch =
-    L"(function(){ var button = kag.current.names['%hs'];"
-    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()";
+wchar_t const *const kScreenButtonPress =
+    L"var button = kag.current.names['%hs'];"
+    L" if (typeof button != 'Object' || !isvalid button) return;"
+    L" button.controlOwner.onButtonClick(button.linkNum);";
 
 wchar_t const *const kQuickMenuButtonReady =
     L"(function(){ if (typeof kag == 'undefined' || typeof kag.QuickMenu != "
@@ -131,9 +171,10 @@ wchar_t const *const kEditButtonHover =
     L"return 0;"
     L"button.%hs(); return 1; })()";
 
-wchar_t const *const kEditButtonDispatch =
-    L"(function(){ var button = kag.current.buttons['edit%d'];"
-    L"button.onButtonClick(); return 1; })()";
+wchar_t const *const kEditButtonPress =
+    L"var button = kag.current.buttons['edit%d'];"
+    L" if (typeof button != 'Object' || !isvalid button) return;"
+    L" button.onButtonClick();";
 
 // The menu's entries live on the panel layer instead, but are pressed the same
 // way. `delete` is the entry the screen labels Erase.
@@ -144,15 +185,21 @@ wchar_t const *const kEditMenuItemHover =
     L"if (typeof item != 'Object' || !isvalid item || !item.visible) return 0;"
     L"item.%hs(); return 1; })()";
 
-wchar_t const *const kEditMenuItemDispatch =
-    L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
+wchar_t const *const kEditMenuItemGuard =
+    L"if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
     L"|| !kag.panelLayer) return 0;"
-    L"var item = kag.panelLayer.names['%hs'];"
-    L"if (typeof item != 'Object' || !isvalid item || !item.visible || "
+    L" var item = kag.panelLayer.names['%hs'];"
+    L" if (typeof item != 'Object' || !isvalid item || !item.visible || "
     L"!item.enabled) return 0;"
-    L"if (typeof item.controlOwner == 'undefined' || typeof "
-    L"item.controlOwner.onButtonClick != 'Object') return 0;"
-    L"item.controlOwner.onButtonClick(item.linkNum); return 1; })()";
+    L" if (typeof item.controlOwner == 'undefined' || typeof "
+    L"item.controlOwner.onButtonClick != 'Object') return 0;";
+
+wchar_t const *const kEditMenuItemPress =
+    L"if (!kag.panelShowing || typeof kag.panelLayer != 'Object' "
+    L"|| !kag.panelLayer) return;"
+    L" var item = kag.panelLayer.names['%hs'];"
+    L" if (typeof item != 'Object' || !isvalid item) return;"
+    L" item.controlOwner.onButtonClick(item.linkNum);";
 
 // The dialog's own buttons. Same shape as everywhere else, but reached through
 // kag.currentDialog rather than the screen.
@@ -164,9 +211,10 @@ wchar_t const *const kDialogLinkHover =
     L"if (typeof b.%hs != 'Object') return 0;"
     L"b.%hs(); return 1; })()";
 
-wchar_t const *const kQuickMenuButtonDispatch =
-    L"(function(){ var button = kag.QuickMenu.names['%hs'];"
-    L"button.controlOwner.onButtonClick(button.linkNum); return 1; })()";
+wchar_t const *const kQuickMenuButtonPress =
+    L"var button = kag.QuickMenu.names['%hs'];"
+    L" if (typeof button != 'Object' || !isvalid button) return;"
+    L" button.controlOwner.onButtonClick(button.linkNum);";
 
 }  // namespace
 
@@ -353,13 +401,13 @@ bool DispatchScreenButton(char const *button, char const *tag) {
 	if (AskFormatted(kScreenButtonHover, tag, button, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	bool const pressed = AskFormatted(kScreenButtonDispatch, tag, button);
-	// And the cursor leaves again. A press that changes the screen takes the
-	// button with it, but one that leaves the screen standing -- Back cancelling
-	// a copy, a tab that stays -- left the button lit for good, because nothing
-	// here has a cursor that moves away on its own.
+	// And the cursor leaves again, just before the press that is queued behind
+	// it. A press that changes the screen takes the button with it, but one that
+	// leaves the screen standing -- Back cancelling a copy, a tab that stays --
+	// left the button lit for good, because nothing here has a cursor that moves
+	// away on its own.
 	AskFormatted(kScreenButtonHover, tag, button, "onMouseLeave");
-	return pressed;
+	return AskDeferred(L"", Format(kScreenButtonPress, button), tag);
 }
 
 bool ProbeLanguageScreen(char const *tag) {
@@ -586,9 +634,8 @@ bool DispatchQuickMenuButton(char const *button, char const *tag) {
 	if (AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	bool const pressed = AskFormatted(kQuickMenuButtonDispatch, tag, button);
 	AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseLeave");
-	return pressed;
+	return AskDeferred(L"", Format(kQuickMenuButtonPress, button), tag);
 }
 
 bool DispatchShowTextWindow(char const *tag) {
@@ -596,12 +643,11 @@ bool DispatchShowTextWindow(char const *tag) {
 	// or presses Escape while the window is away; it clears messageLayerHiding
 	// and re-triggers the conductor. There is no control to route through here:
 	// the bar's own hide button reports enabled = 0 once the window is gone.
-	return Ask(
-	    L"(function(){ if (typeof kag == 'undefined' || typeof "
-	    L"kag.showMessageLayerByUser != 'Object') return 0;"
-	    L"kag.showMessageLayerByUser();"
-	    L"return kag.messageLayerHiding ? 0 : 1; })()",
-	    tag);
+	return AskDeferred(
+	    L"if (typeof kag == 'undefined' || typeof "
+	    L"kag.showMessageLayerByUser != 'Object' || "
+	    L"!kag.messageLayerHiding) return 0;",
+	    L"kag.showMessageLayerByUser();", tag);
 }
 
 bool ProbeBookmarkExists(int number, char const *tag) {
@@ -660,9 +706,8 @@ bool DispatchEditButton(int position, char const *tag) {
 	if (AskFormatted(kEditButtonHover, tag, position, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	bool const pressed = AskFormatted(kEditButtonDispatch, tag, position);
 	AskFormatted(kEditButtonHover, tag, position, "onMouseLeave");
-	return pressed;
+	return AskDeferred(L"", Format(kEditButtonPress, position), tag);
 }
 
 bool ProbeEditMenuItems(int &visibleMask, int &enabledMask, char const *tag) {
@@ -698,18 +743,17 @@ bool DispatchEditMenuItem(char const *item, char const *tag) {
 	if (AskFormatted(kEditMenuItemHover, tag, item, "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	bool const pressed = AskFormatted(kEditMenuItemDispatch, tag, item);
-	// Choosing takes the whole panel away, so this only matters when the press
-	// did not land and the entry is still there to be left.
 	AskFormatted(kEditMenuItemHover, tag, item, "onMouseLeave");
-	return pressed;
+	return AskDeferred(Format(kEditMenuItemGuard, item),
+	                   Format(kEditMenuItemPress, item), tag);
 }
 
 bool DispatchCloseEditMenu(char const *tag) {
-	return Ask(
-	    L"(function(){ if (!kag.panelShowing || typeof kag.panelLayer != "
-	    L"'Object' || !kag.panelLayer) return 0;"
-	    L"kag.panelLayer.close(); return 1; })()",
+	return AskDeferred(
+	    L"if (!kag.panelShowing || typeof kag.panelLayer != "
+	    L"'Object' || !kag.panelLayer) return 0;",
+	    L"if (kag.panelShowing && typeof kag.panelLayer == 'Object' && "
+	    L"kag.panelLayer) kag.panelLayer.close();",
 	    tag);
 }
 
@@ -1204,11 +1248,20 @@ bool ProbeSceneWindow(int from, int count, int langType, std::string &out) {
 
 bool DispatchBacklogLineButton(char const *verb, int index, char const *tag) {
 	// The button's own expression is Current.cmd("<verb>/<index>"); calling it
-	// directly is the same dispatch, not a shortcut around it.
-	return AskFormatted(
-	    L"(function(){ if (typeof Current != 'Object') return 0;"
-	    L"Current.cmd('%hs/%d'); return 1; })()",
-	    tag, verb, index);
+	// directly is the same dispatch, not a shortcut around it. The preview
+	// verbs only redraw, so they run in place and leave the pending flag free
+	// for the press that follows them.
+	if (strcmp(verb, "showJumpView") == 0 || strcmp(verb, "hideJumpView") == 0) {
+		return AskFormatted(
+		    L"(function(){ if (typeof Current != 'Object') return 0;"
+		    L"Current.cmd('%hs/%d'); return 1; })()",
+		    tag, verb, index);
+	}
+	return AskDeferred(L"if (typeof Current != 'Object') return 0;",
+	                   Format(L"if (typeof Current == 'Object') "
+	                          L"Current.cmd('%hs/%d');",
+	                          verb, index),
+	                   tag);
 }
 
 bool ProbeGallery(GalleryState &state) {
@@ -1483,10 +1536,11 @@ bool DispatchMusicScroll(int position, char const *tag) {
 }
 
 bool DispatchGalleryItem(char const *verb, int index, char const *tag) {
-	return AskFormatted(
-	    L"(function(){ if (typeof Current != 'Object') return 0;"
-	    L"Current.cmd('%hs/%d'); return 1; })()",
-	    tag, verb, index);
+	return AskDeferred(L"if (typeof Current != 'Object') return 0;",
+	                   Format(L"if (typeof Current == 'Object') "
+	                          L"Current.cmd('%hs/%d');",
+	                          verb, index),
+	                   tag);
 }
 
 bool DispatchGalleryNextView(char const *tag) {
@@ -1494,22 +1548,21 @@ bool DispatchGalleryNextView(char const *tag) {
 	// focus, so the click has to be delivered into that layer -- the window's
 	// own onPrimaryClick never reaches it. Four arguments: the two-argument form
 	// is rejected outright.
-	return Ask(
-	    L"(function(){ if (typeof global.__cm_gallery != 'Object') "
-	    L"return 0;"
-	    L"try { var l = global.__cm_gallery.cglayer;"
-	    L"if (typeof l != 'Object') return 0;"
-	    L"l.onMouseUp(l.width \\ 2, l.height \\ 2, mbLeft, 0);"
-	    L"return 1; } catch (e) { return 0; } })()",
+	return AskDeferred(
+	    L"if (typeof global.__cm_gallery != 'Object') return 0;"
+	    L" try { if (typeof global.__cm_gallery.cglayer != 'Object') return 0; }"
+	    L" catch (e) { return 0; }",
+	    L"var l = global.__cm_gallery.cglayer;"
+	    L" if (typeof l != 'Object') return;"
+	    L" l.onMouseUp(l.width \\ 2, l.height \\ 2, mbLeft, 0);",
 	    tag);
 }
 
 bool DispatchGalleryExit(char const *tag) {
-	return Ask(
-	    L"(function(){ if (typeof kag == 'undefined' || typeof "
-	    L"kag.onPrimaryRightClick != 'Object') return 0;"
-	    L"kag.onPrimaryRightClick(); return 1; })()",
-	    tag);
+	return AskDeferred(
+	    L"if (typeof kag == 'undefined' || typeof "
+	    L"kag.onPrimaryRightClick != 'Object') return 0;",
+	    L"kag.onPrimaryRightClick();", tag);
 }
 
 bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
@@ -1526,11 +1579,10 @@ bool HoverGalleryItem(char const *prefix, int index, char const *tag) {
 }
 
 bool DispatchExitRequest(char const *tag) {
-	return Ask(
-	    L"(function(){ if (typeof SystemAction != 'Object' || typeof "
-	    L"SystemAction.exit != 'Object') return 0;"
-	    L"SystemAction.exit(); return 1; })()",
-	    tag);
+	return AskDeferred(
+	    L"if (typeof SystemAction != 'Object' || typeof "
+	    L"SystemAction.exit != 'Object') return 0;",
+	    L"SystemAction.exit();", tag);
 }
 
 int ProbeTabCount() {
@@ -1625,8 +1677,12 @@ bool DispatchDialogLink(bool confirm, char const *tag) {
 	                 "onMouseEnter")) {
 		Sleep(kHoverPreviewMs);
 	}
-	return AskFormatted(
-	    L"(function(){ var d = kag.currentDialog;"
-	    L"d.processLink(d.names['%hs'].linkNum); return 1; })()",
-	    tag, button);
+	return AskDeferred(
+	    L"",
+	    Format(L"var d = kag.currentDialog;"
+	           L" if (typeof d != 'Object' || !d) return;"
+	           L" var b = d.names['%hs'];"
+	           L" if (typeof b == 'Object') d.processLink(b.linkNum);",
+	           button),
+	    tag);
 }
