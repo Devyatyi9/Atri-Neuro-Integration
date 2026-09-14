@@ -925,7 +925,7 @@ class NeuroConsole {
 		    L"Enter TJS commands below and press Enter or click Execute.\n\n",
 		    RGB(100, 100, 100));
 		AppendOutput(L"Examples:\n", RGB(0, 0, 0));
-		AppendOutput(L"  neuroTest()\n", RGB(0, 150, 0));
+		AppendOutput(L"  Neuro.test()\n", RGB(0, 150, 0));
 		AppendOutput(L"  Debug.message('Hello')\n", RGB(0, 150, 0));
 		AppendOutput(L"  2 + 2\n", RGB(0, 150, 0));
 		AppendOutput(L"  System.title\n\n", RGB(0, 150, 0));

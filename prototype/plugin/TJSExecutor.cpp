@@ -163,7 +163,7 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 				if (!(tTVInteger)insideTag) {
 					// Safe to run upkeep: not inside tag processing.
 					tTJSVariant upkeepResult;
-					TVPExecuteExpression(TJS_W("neuroPrototypeUpkeep()"), &upkeepResult);
+					TVPExecuteExpression(TJS_W("Neuro.prototypeUpkeep()"), &upkeepResult);
 				} else {
 					g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
 				}

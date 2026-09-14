@@ -672,7 +672,7 @@ static tjs_error TJS_INTF_METHOD NeuroDump(tTJSVariant *result,
                                            tTJSVariant **param,
                                            iTJSDispatch2 *objthis) {
 	if (numparams < 1 || !param || !param[0]) {
-		AppendToNeuroConsole(L"Usage: neuroDump(object [, maxCount])\n",
+		AppendToNeuroConsole(L"Usage: Neuro.dump(object [, maxCount])\n",
 		                     RGB(255, 0, 0));
 		return TJS_S_OK;
 	}
@@ -821,28 +821,31 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 
 }  // namespace
 
-NCB_REGISTER_FUNCTION(neuroTest, NeuroTestFunction);
-NCB_REGISTER_FUNCTION(neuroGetVersion, NeuroGetVersion);
-NCB_REGISTER_FUNCTION(neuroBeginExitShutdown, NeuroBeginExitShutdown);
-NCB_REGISTER_FUNCTION(neuroStressBlockNextSyncCall,
-                      NeuroStressBlockNextSyncCall);
-NCB_REGISTER_FUNCTION(neuroStressHoldSyncCalls, NeuroStressHoldSyncCalls);
-NCB_REGISTER_FUNCTION(neuroConnect, NeuroConnectClient);
-NCB_REGISTER_FUNCTION(neuroDisconnect, NeuroDisconnectClient);
-NCB_REGISTER_FUNCTION(neuroIsConnected, NeuroClientConnected);
-NCB_REGISTER_FUNCTION(neuroIsReady, NeuroClientReady);
-NCB_REGISTER_FUNCTION(neuroEcho, NeuroEcho);
-NCB_REGISTER_FUNCTION(neuroIsTJSReady, NeuroIsTJSReady);
-NCB_REGISTER_FUNCTION(neuroIsKAGReady, NeuroIsKAGReady);
-NCB_REGISTER_FUNCTION(neuroShowConsole, NeuroShowConsole);
-NCB_REGISTER_FUNCTION(neuroExec, NeuroExec);
-NCB_REGISTER_FUNCTION(neuroD3DPressure, NeuroD3DPressure);
-NCB_REGISTER_FUNCTION(neuroD3DFixReset, NeuroD3DFixReset);
-NCB_REGISTER_FUNCTION(neuroD3DFailLockOnce, NeuroD3DFailLockOnce);
-NCB_REGISTER_FUNCTION(neuroConsoleLog, NeuroConsoleLog);
-NCB_REGISTER_FUNCTION(neuroGetDebugLog, NeuroGetDebugLog);
-NCB_REGISTER_FUNCTION(neuroClearDebugLog, NeuroClearDebugLog);
-NCB_REGISTER_FUNCTION(neuroGetPluginLog, NeuroGetPluginLog);
+// Everything the plugin gives TJS hangs off one global object, Neuro, which
+// RegisterTJSBindings creates before these attach to it.
+NCB_ATTACH_FUNCTION(test, Neuro, NeuroTestFunction);
+NCB_ATTACH_FUNCTION(getVersion, Neuro, NeuroGetVersion);
+NCB_ATTACH_FUNCTION(beginExitShutdown, Neuro, NeuroBeginExitShutdown);
+NCB_ATTACH_FUNCTION(stressBlockNextSyncCall,
+                    Neuro,
+                    NeuroStressBlockNextSyncCall);
+NCB_ATTACH_FUNCTION(stressHoldSyncCalls, Neuro, NeuroStressHoldSyncCalls);
+NCB_ATTACH_FUNCTION(connect, Neuro, NeuroConnectClient);
+NCB_ATTACH_FUNCTION(disconnect, Neuro, NeuroDisconnectClient);
+NCB_ATTACH_FUNCTION(isConnected, Neuro, NeuroClientConnected);
+NCB_ATTACH_FUNCTION(isReady, Neuro, NeuroClientReady);
+NCB_ATTACH_FUNCTION(echo, Neuro, NeuroEcho);
+NCB_ATTACH_FUNCTION(isTJSReady, Neuro, NeuroIsTJSReady);
+NCB_ATTACH_FUNCTION(isKAGReady, Neuro, NeuroIsKAGReady);
+NCB_ATTACH_FUNCTION(showConsole, Neuro, NeuroShowConsole);
+NCB_ATTACH_FUNCTION(exec, Neuro, NeuroExec);
+NCB_ATTACH_FUNCTION(d3dPressure, Neuro, NeuroD3DPressure);
+NCB_ATTACH_FUNCTION(d3dFixReset, Neuro, NeuroD3DFixReset);
+NCB_ATTACH_FUNCTION(d3dFailLockOnce, Neuro, NeuroD3DFailLockOnce);
+NCB_ATTACH_FUNCTION(consoleLog, Neuro, NeuroConsoleLog);
+NCB_ATTACH_FUNCTION(getDebugLog, Neuro, NeuroGetDebugLog);
+NCB_ATTACH_FUNCTION(clearDebugLog, Neuro, NeuroClearDebugLog);
+NCB_ATTACH_FUNCTION(getPluginLog, Neuro, NeuroGetPluginLog);
 // Runs on the game's main thread: this is reached from TJS. The game has its
 // own switch for putting the pointer on a dialog's default button -- the
 // options screen calls it automatic cursor placement -- so it is set rather
@@ -881,12 +884,12 @@ static tjs_error TJS_INTF_METHOD NeuroSetPointerFocus(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-NCB_REGISTER_FUNCTION(neuroSetPointerFocus, NeuroSetPointerFocus);
-NCB_REGISTER_FUNCTION(neuroSendContextFromTJS, NeuroSendContextFromTJS);
-NCB_REGISTER_FUNCTION(neuroDump, NeuroDump);
-NCB_REGISTER_FUNCTION(neuroGetCurrentContext, NeuroGetCurrentContext);
-NCB_REGISTER_FUNCTION(neuroBuildVoiceMap, NeuroBuildVoiceMap);
-NCB_REGISTER_FUNCTION(neuroExecFile, NeuroExecFile);
+NCB_ATTACH_FUNCTION(setPointerFocus, Neuro, NeuroSetPointerFocus);
+NCB_ATTACH_FUNCTION(sendContextFromTJS, Neuro, NeuroSendContextFromTJS);
+NCB_ATTACH_FUNCTION(dump, Neuro, NeuroDump);
+NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);
+NCB_ATTACH_FUNCTION(buildVoiceMap, Neuro, NeuroBuildVoiceMap);
+NCB_ATTACH_FUNCTION(execFile, Neuro, NeuroExecFile);
 
 static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
                                                       tjs_int numparams,
@@ -902,7 +905,7 @@ static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
-NCB_REGISTER_FUNCTION(neuroPrototypeUpkeep, NeuroPrototypeUpkeep);
+NCB_ATTACH_FUNCTION(prototypeUpkeep, Neuro, NeuroPrototypeUpkeep);
 
 static bool g_ExitHookInstalled = false;
 
@@ -934,7 +937,7 @@ void RetryInstallExitHookIfReady() {
 	    L"MyYesNoDialogLayer.onItemClick = function(itemName) { "
 	    L"var result = itemName == 'yes' || itemName.indexOf('はい') >= 0; "
 	    L"if (result && MyYesNoDialog.currentTextPart == 'AskExit') { "
-	    L"neuroBeginExitShutdown(); "
+	    L"global.Neuro.beginExitShutdown(); "
 	    L"} "
 	    L"return result; "
 	    L"}; "
@@ -953,11 +956,21 @@ void RetryInstallExitHookIfReady() {
 }
 
 void RegisterTJSBindings() {
+	// The object has to exist first: ncbind finds it by name when attaching,
+	// and attaches nothing if it is not there.
+	iTJSDispatch2 *const neuro = TJSCreateDictionaryObject();
+	if (neuro) {
+		if (!TVPRegisterGlobalObject(TJS_W("Neuro"), neuro)) {
+			Log("[Bindings] could not register the Neuro object\n");
+		}
+		neuro->Release();
+	}
 	ncbAutoRegister::AllRegist();
 	RetryInstallExitHookIfReady();
 }
 
 void UnregisterTJSBindings() {
 	ncbAutoRegister::AllUnregist();
+	TVPRemoveGlobalObject(TJS_W("Neuro"));
 	g_ExitHookInstalled = false;
 }

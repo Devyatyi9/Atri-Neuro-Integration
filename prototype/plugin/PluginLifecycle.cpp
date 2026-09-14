@@ -83,7 +83,7 @@ static void DeferredTJSInitThread() {
 		    L"{} "
 		    L"if (!installed) { "
 		    L"Debug.__neuroLoggingHandler = function(msg) { "
-		    L"try { neuroConsoleLog(msg); } catch(e) {} }; "
+		    L"try { global.Neuro.consoleLog(msg); } catch(e) {} }; "
 		    L"Debug.addLoggingHandler(Debug.__neuroLoggingHandler); "
 		    L"Debug.__neuroLoggingHandlerInstalled = true; } })()",
 		    TJSExecMode::Expression);
@@ -94,18 +94,18 @@ static void DeferredTJSInitThread() {
 		std::string result;
 		char buf[256];
 
-		if (ExecuteTJSSync(L"neuroGetVersion()", &result, 5000)) {
-			sprintf_s(buf, "  neuroGetVersion() returned: %s\n", result.c_str());
+		if (ExecuteTJSSync(L"Neuro.getVersion()", &result, 5000)) {
+			sprintf_s(buf, "  Neuro.getVersion() returned: %s\n", result.c_str());
 			Log(buf);
 		} else {
-			Log("  ERROR: neuroGetVersion() timed out\n");
+			Log("  ERROR: Neuro.getVersion() timed out\n");
 		}
 
-		if (ExecuteTJSSync(L"neuroIsTJSReady()", &result, 5000)) {
-			sprintf_s(buf, "  neuroIsTJSReady() returned: %s\n", result.c_str());
+		if (ExecuteTJSSync(L"Neuro.isTJSReady()", &result, 5000)) {
+			sprintf_s(buf, "  Neuro.isTJSReady() returned: %s\n", result.c_str());
 			Log(buf);
 		} else {
-			Log("  ERROR: neuroIsTJSReady() timed out\n");
+			Log("  ERROR: Neuro.isTJSReady() timed out\n");
 		}
 
 		Log("Basic tests completed!\n");
@@ -119,21 +119,22 @@ static void DeferredTJSInitThread() {
 		// ensuring safe state for context monitoring without race conditions.
 		Log("Installing context monitor hook via conductor.onTag...\n");
 		ExecuteTJSAsync(
-		    L"neuroExecFile('neuro_scripts/install/context_hook.tjs', 1)",
+		    L"Neuro.execFile('neuro_scripts/install/context_hook.tjs', 1)",
 		    TJSExecMode::Expression);
 
 		// Story choices have no hover state that shows: the engine switches
 		// between three identically drawn segments. This gives the hover one a
 		// look of its own.
 		ExecuteTJSAsync(
-		    L"neuroExecFile('neuro_scripts/install/choice_highlight.tjs', 1)",
+		    L"Neuro.execFile('neuro_scripts/install/choice_highlight.tjs', 1)",
 		    TJSExecMode::Expression);
 
 		// The context monitor's sections, defined once so the poll can call
 		// them. It runs inside tag dispatch, where loading a file per poll
 		// would be far too expensive.
-		ExecuteTJSAsync(L"neuroExecFile('neuro_scripts/install/collectors.tjs', 1)",
-		                TJSExecMode::Expression);
+		ExecuteTJSAsync(
+		    L"Neuro.execFile('neuro_scripts/install/collectors.tjs', 1)",
+		    TJSExecMode::Expression);
 
 		StartHotkeyThread();
 		NeuroAutoConnect();

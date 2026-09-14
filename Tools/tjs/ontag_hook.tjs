@@ -3,8 +3,8 @@
  * This is called after each tag is processed, in a safe state.
  *
  * Usage:
- *   1. Stop the C++ thread: neuroStopContextMonitor()
- *   2. Load this script: neuroExecFile('Tools/research/ontag_hook.tjs')
+ *   1. Stop the C++ thread: Neuro.stopContextMonitor()
+ *   2. Load this script: Neuro.execFile('Tools/research/ontag_hook.tjs')
  *   3. Test with advance_text actions
  *
  * To remove:
@@ -27,11 +27,11 @@ if (typeof kag.conductor.__neuronOrigOnTag == "undefined") {
         /* After tag processing - safe window for context monitoring.
            The plugin exports are named in full: inside a function held on the
            conductor, an unqualified name resolves against the conductor and
-           does not fall back to global, so a bare neuroExecFile is void and
-           the catch below would quietly swallow every call. */
+           does not fall back to global, so a bare Neuro is void and the
+           catch below would quietly swallow every call. */
         try {
-            var data = global.neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
-            if (data != '') global.neuroSendContextFromTJS(data);
+            var data = global.Neuro.execFile('neuro_scripts/context_monitor.tjs', 1);
+            if (data != '') global.Neuro.sendContextFromTJS(data);
         } catch(e) {
             /* Silence errors to avoid breaking conductor */
         }

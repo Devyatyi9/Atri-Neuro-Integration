@@ -33,8 +33,8 @@
             kag.conductor.onTag = function(tag) {
                 var result = this.__neuroOrigOnTag(tag);
                 try {
-                    var data = neuroExecFile('neuro_scripts/context_monitor.tjs', 1);
-                    if (data != '') neuroSendContextFromTJS(data);
+                    var data = global.Neuro.execFile('neuro_scripts/context_monitor.tjs', 1);
+                    if (data != '') global.Neuro.sendContextFromTJS(data);
                 } catch(e) {}
                 global.__neuroInsideTag = false;
                 return result;

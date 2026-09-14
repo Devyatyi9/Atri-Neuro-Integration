@@ -9,7 +9,7 @@ The most important workflows are grouped by purpose:
 .\Tools\quality\clang-tidy.ps1
 
 # Runtime smoke checks
-.\Tools\runtime\neuro_tcp_client.ps1 -Code "neuroGetVersion()"
+.\Tools\runtime\neuro_tcp_client.ps1 -Code "Neuro.getVersion()"
 .\Tools\runtime\wait-for-title.ps1
 
 # Reverse engineering and local indexes

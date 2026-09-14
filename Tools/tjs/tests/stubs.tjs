@@ -222,8 +222,10 @@ System.getTickCount = function() { return 1000; };
 
 // Exported by the plugin, so absent here in exactly the way they are absent
 // from any process the plugin failed to load into.
-global.neuroExecFile = function(path, mode) { return ""; };
-global.neuroSendContextFromTJS = function(data) { };
+global.Neuro = %[
+    execFile: function(path, mode) { return ""; },
+    sendContextFromTJS: function(data) { }
+];
 
 // Assertion helper for the checks files. Throwing is how a check fails: tjsbox
 // reports the message with a line number and exits non-zero.

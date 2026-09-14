@@ -276,7 +276,7 @@ def lock_pressure(port):
     is the half of the curve that arrives in time to act on.
     """
     try:
-        answer = send_tjs(port, "neuroD3DPressure()").strip()
+        answer = send_tjs(port, "Neuro.d3dPressure()").strip()
     except OSError:
         return None
     return answer if "locks=" in answer else None
@@ -701,7 +701,7 @@ class Engine:
             f"watch_game_log={bool(self.watch_log)} "
             f"memory_limit={options.memory_limit or 'off'}")
         try:
-            version = send_tjs(options.tjs_port, "neuroGetVersion()").strip()
+            version = send_tjs(options.tjs_port, "Neuro.getVersion()").strip()
         except OSError:
             version = "unknown"
         directory = game_directory(options.tjs_port)
