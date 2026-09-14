@@ -1,0 +1,33 @@
+// Checks for integration-assets/neuro_scripts/install/first_run.tjs.
+//
+// The script already ran once against the stubs before these lines, with an
+// empty sf: that is the first launch of the plugin in a save folder. Its own
+// value does not reach __scriptResult -- the file is one expression, and the
+// wrapper that runs it has no return -- so the run is judged by what it left.
+
+assert(typeof global.__neuroFirstRun == "Object", "the first-run function was not defined");
+assert(kag.sflags.neuroFirstRunApplied, "the mark was not written");
+assert(kag.__stubSystemSaves == 1,
+	"the mark was not saved exactly once, saves " + kag.__stubSystemSaves);
+
+// Every later launch finds the mark and must leave sf and its file alone.
+var again = global.__neuroFirstRun();
+assert(again == 1, "an applied run was applied again, got " + again);
+assert(kag.__stubSystemSaves == 1,
+	"an applied run saved again, saves " + kag.__stubSystemSaves);
+
+// A lost or restored-from-backup file has no mark: apply again.
+delete kag.sflags.neuroFirstRunApplied;
+var restored = global.__neuroFirstRun();
+assert(restored == 2, "a missing mark was not applied again, got " + restored);
+assert(kag.__stubSystemSaves == 2,
+	"re-applying did not save, saves " + kag.__stubSystemSaves);
+
+// Before the game has loaded its system variables there is nothing to read or
+// write; the caller retries later.
+var saved = kag.sflags;
+kag.sflags = void;
+var early = global.__neuroFirstRun();
+assert(early == 0, "a game without sf was not reported as not ready, got " + early);
+assert(kag.__stubSystemSaves == 2, "a not-ready run saved, saves " + kag.__stubSystemSaves);
+kag.sflags = saved;

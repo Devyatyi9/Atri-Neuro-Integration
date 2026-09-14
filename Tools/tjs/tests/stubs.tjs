@@ -51,6 +51,11 @@ global.__stubEnvObjects = %[
 class StubKag { }
 global.kag = new StubKag();
 kag.kagPlugins = [ %[ envobjects: global.__stubEnvObjects ] ];
+// System variables and their save, counted: the first-run script must save once
+// when it writes its mark, and not at all when the mark is already there.
+kag.sflags = %[];
+kag.__stubSystemSaves = 0;
+kag.saveSystemVariables = function() { global.kag.__stubSystemSaves++; };
 kag.voices = [ %[ storage: "ATR_b999_001.opus", status: "stop" ] ];
 // Where the game currently is. The sweep collector stamps every event with it,
 // so a stub that never changes would hide a collector that reads it once.

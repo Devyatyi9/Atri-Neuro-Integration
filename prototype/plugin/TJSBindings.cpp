@@ -891,6 +891,28 @@ NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);
 NCB_ATTACH_FUNCTION(buildVoiceMap, Neuro, NeuroBuildVoiceMap);
 NCB_ATTACH_FUNCTION(execFile, Neuro, NeuroExecFile);
 
+static bool g_FirstRunChecked = false;
+
+// Runs the one-time settings script until the game is far enough along to
+// answer, then stops asking for the rest of the launch. The script itself keeps
+// the mark that stops it applying twice across launches.
+static void RetryFirstRunIfReady() {
+	if (g_FirstRunChecked)
+		return;
+	std::string answer;
+	if (!ExecuteTJSSync(
+	        L"Neuro.execFile('neuro_scripts/install/first_run.tjs', 1)", &answer,
+	        5000, TJSExecMode::Expression) ||
+	    answer == "0") {
+		return;
+	}
+	g_FirstRunChecked = true;
+	Log(answer == "2" ? "[FirstRun] one-time settings applied\n"
+	    : answer == "1"
+	        ? "[FirstRun] one-time settings already applied\n"
+	        : ("[FirstRun] unexpected answer: " + answer + "\n").c_str());
+}
+
 static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
                                                       tjs_int numparams,
                                                       tTJSVariant **param,
@@ -899,6 +921,7 @@ static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
 	// Called from continuous hook when safe (outside tag processing).
 	RefreshPrototypeActionState();
 	RetryInstallExitHookIfReady();
+	RetryFirstRunIfReady();
 	if (result) {
 		*result = (tTVInteger)1;
 	}
