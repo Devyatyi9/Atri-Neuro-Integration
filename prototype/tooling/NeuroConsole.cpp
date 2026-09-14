@@ -49,6 +49,7 @@ class NeuroConsole {
 	HWND m_hDebugOutput;  // Debug Output checkbox.
 	HWND m_hFlatScript;   // Flat Script checkbox: picks the entry point.
 	HWND m_hRaw;          // Raw checkbox: send the code without the wrapper.
+	HWND m_hEngineCatch;  // Engine Catch checkbox: TVPDoTryBlock around calls.
 
 	std::vector<std::wstring> m_history;  // Command history.
 	int m_historyIndex;
@@ -257,6 +258,14 @@ class NeuroConsole {
 					// Same: read at execution time.
 					return 0;
 				}
+
+				// Engine Catch checkbox: applied at once, since it is a setting of
+				// the executor rather than of the next console run.
+				if ((HWND)lParam == console->m_hEngineCatch) {
+					SetEngineCatchEnabled(SendMessage(console->m_hEngineCatch,
+					                                  BM_GETCHECK, 0, 0) == BST_CHECKED);
+					return 0;
+				}
 				break;
 			}
 
@@ -341,7 +350,7 @@ class NeuroConsole {
 		SetWindowPos(m_hClear, NULL, clearX, inputY, buttonWidth, inputHeight,
 		             SWP_NOZORDER);
 
-		// Bottom checkbox row with three checkboxes.
+		// Bottom checkbox row.
 		int checkboxY = inputY + inputHeight + padding;
 		SetWindowPos(m_hAlwaysOnTop, NULL, padding, checkboxY, checkboxWidth,
 		             checkboxHeight, SWP_NOZORDER);
@@ -354,6 +363,10 @@ class NeuroConsole {
 
 		SetWindowPos(m_hRaw, NULL, padding + checkboxWidth * 3 + padding * 3,
 		             checkboxY, 60, checkboxHeight, SWP_NOZORDER);
+
+		SetWindowPos(m_hEngineCatch, NULL,
+		             padding + checkboxWidth * 3 + padding * 4 + 60, checkboxY,
+		             checkboxWidth + 10, checkboxHeight, SWP_NOZORDER);
 	}
 
 	// Reads a .tjs into the script area. UTF-8 with or without a BOM, and
@@ -732,6 +745,7 @@ class NeuroConsole {
 	      m_hDebugOutput(NULL),
 	      m_hFlatScript(NULL),
 	      m_hRaw(NULL),
+	      m_hEngineCatch(NULL),
 	      m_historyIndex(0),
 	      m_hRichEditDll(NULL) {
 		s_Instance = this;
@@ -872,6 +886,15 @@ class NeuroConsole {
 		                       m_hWnd, NULL, GetModuleHandle(NULL), NULL);
 		SendMessage(m_hRaw, BM_SETCHECK, BST_UNCHECKED, 0);
 
+		// Governs every call the executor makes, not only this console's: it is
+		// the executor's own setting, shown here because this is where the
+		// difference is visible. The box starts from the setting as it is.
+		m_hEngineCatch = CreateWindowW(
+		    L"BUTTON", L"Engine Catch", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 0,
+		    0, 0, 0, m_hWnd, NULL, GetModuleHandle(NULL), NULL);
+		SendMessage(m_hEngineCatch, BM_SETCHECK,
+		            EngineCatchEnabled() ? BST_CHECKED : BST_UNCHECKED, 0);
+
 		// Set the font.
 		HFONT hFont =
 		    CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -894,6 +917,7 @@ class NeuroConsole {
 		SendMessageW(m_hDebugOutput, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hFlatScript, WM_SETFONT, (WPARAM)hFont, TRUE);
 		SendMessageW(m_hRaw, WM_SETFONT, (WPARAM)hFont, TRUE);
+		SendMessageW(m_hEngineCatch, WM_SETFONT, (WPARAM)hFont, TRUE);
 
 		// Welcome message.
 		AppendOutput(L"=== Neuro Console Ready ===\n", RGB(0, 100, 200));

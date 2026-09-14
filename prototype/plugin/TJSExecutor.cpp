@@ -279,6 +279,66 @@ static void RunThroughEngine(std::wstring const &code,
 	}
 }
 
+// Whether a throw is caught by the engine's own TVPDoTryBlock. The engine then
+// catches inside its own module and hands back the error's type and text; with
+// it off, only the C++ catch around the call remains, and that catch learns
+// nothing but that something was thrown.
+static std::atomic<bool> g_EngineCatch(true);
+
+void SetEngineCatchEnabled(bool on) {
+	g_EngineCatch.store(on, std::memory_order_relaxed);
+}
+
+bool EngineCatchEnabled() {
+	return g_EngineCatch.load(std::memory_order_relaxed);
+}
+
+namespace {
+
+struct GuardedRun {
+	std::wstring const *code;
+	tTJSVariant *result;
+	bool useScriptApi;
+	bool failed;
+	std::string error;
+};
+
+void TJS_USERENTRY GuardedTry(void *data) {
+	auto *run = static_cast<GuardedRun *>(data);
+	RunThroughEngine(*run->code, run->result, run->useScriptApi);
+}
+
+bool TJS_USERENTRY GuardedCatch(void *data, tTVPExceptionDesc const &desc) {
+	auto *run = static_cast<GuardedRun *>(data);
+	run->failed = true;
+	ttstr const text = desc.type + TJS_W(": ") + desc.message;
+	Utf16ToUtf8(text.c_str(), text.GetLen(), run->error);
+	// False swallows the exception here; true would rethrow it past us.
+	return false;
+}
+
+}  // namespace
+
+// Runs the code, and on a throw returns false with the error described in
+// `error`. With the engine catch off a throw propagates, as it always did, to
+// the caller's own catch.
+static bool RunGuarded(std::wstring const &code,
+                       tTJSVariant *result,
+                       bool useScriptApi,
+                       std::string &error) {
+	if (!g_EngineCatch.load(std::memory_order_relaxed)) {
+		RunThroughEngine(code, result, useScriptApi);
+		return true;
+	}
+	GuardedRun run{&code, result, useScriptApi, false, std::string()};
+	TVPDoTryBlock(GuardedTry, GuardedCatch, nullptr, &run);
+	if (run.failed) {
+		error = run.error;
+		return false;
+	}
+	return true;
+}
+
 static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 	if (call.code.empty() || !g_TJSReady.load(std::memory_order_acquire)) {
 		return;
@@ -286,7 +346,10 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call) {
 
 	tTJSVariant dummy;
 	try {
-		RunThroughEngine(call.code, &dummy, call.useScriptApi);
+		std::string error;
+		if (!RunGuarded(call.code, &dummy, call.useScriptApi, error)) {
+			Log(("  [ExecuteTJSAsync] TJS error: " + error + "\n").c_str());
+		}
 	} catch (...) {
 		Log("  [ExecuteTJSAsync] TJS execution threw an exception: ");
 		std::string utf8Code;
@@ -342,10 +405,14 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 			// The variant and the string built from it live and die inside this
 			// scope, on this thread, which is the game's own.
 			tTJSVariant result;
-			RunThroughEngine(data->code, &result, data->useScriptApi);
-			VariantToUtf8(result, data->resultUtf8);
-			data->resultType = VariantTypeName(result);
-			data->executed = true;
+			std::string error;
+			if (RunGuarded(data->code, &result, data->useScriptApi, error)) {
+				VariantToUtf8(result, data->resultUtf8);
+				data->resultType = VariantTypeName(result);
+				data->executed = true;
+			} else {
+				Log(("  [ExecuteTJSSync] TJS error: " + error + "\n").c_str());
+			}
 		}
 	} catch (...) {
 		Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
@@ -642,7 +709,11 @@ bool ExecuteTJSSync(wchar_t const *code,
 		if (g_TJSReady.load()) {
 			try {
 				tTJSVariant value;
-				RunThroughEngine(wrappedCode, &value, useScriptApi);
+				std::string error;
+				if (!RunGuarded(wrappedCode, &value, useScriptApi, error)) {
+					Log(("[ExecuteTJSSync] TJS error: " + error + "\n").c_str());
+					return false;
+				}
 				if (result) {
 					VariantToUtf8(value, *result);
 				}
