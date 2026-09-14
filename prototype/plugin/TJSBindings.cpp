@@ -846,45 +846,6 @@ NCB_ATTACH_FUNCTION(consoleLog, Neuro, NeuroConsoleLog);
 NCB_ATTACH_FUNCTION(getDebugLog, Neuro, NeuroGetDebugLog);
 NCB_ATTACH_FUNCTION(clearDebugLog, Neuro, NeuroClearDebugLog);
 NCB_ATTACH_FUNCTION(getPluginLog, Neuro, NeuroGetPluginLog);
-// Runs on the game's main thread: this is reached from TJS. The game has its
-// own switch for putting the pointer on a dialog's default button -- the
-// options screen calls it automatic cursor placement -- so it is set rather
-// than worked around. "no" parks it; defaultCursorMove is what the dialog uses
-// otherwise.
-static void ApplyPointerFocusToGame(bool enabled) {
-	try {
-		tTJSVariant unused;
-		TVPExecuteExpression(
-		    enabled ? TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
-		                    "MyYesNoDialog.defaultCursorMove); return 1; }"
-		                    " catch (e) { return 0; } })()")
-		            : TJS_W("(function(){ try { MyYesNoDialog.setCursorMoveTime("
-		                    "'no'); return 1; } catch (e) { return 0; } })()"),
-		    &unused);
-	} catch (...) {  // NOLINT(bugprone-empty-catch)
-		// The dialog class may not be loaded yet; the exit-hook install applies
-		// it again once it is.
-	}
-}
-
-static tjs_error TJS_INTF_METHOD NeuroSetPointerFocus(tTJSVariant *result,
-                                                      tjs_int numparams,
-                                                      tTJSVariant **param,
-                                                      iTJSDispatch2 *objthis) {
-	// One argument, on or off. Reading it back with no argument is how a test
-	// checks the current setting.
-	if (numparams >= 1 && param && param[0]) {
-		bool const enabled = (tTVInteger)*param[0] != 0;
-		SetPointerFocusEnabled(enabled);
-		ApplyPointerFocusToGame(enabled);
-	}
-	if (result) {
-		*result = PointerFocusEnabled() ? (tTVInteger)1 : (tTVInteger)0;
-	}
-	return TJS_S_OK;
-}
-
-NCB_ATTACH_FUNCTION(setPointerFocus, Neuro, NeuroSetPointerFocus);
 NCB_ATTACH_FUNCTION(sendContextFromTJS, Neuro, NeuroSendContextFromTJS);
 NCB_ATTACH_FUNCTION(dump, Neuro, NeuroDump);
 NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);
@@ -973,9 +934,6 @@ void RetryInstallExitHookIfReady() {
 	}
 	Log("[ExitHook] hook installed and confirmed\n");
 	g_ExitHookInstalled = true;
-	// The dialog class exists by now, so the pointer setting can be put where
-	// it belongs for this launch.
-	ApplyPointerFocusToGame(PointerFocusEnabled());
 }
 
 void RegisterTJSBindings() {

@@ -21,17 +21,6 @@ constexpr DWORD kDialogSettleMs = 150;
 // would open over a preview that never rendered.
 constexpr DWORD kHoverPreviewMs = 400;
 
-// Whether a press should also put the game's own pointer on the target first.
-//
-// The game has two ways to do it -- setFocusToLink on a dialog, focus() on a
-// choice button -- and both move the real mouse onto the control, which is what
-// makes a press look like someone playing rather than a value changing. It also
-// takes the mouse away from whoever else is using the machine, so it is off
-// unless asked for. Off by default; there is no configuration file yet, so the
-// switch is a TJS call for now.
-bool PointerFocusEnabled();
-void SetPointerFocusEnabled(bool enabled);
-
 // The whole of an action that presses one named control on the current screen:
 // check the state, check the control, press it, answer. `action` names it in
 // the log and in the "does not accept arguments" refusal.

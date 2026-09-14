@@ -522,27 +522,7 @@ bool ProbeChoiceButtonReady(int index, char const *tag) {
 	    tag, index, index);
 }
 
-// The game's own pointer, put on the option before it is taken. Only when asked
-// for: it moves the real mouse.
-bool DispatchChoiceFocus(int index, char const *tag) {
-	return AskFormatted(
-	    L"(function(){ if (typeof kag == 'undefined' || typeof kag.selectLayer "
-	    L"== 'undefined') return 0;"
-	    L"var layer = kag.selectLayer;"
-	    L"if (layer.selects == void || layer.selects.count <= %d) return 0;"
-	    L"var button = layer.selects[%d];"
-	    L"if (!isvalid button || typeof button.focus != 'Object') return 0;"
-	    L"button.focus(); return 1; })()",
-	    tag, index, index);
-}
-
 bool DispatchChoice(int index, char const *tag) {
-	if (PointerFocusEnabled()) {
-		bool const focused = DispatchChoiceFocus(index, tag);
-		Log(("[Action] " + std::string(tag) +
-		     " pointer focus: " + (focused ? "moved" : "refused") + "\n")
-		        .c_str());
-	}
 	// The same arrival a player makes before pressing: the button takes its
 	// hover look and holds it for a moment. These buttons have no hover
 	// handler to call -- the engine drives the state itself from a flag -- so
@@ -1646,27 +1626,8 @@ bool ProbeDialogLinkReady(bool confirm, char const *tag) {
 	    tag, confirm ? "yes" : "no");
 }
 
-bool DispatchDialogLinkFocus(bool confirm, char const *tag) {
-	// The dialog focuses by link number, and only the forcing form does
-	// anything: without it the call assigns nothing and moves nothing.
-	return AskFormatted(
-	    L"(function(){ var d = kag.currentDialog;"
-	    L"if (typeof d != 'Object' || !d) return 0;"
-	    L"var b = d.names['%hs'];"
-	    L"if (typeof b != 'Object' || !isvalid b) return 0;"
-	    L"if (typeof d.setFocusToLink != 'Object') return 0;"
-	    L"d.setFocusToLink(b.linkNum, 1); return 1; })()",
-	    tag, confirm ? "yes" : "no");
-}
-
 bool DispatchDialogLink(bool confirm, char const *tag) {
 	char const *const button = confirm ? "yes" : "no";
-	if (PointerFocusEnabled()) {
-		bool const focused = DispatchDialogLinkFocus(confirm, tag);
-		Log(("[Action] " + std::string(tag) +
-		     " pointer focus: " + (focused ? "moved" : "refused") + "\n")
-		        .c_str());
-	}
 	// The one press that had no cursor arriving before it. Every screen got the
 	// hover; the dialog was answered by reaching straight for processLink, so
 	// the answer appeared with nothing lighting up -- and the game's own default
