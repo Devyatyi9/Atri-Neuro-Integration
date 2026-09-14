@@ -50,7 +50,7 @@ bool Ask(wchar_t const *expr, char const *tag) {
 // sized for the longest expression below with room to spare; a truncated probe
 // would be a silent wrong answer, so an overrun is reported rather than run.
 bool AskFormatted(wchar_t const *format, char const *tag, ...) {
-	wchar_t probe[768];
+	wchar_t probe[1024];
 	va_list args;
 	va_start(args, tag);
 	int const written = _vsnwprintf_s(probe, _TRUNCATE, format, args);
@@ -63,7 +63,7 @@ bool AskFormatted(wchar_t const *format, char const *tag, ...) {
 }
 
 std::wstring Format(wchar_t const *format, ...) {
-	wchar_t text[768];
+	wchar_t text[1024];
 	va_list args;
 	va_start(args, format);
 	int const written = _vsnwprintf_s(text, _TRUNCATE, format, args);
@@ -77,8 +77,10 @@ std::wstring Format(wchar_t const *format, ...) {
 // `return 0` to refuse; `press` runs later on its own, so it resolves every
 // object again and returns early if the control is gone. The inner function
 // sees no locals of the outer one. A shared pending flag refuses a second
-// press until the first has run. A throw in the press is caught there: the
-// engine calls it with nothing above to catch it.
+// press until the first has run. The flag holds the tick it was raised at and
+// counts only for a few seconds: a press the engine never ran would otherwise
+// refuse every later one. A throw in the press is caught there: the engine
+// calls it with nothing above to catch it.
 bool AskDeferred(std::wstring const &guard,
                  std::wstring const &press,
                  char const *tag) {
@@ -87,17 +89,19 @@ bool AskDeferred(std::wstring const &guard,
 		return false;
 	}
 	std::wstring code =
-	    L"(function(){ if (typeof global.__neuroPressPending != 'undefined' &&"
-	    L" global.__neuroPressPending) return 0; ";
+	    L"(function(){ var p = typeof global.__neuroPressPending != 'undefined'"
+	    L" ? +global.__neuroPressPending : 0;"
+	    L" if (p > 0 && System.getTickCount() - p < 5000) return 0;"
+	    L" if (p > 0) Debug.message('[neuro] stale press flag cleared');";
 	code += guard;
 	code +=
 	    L" runOnceDelayedTrigger(function {"
-	    L" global.__neuroPressPending = false; try { ";
+	    L" global.__neuroPressPending = 0; try { ";
 	code += press;
 	code +=
 	    L" } catch (e) { Debug.message('[neuro] deferred press failed: ' +"
 	    L" e.message); } } incontextof global);"
-	    L" global.__neuroPressPending = true; return 1; })()";
+	    L" global.__neuroPressPending = System.getTickCount(); return 1; })()";
 	return Ask(code.c_str(), tag);
 }
 
@@ -434,32 +438,37 @@ bool ProbeCanContinue(char const *tag) {
 // checks are the ones the conductor applies to its own click wait. A pending
 // flag keeps a second request from queueing another click before the first has
 // run; the deferred function clears it before clicking, and leaving the story
-// clears it too, so it cannot stay set.
+// clears it too. It holds the tick it was raised at and lapses after a few
+// seconds, so a click the engine never ran cannot hold it up for the rest of
+// the scene.
 AdvanceResult AdvanceDialogue(char const *tag) {
 	std::string answer;
-	if (!QueryString(L"(function(){"
-	                 L" if (typeof SystemHook == 'undefined' || "
-	                 L"SystemHook.currentState != 'game') {"
-	                 L" global.__neuroAdvancePending = false; return 2; }"
-	                 L" if (typeof kag == 'undefined' || typeof "
-	                 L"kag.onPrimaryClick != 'Object') return 2;"
-	                 L" if (typeof kag.isMoviePlaying == 'Object' && "
-	                 L"kag.isMoviePlaying()) return 3;"
-	                 L" if (typeof global.__neuroAdvancePending != 'undefined' &&"
-	                 L" global.__neuroAdvancePending) return 4;"
-	                 L" if (typeof kag.clickWaiting == 'undefined' || "
-	                 L"!kag.clickWaiting) return 4;"
-	                 L" if (typeof kag.inStable != 'undefined' && !kag.inStable)"
-	                 L" return 4;"
-	                 L" var c = kag.conductor;"
-	                 L" if (c.status != c.mWait || c.waitUntil['click'] === void)"
-	                 L" return 4;"
-	                 L" runOnceDelayedTrigger(function {"
-	                 L" global.__neuroAdvancePending = false;"
-	                 L" kag.onPrimaryClick(); } incontextof global);"
-	                 L" global.__neuroAdvancePending = true;"
-	                 L" return 1; })()",
-	                 answer, tag)) {
+	if (!QueryString(
+	        L"(function(){"
+	        L" if (typeof SystemHook == 'undefined' || "
+	        L"SystemHook.currentState != 'game') {"
+	        L" global.__neuroAdvancePending = false; return 2; }"
+	        L" if (typeof kag == 'undefined' || typeof "
+	        L"kag.onPrimaryClick != 'Object') return 2;"
+	        L" if (typeof kag.isMoviePlaying == 'Object' && "
+	        L"kag.isMoviePlaying()) return 3;"
+	        L" var p = typeof global.__neuroAdvancePending != 'undefined'"
+	        L" ? +global.__neuroAdvancePending : 0;"
+	        L" if (p > 0 && System.getTickCount() - p < 5000) return 4;"
+	        L" if (p > 0) Debug.message('[neuro] stale advance flag cleared');"
+	        L" if (typeof kag.clickWaiting == 'undefined' || "
+	        L"!kag.clickWaiting) return 4;"
+	        L" if (typeof kag.inStable != 'undefined' && !kag.inStable)"
+	        L" return 4;"
+	        L" var c = kag.conductor;"
+	        L" if (c.status != c.mWait || c.waitUntil['click'] === void)"
+	        L" return 4;"
+	        L" runOnceDelayedTrigger(function {"
+	        L" global.__neuroAdvancePending = 0;"
+	        L" kag.onPrimaryClick(); } incontextof global);"
+	        L" global.__neuroAdvancePending = System.getTickCount();"
+	        L" return 1; })()",
+	        answer, tag)) {
 		return AdvanceResult::Unavailable;
 	}
 	int code = 0;
@@ -540,21 +549,24 @@ bool DispatchChoice(int index, char const *tag) {
 	// conductor from inside the engine's callback. The button is checked again
 	// here, after the hover pause, and once more when the press runs. A pending
 	// flag keeps a second request from queueing another press; it is cleared by
-	// the press itself, and by any request that finds the choice gone.
+	// the press itself, by any request that finds the choice gone, and lapses
+	// on its own after a few seconds.
 	return AskFormatted(
 	    L"(function(){ var layer = kag.selectLayer;"
 	    L" if (layer.selects == void || layer.selects.count <= %d) {"
-	    L" global.__neuroChoicePending = false; return 0; }"
-	    L" if (typeof global.__neuroChoicePending != 'undefined' &&"
-	    L" global.__neuroChoicePending) return 0;"
+	    L" global.__neuroChoicePending = 0; return 0; }"
+	    L" var p = typeof global.__neuroChoicePending != 'undefined'"
+	    L" ? +global.__neuroChoicePending : 0;"
+	    L" if (p > 0 && System.getTickCount() - p < 5000) return 0;"
+	    L" if (p > 0) Debug.message('[neuro] stale choice flag cleared');"
 	    L" if (!isvalid layer.selects[%d]) return 0;"
 	    L" runOnceDelayedTrigger(function {"
-	    L" global.__neuroChoicePending = false;"
+	    L" global.__neuroChoicePending = 0;"
 	    L" var l = kag.selectLayer;"
 	    L" if (l.selects == void || l.selects.count <= %d) return;"
 	    L" var b = l.selects[%d]; if (isvalid b) l.onButtonClick(b); }"
 	    L" incontextof global);"
-	    L" global.__neuroChoicePending = true;"
+	    L" global.__neuroChoicePending = System.getTickCount();"
 	    L" return 1; })()",
 	    tag, index, index, index, index);
 }
@@ -1105,7 +1117,7 @@ bool ProbeHistoryCount(int &total) {
 }
 
 bool ProbeCurrentLine(int langType, std::string &out) {
-	wchar_t probe[768];
+	wchar_t probe[1024];
 	if (_snwprintf_s(
 	        probe, _TRUNCATE,
 	        L"(function(){ if (typeof global.__cm_langEntry != 'Object') "
