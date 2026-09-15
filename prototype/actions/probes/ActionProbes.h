@@ -441,6 +441,15 @@ bool ProbeDialogVisible(char const *tag);
 // after the dialog closes, so only read it while one is up.
 bool ProbeDialogTextPart(std::string &part);
 
+// The scene title of the save the load screen is asking about, read while its
+// confirmation is up: the screen remembers the slot it asked for, and closes
+// with the answer. Empty when there is no such save to name.
+bool ProbeLoadSelectionTitle(std::string &title);
+
+// The same for the quick save, which has no slot screen. Its bookmark number is
+// asked of the game, which moves it away from the engine's default.
+bool ProbeQuickLoadTitle(std::string &title);
+
 // The modal confirmation dialog; `confirm` picks the "yes" or "no" link.
 bool ProbeDialogLinkReady(bool confirm, char const *tag);
 bool DispatchDialogLink(bool confirm, char const *tag);

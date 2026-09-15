@@ -161,6 +161,13 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	if (!confirm || !ProbeDialogTextPart(part)) {
 		part.clear();
 	}
+	// The same for where a load goes: the slot is named on the screen being
+	// answered, and that screen is gone once the answer lands.
+	std::string loadTitle;
+	if ((part == "AskLoad" && !ProbeLoadSelectionTitle(loadTitle)) ||
+	    (part == "AskQLoad" && !ProbeQuickLoadTitle(loadTitle))) {
+		loadTitle.clear();
+	}
 
 	bool const ok = ProbeDialogLinkReady(confirm, "answer_dialog ready") &&
 	                DispatchDialogLink(confirm, "answer_dialog dispatch");
@@ -179,6 +186,12 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 		}
 		NeuroSendActionResult(id.c_str(), false,
 		                      "The dialog is up but its buttons did not answer.");
+		return;
+	}
+	if (!loadTitle.empty()) {
+		NeuroSendActionResult(
+		    id.c_str(), true,
+		    ("Confirmed: loading that save, \"" + loadTitle + "\".").c_str());
 		return;
 	}
 	char const *const outcome = part.empty() ? nullptr : ConfirmedOutcome(part);

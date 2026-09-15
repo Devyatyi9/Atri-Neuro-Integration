@@ -951,6 +951,32 @@ bool ProbeSlotsShowBase(int base, char const *tag) {
 	    tag, base);
 }
 
+bool ProbeLoadSelectionTitle(std::string &title) {
+	// _lastSelect is set by the screen's own onSelect just before it asks, and
+	// uses the same numbering as getItemInfo.
+	return QueryString(
+	           L"(function(){ var st = global.__cm_saveStore;"
+	           L" if (typeof st != 'Object' || !isvalid st) return '';"
+	           L" try { var n = st._lastSelect;"
+	           L" if (n === void || !st.isExistData(n)) return '';"
+	           L" var t = st.getItemInfo(n).title;"
+	           L" return t === void ? '' : '' + t; } catch (e) { return ''; } "
+	           L"})()",
+	           title, "load selection title") &&
+	       !title.empty();
+}
+
+bool ProbeQuickLoadTitle(std::string &title) {
+	return QueryString(
+	           L"(function(){ try { var n = SystemAction.qsaveBookmarkNumber;"
+	           L" if (kag.getBookMarkDate(n) == '') return '';"
+	           L" var t = kag.getBookMarkPageName(n);"
+	           L" return t === void ? '' : '' + t; } catch (e) { return ''; } "
+	           L"})()",
+	           title, "quick load title") &&
+	       !title.empty();
+}
+
 bool ProbeSlotDetails(int position, std::string &out) {
 	wchar_t probe[1024];
 	if (_snwprintf_s(
