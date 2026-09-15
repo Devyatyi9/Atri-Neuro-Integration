@@ -749,6 +749,9 @@ bool ExecuteTJSSync(wchar_t const *code,
 				return true;
 			} catch (...) {
 				Log("[ExecuteTJSSync] TJS execution threw an exception\n");
+				if (error) {
+					*error = "TJS execution threw an exception";
+				}
 				return false;
 			}
 		}
