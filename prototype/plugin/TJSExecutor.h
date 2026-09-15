@@ -39,6 +39,9 @@ void ExecuteTJSAsync(wchar_t const *code, TJSExecMode mode = TJSExecMode::Auto);
 // reports that something was thrown. On by default.
 void SetEngineCatchEnabled(bool on);
 bool EngineCatchEnabled();
+
+// How many times the continuous hook ran while the engine was breathing.
+unsigned long long TJSBreathingCallbackCount();
 // The answer comes back as UTF-8 text, converted on the game's main thread.
 // Deliberately not a tTJSVariant: engine objects are reference-counted over a
 // string pool shared with the engine and locked by nothing, so constructing,

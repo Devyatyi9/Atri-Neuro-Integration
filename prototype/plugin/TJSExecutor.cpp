@@ -102,6 +102,14 @@ static bool g_DrainingTJSQueue = false;
 // How often that happened. Zero says the nesting never occurs; anything else
 // says it does, and how much of the traffic it was.
 static std::atomic<unsigned long long> g_TJSDrainReentryCount(0);
+// Callbacks that arrived while the engine was breathing: pumping messages from
+// inside a long operation, which is where a nested call of this hook comes
+// from.
+static std::atomic<unsigned long long> g_TJSBreathingCallbackCount(0);
+
+unsigned long long TJSBreathingCallbackCount() {
+	return g_TJSBreathingCallbackCount.load(std::memory_order_relaxed);
+}
 
 class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
  public:
@@ -110,6 +118,9 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		    g_TJSContinuousCallbackCount.fetch_add(1, std::memory_order_relaxed) +
 		    1;
 		g_TJSLastContinuousTick.store(tick, std::memory_order_relaxed);
+		if (TVPGetBreathing()) {
+			g_TJSBreathingCallbackCount.fetch_add(1, std::memory_order_relaxed);
+		}
 
 		// One drain at a time. A queued call runs TJS, TJS can reach code that
 		// pumps messages, and the engine calls this hook from that pump -- so a
@@ -196,13 +207,14 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 			char message[256];
 			sprintf_s(message,
 			          "[TJS continuous] callbacks=%llu sync=%llu async=%llu "
-			          "dropped=%llu upkeepSkipped=%llu reentry=%llu tick=%llu "
-			          "thread=%lu\n",
+			          "dropped=%llu upkeepSkipped=%llu reentry=%llu breathing=%llu "
+			          "tick=%llu thread=%lu\n",
 			          count, g_TJSSyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncExecutedCount.load(std::memory_order_relaxed),
 			          g_TJSAsyncDroppedCount.load(std::memory_order_relaxed),
 			          g_TJSUpkeepSkippedCount.load(std::memory_order_relaxed),
 			          g_TJSDrainReentryCount.load(std::memory_order_relaxed),
+			          g_TJSBreathingCallbackCount.load(std::memory_order_relaxed),
 			          static_cast<unsigned long long>(tick),
 			          static_cast<unsigned long>(GetCurrentThreadId()));
 			Log(message);

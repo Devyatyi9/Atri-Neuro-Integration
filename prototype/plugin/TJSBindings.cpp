@@ -1,5 +1,6 @@
 #include <windows.h>
 
+#include <atomic>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -912,6 +913,73 @@ static tjs_error TJS_INTF_METHOD NeuroStubExports(tTJSVariant *result,
 }
 
 NCB_ATTACH_FUNCTION(stubExports, Neuro, NeuroStubExports);
+
+// Counts the engine's compact events by level. The engine calls it on the main
+// thread when it asks everything to release caches.
+class NeuroCompactHook final : public tTVPCompactEventCallbackIntf {
+ public:
+	void TJS_INTF_METHOD OnCompact(tjs_int level) override {
+		last.store(level, std::memory_order_relaxed);
+		switch (level) {
+			case TVP_COMPACT_LEVEL_IDLE:
+				idle.fetch_add(1, std::memory_order_relaxed);
+				break;
+			case TVP_COMPACT_LEVEL_DEACTIVATE:
+				deactivate.fetch_add(1, std::memory_order_relaxed);
+				break;
+			case TVP_COMPACT_LEVEL_MINIMIZE:
+				minimize.fetch_add(1, std::memory_order_relaxed);
+				break;
+			case TVP_COMPACT_LEVEL_MAX:
+				max.fetch_add(1, std::memory_order_relaxed);
+				break;
+			default:
+				other.fetch_add(1, std::memory_order_relaxed);
+				break;
+		}
+	}
+
+	std::atomic<long long> idle{0};
+	std::atomic<long long> deactivate{0};
+	std::atomic<long long> minimize{0};
+	std::atomic<long long> max{0};
+	std::atomic<long long> other{0};
+	std::atomic<tjs_int> last{-1};
+};
+
+static NeuroCompactHook g_CompactHook;
+static bool g_CompactHookAdded = false;
+
+// A one-line reading of the stub functions that are safe to call: whether the
+// engine is breathing now, how often the continuous hook ran while it was, the
+// compact events seen, and how many queued events have no source and no target.
+static tjs_error TJS_INTF_METHOD NeuroStubProbe(tTJSVariant *result,
+                                                tjs_int numparams,
+                                                tTJSVariant **param,
+                                                iTJSDispatch2 *objthis) {
+	char line[256];
+	sprintf_s(
+	    line,
+	    "breathing=%d breathingCallbacks=%llu compactHook=%d idle=%lld "
+	    "deactivate=%lld minimize=%lld max=%lld other=%lld last=%d "
+	    "anonymousEvents=%d",
+	    TVPGetBreathing() ? 1 : 0, TJSBreathingCallbackCount(),
+	    g_CompactHookAdded ? 1 : 0,
+	    g_CompactHook.idle.load(std::memory_order_relaxed),
+	    g_CompactHook.deactivate.load(std::memory_order_relaxed),
+	    g_CompactHook.minimize.load(std::memory_order_relaxed),
+	    g_CompactHook.max.load(std::memory_order_relaxed),
+	    g_CompactHook.other.load(std::memory_order_relaxed),
+	    static_cast<int>(g_CompactHook.last.load(std::memory_order_relaxed)),
+	    static_cast<int>(
+	        TVPCountEventsInQueue(nullptr, nullptr, ttstr(TJS_W("")), 0)));
+	if (result) {
+		*result = ttstr(line);
+	}
+	return TJS_S_OK;
+}
+
+NCB_ATTACH_FUNCTION(stubProbe, Neuro, NeuroStubProbe);
 NCB_ATTACH_FUNCTION(sendContextFromTJS, Neuro, NeuroSendContextFromTJS);
 NCB_ATTACH_FUNCTION(dump, Neuro, NeuroDump);
 NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);
@@ -1013,10 +1081,18 @@ void RegisterTJSBindings() {
 		neuro->Release();
 	}
 	ncbAutoRegister::AllRegist();
+	if (!g_CompactHookAdded) {
+		TVPAddCompactEventHook(&g_CompactHook);
+		g_CompactHookAdded = true;
+	}
 	RetryInstallExitHookIfReady();
 }
 
 void UnregisterTJSBindings() {
+	if (g_CompactHookAdded) {
+		TVPRemoveCompactEventHook(&g_CompactHook);
+		g_CompactHookAdded = false;
+	}
 	ncbAutoRegister::AllUnregist();
 	TVPRemoveGlobalObject(TJS_W("Neuro"));
 	g_ExitHookInstalled = false;
