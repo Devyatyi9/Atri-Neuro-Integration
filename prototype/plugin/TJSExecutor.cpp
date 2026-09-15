@@ -87,6 +87,10 @@ static void ExecuteTJSAsyncCall(TJSAsyncCall const &call);
 static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data);
 static bool TakeNextTJSAsyncCall(TJSAsyncCall &call);
 static std::shared_ptr<TJSSyncCallData> TakeNextTJSSyncCall();
+static bool RunGuarded(std::wstring const &code,
+                       tTJSVariant *result,
+                       bool useScriptApi,
+                       std::string &error);
 
 static std::atomic<unsigned long long> g_TJSSyncExecutedCount(0);
 static std::deque<UINT_PTR> g_TJSSyncCallOrder;
@@ -149,26 +153,40 @@ class TJSContinuousEventHook final : public tTVPContinuousEventCallbackIntf {
 		// Run only when outside tag processing to avoid race conditions.
 		// Check every ~10 callbacks (~6 times/second at 60fps).
 		if (count % 10 == 0) {
+			// Upkeep runs several times a second, so a failure that repeats is
+			// logged once, and again only when its text changes. Main thread only.
+			static std::string lastUpkeepError;
+			std::string error;
 			try {
 				// Re-attach the tag hook first if the game has moved to another
 				// conductor. Without that the flag below can be raised by a
 				// conductor whose matching clear never runs, and upkeep stops for
 				// as long as that screen is open.
 				tTJSVariant insideTag;
-				TVPExecuteExpression(
-				    TJS_W("(function(){ if (typeof global.__neuroEnsureTagHook == "
-				          "'Object') global.__neuroEnsureTagHook();"
-				          "return global.__neuroInsideTag === true; })()"),
-				    &insideTag);
-				if (!(tTVInteger)insideTag) {
-					// Safe to run upkeep: not inside tag processing.
-					tTJSVariant upkeepResult;
-					TVPExecuteExpression(TJS_W("Neuro.prototypeUpkeep()"), &upkeepResult);
-				} else {
-					g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
+				if (RunGuarded(
+				        L"(function(){ if (typeof global.__neuroEnsureTagHook == "
+				        L"'Object') global.__neuroEnsureTagHook();"
+				        L"return global.__neuroInsideTag === true; })()",
+				        &insideTag, false, error)) {
+					if (!(tTVInteger)insideTag) {
+						// Safe to run upkeep: not inside tag processing.
+						tTJSVariant upkeepResult;
+						RunGuarded(L"Neuro.prototypeUpkeep()", &upkeepResult, false, error);
+					} else {
+						g_TJSUpkeepSkippedCount.fetch_add(1, std::memory_order_relaxed);
+					}
 				}
-			} catch (...) {  // NOLINT(bugprone-empty-catch)
-				// Ignore upkeep failures; they should not crash the continuous hook.
+			} catch (...) {
+				// Only reached with the engine catch off: the throw left no text.
+				error = "threw an exception";
+			}
+			if (error != lastUpkeepError) {
+				if (!error.empty()) {
+					Log(("[Upkeep] TJS error: " + error + "\n").c_str());
+				} else {
+					Log("[Upkeep] recovered\n");
+				}
+				lastUpkeepError = error;
 			}
 		}
 
