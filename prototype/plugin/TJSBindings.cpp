@@ -846,6 +846,72 @@ NCB_ATTACH_FUNCTION(consoleLog, Neuro, NeuroConsoleLog);
 NCB_ATTACH_FUNCTION(getDebugLog, Neuro, NeuroGetDebugLog);
 NCB_ATTACH_FUNCTION(clearDebugLog, Neuro, NeuroClearDebugLog);
 NCB_ATTACH_FUNCTION(getPluginLog, Neuro, NeuroGetPluginLog);
+// Which of the stub's engine functions this build of the game exports, as
+// "name=1" or "name=0" lines. Nothing is called: each signature is only looked
+// up, one at a time, since a batched lookup fails as a whole on one miss. The
+// strings are the stub's own, and must match it exactly.
+static tjs_error TJS_INTF_METHOD NeuroStubExports(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	static char const *const kSignatures[] = {
+	    "void ::TVPRegisterStorageMedia(iTVPStorageMedia *)",
+	    "void ::TVPUnregisterStorageMedia(iTVPStorageMedia *)",
+	    "iTJSTextReadStream * ::TVPCreateTextStreamForRead(const ttstr &,const "
+	    "ttstr &)",
+	    "iTJSTextReadStream * ::TVPCreateTextStreamForReadByEncoding(const ttstr "
+	    "&,const ttstr &,const ttstr &)",
+	    "void ::TVPSetXP3ArchiveExtractionFilter(tTVPXP3ArchiveExtractionFilter)",
+	    "bool ::TVPGetBreathing()",
+	    "void ::TVPPostEvent(iTJSDispatch2 *,iTJSDispatch2 *,ttstr "
+	    "&,tjs_uint32,tjs_uint32,tjs_uint,tTJSVariant *)",
+	    "bool ::TVPAreEventsInQueue(iTJSDispatch2 *,iTJSDispatch2 *,const ttstr "
+	    "&,tjs_uint32)",
+	    "tjs_int ::TVPCountEventsInQueue(iTJSDispatch2 *,iTJSDispatch2 *,const "
+	    "ttstr &,tjs_uint32)",
+	    "void ::TVPAddCompactEventHook(tTVPCompactEventCallbackIntf *)",
+	    "void ::TVPRemoveCompactEventHook(tTVPCompactEventCallbackIntf *)",
+	    "bool ::TVPGetAsyncKeyState(tjs_uint,bool)",
+	    "void ::TVPExecuteStorage(const ttstr &,tTJSVariant *,bool,const "
+	    "tjs_char *)",
+	    "void ::TVPDumpScriptEngine()",
+	    "void "
+	    "::TVPDoTryBlock(tTVPTryBlockFunction,tTVPCatchBlockFunction,"
+	    "tTVPFinallyBlockFunction,void *)",
+	    "tjs_int ::TVPGetCommandLineArgumentGeneration()",
+	    "void ::TVPSetCommandLine(const tjs_char *,const ttstr &)",
+	    "tjs_uint64 ::TVPGetTickCount()",
+	    "void ::TVPConvertPCMTo16bits(tjs_int16 *,const void *,const "
+	    "tTVPWaveFormat &,tjs_int,bool)",
+	    "void ::TVPConvertPCMToFloat(float *,const void *,const tTVPWaveFormat "
+	    "&,tjs_int)",
+	    "IDirectSound * ::TVPGetDirectSound()",
+	    "void ::TVPRegisterGraphicLoadingHandler(const ttstr "
+	    "&,tTVPGraphicLoadingHandlerForPlugin,"
+	    "tTVPGraphicHeaderLoadingHandlerForPlugin,"
+	    "tTVPGraphicSaveHandlerForPlugin,tTVPGraphicAcceptSaveHandler,void *)",
+	    "iTJSDispatch2 * ::TVPGetObjectFrom_NI_BaseLayer(tTJSNI_BaseLayer *)",
+	};
+	std::string report;
+	iTVPFunctionExporter *const exporter = PluginFunctionExporter();
+	for (char const *signature : kSignatures) {
+		void *function = nullptr;
+		char const *name = signature;
+		bool const found =
+		    exporter &&
+		    exporter->QueryFunctionsByNarrowString(&name, &function, 1) && function;
+		report += std::string(signature) + (found ? "=1\n" : "=0\n");
+	}
+	if (result) {
+		std::wstring wide;
+		*result = Utf8ToUtf16(report.c_str(), report.size(), wide)
+		              ? ttstr(wide.c_str())
+		              : ttstr(TJS_W("error: report could not be converted"));
+	}
+	return TJS_S_OK;
+}
+
+NCB_ATTACH_FUNCTION(stubExports, Neuro, NeuroStubExports);
 NCB_ATTACH_FUNCTION(sendContextFromTJS, Neuro, NeuroSendContextFromTJS);
 NCB_ATTACH_FUNCTION(dump, Neuro, NeuroDump);
 NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);

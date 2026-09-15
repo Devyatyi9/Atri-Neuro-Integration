@@ -29,6 +29,11 @@ static std::atomic<bool> g_HotkeyThreadRunning(false);
 static std::thread g_HotkeyThread;
 static std::atomic<bool> g_WorkerShutdownStarted(false);
 static std::atomic<bool> g_ShutdownStarted(false);
+static iTVPFunctionExporter *g_FunctionExporter = nullptr;
+
+iTVPFunctionExporter *PluginFunctionExporter() {
+	return g_FunctionExporter;
+}
 
 static void StartHotkeyThread();
 
@@ -281,6 +286,7 @@ extern "C" __declspec(dllexport) HRESULT _stdcall V2Link(
 		return E_FAIL;
 	}
 
+	g_FunctionExporter = exporter;
 	if (!TVPInitImportStub(exporter)) {
 		Log("ERROR: TVPInitImportStub failed!\n");
 		return E_FAIL;
