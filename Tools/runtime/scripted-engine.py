@@ -94,6 +94,11 @@ ADVANCE_REFUSED = ("Text advance is unavailable", "A movie is playing")
 # only after enough refusals in a row that something is clearly stuck.
 REFUSALS_BEFORE_ASKING = 3
 
+# In auto mode nothing is ever refused -- every turn answers "wait" -- so the
+# refusals above never come, and a movie would play to its end. The game is
+# asked on a timer there instead.
+MOVIE_CHECK_SECONDS = 2
+
 # How often to record the game's memory when nothing better marks the run. This
 # is the fallback: with --watch-tag-log the samples go on scene changes instead,
 # which is where the evidence is. Without it, a slope every so often is all
@@ -608,6 +613,7 @@ class Engine:
         self.auto_armed = False
         self.blocked = None
         self.refusals = 0
+        self.movie_checked_at = time.monotonic()
         self.leaving = False
         self.speed_restored = False
         self.pace_since = time.monotonic()
@@ -1123,6 +1129,17 @@ class Engine:
             self.refusals = 0
             self.unstick_movie(messages)
 
+    def check_movie_on_timer(self, messages):
+        """Auto mode's way to the same click: nothing is refused there to count."""
+        now = time.monotonic()
+        if now - self.movie_checked_at < MOVIE_CHECK_SECONDS:
+            return
+        self.movie_checked_at = now
+        if self.unstick_movie(messages):
+            # A click can take the game out of auto mode; the next turn that
+            # offers the advance action turns it back on.
+            self.auto_armed = False
+
     def report_pace(self):
         self.pace_turns += 1
         elapsed = time.monotonic() - self.pace_since
@@ -1177,6 +1194,8 @@ class Engine:
                 if why not in ROUTE_ROUTINE:
                     say(f"route stalled: {why}")
 
+        if self.options.mode == "auto":
+            self.check_movie_on_timer(messages)
         if self.options.mode == "auto" and allows_wait(schema):
             return "wait", "auto mode drives the scene"
 
