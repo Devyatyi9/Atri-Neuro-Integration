@@ -671,8 +671,9 @@ class NeuroConsole {
 
 		std::string result;
 		std::string typeName;
+		std::string error;
 		if (ExecuteTJSSync(cleanCode.c_str(), &result, 5000, mode, &typeName,
-		                   rawChecked == FALSE)) {
+		                   rawChecked == FALSE, &error)) {
 			std::wstring valStr;
 			if (!Utf8ToUtf16(result.c_str(), result.size(), valStr)) {
 				valStr = L"<result could not be converted>";
@@ -694,6 +695,15 @@ class NeuroConsole {
 			std::wstring output = L"Result [" + typeStr + L"]: " + valStr + L"\n";
 			AppendOutput(output.c_str(), RGB(0, 255, 0));  // Green for success.
 
+		} else if (!error.empty()) {
+			// Raw mode has no wrapper to put the text in the result, so it comes
+			// from the engine catch instead.
+			std::wstring errorText;
+			if (!Utf8ToUtf16(error.c_str(), error.size(), errorText)) {
+				errorText = L"<error could not be converted>";
+			}
+			AppendOutput((L"TJS Error: " + errorText + L"\n").c_str(),
+			             RGB(255, 0, 0));
 		} else {
 			AppendOutput(L"Critical Error: TJS execution failed or timed out.\n",
 			             RGB(255, 0, 0));

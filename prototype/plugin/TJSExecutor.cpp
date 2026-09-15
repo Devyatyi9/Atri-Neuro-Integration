@@ -37,6 +37,8 @@ struct TJSSyncCallData {
 	// engine and locked by nothing.
 	std::string resultUtf8;
 	std::string resultType;
+	// Why the call did not run, as plain text, when the engine said.
+	std::string resultError;
 	HANDLE completedEvent;
 	std::atomic<bool> cancelled;
 	bool executed;
@@ -430,10 +432,12 @@ static void ExecuteTJSSyncCall(std::shared_ptr<TJSSyncCallData> const &data) {
 				data->executed = true;
 			} else {
 				Log(("  [ExecuteTJSSync] TJS error: " + error + "\n").c_str());
+				data->resultError = error;
 			}
 		}
 	} catch (...) {
 		Log("  [ExecuteTJSSync] TJS execution threw an exception\n");
+		data->resultError = "TJS execution threw an exception";
 	}
 	SetEvent(data->completedEvent);
 }
@@ -703,7 +707,8 @@ bool ExecuteTJSSync(wchar_t const *code,
                     DWORD timeoutMs,
                     TJSExecMode mode,
                     std::string *typeName,
-                    bool wrap) {
+                    bool wrap,
+                    std::string *error) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code)
 		return false;
 
@@ -727,9 +732,12 @@ bool ExecuteTJSSync(wchar_t const *code,
 		if (g_TJSReady.load()) {
 			try {
 				tTJSVariant value;
-				std::string error;
-				if (!RunGuarded(wrappedCode, &value, useScriptApi, error)) {
-					Log(("[ExecuteTJSSync] TJS error: " + error + "\n").c_str());
+				std::string failure;
+				if (!RunGuarded(wrappedCode, &value, useScriptApi, failure)) {
+					Log(("[ExecuteTJSSync] TJS error: " + failure + "\n").c_str());
+					if (error) {
+						*error = failure;
+					}
 					return false;
 				}
 				if (result) {
@@ -799,7 +807,12 @@ bool ExecuteTJSSync(wchar_t const *code,
 	if (!completed) {
 		data->cancelled.store(true, std::memory_order_release);
 		Log("  [ExecuteTJSSync] Timed out waiting for the game thread\n");
-	} else if (!executed) {
+	} else if (!executed && error) {
+		// Written by the game thread before it signalled, so reading it here is
+		// safe: that thread is done with it.
+		*error = data->resultError;
+	}
+	if (completed && !executed) {
 		// The game thread answered but skipped the call: cancelled, or TJS not
 		// ready. Logged, because the caller only sees false either way.
 		Log("  [ExecuteTJSSync] Game thread skipped the call (not executed)\n");

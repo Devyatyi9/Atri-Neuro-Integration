@@ -52,9 +52,13 @@ bool EngineCatchEnabled();
 // the executor keeps the process. That is the whole reason to turn it off --
 // seeing what the game would have shown -- and the cost is that the readable
 // `!!!TJS_EXCEPTION!!!` text is gone, leaving only a failed call.
+// `error` is optional and receives the engine's description of a throw when
+// the call fails because of one. It stays empty for a timeout or a call the
+// game thread skipped, which is how a caller tells those apart.
 bool ExecuteTJSSync(wchar_t const *code,
                     std::string *result,
                     DWORD timeoutMs = 5000,
                     TJSExecMode mode = TJSExecMode::Auto,
                     std::string *typeName = nullptr,
-                    bool wrap = true);
+                    bool wrap = true,
+                    std::string *error = nullptr);

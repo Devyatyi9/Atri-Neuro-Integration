@@ -163,9 +163,12 @@ static void HandleClient(
 		// arrives as text: this is a client thread, and an engine value must not
 		// be built or destroyed here.
 		std::string response;
-		bool const ok = ExecuteTJSSync(wideCode.c_str(), &response, 10000);
+		std::string error;
+		bool const ok = ExecuteTJSSync(wideCode.c_str(), &response, 10000,
+		                               TJSExecMode::Auto, nullptr, true, &error);
 		if (!ok) {
-			response = "error: execution timeout or failed";
+			response = error.empty() ? "error: execution timeout or failed"
+			                         : "error: " + error;
 		} else if (response.empty()) {
 			response = "(empty)";
 		}
