@@ -398,10 +398,10 @@ void SendEnteringContext() {
 		// Named for what is on screen: the backlog opens on whichever mode it
 		// was left in, so "lines" is not a safe assumption.
 		char const *const held = SceneListIsShowing() ? " scenes" : " lines";
-		SendScreenAnnouncement(
-		    "The backlog is open. It holds " + std::to_string(total) + held +
-		    ", and read_backlog reads the ones on screen, or elsewhere on "
-		    "request.");
+		// What read_backlog does is its own description's business; saying it
+		// again here told her the same thing twice on every visit.
+		SendScreenAnnouncement("The backlog is open. It holds " +
+		                       std::to_string(total) + held + ".");
 	}
 }
 
@@ -415,20 +415,17 @@ void AppendActions(ActionSet &set, int payload) {
 		// what the action will actually return rather than always promising
 		// lines.
 		bool const sceneList = (payload & kFlagSceneList) != 0;
-		char const *const what = sceneList ? "scenes of the story, out of "
-		                                   : "lines of the conversation history, "
-		                                     "out of ";
+		char const *const what = sceneList ? " scenes" : " lines";
 		char const *const where =
-		    sceneList
-		        ? ". Left out, it reads the scenes on screen, numbered the way "
-		          "the per-row actions number them; give \"from\" to read "
-		          "somewhere else, numbered by the whole list."
-		        : ". Left out, it reads the lines on screen, numbered the way the "
-		          "per-row actions number them; give \"from\" to read somewhere "
-		          "else, numbered by the whole history.";
+		    sceneList ? " in all. Without \"from\" it reads the scenes on "
+		                "screen, numbered as the row actions number them; with "
+		                "\"from\", numbering runs through the whole list."
+		              : " in all. Without \"from\" it reads the lines on "
+		                "screen, numbered as the row actions number them; with "
+		                "\"from\", numbering runs through the whole history.";
 		set.add("read_backlog",
-		        set.keep("Read " + std::string(what) +
-		                 std::to_string(historyTotal) + where),
+		        set.keep("Read the backlog: " + std::to_string(historyTotal) +
+		                 std::string(what) + where),
 		        set.keep(ReadBacklogSchema(historyTotal)));
 	}
 
@@ -495,9 +492,8 @@ void AppendActions(ActionSet &set, int payload) {
 		// row shows. Saying so is the difference between an odd offer and a
 		// wrong one.
 		set.add("save_backlog_voice",
-		        set.keep(std::string("Keep the voice of one of the rows on "
-		                             "screen in the collection, numbered from "
-		                             "the top") +
+		        set.keep(std::string("Keep a row's voice in the collection, rows "
+		                             "numbered from the top") +
 		                 (sceneList ? " -- in the scene list that is the voice of "
 		                              "the line each scene opens with"
 		                            : "") +
@@ -507,8 +503,8 @@ void AppendActions(ActionSet &set, int payload) {
 	std::string const voiceList = RowList(voiceMask);
 	if (!voiceList.empty()) {
 		set.add("replay_backlog_voice",
-		        set.keep(std::string("Replay the voice of one of the rows on "
-		                             "screen, numbered from the top") +
+		        set.keep(std::string("Replay a row's voice, rows numbered from "
+		                             "the top") +
 		                 (sceneList ? " -- in the scene list that is the voice of "
 		                              "the line each scene opens with"
 		                            : "") +

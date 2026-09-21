@@ -896,8 +896,7 @@ void AppendEditMenuActions(ActionSet &set, int payload) {
 		// written the same way the game writes it once its window closes.
 		set.add("edit_comment",
 		        "Set the comment kept with this save, up to 120 characters. It "
-		        "replaces the whole comment rather than adding to it; what the "
-		        "save says now was given with the menu.",
+		        "replaces the whole comment rather than adding to it.",
 		        kEditCommentSchema);
 	}
 	if ((items & 2) != 0) {

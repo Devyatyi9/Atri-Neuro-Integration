@@ -611,16 +611,13 @@ void AppendActions(ActionSet &set, int payload) {
 	        kGoBackSchema);
 	// The music side of this screen carries a volume slider, and it is there
 	// whether or not anything is playing.
-	set.add("set_music_volume",
-	        "Set how loud the music player is, 0 to 100. It is the slider under "
-	        "the track list.",
+	set.add("set_music_volume", "Set how loud the music player is, 0 to 100.",
 	        kMusicVolumeSchema);
 	// The track list is longer than the frame it sits in, so the bar beside it is
 	// the only way to reach the entries below the visible rows.
 	set.add("scroll_music_list",
-	        "Move the track list to a place along its scroll bar, 0 at the top "
-	        "and 100 at the bottom. The list shows only part of itself at a "
-	        "time.",
+	        "Move the track list along its scroll bar, 0 at the top and 100 at "
+	        "the bottom.",
 	        kMusicScrollBarSchema);
 	// The grid's last page carries fewer squares, so both the wording and the
 	// schema's maximum follow the page rather than assuming nine everywhere.
@@ -654,9 +651,7 @@ void AppendActions(ActionSet &set, int payload) {
 		        set.keep("Switch the music player to one of the tracks the list "
 		                 "beside the grid is showing, " +
 		                 std::to_string(firstTrack) + " to " +
-		                 std::to_string(lastTrack) +
-		                 " right now. Something is always playing; this changes "
-		                 "which."),
+		                 std::to_string(lastTrack) + " right now."),
 		        set.keep(RangeIntSchema("track", firstTrack, lastTrack)));
 	}
 	int const scrollMask = payload & kScrollMask;

@@ -304,8 +304,8 @@ void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle) {
 
 void AppendDialogActions(ActionSet &set) {
 	set.add("answer_dialog",
-	        "Answer the confirmation dialog that is currently on screen: confirm "
-	        "true to accept, false to cancel.",
+	        "Answer the dialog on screen: confirm true to accept, false to "
+	        "cancel.",
 	        kAnswerDialogSchema);
 }
 

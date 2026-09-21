@@ -447,8 +447,8 @@ void AppendQuickMenuActions(ActionSet &set, int payload) {
 	        "Go back to the previous choice point. Asks for confirmation first.",
 	        kPreviousSceneSchema);
 	set.add("next_scene",
-	        "Jump ahead to the next choice point, the same place skipping stops "
-	        "at. Asks for confirmation first.",
+	        "Jump ahead to the next choice point, where skipping stops too. Asks "
+	        "for confirmation first.",
 	        kNextSceneSchema);
 	// Auto and skip are each one bar button pressed twice, so only the direction
 	// that would change something is offered.
