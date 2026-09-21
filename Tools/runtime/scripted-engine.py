@@ -620,6 +620,9 @@ class Engine:
         self.pace_turns = 0
         self.game_pid = game_pid(options.tjs_port)
         self.stopping = False
+        self.minutes = options.minutes
+        self.started_at = time.monotonic()
+        self.timed_out = False
         # Set once the server exists, so the run can end itself.
         self.on_stop = None
         self.watch_log = options.watch_game_log
@@ -687,6 +690,25 @@ class Engine:
         if self.on_stop:
             self.on_stop()
 
+    def stop_if_time_is_up(self):
+        """Ends the attempt at --minutes, without ending the connection.
+
+        Stopping this process is not the same as ending a run: the client
+        pauses for good when the engine it talks to goes away, and only a
+        person can start it again. So the clock ends what the driver does --
+        the route, the turned-up speeds -- and leaves the server answering
+        with nothing to do. The game is left where it stands.
+        """
+        if not self.minutes or self.timed_out or self.stopping:
+            return
+        if time.monotonic() - self.started_at < self.minutes * 60:
+            return
+        self.timed_out = True
+        say(f"the {self.minutes}-minute limit is up after {self.turns} turn(s); "
+            "the driver stops deciding and keeps answering")
+        self.note_memory("time limit")
+        self.restore_speed()
+
     def say_run_header(self):
         """Writes down what this run is, before it starts running.
 
@@ -705,7 +727,8 @@ class Engine:
             f"engine_port={options.port}")
         say(f"run: watch_tag_log={bool(self.tag_log)} "
             f"watch_game_log={bool(self.watch_log)} "
-            f"memory_limit={options.memory_limit or 'off'}")
+            f"memory_limit={options.memory_limit or 'off'} "
+            f"minutes={options.minutes or 'off'}")
         try:
             version = send_tjs(options.tjs_port, "Neuro.getVersion()").strip()
         except OSError:
@@ -1172,13 +1195,16 @@ class Engine:
             self.note_memory("running")
         self.stop_if_the_game_is_gone()
         self.stop_on_trouble()
+        self.stop_if_time_is_up()
         self.note_scene_changes()
         actions = offered_actions(schema)
-        self.arm_auto_mode(actions)
-        if self.options.action in actions:
+        if not self.timed_out:
+            self.arm_auto_mode(actions)
+        if self.options.action in actions and not self.timed_out:
             self.note_refusals(messages)
 
-        if self.decisions or self.route or self.start_action or self.finish:
+        if not self.timed_out and (self.decisions or self.route
+                                   or self.start_action or self.finish):
             command, why = self.choose_for_route(actions, schema, messages)
             if command is not None:
                 self.blocked = None
@@ -1194,14 +1220,19 @@ class Engine:
                 if why not in ROUTE_ROUTINE:
                     say(f"route stalled: {why}")
 
-        if self.options.mode == "auto":
+        if self.options.mode == "auto" and not self.timed_out:
             self.check_movie_on_timer(messages)
-        if self.options.mode == "auto" and allows_wait(schema):
+        if self.options.mode == "auto" and not self.timed_out and allows_wait(schema):
             return "wait", "auto mode drives the scene"
 
         preferred = self.options.action
-        if preferred in actions:
+        if preferred in actions and not self.timed_out:
             return command_for(preferred, actions), "preferred action"
+
+        # A forced turn allows no waiting, so past the limit the fallback below
+        # still answers it: the client is owed a reply either way.
+        if self.timed_out and allows_wait(schema):
+            return "wait", "the time limit is up"
 
         if allows_wait(schema):
             return "wait", f"{preferred} not offered"
@@ -1378,6 +1409,11 @@ def main():
     parser.add_argument("--dump-with", metavar="PROCDUMP",
                         help="path to procdump: writes a full dump of the game "
                              "when a run stops on trouble")
+    parser.add_argument("--minutes", type=float, default=0, metavar="N",
+                        help="end the attempt after this many minutes: the "
+                             "route is left where it stands, the speeds are put "
+                             "back, and the server keeps answering so the client "
+                             "is not left without an engine. 0 means never")
     parser.add_argument("--fast", action="store_true",
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
@@ -1425,6 +1461,7 @@ def main():
         while not Handler.engine.stopping:
             time.sleep(GAME_CHECK_SECONDS)
             Handler.engine.stop_if_the_game_is_gone(on_a_clock=True)
+            Handler.engine.stop_if_time_is_up()
 
     threading.Thread(target=keep_an_eye_out, daemon=True).start()
     say(f"scripted engine on http://127.0.0.1:{options.port}/v1 in {options.mode} mode")
