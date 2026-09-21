@@ -253,7 +253,11 @@ bool ProbeSlotsShowBase(int base, char const *tag);
 // save_game accepts. `base` and `page` come back as well -- page 0 is the quick
 // tab. `voice` picks the fields, since the voice tab holds lines rather than
 // saves.
-bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out);
+bool ProbeSlotWindow(bool voice,
+                     int &base,
+                     int &page,
+                     int &fresh,
+                     std::string &out);
 // Everything one slot holds, as "<exists>	<title>	<date>	<comment>	<last
 // line>".
 //

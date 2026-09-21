@@ -1082,14 +1082,22 @@ bool ProbeSlotDetails(int position, std::string &out) {
 	return QueryString(probe, out, "slot details") && !out.empty();
 }
 
-bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out) {
+bool ProbeSlotWindow(bool voice,
+                     int &base,
+                     int &page,
+                     int &fresh,
+                     std::string &out) {
 	wchar_t probe[1024];
 	if (_snwprintf_s(
 	        probe, _TRUNCATE,
 	        L"(function(){ if (typeof global.__cm_saveStore != 'Object') "
 	        L"return '';"
 	        L"var st = global.__cm_saveStore;"
-	        L"try { var s = st.offset + '|' + st.page;"
+	        // lastSaved is the entry the screen badges "New", -1 where the store
+	        // has none. It belongs with the window rather than with a row: it
+	        // names an entry of the whole list, which may sit on another page.
+	        L"var f = (typeof st.lastSaved != 'undefined') ? +st.lastSaved : -1;"
+	        L"try { var s = st.offset + '|' + st.page + '|' + f;"
 	        L"for (var i = 0; i < 10; i++) {"
 	        L"var idx = st.offset + i;"
 	        L"s += '\n' + (i + 1) + '\t';"
@@ -1107,12 +1115,16 @@ bool ProbeSlotWindow(bool voice, int &base, int &page, std::string &out) {
 	}
 	size_t const firstLine = raw.find('\n');
 	size_t const separator = raw.find('|');
+	size_t const second =
+	    separator == std::string::npos ? separator : raw.find('|', separator + 1);
 	if (firstLine == std::string::npos || separator == std::string::npos ||
-	    separator > firstLine) {
+	    second == std::string::npos || second > firstLine) {
 		return false;
 	}
 	if (!ParseProbeInt(raw.substr(0, separator), base, "slot window") ||
-	    !ParseProbeInt(raw.substr(separator + 1, firstLine - separator - 1), page,
+	    !ParseProbeInt(raw.substr(separator + 1, second - separator - 1), page,
+	                   "slot window") ||
+	    !ParseProbeInt(raw.substr(second + 1, firstLine - second - 1), fresh,
 	                   "slot window")) {
 		return false;
 	}

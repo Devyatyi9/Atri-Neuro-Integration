@@ -74,6 +74,10 @@ std::string g_LastAnnouncement;
 // so the offset is written down once.
 constexpr int kQuickSlots = 10;
 
+// How many slots one page of the screen shows, which is what the numbers in
+// a context message refer to.
+constexpr int kWindowSlots = 10;
+
 // The number printed under a slot. The two halves of the list are numbered
 // separately on screen: the quick ones are Quick 1 to Quick 10, and the rest
 // start again at No.001. Every slot the player can point at has exactly one of
@@ -670,8 +674,9 @@ void SendWindowContext(std::string const &opening,
                        char const *closing) {
 	int base = 0;
 	int page = 0;
+	int fresh = -1;
 	std::string window;
-	if (!ProbeSlotWindow(voice, base, page, window)) {
+	if (!ProbeSlotWindow(voice, base, page, fresh, window)) {
 		return;
 	}
 
@@ -726,6 +731,12 @@ void SendWindowContext(std::string const &opening,
 		if (!empty.empty()) {
 			message += " Empty: " + empty + ".";
 		}
+	}
+	// The badge the screen draws on the entry written last. Said once at the
+	// end rather than beside the row, because it belongs to the whole list:
+	// on another page there is nothing here to mark.
+	if (fresh >= base && fresh < base + kWindowSlots) {
+		message += " Marked New: " + PlateLabel(fresh) + ".";
 	}
 	if (closing != nullptr) {
 		message += closing;
