@@ -60,7 +60,9 @@ void HandleContinueAction(std::string const &id, std::string const &data) {
 		// the ordinary answer for pressing a greyed-out entry, not an edge case.
 		NeuroSendActionResult(
 		    id.c_str(), false,
-		    "Continue is greyed out: there is no game in progress yet.");
+		    LastPressWasBusy()
+		        ? kPressStillRunning
+		        : "Continue is greyed out: there is no game in progress yet.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Continue started.");
@@ -75,12 +77,8 @@ void HandleStartNewGameAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIs("title", "start_new_game state") &&
 	                ProbeScreenButtonReady("start", "start_new_game button") &&
 	                DispatchScreenButton("start", "start_new_game dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Starting a new game is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Started a new game.");
+	AnswerPress(id, ok, "Started a new game.",
+	            "Starting a new game is unavailable.");
 }
 
 void HandleStartTrueEndAction(std::string const &id, std::string const &data) {
@@ -92,12 +90,8 @@ void HandleStartTrueEndAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIs("title", "start_true_end state") &&
 	                ProbeScreenButtonReady("tend", "start_true_end button") &&
 	                DispatchScreenButton("tend", "start_true_end dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Starting the true end is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Started the true end route.");
+	AnswerPress(id, ok, "Started the true end route.",
+	            "Starting the true end is unavailable.");
 }
 
 void HandleExitGameAction(std::string const &id, std::string const &data) {

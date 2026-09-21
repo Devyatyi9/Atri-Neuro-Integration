@@ -47,6 +47,9 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 		case AdvanceResult::Advanced:
 			NeuroSendActionResult(id.c_str(), true, "Text advanced.");
 			return;
+		case AdvanceResult::StillRunning:
+			NeuroSendActionResult(id.c_str(), false, kPressStillRunning);
+			return;
 		case AdvanceResult::MoviePlaying:
 			// Named rather than folded into the general refusal: a movie ends on
 			// its own, and knowing that is the difference between waiting and
@@ -67,11 +70,8 @@ void HandleSkipMovieAction(std::string const &id, std::string const &data) {
 		                      "skip_movie does not accept arguments.");
 		return;
 	}
-	if (!DispatchMovieSkip("skip movie")) {
-		NeuroSendActionResult(id.c_str(), false, "No movie is playing.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Skipped the movie.");
+	bool const ok = DispatchMovieSkip("skip movie");
+	AnswerPress(id, ok, "Skipped the movie.", "No movie is playing.");
 }
 
 void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
@@ -91,11 +91,7 @@ void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
 	                ProbeChoiceLayerReady("select layer") &&
 	                ProbeChoiceButtonReady(index, "select button") &&
 	                DispatchChoice(index, "select dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, "Choice is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Choice selected.");
+	AnswerPress(id, ok, "Choice selected.", "Choice is unavailable.");
 }
 
 void HandleCloseQuickMenuAction(std::string const &id,
@@ -109,12 +105,8 @@ void HandleCloseQuickMenuAction(std::string const &id,
 	bool const ok = ProbeStateIs("game", "close_quick_menu state") &&
 	                ProbeQuickMenuHasUpdown("close_quick_menu dispatchable") &&
 	                DispatchQuickMenuClose("close_quick_menu dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Closing the quick menu is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Closed the quick menu.");
+	AnswerPress(id, ok, "Closed the quick menu.",
+	            "Closing the quick menu is unavailable.");
 }
 
 void HandleOpenQuickMenuAction(std::string const &id, std::string const &data) {
@@ -158,15 +150,11 @@ void HandleHideUiAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIs("game", "hide_ui state") &&
 	                ProbeQuickMenuButtonReady("hide", "hide_ui button") &&
 	                DispatchQuickMenuButton("hide", "hide_ui dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Hiding the text window is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(
-	    id.c_str(), true,
+	AnswerPress(
+	    id, ok,
 	    "Hid the text window. Nothing is on screen now except the artwork; "
-	    "show it again to keep reading.");
+	    "show it again to keep reading.",
+	    "Hiding the text window is unavailable.");
 }
 
 void HandleShowUiAction(std::string const &id, std::string const &data) {
@@ -178,11 +166,8 @@ void HandleShowUiAction(std::string const &id, std::string const &data) {
 
 	bool const ok = ProbeStateIs("game", "show_ui state") &&
 	                DispatchShowTextWindow("show_ui dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, "The text window is not hidden.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Brought the text window back.");
+	AnswerPress(id, ok, "Brought the text window back.",
+	            "The text window is not hidden.");
 }
 
 // auto and skip are the same bar button pressed twice: one press turns the
@@ -215,11 +200,7 @@ void HandleQuickMenuToggle(std::string const &id,
 	    ProbeStateIs("game", (tag + " state").c_str()) &&
 	    ProbeQuickMenuButtonReady(action.button, (tag + " button").c_str()) &&
 	    DispatchQuickMenuButton(action.button, (tag + " dispatch").c_str());
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, action.fail);
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, action.ok);
+	AnswerPress(id, ok, action.ok, action.fail);
 }
 
 // Stepping between choice points asks first (asknextscn / askprevscn), the way
@@ -250,7 +231,9 @@ void HandleSceneStepAction(std::string const &id,
 	    ProbeQuickMenuButtonReady(action.button, (tag + " button").c_str()) &&
 	    DispatchQuickMenuButton(action.button, (tag + " dispatch").c_str());
 	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, action.fail);
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    LastPressWasBusy() ? kPressStillRunning : action.fail);
 		return;
 	}
 	Sleep(kDialogSettleMs);

@@ -115,7 +115,9 @@ void HandleNextCgViewAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	if (!DispatchGalleryNextView("next_cg_view dispatch")) {
-		NeuroSendActionResult(id.c_str(), false, "There is no picture open.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    LastPressWasBusy() ? kPressStillRunning : "There is no picture open.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true,
@@ -135,7 +137,9 @@ void HandleMusicVolumeAction(std::string const &id, std::string const &data) {
 	ProbeMusicVolume(before, "music volume before");
 	if (!DispatchMusicVolume(wanted, "music volume")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "The volume slider did not answer.");
+		                      LastPressWasBusy()
+		                          ? kPressStillRunning
+		                          : "The volume slider did not answer.");
 		return;
 	}
 
@@ -314,7 +318,9 @@ void HandleMusicScrollBarAction(std::string const &id,
 	int const target = (wanted * limit + 50) / 100;
 	if (!DispatchMusicScroll(target, "music scroll")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "The music list scroll bar did not answer.");
+		                      LastPressWasBusy()
+		                          ? kPressStillRunning
+		                          : "The music list scroll bar did not answer.");
 		return;
 	}
 	Sleep(kMusicScrollSettleMs);
@@ -375,7 +381,9 @@ void HandleScrollCgAction(std::string const &id, std::string const &data) {
 	}
 
 	if (!DispatchCgScroll(horizontal, vertical, "scroll_cg")) {
-		NeuroSendActionResult(id.c_str(), false, "The picture did not move.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    LastPressWasBusy() ? kPressStillRunning : "The picture did not move.");
 		return;
 	}
 
@@ -412,7 +420,9 @@ void HandleCloseCgAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	if (!DispatchGalleryExit("close_cg dispatch")) {
-		NeuroSendActionResult(id.c_str(), false, "There is no picture open.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    LastPressWasBusy() ? kPressStillRunning : "There is no picture open.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, "Closed the picture.");
@@ -479,7 +489,9 @@ void HandleSwitchTrackAction(std::string const &id, std::string const &data) {
 	int const button = number - firstTrack;
 	HoverGalleryItem("sitem", button, "switch_track hover");
 	if (!DispatchGalleryItem("mselect", button, "switch_track dispatch")) {
-		NeuroSendActionResult(id.c_str(), false, "That track did not respond.");
+		NeuroSendActionResult(id.c_str(), false,
+		                      LastPressWasBusy() ? kPressStillRunning
+		                                         : "That track did not respond.");
 		return;
 	}
 	// Read back which track the player landed on rather than trusting the

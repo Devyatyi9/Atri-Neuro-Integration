@@ -21,6 +21,21 @@ constexpr DWORD kDialogSettleMs = 150;
 // would open over a preview that never rendered.
 constexpr DWORD kHoverPreviewMs = 400;
 
+// The refusal for a press that arrived while an earlier one is still on its way
+// through the engine. One sentence everywhere, so it reads as one rule rather
+// than as a different problem per screen.
+constexpr char const *kPressStillRunning =
+    "The last press is still going through; try again in a moment.";
+
+// Answers an action that pressed something. A press refused because an earlier
+// one has not left the engine's queue yet is told apart from a control that
+// cannot be pressed at all: the two look the same to the caller, and only the
+// first is worth trying again.
+void AnswerPress(std::string const &id,
+                 bool ok,
+                 char const *okMessage,
+                 char const *failMessage);
+
 // The whole of an action that presses one named control on the current screen:
 // check the state, check the control, press it, answer. `action` names it in
 // the log and in the "does not accept arguments" refusal.

@@ -84,13 +84,17 @@ void HandleBacklogLineAction(std::string const &id,
 		Sleep(kHoverPreviewMs);
 	}
 	if (!DispatchBacklogLineButton(verb, slot, (tag + " dispatch").c_str())) {
+		// Read before the press below, which would overwrite it.
+		bool const busy = LastPressWasBusy();
 		// Leaving a preview up over a press that never happened would be a lie
 		// about what is selected.
 		if (which == 0) {
 			DispatchBacklogLineButton("hideJumpView", slot,
 			                          (tag + " unhover").c_str());
 		}
-		NeuroSendActionResult(id.c_str(), false, "That line did not respond.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    busy ? kPressStillRunning : "That line did not respond.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true, okMessage);

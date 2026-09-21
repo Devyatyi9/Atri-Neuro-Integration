@@ -9,6 +9,18 @@
 #include "ActionProbes.h"
 #include "NeuroClient.h"
 
+void AnswerPress(std::string const &id,
+                 bool ok,
+                 char const *okMessage,
+                 char const *failMessage) {
+	if (ok) {
+		NeuroSendActionResult(id.c_str(), true, okMessage);
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), false,
+	                      LastPressWasBusy() ? kPressStillRunning : failMessage);
+}
+
 void HandleScreenButtonAction(std::string const &id,
                               std::string const &data,
                               char const *action,
@@ -26,7 +38,7 @@ void HandleScreenButtonAction(std::string const &id,
 	bool const ok = ProbeStateIs(state, (tag + " state").c_str()) &&
 	                ProbeScreenButtonReady(button, (tag + " button").c_str()) &&
 	                DispatchScreenButton(button, (tag + " dispatch").c_str());
-	NeuroSendActionResult(id.c_str(), ok, ok ? okMessage : failMessage);
+	AnswerPress(id, ok, okMessage, failMessage);
 }
 
 namespace {

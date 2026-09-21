@@ -123,11 +123,17 @@ enum class AdvanceResult {
 	NotInStory,  // a menu, the title, a screen that is not the dialogue
 	MoviePlaying,
 	NothingWaiting,  // the story is running but no click is due yet
+	StillRunning,    // the press before it has not reached the engine yet
 };
 AdvanceResult AdvanceDialogue(char const *tag);
 
 // The select layer is up with at least one enabled option; `index` is 0-based
 // here, matching the engine array.
+// Whether the last press was refused because the one before it is still on
+// its way through the engine. Only meaningful right after a press that
+// returned false, on the thread that made it.
+bool LastPressWasBusy();
+
 // Ends a playing movie with an ordinary click.
 bool DispatchMovieSkip(char const *tag);
 

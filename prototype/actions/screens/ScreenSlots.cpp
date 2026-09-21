@@ -437,7 +437,9 @@ void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	if (!DispatchEditButton(position, "open_edit_menu dispatch")) {
-		NeuroSendActionResult(id.c_str(), false, "The edit menu did not open.");
+		NeuroSendActionResult(id.c_str(), false,
+		                      LastPressWasBusy() ? kPressStillRunning
+		                                         : "The edit menu did not open.");
 		return;
 	}
 	// The menu is raised by a scenario jump, so it is not up the instant the
@@ -537,7 +539,9 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 	}
 	if (!DispatchSetComment(position, text, "edit_comment set")) {
 		NeuroSendActionResult(id.c_str(), false,
-		                      "The comment could not be written.");
+		                      LastPressWasBusy()
+		                          ? kPressStillRunning
+		                          : "The comment could not be written.");
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true,
@@ -563,21 +567,16 @@ void HandleEditMenuItemAction(std::string const &id, int item) {
 		        .c_str());
 		return;
 	}
-	if (!DispatchEditMenuItem(kEditItemControls[item], "edit menu dispatch")) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "That entry of the edit menu did not respond.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Chose it from the edit menu.");
+	bool const ok =
+	    DispatchEditMenuItem(kEditItemControls[item], "edit menu dispatch");
+	AnswerPress(id, ok, "Chose it from the edit menu.",
+	            "That entry of the edit menu did not respond.");
 }
 
 void HandleCloseEditMenuAction(std::string const &id) {
-	if (!DispatchCloseEditMenu("close_edit_menu dispatch")) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "The edit menu is no longer open.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Closed the edit menu.");
+	bool const ok = DispatchCloseEditMenu("close_edit_menu dispatch");
+	AnswerPress(id, ok, "Closed the edit menu.",
+	            "The edit menu is no longer open.");
 }
 
 int ParseSaveTab(std::string const &data) {
@@ -650,10 +649,10 @@ void HandleSwitchTabAction(std::string const &id, std::string const &data) {
 	std::string const button = std::string("to_") + name;
 	bool const ok = ProbeScreenButtonReady(button.c_str(), "switch_tab button") &&
 	                DispatchScreenButton(button.c_str(), "switch_tab dispatch");
-	std::string const message =
-	    ok ? std::string("Switched to the ") + name + " tab."
-	       : std::string("Switching to the ") + name + " tab failed.";
-	NeuroSendActionResult(id.c_str(), ok, message.c_str());
+	std::string const done = std::string("Switched to the ") + name + " tab.";
+	std::string const failed =
+	    std::string("Switching to the ") + name + " tab failed.";
+	AnswerPress(id, ok, done.c_str(), failed.c_str());
 }
 
 // Lists the saved games as Neuro will have to refer to them. Sent on entering

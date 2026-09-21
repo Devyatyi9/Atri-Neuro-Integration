@@ -36,6 +36,12 @@ bool ParseProbeInt(std::string const &text, int &out, char const *tag) {
 	return false;
 }
 
+// Set by the presses below: whether the one just asked for was turned away
+// because an earlier press has not left the engine's idle queue yet. Read
+// right after a press that returned false, on the thread that made it, to
+// tell that case apart from a control that cannot be pressed at all.
+bool g_LastPressBusy = false;
+
 // The recurring shape: run one probe, and treat "could not ask" the same as
 // "the answer is no".
 bool Ask(wchar_t const *expr, char const *tag) {
@@ -62,6 +68,45 @@ bool AskFormatted(wchar_t const *format, char const *tag, ...) {
 	return Ask(probe, tag);
 }
 
+// A press answers with a code rather than a flag, because "not now, the last
+// one is still running" is not the same refusal as "this cannot be pressed".
+// Ask() cannot carry that: it reads every non-zero as a yes. Returns -1 when
+// the game could not be asked.
+int AskCode(wchar_t const *expr, char const *tag) {
+	std::string answer;
+	if (!QueryString(expr, answer, tag)) {
+		return -1;
+	}
+	int value = 0;
+	if (!ParseProbeInt(answer, value, tag)) {
+		return -1;
+	}
+	return value;
+}
+
+// Runs a press that answers with a code and records whether it was refused as
+// busy. 1 is the press taken, 2 the press refused because another is still on
+// its way, anything else an ordinary refusal.
+bool TakePress(wchar_t const *expr, char const *tag) {
+	int const code = AskCode(expr, tag);
+	g_LastPressBusy = code == 2;
+	return code == 1;
+}
+
+bool TakePressFormatted(wchar_t const *format, char const *tag, ...) {
+	wchar_t probe[1024];
+	va_list args;
+	va_start(args, tag);
+	int const written = _vsnwprintf_s(probe, _TRUNCATE, format, args);
+	va_end(args);
+	if (written < 0) {
+		Log(("[Action] " + std::string(tag) + " press did not fit\n").c_str());
+		g_LastPressBusy = false;
+		return false;
+	}
+	return TakePress(probe, tag);
+}
+
 std::wstring Format(wchar_t const *format, ...) {
 	wchar_t text[1024];
 	va_list args;
@@ -84,6 +129,7 @@ std::wstring Format(wchar_t const *format, ...) {
 bool AskDeferred(std::wstring const &guard,
                  std::wstring const &press,
                  char const *tag) {
+	g_LastPressBusy = false;
 	if (press.empty()) {
 		Log(("[Action] " + std::string(tag) + " press did not fit\n").c_str());
 		return false;
@@ -91,7 +137,7 @@ bool AskDeferred(std::wstring const &guard,
 	std::wstring code =
 	    L"(function(){ var p = typeof global.__neuroPressPending != 'undefined'"
 	    L" ? +global.__neuroPressPending : 0;"
-	    L" if (p > 0 && System.getTickCount() - p < 5000) return 0;"
+	    L" if (p > 0 && System.getTickCount() - p < 5000) return 2;"
 	    L" if (p > 0) Debug.message('[neuro] stale press flag cleared');";
 	code += guard;
 	code +=
@@ -102,7 +148,7 @@ bool AskDeferred(std::wstring const &guard,
 	    L" } catch (e) { Debug.message('[neuro] deferred press failed: ' +"
 	    L" e.message); } } incontextof global);"
 	    L" global.__neuroPressPending = System.getTickCount(); return 1; })()";
-	return Ask(code.c_str(), tag);
+	return TakePress(code.c_str(), tag);
 }
 
 wchar_t const *const kScreenButtonReady =
@@ -457,7 +503,7 @@ AdvanceResult AdvanceDialogue(char const *tag) {
 	        L"kag.isMoviePlaying()) return 3;"
 	        L" var p = typeof global.__neuroAdvancePending != 'undefined'"
 	        L" ? +global.__neuroAdvancePending : 0;"
-	        L" if (p > 0 && System.getTickCount() - p < 5000) return 4;"
+	        L" if (p > 0 && System.getTickCount() - p < 5000) return 5;"
 	        L" if (p > 0) Debug.message('[neuro] stale advance flag cleared');"
 	        L" if (typeof kag.clickWaiting == 'undefined' || "
 	        L"!kag.clickWaiting) return 4;"
@@ -490,6 +536,8 @@ AdvanceResult AdvanceDialogue(char const *tag) {
 			return AdvanceResult::MoviePlaying;
 		case 4:
 			return AdvanceResult::NothingWaiting;
+		case 5:
+			return AdvanceResult::StillRunning;
 		default:
 			return AdvanceResult::Unavailable;
 	}
@@ -507,6 +555,10 @@ bool ProbeClickWaiting(char const *tag) {
 
 bool DispatchPrimaryClick(char const *tag) {
 	return Ask(L"(function(){ kag.onPrimaryClick(); return 1; })()", tag);
+}
+
+bool LastPressWasBusy() {
+	return g_LastPressBusy;
 }
 
 bool DispatchMovieSkip(char const *tag) {
@@ -565,13 +617,13 @@ bool DispatchChoice(int index, char const *tag) {
 	// flag keeps a second request from queueing another press; it is cleared by
 	// the press itself, by any request that finds the choice gone, and lapses
 	// on its own after a few seconds.
-	return AskFormatted(
+	return TakePressFormatted(
 	    L"(function(){ var layer = kag.selectLayer;"
 	    L" if (layer.selects == void || layer.selects.count <= %d) {"
 	    L" global.__neuroChoicePending = 0; return 0; }"
 	    L" var p = typeof global.__neuroChoicePending != 'undefined'"
 	    L" ? +global.__neuroChoicePending : 0;"
-	    L" if (p > 0 && System.getTickCount() - p < 5000) return 0;"
+	    L" if (p > 0 && System.getTickCount() - p < 5000) return 2;"
 	    L" if (p > 0) Debug.message('[neuro] stale choice flag cleared');"
 	    L" if (!isvalid layer.selects[%d]) return 0;"
 	    L" runOnceDelayedTrigger(function {"

@@ -96,18 +96,14 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIsMenuScreen("return_to_title state") &&
 	                ProbeScreenButtonReady("title", "return_to_title button") &&
 	                DispatchScreenButton("title", "return_to_title dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "Returning to the title screen is unavailable.");
-		return;
-	}
 	// The game asks for confirmation when SystemConfig.askTitle is set, so this
 	// action deliberately stops at the question rather than answering it: losing
 	// unsaved progress should not happen from one call. answer_dialog becomes
 	// available as soon as the dialog is up.
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    "Asked to return to the title screen; confirm or cancel the dialog.");
+	AnswerPress(
+	    id, ok,
+	    "Asked to return to the title screen; confirm or cancel the dialog.",
+	    "Returning to the title screen is unavailable.");
 }
 
 // What each confirmation is about, as the outcome of answering it rather than
@@ -184,8 +180,11 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 			    "The dialog is already closed; there is nothing to answer.");
 			return;
 		}
-		NeuroSendActionResult(id.c_str(), false,
-		                      "The dialog is up but its buttons did not answer.");
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    LastPressWasBusy()
+		        ? kPressStillRunning
+		        : "The dialog is up but its buttons did not answer.");
 		return;
 	}
 	if (!loadTitle.empty()) {
@@ -213,11 +212,8 @@ void HandleGoBackAction(std::string const &id, std::string const &data) {
 	bool const ok = ProbeStateIsMenuScreen("go_back state") &&
 	                ProbeScreenButtonReady("back", "go_back button") &&
 	                DispatchScreenButton("back", "go_back dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false, "Going back is unavailable.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true, "Returned to the previous screen.");
+	AnswerPress(id, ok, "Returned to the previous screen.",
+	            "Going back is unavailable.");
 }
 
 void HandleConfirmLanguageAction(std::string const &id,
@@ -233,14 +229,10 @@ void HandleConfirmLanguageAction(std::string const &id,
 	bool const ok = ProbeLanguageScreen("confirm_language screen") &&
 	                ProbeScreenButtonReady("back", "confirm_language button") &&
 	                DispatchScreenButton("back", "confirm_language dispatch");
-	if (!ok) {
-		NeuroSendActionResult(id.c_str(), false,
-		                      "The language screen is no longer up.");
-		return;
-	}
-	NeuroSendActionResult(id.c_str(), true,
-	                      "Language confirmed. The game is going on to the "
-	                      "title screen.");
+	AnswerPress(id, ok,
+	            "Language confirmed. The game is going on to the title "
+	            "screen.",
+	            "The language screen is no longer up.");
 }
 
 }  // namespace
