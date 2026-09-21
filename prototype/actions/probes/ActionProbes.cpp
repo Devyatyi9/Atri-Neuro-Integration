@@ -925,10 +925,16 @@ bool ProbeVoiceLine(int index, std::string &out) {
 	        probe, _TRUNCATE,
 	        L"(function(){ var st = global.__cm_saveStore;"
 	        L"if (typeof st != 'Object') return '';"
+	        // The line is the game's own text and the record is tab-separated:
+	        // a tab or a newline inside it would shift every field after it.
+	        L"var flat = function(v) { var t = '' + v; var a = [];"
+	        L" a.split('\\t', t); t = a.join(' ');"
+	        L" a = []; a.split('\\n', t); t = a.join(' ');"
+	        L" a = []; a.split('\\r', t); return a.join(' '); };"
 	        L"try { var d = st.getItemInfo(%d);"
 	        L"if (typeof d != 'Object') return '';"
-	        L"return ('' + d.name) + '\\t' + ('' + d.scene) + '\\t' + "
-	        L"('' + d.text) + '\\t' + (st.lastSaved == %d ? '1' : '0'); }"
+	        L"return flat(d.name) + '\\t' + flat(d.scene) + '\\t' + "
+	        L"flat(d.text) + '\\t' + (st.lastSaved == %d ? '1' : '0'); }"
 	        L"catch (e) { return ''; } })()",
 	        index, index) < 0) {
 		Log("[Action] voice line probe did not fit\n");
@@ -991,6 +997,13 @@ bool ProbeSlotDetails(int position, std::string &out) {
 	        // cannot hold a void, so it becomes the empty field it means.
 	        L"var c = st.getCommentText(idx, null, 1);"
 	        L"if (c === void) c = '';"
+	        // The record below is tab-separated and one line, and a comment is
+	        // the player's own text: a tab or a newline in it would shift every
+	        // field after it. They become spaces here, where the text is still
+	        // whole.
+	        L"var p1 = []; p1.split('\\t', c); c = p1.join(' ');"
+	        L"var p2 = []; p2.split('\\n', c); c = p2.join(' ');"
+	        L"var p3 = []; p3.split('\\r', c); c = p3.join(' ');"
 	        // The screen badges one slot "New": the one the store remembers as
 	        // written last. Nothing on the record itself says so.
 	        L"var fresh = (st.lastSaved == idx) ? '1' : '0';"
@@ -1162,10 +1175,16 @@ bool ProbeCurrentLine(int langType, std::string &out) {
 }
 
 bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
-	wchar_t probe[1024];
+	wchar_t probe[1536];
 	if (_snwprintf_s(
 	        probe, _TRUNCATE,
 	        L"(function(){ if (typeof global.__cm_backlog != 'Object') return '';"
+	        // One row per line, fields by tab: a line whose own text carries
+	        // either would split the row or shift its fields.
+	        L"var flat = function(v) { var t = '' + v; var a = [];"
+	        L" a.split('\\t', t); t = a.join(' ');"
+	        L" a = []; a.split('\\n', t); t = a.join(' ');"
+	        L" a = []; a.split('\\r', t); return a.join(' '); };"
 	        L"try { var p = global.__cm_backlog.playerObject;"
 	        L"var n = p.getHistoryCount(), s = '';"
 	        L"var lt = %d < 0 ? kag.languageType : %d;"
@@ -1174,9 +1193,9 @@ bool ProbeHistoryWindow(int from, int count, int langType, std::string &out) {
 	        L"var d = p.getHistoryData(i);"
 	        L"var nm = kag.getLangInfo(d, 'disp', lt);"
 	        L"if (nm == '') nm = d.name;"
-	        L"s += (i + 1) + '\\t' + nm + '\\t' + "
+	        L"s += (i + 1) + '\\t' + flat(nm) + '\\t' + "
 	        L"(d.voice !== void ? '1' : '0') + '\\t' + "
-	        L"kag.getLangInfo(d, 'text', lt) + '\\n'; }"
+	        L"flat(kag.getLangInfo(d, 'text', lt)) + '\\n'; }"
 	        L"return s; } catch (e) { return ''; } })()",
 	        langType, langType, from, from + count) < 0) {
 		Log("[Action] history window probe did not fit\n");

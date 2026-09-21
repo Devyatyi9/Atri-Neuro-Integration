@@ -15,6 +15,7 @@
 #include "NeuroClient.h"
 #include "ParseNumber.h"
 #include "SlotPayload.h"
+#include "UtfConversion.h"
 
 namespace {
 
@@ -468,7 +469,17 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 		                      "edit_comment requires a \"text\" string.");
 		return;
 	}
-	if (text.size() > kEditCommentLimit) {
+	// Counted in characters, which is what the schema promises and what the slot
+	// shows. The text arrives as UTF-8, where one character is one to four
+	// bytes, so counting bytes would refuse a Cyrillic or Japanese comment half
+	// that long -- one that followed the schema.
+	std::wstring wideText;
+	if (!Utf8ToUtf16(text.c_str(), text.size(), wideText)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That comment could not be read as text.");
+		return;
+	}
+	if (wideText.size() > kEditCommentLimit) {
 		// Refused rather than cut: a comment that comes back shorter than it was
 		// sent is a quiet lie about what the save now says.
 		NeuroSendActionResult(
