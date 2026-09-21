@@ -652,6 +652,10 @@ void RefreshPrototypeActionState() {
 	if (stateChanged) {
 		lastObservedState = screen.state;
 		Log(("[Action] Observed state: '" + screen.state + "'\n").c_str());
+		// A press waiting in the engine's queue belongs to the screen it was
+		// asked for. Once that screen is gone the press may never run, and its
+		// flag would go on refusing the next one until it lapsed.
+		ClearPendingPresses();
 	}
 
 	if (screen.state == "title") {

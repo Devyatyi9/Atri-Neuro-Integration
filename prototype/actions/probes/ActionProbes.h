@@ -132,6 +132,10 @@ AdvanceResult AdvanceDialogue(char const *tag);
 // Whether the last press was refused because the one before it is still on
 // its way through the engine. Only meaningful right after a press that
 // returned false, on the thread that made it.
+// Drops the pending-press flags. For the boundary a press can be lost across:
+// the screen changing between the request and the engine running it.
+void ClearPendingPresses();
+
 bool LastPressWasBusy();
 
 // Ends a playing movie with an ordinary click.

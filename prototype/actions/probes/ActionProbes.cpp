@@ -557,6 +557,22 @@ bool DispatchPrimaryClick(char const *tag) {
 	return Ask(L"(function(){ kag.onPrimaryClick(); return 1; })()", tag);
 }
 
+void ClearPendingPresses() {
+	// The three flags that say "a press of ours is on its way". Each is cleared
+	// by the press it belongs to, and lapses on its own after a few seconds; this
+	// is the third way out, for the press the engine never ran because the screen
+	// changed under it. Assignment rather than delete: a member that was never
+	// set reads as an error, and zero is what every reader treats as "nothing
+	// pending".
+	std::string answer;
+	ExecuteTJSSync(
+	    L"(function(){ global.__neuroPressPending = 0;"
+	    L" global.__neuroAdvancePending = 0;"
+	    L" global.__neuroChoicePending = 0; return 1; })()",
+	    &answer, 5000, TJSExecMode::Expression);
+	g_LastPressBusy = false;
+}
+
 bool LastPressWasBusy() {
 	return g_LastPressBusy;
 }
