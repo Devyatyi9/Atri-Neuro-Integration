@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include "tooling/NeuroTCPServer.h"
 
@@ -260,6 +261,68 @@ void ApplySetting(PluginConfig &config,
 	// should not stop this one from starting.
 }
 
+// The command line as a list of arguments, quotes honoured: a path with a
+// space in it is one argument, and the quotes are not part of it.
+std::vector<std::wstring> SplitCommandLine(std::wstring const &commandLine) {
+	std::vector<std::wstring> arguments;
+	std::wstring current;
+	bool quoted = false;
+	bool started = false;
+	for (wchar_t const character : commandLine) {
+		if (character == L'"') {
+			quoted = !quoted;
+			started = true;
+			continue;
+		}
+		if (!quoted && (character == L' ' || character == L'\t')) {
+			if (started) {
+				arguments.push_back(current);
+				current.clear();
+				started = false;
+			}
+			continue;
+		}
+		current += character;
+		started = true;
+	}
+	if (started) {
+		arguments.push_back(current);
+	}
+	return arguments;
+}
+
+// An argument's key and value, or false when it is not one of ours. The key
+// comes back spelled as the file spells it, so one table of names serves both.
+bool ReadArgument(std::wstring const &argument,
+                  std::wstring &key,
+                  std::wstring &value) {
+	std::wstring rest = argument;
+	if (rest.compare(0, 2, L"--") == 0) {
+		rest.erase(0, 2);
+	} else if (!rest.empty() && (rest[0] == L'-' || rest[0] == L'/')) {
+		rest.erase(0, 1);
+	} else {
+		return false;
+	}
+	if (rest.compare(0, 6, L"neuro-") != 0) {
+		return false;
+	}
+	rest.erase(0, 6);
+	std::size_t const equals = rest.find(L'=');
+	if (equals == std::wstring::npos) {
+		return false;
+	}
+	key = Trim(rest.substr(0, equals));
+	value = Trim(rest.substr(equals + 1));
+	// A command line reads better with hyphens; the file has underscores.
+	for (wchar_t &character : key) {
+		if (character == L'-') {
+			character = L'_';
+		}
+	}
+	return !key.empty();
+}
+
 std::wstring ReadWholeFile(std::wstring const &path) {
 	FILE *file = nullptr;
 	if (_wfopen_s(&file, path.c_str(), L"rt, ccs=UTF-8") != 0 || !file) {
@@ -277,23 +340,32 @@ std::wstring ReadWholeFile(std::wstring const &path) {
 }
 
 PluginConfig LoadConfig() {
-	std::wstring path = FindConfigFile();
+	std::wstring const commandLine = GetCommandLineW();
+	// A file named on the command line is used as named, even when it is not
+	// there yet: asking for a config by path is also a way of asking for one.
+	// Otherwise the usual search, and failing that the plain name beside the
+	// exe, so an installation without a config ends up with one to edit.
+	std::wstring path = CommandLineConfigPath(commandLine);
 	if (path.empty()) {
-		std::wstring const fresh = DefaultConfigPath();
-		if (WriteDefaultConfig(fresh)) {
-			g_ConfigCreated = true;
-			path = fresh;
+		path = FindConfigFile();
+	}
+	if (path.empty()) {
+		path = DefaultConfigPath();
+	}
+	if (!path.empty() && WriteDefaultConfig(path)) {
+		g_ConfigCreated = true;
+	}
+	PluginConfig config = ParsePluginConfig(std::wstring());
+	if (!path.empty()) {
+		std::wstring const text = ReadWholeFile(path);
+		if (!text.empty()) {
+			g_ConfigSource = path;
+			config = ParsePluginConfig(text);
 		}
 	}
-	if (path.empty()) {
-		return ParsePluginConfig(std::wstring());
-	}
-	std::wstring const text = ReadWholeFile(path);
-	if (text.empty()) {
-		return ParsePluginConfig(std::wstring());
-	}
-	g_ConfigSource = path;
-	return ParsePluginConfig(text);
+	// Last, because an argument is typed for this one launch.
+	ApplyCommandLine(config, commandLine);
+	return config;
 }
 
 }  // namespace
@@ -324,6 +396,35 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 		start = end + 1;
 	}
 	return config;
+}
+
+void ApplyCommandLine(PluginConfig &config, std::wstring const &commandLine) {
+	for (std::wstring const &argument : SplitCommandLine(commandLine)) {
+		std::wstring key;
+		std::wstring value;
+		if (!ReadArgument(argument, key, value)) {
+			continue;
+		}
+		// Which file to read is not a setting in the file, so it is handled
+		// where the file is chosen and ignored here.
+		if (key == L"config") {
+			continue;
+		}
+		ApplySetting(config, key, value);
+	}
+}
+
+std::wstring CommandLineConfigPath(std::wstring const &commandLine) {
+	std::wstring path;
+	for (std::wstring const &argument : SplitCommandLine(commandLine)) {
+		std::wstring key;
+		std::wstring value;
+		if (ReadArgument(argument, key, value) && key == L"config") {
+			// Last one wins, the same as a repeated key in the file.
+			path = value;
+		}
+	}
+	return path;
 }
 
 PluginConfig const &GetPluginConfig() {

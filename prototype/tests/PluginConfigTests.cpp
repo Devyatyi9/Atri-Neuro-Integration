@@ -53,6 +53,12 @@ void ExpectDisabled(wchar_t const *text, char const *expected) {
 	            "disabled_actions");
 }
 
+PluginConfig FromCommandLine(wchar_t const *file, wchar_t const *commandLine) {
+	PluginConfig config = ParsePluginConfig(file);
+	ApplyCommandLine(config, commandLine);
+	return config;
+}
+
 }  // namespace
 
 void RunPluginConfigTests() {
@@ -142,4 +148,44 @@ void RunPluginConfigTests() {
 	ExpectDisabled(L"disabled_actions = skip_movie", "skip_movie");
 	ExpectDisabled(L"disabled_actions = skip_movie, read_backlog",
 	               "skip_movie, read_backlog");
+	// The command line is typed for one launch and beats the file, which is
+	// what the installation does every time.
+	{
+		PluginConfig const config =
+		    FromCommandLine(L"tcp_port = 18700", L"game.exe -neuro-tcp-port=18705");
+		ReportCheck(config.TcpPort == 18705, __FILE__, __LINE__, "argument wins");
+	}
+	{
+		// Both spellings of the key: a command line reads with hyphens and
+		// the file is written with underscores.
+		PluginConfig const config =
+		    FromCommandLine(L"", L"game.exe -neuro-ws_url=127.0.0.1:9000");
+		ReportCheck(config.WsUrl == "ws://127.0.0.1:9000", __FILE__, __LINE__,
+		            "underscore key");
+	}
+	{
+		PluginConfig const config =
+		    FromCommandLine(L"logs = on", L"game.exe --neuro-logs=off");
+		ReportCheck(!config.Logs, __FILE__, __LINE__, "double dash");
+	}
+	{
+		// Quotes hold a path with a space in it together, and are not part
+		// of the value.
+		PluginConfig const config =
+		    FromCommandLine(L"", L"game.exe \"-neuro-log-dir=D:\\two words\"");
+		ReportCheck(config.LogDirectory == L"D:\\two words", __FILE__, __LINE__,
+		            "quoted value");
+	}
+	{
+		// Anything that is not ours is left alone: the engine has its own
+		// arguments on the same line.
+		PluginConfig const config = FromCommandLine(
+		    L"tcp_port = 18700", L"game.exe -fullscreen -neurolog=off -other=1");
+		ReportCheck(config.TcpPort == 18700, __FILE__, __LINE__, "foreign args");
+	}
+	ReportCheck(CommandLineConfigPath(L"game.exe -neuro-config=D:\\a.ini") ==
+	                L"D:\\a.ini",
+	            __FILE__, __LINE__, "config path");
+	ReportCheck(CommandLineConfigPath(L"game.exe").empty(), __FILE__, __LINE__,
+	            "no config path");
 }

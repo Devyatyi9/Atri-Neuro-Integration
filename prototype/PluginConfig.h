@@ -61,6 +61,19 @@ PluginConfig const &GetPluginConfig();
 // the file so the parsing can be tested without one.
 PluginConfig ParsePluginConfig(std::wstring const &text);
 
+// Applies `-neuro-<key>=<value>` arguments on top of what the file said. The
+// command line wins: it is typed for one launch, while the file is what the
+// installation does every time.
+//
+// The engine takes unknown `-name=value` arguments without complaint, so these
+// travel in an ordinary shortcut. Keys are the file's, and '-' is accepted
+// where the file writes '_', so -neuro-ws-url and -neuro-ws_url are one thing.
+void ApplyCommandLine(PluginConfig &config, std::wstring const &commandLine);
+
+// The config file named by -neuro-config, empty when none is. Read before the
+// file itself, because it decides which file that is.
+std::wstring CommandLineConfigPath(std::wstring const &commandLine);
+
 // The file the settings came from, for the plugin to report once logging is up.
 // Empty when no file was found and none could be written.
 std::wstring const &GetPluginConfigSource();

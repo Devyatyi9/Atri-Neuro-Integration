@@ -30,6 +30,10 @@ param(
     [int]$Port = 18700,
     [string]$GameExe = "D:\Games\ATRI-TestVersion\ATRI-MyDearMoments-.exe",
     [string]$WsUrl = "ws://127.0.0.1:8000",
+    # Extra arguments for the game, passed through as typed. The plugin reads
+    # its own -neuro-<key>=<value> ones straight from the command line, which is
+    # the only way to set something that matters before the config is read.
+    [string[]]$GameArgs = @(),
     # procdump watches for the game and writes a full dump on an unhandled
     # exception. Two crashes were lost before this was wired in, because the
     # tool has to be running *before* the fault, and remembering it by hand does
@@ -144,7 +148,12 @@ function Restart-Game([switch]$CloseEveryInstance) {
 
     Write-Host "Starting game..."
     $env:NEURO_WS_URL = $WsUrl
-    Start-Process -FilePath $GameExe -WorkingDirectory $GameDir
+    if ($GameArgs.Count -gt 0) {
+        Write-Host "Game arguments: $($GameArgs -join ' ')"
+        Start-Process -FilePath $GameExe -WorkingDirectory $GameDir -ArgumentList $GameArgs
+    } else {
+        Start-Process -FilePath $GameExe -WorkingDirectory $GameDir
+    }
     Write-Host "Game started. Waiting for TCP server..."
 
     $waitStart = Get-Date
