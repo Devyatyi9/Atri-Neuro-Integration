@@ -32,6 +32,9 @@ constexpr int kFlagChoice = 1 << 0;
 constexpr int kFlagPanelOut = 1 << 1;
 constexpr int kFlagAuto = 1 << 2;
 constexpr int kFlagSkip = 1 << 3;
+// A movie is on screen. It is a play state of its own: the text cannot be
+// advanced while one runs, and ending it is the only thing there is to do.
+constexpr int kFlagMovie = 1 << 4;
 
 void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 	if (!IsEmptyJsonObject(data)) {
@@ -56,6 +59,19 @@ void HandleAdvanceTextAction(std::string const &id, std::string const &data) {
 			NeuroSendActionResult(id.c_str(), false, "Text advance is unavailable.");
 			return;
 	}
+}
+
+void HandleSkipMovieAction(std::string const &id, std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "skip_movie does not accept arguments.");
+		return;
+	}
+	if (!DispatchMovieSkip("skip movie")) {
+		NeuroSendActionResult(id.c_str(), false, "No movie is playing.");
+		return;
+	}
+	NeuroSendActionResult(id.c_str(), true, "Skipped the movie.");
 }
 
 void HandleSelectChoiceAction(std::string const &id, std::string const &data) {
@@ -278,6 +294,8 @@ bool Handle(std::string const &id,
             std::string const &data) {
 	if (name == "advance_text") {
 		HandleAdvanceTextAction(id, data);
+	} else if (name == "skip_movie") {
+		HandleSkipMovieAction(id, data);
 	} else if (name == "select_choice") {
 		HandleSelectChoiceAction(id, data);
 	} else if (name == "read_current_line") {
@@ -363,7 +381,11 @@ void AppendActions(ActionSet &set, int payload) {
 	        "Read the line currently on screen. Pass language \"japanese\" for "
 	        "the original wording.",
 	        kReadLineSchema);
-	if ((payload & kFlagChoice) != 0) {
+	if ((payload & kFlagMovie) != 0) {
+		// Advancing is not offered beside it: while a movie plays nothing waits
+		// for a click, so the text advance can only refuse.
+		set.add("skip_movie", "Skip the movie that is playing.", kSkipMovieSchema);
+	} else if ((payload & kFlagChoice) != 0) {
 		set.add("select_choice",
 		        "Choose a dialogue option by its number in the list, counting "
 		        "from 1.",
@@ -484,6 +506,9 @@ void AppendHiddenActions(ActionSet &set) {
 
 int ReadPayload(ScreenSnapshot const &screen) {
 	int payload = 0;
+	if (screen.moviePlaying) {
+		payload |= kFlagMovie;
+	}
 	if (screen.choiceVisible) {
 		payload |= kFlagChoice;
 	}

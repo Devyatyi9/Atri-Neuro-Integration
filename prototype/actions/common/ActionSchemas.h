@@ -23,6 +23,9 @@ constexpr char const *const kContinueGameSchema =
 constexpr char const *const kAdvanceTextSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kSkipMovieSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kGoBackSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";

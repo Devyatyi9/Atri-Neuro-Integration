@@ -287,7 +287,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
 	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0, pn = 0, em = 0;"
-	    L"var qv = 0;"
+	    L"var qv = 0, mv = 0;"
 	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
@@ -302,6 +302,8 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"if (typeof kag.QuickMenu == 'Object') {"
 	    L"if (kag.QuickMenu._dropdown) p = 1;"
 	    L"if (kag.QuickMenu.visible) qv = 1; }"
+	    L"if (typeof kag.isMoviePlaying == 'Object' && kag.isMoviePlaying()) "
+	    L"mv = 1;"
 	    L"if (kag.messageLayerHiding) h = 1;"
 	    L"if (kag.autoMode) a = 1;"
 	    // skipMode is a level, not a flag: 1 and 2 are the momentary states of an
@@ -337,19 +339,19 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
-	    L"+ '|' + pn + '|' + em + '|' + qv + '|' + sg; })()",
+	    L"+ '|' + pn + '|' + em + '|' + qv + '|' + mv + '|' + sg; })()",
 	    &probe, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
 		return false;
 	}
 
-	// "<state>", then fifteen single-digit flags each behind a bar, then the
+	// "<state>", then sixteen single-digit flags each behind a bar, then the
 	// scenario storage. Neither string contains a bar, so the flags sit at fixed
 	// offsets from the first one and the storage is whatever follows them. The
 	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	size_t const flagsEnd = separator + 30;
+	size_t const flagsEnd = separator + 32;
 	if (separator == std::string::npos || probe.size() <= flagsEnd ||
 	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
@@ -371,6 +373,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.panelShowing = probe[separator + 25] == '1';
 	out.editMenuReady = probe[separator + 27] == '1';
 	out.quickMenuVisible = probe[separator + 29] == '1';
+	out.moviePlaying = probe[separator + 31] == '1';
 	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }
@@ -504,6 +507,17 @@ bool ProbeClickWaiting(char const *tag) {
 
 bool DispatchPrimaryClick(char const *tag) {
 	return Ask(L"(function(){ kag.onPrimaryClick(); return 1; })()", tag);
+}
+
+bool DispatchMovieSkip(char const *tag) {
+	// A movie ends on an ordinary click, the way a player ends one. Nothing is
+	// waiting for a click while it plays, so the readiness checks the text
+	// advance makes would refuse this -- the click goes straight out, deferred
+	// like every other press.
+	return AskDeferred(
+	    L"if (typeof kag == 'undefined' || typeof kag.isMoviePlaying != "
+	    L"'Object' || !kag.isMoviePlaying()) return 0;",
+	    L"kag.onPrimaryClick();", tag);
 }
 
 bool ProbeChoiceLayerReady(char const *tag) {

@@ -74,6 +74,9 @@ struct ScreenSnapshot {
 	// its entries do -- and a set rebuilt inside that window describes neither
 	// the screen nor the menu.
 	bool editMenuReady = false;
+	// A movie is on screen. While one plays nothing waits for a click, so the
+	// text cannot be advanced and only skipping the movie applies.
+	bool moviePlaying = false;
 };
 bool ProbeScreen(ScreenSnapshot &out);
 
@@ -125,6 +128,9 @@ AdvanceResult AdvanceDialogue(char const *tag);
 
 // The select layer is up with at least one enabled option; `index` is 0-based
 // here, matching the engine array.
+// Ends a playing movie with an ordinary click.
+bool DispatchMovieSkip(char const *tag);
+
 bool ProbeChoiceLayerReady(char const *tag);
 bool ProbeChoiceButtonReady(int index, char const *tag);
 bool DispatchChoice(int index, char const *tag);
