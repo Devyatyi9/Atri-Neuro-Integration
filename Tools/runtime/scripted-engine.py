@@ -351,6 +351,114 @@ def game_directory(port):
     return os.path.join(parts[0].upper() + ":\\", tail.replace("/", "\\"))
 
 
+# The four knobs fast-playback-on.tjs turns up, and the only settings a run
+# changes behind the player's back.
+SPEED_KNOBS = ("textspeed", "autospeed", "drawspeed", "autoModeWaitVoice")
+
+
+def speed_snapshot_path(port):
+    """Where the player's own speeds are kept while a run has them turned up.
+
+    In the game's folder, beside the plugin's own files, because the snapshot
+    has to outlive both this process and the game: the settings are written to
+    disk, so a run that ends in a crash leaves them turned up with nothing in
+    memory left to put them back. One file per port, so two instances do not
+    overwrite each other's.
+    """
+    directory = game_directory(port)
+    if not directory:
+        return None
+    return os.path.join(directory, f"neuro-speeds-{port}.json")
+
+
+def read_speeds(port):
+    """The four knobs as the game has them now, or None if it cannot say."""
+    parts = " + ',' + ".join(f"kag.{knob}" for knob in SPEED_KNOBS)
+    try:
+        answer = send_tjs(port, f"(function(){{ return '' + {parts}; }})()").strip()
+    except OSError as error:
+        say(f"could not read the speed settings: {error}")
+        return None
+    values = answer.split(",")
+    if len(values) != len(SPEED_KNOBS):
+        say(f"could not read the speed settings: the game said {answer!r}")
+        return None
+    speeds = {}
+    for knob, value in zip(SPEED_KNOBS, values):
+        try:
+            float(value)
+        except ValueError:
+            say(f"could not read the speed settings: {knob}={value!r}")
+            return None
+        speeds[knob] = value
+    return speeds
+
+
+def write_speeds(port, speeds):
+    """Puts the snapshot's values back, and makes them stick."""
+    sets = " ".join(f"kag.{knob} = {speeds[knob]};" for knob in SPEED_KNOBS)
+    try:
+        send_tjs(port, f"(function(){{ {sets} kag.saveSystemVariables(); return 1; }})()")
+    except OSError as error:
+        say(f"could not put the speed settings back: {error}")
+        return False
+    return True
+
+
+def keep_speed_snapshot(port):
+    """Writes the player's speeds down before a run turns them up."""
+    path = speed_snapshot_path(port)
+    speeds = read_speeds(port) if path else None
+    if not speeds:
+        say("the speeds are turned up without a snapshot to put them back")
+        return
+    try:
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(speeds, handle)
+        say(f"speeds noted in {path}: " +
+            " ".join(f"{k}={v}" for k, v in speeds.items()))
+    except OSError as error:
+        say(f"could not write the speed snapshot: {error}")
+
+
+def forget_speed_snapshot(port):
+    """Drops the snapshot once the speeds are back where they belong."""
+    path = speed_snapshot_path(port)
+    if not path:
+        return
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        say(f"could not remove the speed snapshot: {error}")
+
+
+def restore_leftover_speeds(port):
+    """Puts back what a run that never finished left turned up.
+
+    A snapshot still on disk at the start of a run means the last one ended
+    without restoring -- the game crashed, or was killed. The values in it are
+    the player's; the ones in the game are ours.
+    """
+    path = speed_snapshot_path(port)
+    if not path or not os.path.exists(path):
+        return
+    try:
+        with open(path, encoding="utf-8") as handle:
+            speeds = json.load(handle)
+        missing = [knob for knob in SPEED_KNOBS if knob not in speeds]
+        if missing:
+            raise ValueError(f"no {', '.join(missing)} in it")
+    except (OSError, ValueError) as error:
+        say(f"could not read the speed snapshot {path}: {error}")
+        return
+    say("an earlier run left the speeds turned up; putting back " +
+        " ".join(f"{knob}={speeds[knob]}" for knob in SPEED_KNOBS))
+    if write_speeds(port, speeds):
+        forget_speed_snapshot(port)
+
+
 class MemoryRegion(ctypes.Structure):
     """MEMORY_BASIC_INFORMATION as a 64-bit caller sees it.
 
@@ -1093,11 +1201,20 @@ class Engine:
         if not self.options.fast or self.speed_restored:
             return
         self.speed_restored = True
+        restored = None
         try:
             with open(REPO_TJS_SLOW, encoding="utf-8") as handle:
-                say("speed restored: " + send_tjs(self.options.tjs_port, handle.read()).strip())
+                restored = send_tjs(self.options.tjs_port, handle.read()).strip()
+            say(f"speed restored: {restored}")
         except OSError as error:
             say(f"could not restore the speed settings: {error}")
+        if restored == "1":
+            forget_speed_snapshot(self.options.tjs_port)
+        else:
+            # Nothing was held in the game: it was restarted since the speeds
+            # went up, which the chain does between routes. The snapshot is the
+            # only copy of the player's values left.
+            restore_leftover_speeds(self.options.tjs_port)
 
     def diagnose_missing_choice(self):
         """Says why the route is stuck when no choice list has been seen.
@@ -1333,10 +1450,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def prepare_game(options):
     """Puts the game in the state the chosen mode needs, once, before serving."""
+    restore_leftover_speeds(options.tjs_port)
     if options.mode != "auto" and not options.fast:
         return
     try:
         if options.fast:
+            keep_speed_snapshot(options.tjs_port)
             send_tjs(options.tjs_port,
                      f"global.__neuroDrawSpeed = {options.draw_speed}")
             with open(REPO_TJS_FAST, encoding="utf-8") as handle:

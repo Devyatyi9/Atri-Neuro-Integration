@@ -8,6 +8,8 @@ assert(kag.autospeed == 45, "autospeed not restored, got " + kag.autospeed);
 assert(kag.drawspeed == 1, "drawspeed not restored, got " + kag.drawspeed);
 assert(kag.autoModeWaitVoice == 1, "autoModeWaitVoice not restored");
 
+assert(kag.__stubSystemSaves > 0, "the restored settings were not saved");
+
 // What makes a second run a no-op rather than a wipe.
 assert(typeof kag.__neuroSpeedOriginal == "void", "the saved settings were left behind");
 

@@ -16,4 +16,7 @@ kag.autospeed = kag.__neuroSpeedOriginal.autospeed;
 kag.drawspeed = kag.__neuroSpeedOriginal.drawspeed;
 kag.autoModeWaitVoice = kag.__neuroSpeedOriginal.autoModeWaitVoice;
 kag.__neuroSpeedOriginal = void;
+// The speeds live on disk, so a restore that is only in memory lasts until the
+// next crash: the turned-up values are already saved, the player's are not.
+kag.saveSystemVariables();
 return 1;
