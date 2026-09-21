@@ -419,6 +419,23 @@ def run_checks(streams):
     checker.check("no action was answered twice", repeated == 0 and extra == 0,
                   f"{repeated} answered twice, {extra} result(s) for nothing sent")
 
+    # What the client itself complained about. Gary implements the protocol, so
+    # its own diagnostics are a stricter reading of the same run than anything
+    # rebuilt here -- and until now nobody read them. Its keys divide the same
+    # way our checks do: prot/ is the protocol broken, perf/ is it held but
+    # slowly, and slow is measured below rather than failed here.
+    diagnostics = {}
+    for row in streams["events"]:
+        if row.get("key") != "app/diagnostics/triggered":
+            continue
+        key = (((row.get("data") or {}).get("diag") or {}).get("key") or "")
+        if key:
+            diagnostics[key] = diagnostics.get(key, 0) + 1
+    broken = {k: n for k, n in diagnostics.items() if k.startswith("prot/")}
+    summary = ", ".join(f"{k} x{n}" for k, n in sorted(diagnostics.items()))
+    checker.check("the client reported no protocol fault", not broken,
+                  summary or "the client reported nothing")
+
     # Latency, against the client's own limit rather than one invented here:
     # it calls a result late past 500ms.
     LATE_MS = 500
@@ -577,10 +594,12 @@ def main():
                         help="how many seconds either side to show (default 5)")
     args = parser.parse_args()
 
-    # Every mode but --stats reads the game's own log as well, and reads it
-    # first, so say what is missing rather than failing inside a path join.
-    if not args.stats and not args.tag_log:
-        parser.error("--tag-log is required for everything except --stats")
+    # The modes that place a moment in the game's own log need that log. The
+    # ones that only read the client's record -- the measurements and the
+    # protocol checks -- do not, and asking for it turned a two-second check
+    # into a hunt for the right file.
+    if not (args.stats or args.check) and not args.tag_log:
+        parser.error("--tag-log is required except for --stats and --check")
 
     streams = load_run(args.run)
     # Measuring the client's own record needs nothing from the game's tag log,
@@ -590,14 +609,16 @@ def main():
         run_stats(streams)
         return
 
+    # The same for the protocol checks: they read the client's record and
+    # nothing else.
+    if args.check:
+        raise SystemExit(1 if run_checks(streams) else 0)
+
     tag_rows, unstamped, banner = load_tag_log(args.tag_log)
     print(banner or "note: the tag log names no instance -- an older build wrote it")
     if unstamped:
         print(f"note: {unstamped} tag log line(s) carry no timestamp -- "
               f"set log_timestamps = on in the instance config for a full picture\n")
-
-    if args.check:
-        raise SystemExit(1 if run_checks(streams) else 0)
 
     if args.list_choices:
         list_choices(streams)

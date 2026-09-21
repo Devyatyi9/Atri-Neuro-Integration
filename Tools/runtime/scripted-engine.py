@@ -252,25 +252,41 @@ def process_memory(pid):
 #
 # The walker lives in `global` because a local function in TJS cannot find
 # itself by name to recurse.
+# The same walk answers both halves of "more objects, or the same ones holding
+# more": how many layers there are, and how many bytes their images take. The
+# pitch is what the engine actually allocated per row, and it is negative for a
+# bottom-up buffer, so it is taken as a distance rather than as a number.
 LAYER_COUNT_TJS = (
-    "(function(){ global.__mem_n = 0;"
+    "(function(){ global.__mem_n = 0; global.__mem_b = 0;"
     " global.__mem_walk = function(l) { global.__mem_n++;"
+    " if (l.hasImage) global.__mem_b +="
+    " Math.abs(l.mainImageBufferPitch) * l.imageHeight;"
     " var c = l.children;"
     " for (var i = 0; i < c.count; i++) global.__mem_walk(c[i]); };"
     " global.__mem_walk(kag.primaryLayer);"
-    " return global.__mem_n; })()")
+    " return global.__mem_n + '|' + global.__mem_b; })()")
 
 
-def layer_count(port):
-    """How many layers hang off the primary layer, or None if it cannot be asked."""
+def layer_stats(port):
+    """Layers hanging off the primary layer and the bytes their images hold.
+
+    Returns (count, bytes), either of which is None when the game could not be
+    asked or answered with something unreadable -- an older build answers with
+    the count alone, and that still reads.
+    """
     try:
         answer = send_tjs(port, LAYER_COUNT_TJS).strip()
     except OSError:
-        return None
+        return None, None
+    count, _, held = answer.partition("|")
     try:
-        return int(answer)
+        layers = int(count)
     except ValueError:
-        return None
+        return None, None
+    try:
+        return layers, int(held)
+    except ValueError:
+        return layers, None
 
 
 def lock_pressure(port):
@@ -992,8 +1008,10 @@ class Engine:
         # or the same ones holding more.
         block = largest_free_block(self.game_pid)
         free = f" free_block={block:.0f}MB" if block is not None else ""
-        layers = layer_count(self.options.tjs_port)
+        layers, held = layer_stats(self.options.tjs_port)
         tree = f" layers={layers}" if layers is not None else ""
+        if held is not None:
+            tree += f" layer_bytes={held / (1024 * 1024):.0f}MB"
         pressure = lock_pressure(self.options.tjs_port)
         strain = f" {pressure}" if pressure else ""
         say(f"memory: {occasion} working={working:.0f}MB private={private:.0f}MB"
