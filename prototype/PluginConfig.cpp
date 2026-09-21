@@ -56,6 +56,14 @@ wchar_t const *const kDefaultConfigText =
     L"; file.\n"
     L"log_dir =\n"
     L"\n"
+    L"; One line per action in the plugin log, saying where its time went:\n"
+    L"; the handler's own work, the part of it spent waiting on the game's "
+    L"main\n"
+    L"; thread, and the wait before the result goes out. For measuring, not "
+    L"for\n"
+    L"; playing -- a route sends thousands of actions.\n"
+    L"log_action_timing = off\n"
+    L"\n"
     L"; Stamp every line of the tag log with the wall clock. For lining the "
     L"log up\n"
     L"; against another process's record of the same run.\n"
@@ -222,6 +230,10 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.LogTimestamps);
 		return;
 	}
+	if (key == L"log_action_timing") {
+		ReadSwitch(value, config.LogActionTiming);
+		return;
+	}
 	if (key == L"logs") {
 		ReadSwitch(value, config.Logs);
 		return;
@@ -374,6 +386,7 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	PluginConfig config;
 	config.TcpPort = NEURO_TCP_PORT;
 	config.LogTimestamps = false;
+	config.LogActionTiming = false;
 	config.Logs = true;
 	config.FirstRun = FirstRunMode::Auto;
 	config.LinkIndicator = true;

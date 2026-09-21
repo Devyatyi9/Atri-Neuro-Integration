@@ -146,6 +146,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/PluginConfig.cpp
         prototype/PluginConfig.h
         prototype/neuro/NeuroClient.cpp
+        prototype/tooling/ActionTiming.cpp
+        prototype/tooling/ActionTiming.h
         prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
         prototype/tooling/NeuroTCPServer.cpp

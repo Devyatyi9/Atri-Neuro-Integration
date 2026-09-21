@@ -15,6 +15,7 @@
 #include "tp_stub.h"
 #pragma warning(pop)
 
+#include "ActionTiming.h"
 #include "Logging.h"
 #include "UtfConversion.h"
 
@@ -723,6 +724,11 @@ bool ExecuteTJSSync(wchar_t const *code,
                     std::string *error) {
 	if (!g_AcceptTJSCalls.load(std::memory_order_acquire) || !code)
 		return false;
+
+	// Reported when this returns, by whichever path: the action-timing line
+	// wants the crossings an action made, and only the thread handling one is
+	// counted.
+	ActionTimingCrossing const crossing;
 
 	bool const useScriptApi = ResolveUseScriptApi(code, mode);
 	std::wstring wrappedCode =

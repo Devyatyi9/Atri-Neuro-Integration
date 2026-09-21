@@ -15,6 +15,7 @@
 
 #include <neurosdk.h>
 
+#include "ActionTiming.h"
 #include "Logging.h"
 #include "PluginConfig.h"
 #include "ThreadGuard.h"
@@ -312,6 +313,9 @@ void FlushOutboundMessages() {
 			LogError("Send queued message failed", error);
 			return;
 		}
+		if (entry.kind == NeuroSDK_MessageKind_ActionResult) {
+			ActionTimingResultSent(entry.id);
+		}
 	}
 }
 
@@ -343,6 +347,7 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 					    message->value.action.name ? message->value.action.name : "";
 					std::string const data =
 					    message->value.action.data ? message->value.action.data : "";
+					ActionTimingStart(id, name);
 					DispatchAction(id, name, data);
 					break;
 				}
@@ -768,6 +773,7 @@ bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 		MakeRoomForOutboundMessage();
 		g_OutboundMessages.push_back(msg);
 	}
+	ActionTimingResultQueued(id);
 	return true;
 }
 

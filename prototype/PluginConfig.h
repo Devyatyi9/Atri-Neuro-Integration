@@ -39,6 +39,10 @@ struct PluginConfig {
 	// same run -- what the game reported and what went over the wire are two
 	// separate stories, and only a shared clock tells which came first.
 	bool LogTimestamps;
+	// One line per action saying where its time went. Off by default: a route
+	// sends thousands of actions, and this is only wanted while the latency is
+	// being measured.
+	bool LogActionTiming;
 	// Whether the plugin writes its logs at all. The release build will decide
 	// this at compile time; here it is a switch, because a run that is being
 	// measured wants the logs and a run that is being played does not.
