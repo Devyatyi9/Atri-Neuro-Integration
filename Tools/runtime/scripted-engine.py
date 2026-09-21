@@ -1165,19 +1165,39 @@ class Engine:
             return None, "the route has no decisions left"
         decision = self.decisions[self.taken]
 
-        # By text only, and deliberately without a fallback to a number. A
-        # decision that does not match is a route that has drifted from the
-        # game -- a changed translation, another language, a typo here -- and
-        # picking something by position then sends the run down another branch
-        # while everything still looks healthy. A stopped run is cheaper than a
-        # wrong one, so this stops and says what it could not find.
+        # Text first, because it says what was meant and survives the options
+        # being reordered. A number is taken only when the route file names one:
+        # that is the author saying "this position, whatever it reads", and it
+        # is what keeps a run going when the text cannot match at all -- the
+        # game in another language, a changed translation. What is still
+        # refused is guessing a position nobody wrote down: a route that has
+        # silently drifted would send the run down another branch while
+        # everything looked healthy, and a stopped run is cheaper than a wrong
+        # one.
         wanted = decision.get("text", "").strip().casefold()
-        matches = [number for number, text in sorted(options.items())
-                   if text.strip().casefold() == wanted and number not in self.rejected]
-        if matches:
-            return matches[0], f"route: {decision.get('text')}"
-        return None, (f"route: no option reads {decision.get('text')!r}; "
-                      f"on offer: {sorted(options.values())}")
+        if wanted:
+            matches = [number for number, text in sorted(options.items())
+                       if text.strip().casefold() == wanted
+                       and number not in self.rejected]
+            if matches:
+                return matches[0], f"route: {decision.get('text')}"
+
+        index = decision.get("index")
+        if isinstance(index, int) and index in options:
+            if index in self.rejected:
+                return None, (f"route: option {index} was refused and the route "
+                              f"names no other")
+            why = f"route: option {index}"
+            if wanted:
+                why += (f" -- no option reads {decision.get('text')!r}, taking "
+                        f"the number the route names ({options[index]!r})")
+            return index, why
+
+        if wanted:
+            return None, (f"route: no option reads {decision.get('text')!r}; "
+                          f"on offer: {sorted(options.values())}")
+        return None, (f"route: decision {self.taken + 1} names neither text nor "
+                      f"a usable index; on offer: {sorted(options)}")
 
     def settle_choice(self):
         """Counts the decision in hand as made and moves to the next one."""

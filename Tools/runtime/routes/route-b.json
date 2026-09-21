@@ -5,15 +5,18 @@
   "choices": [
     {
       "scene": "b102",
-      "text": "Let Atri go."
+      "text": "Let Atri go.",
+      "index": 1
     },
     {
       "scene": "b207",
-      "text": "Stare into her eyes"
+      "text": "Stare into her eyes",
+      "index": 1
     },
     {
       "scene": "b402",
-      "text": "Leave the shoe."
+      "text": "Leave the shoe.",
+      "index": 2
     }
   ]
 }
