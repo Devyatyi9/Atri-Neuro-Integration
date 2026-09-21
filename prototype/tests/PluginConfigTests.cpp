@@ -115,6 +115,10 @@ void RunPluginConfigTests() {
 	ExpectWsUrl(L"", "");
 	ExpectWsUrl(L"ws_url = ws://127.0.0.1:8001", "ws://127.0.0.1:8001");
 	ExpectWsUrl(L"ws_url =", "");
+	// Written without a scheme it still has to work: that is how an address is
+	// written down everywhere else, and the SDK cannot connect without one.
+	ExpectWsUrl(L"ws_url = 127.0.0.1:8000", "ws://127.0.0.1:8000");
+	ExpectWsUrl(L"ws_url = wss://example.test/neuro", "wss://example.test/neuro");
 
 	// The switches that are on unless turned off, which is the opposite of the
 	// timestamps: a plugin that quietly stopped logging or stopped showing the

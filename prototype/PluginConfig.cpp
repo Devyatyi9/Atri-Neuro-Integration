@@ -34,7 +34,7 @@ wchar_t const *const kDefaultConfigText =
     L"; usually an accident. Left empty, as written here, the variable "
     L"decides\n"
     L"; and the tooling that starts the game with an address keeps working.\n"
-    L";   ws_url = ws://localhost:8000\n"
+    L";   ws_url = ws://localhost:8000     (ws:// may be left out)\n"
     L"ws_url =\n"
     L"\n"
     L"; The plugin's own TCP port, for the tooling that talks to it. "
@@ -230,7 +230,14 @@ void ApplySetting(PluginConfig &config,
 		return;
 	}
 	if (key == L"ws_url") {
-		config.WsUrl = Narrow(value);
+		// "127.0.0.1:8000" is what a person writes, and the SDK needs a scheme
+		// to connect at all -- without one it fails with nothing to say why.
+		// Anything that already names a scheme is left exactly as written,
+		// including wss:// and whatever a later version may want.
+		std::string const written = Narrow(value);
+		config.WsUrl = (written.empty() || written.find("://") != std::string::npos)
+		                   ? written
+		                   : "ws://" + written;
 		return;
 	}
 	if (key == L"disabled_actions") {
