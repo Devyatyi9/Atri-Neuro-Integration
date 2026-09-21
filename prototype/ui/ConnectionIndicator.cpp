@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Logging.h"
+#include "PluginConfig.h"
 #include "TJSExecutor.h"
 
 namespace {
@@ -76,6 +77,16 @@ void Draw(bool lit) {
 namespace ConnectionIndicator {
 
 void Update(bool connected) {
+	if (!GetPluginConfig().LinkIndicator) {
+		// Switched off mid-run it would leave the dot on screen, so the one
+		// that is already there is put away first.
+		if (g_showing) {
+			g_showing = false;
+			g_lit = false;
+			Draw(false);
+		}
+		return;
+	}
 	if (connected) {
 		if (g_showing) {
 			g_showing = false;

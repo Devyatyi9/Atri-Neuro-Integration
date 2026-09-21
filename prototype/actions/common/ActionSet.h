@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "NeuroClient.h"
+#include "PluginConfig.h"
 
 // A set of actions under construction, with somewhere to put the strings.
 //
@@ -23,7 +24,13 @@ struct ActionSet {
 		return strings.back().c_str();
 	}
 
+	// An action the config turns off is dropped here rather than at each
+	// screen: this is the one door every action goes through, and a screen that
+	// forgets the check would offer Neuro something the player switched off.
 	void add(char const *name, char const *description, char const *schema) {
+		if (PluginConfigActionDisabled(name)) {
+			return;
+		}
 		actions.push_back({name, description, schema});
 	}
 

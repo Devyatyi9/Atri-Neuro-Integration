@@ -11,6 +11,99 @@
 namespace {
 
 std::wstring g_ConfigSource;
+bool g_ConfigCreated = false;
+
+// What a config this run writes for itself says. Comments with ';' rather than
+// '#', because that is the one an ini highlighter recognises everywhere; the
+// parser takes both.
+wchar_t const *const kDefaultConfigText =
+    L"; Neuro integration plugin settings.\n"
+    L";\n"
+    L"; Written by the plugin on a start that found no config of its own. "
+    L"Your\n"
+    L"; edits are safe: an existing file is never rewritten.\n"
+    L";\n"
+    L"; Read once, at startup. Changing it while the game runs has no effect: "
+    L"a\n"
+    L"; port cannot move under a listening socket, nor a path under an open "
+    L"file.\n"
+    L"\n"
+    L"; Where Neuro is. Used ahead of the NEURO_WS_URL environment variable:\n"
+    L"; a file that names an address is a decision, a variable left in a shell "
+    L"is\n"
+    L"; usually an accident. Left empty, as written here, the variable "
+    L"decides\n"
+    L"; and the tooling that starts the game with an address keeps working.\n"
+    L";   ws_url = ws://localhost:8000\n"
+    L"ws_url =\n"
+    L"\n"
+    L"; The plugin's own TCP port, for the tooling that talks to it. "
+    L"Machine-wide,\n"
+    L"; so two instances must not share it -- and sharing it does not fail\n"
+    L"; cleanly: the socket is opened with SO_REUSEADDR, so the second bind\n"
+    L"; succeeds and connections go to whichever socket the stack picks.\n"
+    L"tcp_port = 18700\n"
+    L"\n"
+    L"; Whether the plugin writes its logs at all.\n"
+    L"logs = on\n"
+    L"\n"
+    L"; Where the logs go. Empty means the game's own folder. Created if "
+    L"missing.\n"
+    L"; Give each instance its own directory: nothing marks a log file as\n"
+    L"; belonging to one, and two instances in one directory append into the "
+    L"same\n"
+    L"; file.\n"
+    L"log_dir =\n"
+    L"\n"
+    L"; Stamp every line of the tag log with the wall clock. For lining the "
+    L"log up\n"
+    L"; against another process's record of the same run.\n"
+    L"log_timestamps = off\n"
+    L"\n"
+    L"; The one-time settings the plugin applies on a first run.\n"
+    L";   auto  -- once, on a profile that has not had them (the default)\n"
+    L";   apply -- on every start, whatever the profile says\n"
+    L";   skip  -- never; the game's settings are left as the player has them\n"
+    L"first_run = auto\n"
+    L"\n"
+    L"; Actions Neuro is never offered, by name, separated by commas.\n"
+    L";   disabled_actions = skip_movie\n"
+    L"disabled_actions =\n"
+    L"\n"
+    L"; The red dot that blinks in a corner of the game while the link to "
+    L"Neuro\n"
+    L"; is down.\n"
+    L"link_indicator = on\n";
+
+bool ReadSwitch(std::wstring const &value, bool &out) {
+	// Every spelling a person reasonably writes for a switch. Anything else
+	// leaves the default rather than guessing.
+	if (value == L"on" || value == L"true" || value == L"yes" || value == L"1") {
+		out = true;
+		return true;
+	}
+	if (value == L"off" || value == L"false" || value == L"no" || value == L"0") {
+		out = false;
+		return true;
+	}
+	return false;
+}
+
+std::string Narrow(std::wstring const &text) {
+	if (text.empty()) {
+		return std::string();
+	}
+	int const size = WideCharToMultiByte(CP_UTF8, 0, text.c_str(),
+	                                     static_cast<int>(text.size()), nullptr,
+	                                     0, nullptr, nullptr);
+	if (size <= 0) {
+		return std::string();
+	}
+	std::string narrow(static_cast<std::size_t>(size), '\0');
+	WideCharToMultiByte(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
+	                    &narrow[0], size, nullptr, nullptr);
+	return narrow;
+}
 
 std::wstring Trim(std::wstring const &text) {
 	std::size_t const first = text.find_first_not_of(L" \t\r\n");
@@ -57,15 +150,55 @@ std::wstring FindConfigFile() {
 	std::wstring const prefix =
 	    directory.empty() ? std::wstring() : directory + L"\\";
 
-	std::wstring named = prefix + StemOf(exePath) + L".neuro.cfg";
-	if (Exists(named)) {
-		return named;
+	// The exe-named file first: it is the one a second copy uses, and a shared
+	// file must not take it over. Then the plain name this version writes, then
+	// the names earlier versions used, so an installation that has one keeps
+	// working.
+	wchar_t const *const kNames[] = {L".neuro.ini", L".neuro.cfg"};
+	for (auto const *suffix : kNames) {
+		std::wstring const named = prefix + StemOf(exePath) + suffix;
+		if (Exists(named)) {
+			return named;
+		}
 	}
-	std::wstring shared = prefix + L"neuro_plugin.cfg";
-	if (Exists(shared)) {
-		return shared;
+	wchar_t const *const kShared[] = {L"neuro.ini", L"neuro_plugin.cfg"};
+	for (auto const *name : kShared) {
+		std::wstring const shared = prefix + name;
+		if (Exists(shared)) {
+			return shared;
+		}
 	}
 	return std::wstring();
+}
+
+// Where a config this run writes for itself goes: beside the exe, under the
+// plain name. Not the exe-named one -- that name means "this copy only", and a
+// file created without being asked for should be the one every copy reads.
+std::wstring DefaultConfigPath() {
+	wchar_t exePath[MAX_PATH] = {};
+	if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+		return std::wstring();
+	}
+	std::wstring const directory = DirectoryOf(exePath);
+	return (directory.empty() ? std::wstring() : directory + L"\\") +
+	       L"neuro.ini";
+}
+
+// Writes the defaults out, so the settings can be found and edited instead of
+// being read about. Only ever called when no config was found, so it cannot
+// overwrite one; a failure is silent here and reported later, because logging
+// is configured by the very file this is writing.
+bool WriteDefaultConfig(std::wstring const &path) {
+	if (path.empty() || Exists(path)) {
+		return false;
+	}
+	FILE *file = nullptr;
+	if (_wfopen_s(&file, path.c_str(), L"wt, ccs=UTF-8") != 0 || !file) {
+		return false;
+	}
+	bool const written = fputws(kDefaultConfigText, file) >= 0;
+	fclose(file);
+	return written;
 }
 
 void ApplySetting(PluginConfig &config,
@@ -85,14 +218,34 @@ void ApplySetting(PluginConfig &config,
 		return;
 	}
 	if (key == L"log_timestamps") {
-		// Every spelling a person reasonably writes for a switch. Anything else
-		// leaves the default rather than guessing, the same as an unusable port.
-		if (value == L"on" || value == L"true" || value == L"yes" ||
-		    value == L"1") {
-			config.LogTimestamps = true;
-		} else if (value == L"off" || value == L"false" || value == L"no" ||
-		           value == L"0") {
-			config.LogTimestamps = false;
+		ReadSwitch(value, config.LogTimestamps);
+		return;
+	}
+	if (key == L"logs") {
+		ReadSwitch(value, config.Logs);
+		return;
+	}
+	if (key == L"link_indicator") {
+		ReadSwitch(value, config.LinkIndicator);
+		return;
+	}
+	if (key == L"ws_url") {
+		config.WsUrl = Narrow(value);
+		return;
+	}
+	if (key == L"disabled_actions") {
+		config.DisabledActions = Narrow(value);
+		return;
+	}
+	if (key == L"first_run") {
+		// An unreadable value leaves the default, the same as an unusable port:
+		// applying settings nobody asked for is worse than ignoring a typo.
+		if (value == L"auto") {
+			config.FirstRun = FirstRunMode::Auto;
+		} else if (value == L"apply") {
+			config.FirstRun = FirstRunMode::Apply;
+		} else if (value == L"skip") {
+			config.FirstRun = FirstRunMode::Skip;
 		}
 		return;
 	}
@@ -117,7 +270,14 @@ std::wstring ReadWholeFile(std::wstring const &path) {
 }
 
 PluginConfig LoadConfig() {
-	std::wstring const path = FindConfigFile();
+	std::wstring path = FindConfigFile();
+	if (path.empty()) {
+		std::wstring const fresh = DefaultConfigPath();
+		if (WriteDefaultConfig(fresh)) {
+			g_ConfigCreated = true;
+			path = fresh;
+		}
+	}
 	if (path.empty()) {
 		return ParsePluginConfig(std::wstring());
 	}
@@ -135,6 +295,9 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	PluginConfig config;
 	config.TcpPort = NEURO_TCP_PORT;
 	config.LogTimestamps = false;
+	config.Logs = true;
+	config.FirstRun = FirstRunMode::Auto;
+	config.LinkIndicator = true;
 
 	std::size_t start = 0;
 	while (start <= text.size()) {
@@ -166,6 +329,36 @@ PluginConfig const &GetPluginConfig() {
 std::wstring const &GetPluginConfigSource() {
 	GetPluginConfig();
 	return g_ConfigSource;
+}
+
+bool PluginConfigWasCreated() {
+	GetPluginConfig();
+	return g_ConfigCreated;
+}
+
+bool PluginConfigActionDisabled(char const *name) {
+	if (name == nullptr || *name == 0) {
+		return false;
+	}
+	std::string const &list = GetPluginConfig().DisabledActions;
+	std::string const wanted(name);
+	std::size_t start = 0;
+	while (start <= list.size()) {
+		std::size_t const comma = list.find(',', start);
+		std::size_t const end = comma == std::string::npos ? list.size() : comma;
+		std::size_t first = list.find_first_not_of(" \t", start);
+		if (first != std::string::npos && first < end) {
+			std::size_t const last = list.find_last_not_of(" \t", end - 1);
+			if (list.compare(first, last - first + 1, wanted) == 0) {
+				return true;
+			}
+		}
+		if (comma == std::string::npos) {
+			break;
+		}
+		start = comma + 1;
+	}
+	return false;
 }
 
 std::string GetInstanceBanner() {

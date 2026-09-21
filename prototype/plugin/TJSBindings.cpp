@@ -21,6 +21,7 @@
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "NeuroConsole.h"
+#include "PluginConfig.h"
 #include "PluginLifecycle.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
@@ -995,6 +996,22 @@ static bool g_FirstRunChecked = false;
 static void RetryFirstRunIfReady() {
 	if (g_FirstRunChecked)
 		return;
+	FirstRunMode const mode = GetPluginConfig().FirstRun;
+	if (mode == FirstRunMode::Skip) {
+		g_FirstRunChecked = true;
+		Log("[FirstRun] skipped by the config\n");
+		return;
+	}
+	if (mode == FirstRunMode::Apply) {
+		// The script applies its settings unless the profile is marked as
+		// having had them, so clearing the mark is what "every start" means.
+		std::string cleared;
+		ExecuteTJSSync(
+		    L"(function(){ if (typeof kag != 'Object' || typeof "
+		    L"kag.sflags != 'Object') return 0;"
+		    L" kag.sflags.neuroFirstRunApplied = false; return 1; })()",
+		    &cleared, 5000, TJSExecMode::Expression);
+	}
 	std::string answer;
 	if (!ExecuteTJSSync(
 	        L"Neuro.execFile('neuro_scripts/install/first_run.tjs', 1)", &answer,

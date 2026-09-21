@@ -26,6 +26,33 @@ void ExpectTimestamps(wchar_t const *text, bool expected) {
 	            "log_timestamps");
 }
 
+void ExpectWsUrl(wchar_t const *text, char const *expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.WsUrl == expected, __FILE__, __LINE__, "ws_url");
+}
+
+void ExpectLogs(wchar_t const *text, bool expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.Logs == expected, __FILE__, __LINE__, "logs");
+}
+
+void ExpectIndicator(wchar_t const *text, bool expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.LinkIndicator == expected, __FILE__, __LINE__,
+	            "link_indicator");
+}
+
+void ExpectFirstRun(wchar_t const *text, FirstRunMode expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.FirstRun == expected, __FILE__, __LINE__, "first_run");
+}
+
+void ExpectDisabled(wchar_t const *text, char const *expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.DisabledActions == expected, __FILE__, __LINE__,
+	            "disabled_actions");
+}
+
 }  // namespace
 
 void RunPluginConfigTests() {
@@ -82,4 +109,33 @@ void RunPluginConfigTests() {
 	// than one that ignored the line.
 	ExpectTimestamps(L"log_timestamps = maybe", false);
 	ExpectTimestamps(L"log_timestamps = on\r\nlog_timestamps = maybe", true);
+
+	// The address. Empty by default, which is what lets the environment
+	// variable decide; anything written here is used as written.
+	ExpectWsUrl(L"", "");
+	ExpectWsUrl(L"ws_url = ws://127.0.0.1:8001", "ws://127.0.0.1:8001");
+	ExpectWsUrl(L"ws_url =", "");
+
+	// The switches that are on unless turned off, which is the opposite of the
+	// timestamps: a plugin that quietly stopped logging or stopped showing the
+	// link would look like one that stopped working.
+	ExpectLogs(L"", true);
+	ExpectLogs(L"logs = off", false);
+	ExpectLogs(L"logs = nonsense", true);
+	ExpectIndicator(L"", true);
+	ExpectIndicator(L"link_indicator = off", false);
+	ExpectIndicator(L"link_indicator = nonsense", true);
+
+	// The one-time settings: applied once unless the file says otherwise.
+	ExpectFirstRun(L"", FirstRunMode::Auto);
+	ExpectFirstRun(L"first_run = apply", FirstRunMode::Apply);
+	ExpectFirstRun(L"first_run = skip", FirstRunMode::Skip);
+	ExpectFirstRun(L"first_run = nonsense", FirstRunMode::Auto);
+
+	// The list is kept as written; reading a name out of it is tested through
+	// the file, not here, because the lookup goes through the loaded config.
+	ExpectDisabled(L"", "");
+	ExpectDisabled(L"disabled_actions = skip_movie", "skip_movie");
+	ExpectDisabled(L"disabled_actions = skip_movie, read_backlog",
+	               "skip_movie, read_backlog");
 }

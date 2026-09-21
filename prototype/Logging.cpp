@@ -136,13 +136,17 @@ void ArchiveExistingLog(wchar_t const *path) {
 }
 
 void Log(char const *message) {
+	// With the logs switched off only the files go: the ring in memory stays,
+	// because the console and the TCP client read the recent lines from it and
+	// a run without files is still worth watching live.
+	bool const toFile = GetPluginConfig().Logs;
 	// The file is written outside the ring's lock, and flushed on a timer
 	// rather than per line. Both mattered: this runs on the game's main thread
 	// for every synchronous TJS call, and a per-line fflush there put the game
 	// into disk waits -- a flood of probes hung it outright, with the main
 	// thread parked in this path. Holding the ring's lock across the write would
 	// also block anyone reading the log back.
-	{
+	if (toFile) {
 		std::lock_guard<std::mutex> fileLock(g_LogFileMutex);
 		if (!g_LogFile) {
 			// First open in this process, so the previous run's file goes aside.
@@ -246,6 +250,9 @@ std::wstring GetPluginLogFile(std::size_t offset,
 }
 
 void LogTagFile(char const *text) {
+	if (!GetPluginConfig().Logs) {
+		return;
+	}
 	// The hottest of the three log paths: it runs from the onTag hook, on the
 	// game's main thread, around fourteen times per line of dialogue. Hence its
 	// own lock and no flush per call -- either would put the game on the disk.

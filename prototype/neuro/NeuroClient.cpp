@@ -16,6 +16,7 @@
 #include <neurosdk.h>
 
 #include "Logging.h"
+#include "PluginConfig.h"
 #include "ThreadGuard.h"
 
 namespace {
@@ -554,8 +555,13 @@ void NeuroAutoConnect() {
 		return;
 	}
 
-	char const *wsUrl = std::getenv("NEURO_WS_URL");
-	std::string url = (wsUrl && *wsUrl) ? wsUrl : "ws://localhost:8000";
+	// The config first: naming an address in a file is a decision, while a
+	// variable left in a shell is usually an accident from an earlier run.
+	std::string url = GetPluginConfig().WsUrl;
+	if (url.empty()) {
+		char const *wsUrl = std::getenv("NEURO_WS_URL");
+		url = (wsUrl && *wsUrl) ? wsUrl : "ws://localhost:8000";
+	}
 	Log(("[Neuro] Autoconnecting to " + url + "\n").c_str());
 	NeuroConnect(url.c_str(), nullptr);
 }
