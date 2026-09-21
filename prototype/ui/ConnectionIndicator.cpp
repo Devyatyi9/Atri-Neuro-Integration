@@ -13,17 +13,30 @@ namespace {
 // the upkeep it rides on carries at most a couple of calls a second.
 constexpr DWORD kBlinkMs = 600;
 
-// Top left, away from the quick menu bar, which slides in over the right side,
-// and from the text window along the bottom. Above everything: the dot is worth
-// nothing if a menu can cover it.
+// A red dot, top left: away from the quick menu bar, which slides in over the
+// right side, and from the text window along the bottom. Above everything,
+// because the dot is worth nothing if a menu can cover it.
 wchar_t const *const kShowDot =
     L"(function(){"
+    // Nothing is shown over the splash screens: the state is empty until the
+    // game reaches a screen of its own, and a dot blinking over the logos says
+    // only that the game has not finished starting.
+    L" if (typeof SystemHook == 'undefined' || SystemHook.currentState == '')"
+    L" return 0;"
     L" var d = typeof global.__neuroLinkDot != 'undefined'"
     L" ? global.__neuroLinkDot : void;"
     L" if (d === void || !isvalid d) {"
     L" d = new Layer(kag, kag.uibase);"
-    L" d.setSize(14, 14); d.setPos(12, 12);"
-    L" d.face = dfAlpha; d.fillRect(0, 0, 14, 14, 0xFFE02020);"
+    L" d.setSize(10, 10); d.setPos(12, 12);"
+    L" d.face = dfAlpha; d.fillRect(0, 0, 10, 10, 0x00000000);"
+    // A layer has no circle fill, so the disc is drawn pixel by pixel: a
+    // hundred one-pixel fills, once. Every pixel is fully opaque and the ones
+    // outside the circle are left out, which at this size reads as a crisp dot
+    // rather than a smudge -- a soft edge over ten pixels is mostly edge.
+    L" for (var y = 0; y < 10; y++) { for (var x = 0; x < 10; x++) {"
+    L" var dx = x - 4.5, dy = y - 4.5;"
+    L" if (Math.sqrt(dx * dx + dy * dy) > 4.8) continue;"
+    L" d.fillRect(x, y, 1, 1, 0xFFE02020); } }"
     L" d.absolute = 2000000;"
     // Clicks have to pass through it, and a mask hit test with the threshold
     // above opaque is what lets them.
