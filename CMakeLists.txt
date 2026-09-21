@@ -151,6 +151,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/tooling/NeuroTCPServer.cpp
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
+        prototype/ui/ConnectionIndicator.cpp
+        prototype/ui/ConnectionIndicator.h
         prototype/UtfConversion.cpp
         prototype/neuro.def
         lib/krkr-sdk/tp_stub.cpp
@@ -181,6 +183,7 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/diagnostics
         prototype/neuro
         prototype/tooling
+        prototype/ui
         lib/krkr-sdk
         lib/ncbind
     )

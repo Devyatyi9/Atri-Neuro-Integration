@@ -14,6 +14,7 @@
 
 #include "ActionCommon.h"
 #include "ActionRouter.h"
+#include "ConnectionIndicator.h"
 #include "ContextPayload.h"
 #include "D3DWatch.h"
 #include "GameDebugLog.h"
@@ -1017,6 +1018,7 @@ static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
 	RefreshPrototypeActionState();
 	RetryInstallExitHookIfReady();
 	RetryFirstRunIfReady();
+	ConnectionIndicator::Update(NeuroIsConnected());
 	if (result) {
 		*result = (tTVInteger)1;
 	}
