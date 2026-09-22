@@ -9,6 +9,22 @@
 #include "ActionProbes.h"
 #include "NeuroClient.h"
 
+bool WaitForScreen(std::function<bool()> const &ready, DWORD timeoutMs) {
+	// Asked once before any waiting: the screen is sometimes already there, and
+	// that case should cost one crossing rather than one interval.
+	if (ready()) {
+		return true;
+	}
+	DWORD const started = GetTickCount();
+	while (GetTickCount() - started < timeoutMs) {
+		Sleep(kScreenPollMs);
+		if (ready()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void AnswerPress(std::string const &id,
                  bool ok,
                  char const *okMessage,

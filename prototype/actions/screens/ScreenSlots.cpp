@@ -447,11 +447,15 @@ void HandleOpenEditMenuAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	// The menu is raised by a scenario jump, so it is not up the instant the
-	// press returns; where it ended up is read back rather than assumed.
-	Sleep(kPageChangeSettleMs);
+	// press returns; its own entries are what says it has arrived.
 	int shown = 0;
 	int items = 0;
-	if (!ProbeEditMenuItems(shown, items, "open_edit_menu items")) {
+	WaitForScreen(
+	    [&]() {
+		    return ProbeEditMenuItems(shown, items, "open_edit_menu items");
+	    },
+	    kPageChangeSettleMs);
+	if (items == 0 && shown == 0) {
 		NeuroSendActionResult(id.c_str(), false, "The edit menu did not open.");
 		return;
 	}
@@ -533,7 +537,17 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 		                      "The edit menu is no longer open.");
 		return;
 	}
-	Sleep(kPageChangeSettleMs);
+	// Waited out by asking, not by sleeping: the menu is gone when its entries
+	// are.
+	{
+		int shown = 0;
+		int items = 0;
+		WaitForScreen(
+		    [&]() {
+			    return !ProbeEditMenuItems(shown, items, "edit_comment closed");
+		    },
+		    kPageChangeSettleMs);
+	}
 
 	if (ProbeCommentWindowOpen("edit_comment window")) {
 		NeuroSendActionResult(
@@ -608,11 +622,19 @@ void HandleSwitchPageAction(std::string const &id, std::string const &data) {
 		return;
 	}
 	// The list redraws well after the press, and a press does not always land,
-	// so where the window ended up is read back rather than assumed.
-	Sleep(kPageChangeSettleMs);
+	// so where the window ended up is read back rather than assumed -- and
+	// waited for rather than slept through: the page number is the screen
+	// saying it has moved.
 	int base = -1;
 	int page = -1;
-	if (!ProbeSaveWindow(base, page) || page != number) {
+	WaitForScreen(
+	    [&]() {
+		    base = -1;
+		    page = -1;
+		    return ProbeSaveWindow(base, page) && page == number;
+	    },
+	    kPageChangeSettleMs);
+	if (page != number) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "The list did not move to that page.");
 		return;

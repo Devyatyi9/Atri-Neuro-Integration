@@ -452,7 +452,10 @@ bool DispatchScreenButton(char const *button, char const *tag) {
 	// for a moment before it is pressed. Doing the same here is what makes the
 	// press look like a press rather than a value changing on its own.
 	if (AskFormatted(kScreenButtonHover, tag, button, "onMouseEnter")) {
-		Sleep(kHoverPreviewMs);
+		// Long enough for the engine to light the button and start its sound,
+		// not long enough to be a third of the action. The backlog's jump
+		// preview is the one that still waits for something to be rendered.
+		Sleep(kHoverSoundMs);
 	}
 	// And the cursor leaves again, just before the press that is queued behind
 	// it. A press that changes the screen takes the button with it, but one that
@@ -706,7 +709,7 @@ bool DispatchQuickMenuButton(char const *button, char const *tag) {
 	// Same as the screen buttons: the bar's own hover sound is se901, which is
 	// the sound the bar has always seemed to make when it slides out.
 	if (AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseEnter")) {
-		Sleep(kHoverPreviewMs);
+		Sleep(kHoverSoundMs);
 	}
 	AskFormatted(kQuickMenuButtonHover, tag, button, "onMouseLeave");
 	return AskDeferred(L"", Format(kQuickMenuButtonPress, button), tag);
@@ -778,7 +781,7 @@ bool DispatchEditButton(int position, char const *tag) {
 	// button lights up, and it stays lit long enough to be seen before the
 	// click. And leaving after, so nothing stays lit once the press is done.
 	if (AskFormatted(kEditButtonHover, tag, position, "onMouseEnter")) {
-		Sleep(kHoverPreviewMs);
+		Sleep(kHoverSoundMs);
 	}
 	AskFormatted(kEditButtonHover, tag, position, "onMouseLeave");
 	return AskDeferred(L"", Format(kEditButtonPress, position), tag);

@@ -2,6 +2,7 @@
 
 #include <windows.h>
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,19 @@
 // Each screen owns its own actions, but a few things are the same wherever they
 // are used: pressing a control the screen carries, building a bounded schema,
 // and the two waits the game imposes on us.
+
+// Waits for the screen to catch up instead of sleeping through the wait.
+//
+// `ready` is asked every few milliseconds until it says yes, and `timeoutMs`
+// is the old blind sleep kept as the worst case: a screen that never changes
+// costs exactly what it used to, while the ordinary one costs what it actually
+// takes. Returns what the last answer was, so a caller can tell "it happened"
+// from "it ran out".
+//
+// Each ask crosses to the game's main thread, so the interval is not tiny: the
+// point is to stop waiting on a screen that is already there, not to poll it
+// as fast as possible.
+bool WaitForScreen(std::function<bool()> const &ready, DWORD timeoutMs);
 
 // How long the game takes to settle after presses it does not acknowledge.
 // Measured against the save list: the page swap and the confirmation dialog
@@ -20,6 +34,17 @@ constexpr DWORD kDialogSettleMs = 150;
 // player sees it while moving the cursor; without the pause the confirmation
 // would open over a preview that never rendered.
 constexpr DWORD kHoverPreviewMs = 400;
+
+// The same gesture on an ordinary button, where there is no preview to render
+// -- only the game's own highlight and hover sound, which start as soon as the
+// handler runs. Long enough for the engine to get to them, short enough not to
+// be a third of the action's time.
+constexpr DWORD kHoverSoundMs = 120;
+
+// How often WaitForScreen asks. One ask is a crossing to the game's main
+// thread, about ten milliseconds of it, so asking much faster would spend
+// more on the asking than on the waiting.
+constexpr DWORD kScreenPollMs = 40;
 
 // The refusal for a press that arrived while an earlier one is still on its way
 // through the engine. One sentence everywhere, so it reads as one rule rather
