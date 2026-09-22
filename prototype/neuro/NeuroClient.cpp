@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 #include <utility>
@@ -79,6 +80,13 @@ std::mutex g_OutboundMessagesMutex;
 
 NeuroActionHandler g_ActionHandler = nullptr;
 std::mutex g_ActionHandlerMutex;
+
+// Actions handed to the game and not yet answered. A link that drops takes
+// these with it: the id belonged to the session that is gone, and the answer
+// can never reach the server that asked. Kept so the log can say how many were
+// lost rather than leaving it to be worked out from two records afterwards.
+std::set<std::string> g_UnansweredActions;
+std::mutex g_UnansweredActionsMutex;
 NeuroSessionHandler g_SessionHandler = nullptr;
 
 void LogError(char const *operation, neurosdk_error_e error) {
@@ -201,6 +209,32 @@ void QueueActionsSnapshot(ActionSnapshot snapshot) {
 	g_OutboundMessages.push_back(std::move(message));
 }
 
+// What a failed send leaves behind. The queue is taken whole before sending,
+// so everything after the entry that failed is dropped with the local copy --
+// and until this was written, dropped in silence. Neuro's side of that silence
+// is an action she was answered for and never heard back about.
+void ReportAbandoned(std::vector<OutboundMessage> const &pending,
+                     std::size_t from) {
+	std::size_t results = 0;
+	std::size_t others = 0;
+	for (std::size_t index = from; index < pending.size(); ++index) {
+		if (pending[index].kind == NeuroSDK_MessageKind_ActionResult) {
+			results += 1;
+		} else {
+			others += 1;
+		}
+	}
+	if (results == 0 && others == 0) {
+		return;
+	}
+	char line[144];
+	sprintf_s(line,
+	          "[Neuro] The failed send abandoned %zu result(s) and %zu other "
+	          "message(s)\n",
+	          results, others);
+	Log(line);
+}
+
 // Runs on the poll thread, which owns the SDK context.
 void FlushOutboundContext() {
 	std::vector<OutboundContext> pending;
@@ -208,7 +242,8 @@ void FlushOutboundContext() {
 		std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
 		pending.swap(g_OutboundContext);
 	}
-	for (OutboundContext const &entry : pending) {
+	for (std::size_t index = 0; index < pending.size(); ++index) {
+		OutboundContext const &entry = pending[index];
 		neurosdk_message_t message = {};
 		message.kind = NeuroSDK_MessageKind_Context;
 		message.value.context.message = const_cast<char *>(entry.message.c_str());
@@ -216,6 +251,12 @@ void FlushOutboundContext() {
 		neurosdk_error_e const error = SendMessage(&message);
 		if (error != NeuroSDK_None) {
 			LogError("Send context failed", error);
+			char line[96];
+			sprintf_s(line,
+			          "[Neuro] The failed send abandoned %zu context "
+			          "message(s)\n",
+			          pending.size() - index);
+			Log(line);
 			return;
 		}
 	}
@@ -228,7 +269,8 @@ void FlushOutboundMessages() {
 		pending.swap(g_OutboundMessages);
 	}
 
-	for (OutboundMessage const &entry : pending) {
+	for (std::size_t index = 0; index < pending.size(); ++index) {
+		OutboundMessage const &entry = pending[index];
 		if (entry.isActionsSnapshot) {
 			if (!entry.actionNames.empty()) {
 				std::vector<char *> names;
@@ -244,6 +286,7 @@ void FlushOutboundMessages() {
 				neurosdk_error_e const error = SendMessage(&unregisterMessage);
 				if (error != NeuroSDK_None) {
 					LogError("Send queued unregister failed", error);
+					ReportAbandoned(pending, index);
 					return;
 				}
 			}
@@ -264,6 +307,7 @@ void FlushOutboundMessages() {
 				neurosdk_error_e const error = SendMessage(&registerMessage);
 				if (error != NeuroSDK_None) {
 					LogError("Send queued register failed", error);
+					ReportAbandoned(pending, index);
 					return;
 				}
 			}
@@ -311,6 +355,7 @@ void FlushOutboundMessages() {
 		error = SendMessage(&message);
 		if (error != NeuroSDK_None) {
 			LogError("Send queued message failed", error);
+			ReportAbandoned(pending, index);
 			return;
 		}
 		if (entry.kind == NeuroSDK_MessageKind_ActionResult) {
@@ -328,6 +373,10 @@ void DispatchAction(std::string const &id,
 		handler = g_ActionHandler;
 	}
 	if (handler) {
+		{
+			std::lock_guard<std::mutex> lock(g_UnansweredActionsMutex);
+			g_UnansweredActions.insert(id);
+		}
 		handler(id, name, data);
 	} else {
 		Log("[Neuro] Ignoring action: no handler installed\n");
@@ -379,14 +428,39 @@ void DestroyContext() {
 	}
 }
 
+// What the link took with it, in the two shapes it can take: answers written
+// but never sent, and actions the game is still working on. Said out loud
+// because both look the same from outside -- Neuro asked and nothing came back.
 void ClearOutboundQueues() {
+	std::size_t results = 0;
+	std::size_t context = 0;
+	std::size_t unanswered = 0;
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
+		context = g_OutboundContext.size();
 		g_OutboundContext.clear();
 	}
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		for (OutboundMessage const &message : g_OutboundMessages) {
+			if (message.kind == NeuroSDK_MessageKind_ActionResult) {
+				results += 1;
+			}
+		}
 		g_OutboundMessages.clear();
+	}
+	{
+		std::lock_guard<std::mutex> lock(g_UnansweredActionsMutex);
+		unanswered = g_UnansweredActions.size();
+		g_UnansweredActions.clear();
+	}
+	if (results != 0 || unanswered != 0 || context != 0) {
+		char line[160];
+		sprintf_s(line,
+		          "[Neuro] The link took %zu unsent result(s), %zu action(s) "
+		          "still being answered and %zu context message(s)\n",
+		          results, unanswered, context);
+		Log(line);
 	}
 }
 
@@ -772,6 +846,10 @@ bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
 		MakeRoomForOutboundMessage();
 		g_OutboundMessages.push_back(msg);
+	}
+	{
+		std::lock_guard<std::mutex> lock(g_UnansweredActionsMutex);
+		g_UnansweredActions.erase(id);
 	}
 	ActionTimingResultQueued(id);
 	return true;
