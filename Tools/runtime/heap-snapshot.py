@@ -72,13 +72,23 @@ def main():
     # flushed on a timer, so the lines arrive on disk seconds later -- and the
     # summary line later still. Waited for rather than slept on: a fixed pause
     # was either too short to see anything or longer than it needed to be.
+    # Waited for rather than slept on, and waited for the writing to stop
+    # rather than for the summary line: the per-heap detail lands within
+    # seconds, while "The process has N heaps" can trail it by another forty --
+    # both are at the mercy of the log's flush timer.
     fresh = ""
-    deadline = time.time() + 30.0
+    settled = 0
+    deadline = time.time() + 60.0
     while time.time() < deadline:
         time.sleep(1.0)
-        fresh = read_tail(options.log, before)
-        if "The process has" in fresh:
-            break
+        grown = read_tail(options.log, before)
+        if grown == fresh and "type:" in fresh:
+            settled += 1
+            if settled >= 3:
+                break
+        else:
+            settled = 0
+        fresh = grown
 
     heaps = []
     current = None
