@@ -854,8 +854,7 @@ void AppendSwitchPageAction(ActionSet &set, int payload) {
 	set.add("switch_page",
 	        set.keep("Show another page of this list, 1 to " +
 	                 std::to_string(pages) + ". Page " + std::to_string(page) +
-	                 " is the one open. Slots are numbered as the screen numbers "
-	                 "them, so another page brings another ten numbers."),
+	                 " is open, and each page has its own ten numbers."),
 	        set.keep(BoundedIntSchema("page", pages)));
 }
 
@@ -1037,8 +1036,7 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 		set.add("choose_destination",
 		        set.keep("Choose the slot the save is " + verb +
 		                 " into, by its number on screen, " + range +
-		                 ". The game asks to confirm, and asks again if the slot "
-		                 "already holds a save."),
+		                 ". Confirmed first, twice if the slot is occupied."),
 		        slotSchema);
 		set.add("cancel_copy",
 		        set.keep("Cancel it: the save is not " + verb +
@@ -1066,9 +1064,8 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	// over it.
 	if (mode != Mode::Voice) {
 		set.add("read_save_slot",
-		        set.keep("Read everything one slot holds -- its scene, when it "
-		                 "was saved, the comment written on it and the line it "
-		                 "was saved at -- by its number on screen, " +
+		        set.keep("Read one slot in full -- scene, time, comment and the "
+		                 "line it was saved at -- by its number on screen, " +
 		                 range + "."),
 		        slotSchema);
 	}
