@@ -68,10 +68,17 @@ def main():
     except OSError as error:
         sys.exit(f"could not reach the game on port {options.port}: {error}")
 
-    # The dump is written while the call returns, and the log is buffered, so
-    # the tail is read a moment later rather than immediately.
-    time.sleep(1.0)
-    fresh = read_tail(options.log, before)
+    # The dump is written while the call returns, but the log is buffered and
+    # flushed on a timer, so the lines arrive on disk seconds later -- and the
+    # summary line later still. Waited for rather than slept on: a fixed pause
+    # was either too short to see anything or longer than it needed to be.
+    fresh = ""
+    deadline = time.time() + 30.0
+    while time.time() < deadline:
+        time.sleep(1.0)
+        fresh = read_tail(options.log, before)
+        if "The process has" in fresh:
+            break
 
     heaps = []
     current = None
