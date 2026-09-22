@@ -87,6 +87,19 @@ std::mutex g_ActionHandlerMutex;
 // lost rather than leaving it to be worked out from two records afterwards.
 std::set<std::string> g_UnansweredActions;
 std::mutex g_UnansweredActionsMutex;
+
+// Asked for by NeuroDropLink, honoured by the poll thread. A link that drops
+// while something is in flight is the case the queue rules were written for,
+// and it cannot be arranged from outside: by the time a disconnect ordered
+// through the server arrives, the action has been answered. Hence the delay --
+// the drop is armed first and the action sent into it.
+std::atomic<bool> g_DropLinkRequested(false);
+std::atomic<unsigned long long> g_DropLinkAt(0);
+// The same, armed on the next answer instead of on a clock. The window a timer
+// has to hit is one turn of the poll loop wide, which is not something to aim
+// at by hand; this closes the link in the turn that queued a result, which is
+// exactly the case worth testing.
+std::atomic<bool> g_DropLinkOnNextResult(false);
 NeuroSessionHandler g_SessionHandler = nullptr;
 
 void LogError(char const *operation, neurosdk_error_e error) {
@@ -572,7 +585,13 @@ void NeuroPollThread() {
 		       error == NeuroSDK_None) {
 			neurosdk_message_t *messages = nullptr;
 			int count = 0;
-			{
+			if (g_DropLinkRequested.load(std::memory_order_acquire) &&
+			    GetTickCount64() >= g_DropLinkAt.load(std::memory_order_acquire)) {
+				g_DropLinkRequested.store(false, std::memory_order_release);
+				Log("[Neuro] Dropping the link on request\n");
+				error = NeuroSDK_ConnectionError;
+			}
+			if (error == NeuroSDK_None) {
 				std::lock_guard<std::mutex> lock(g_ContextMutex);
 				if (!g_NeuroContext || !neurosdk_context_connected(&g_NeuroContext)) {
 					error = NeuroSDK_ConnectionError;
@@ -582,6 +601,16 @@ void NeuroPollThread() {
 			}
 			if (error == NeuroSDK_None) {
 				error = ProcessMessages(messages, count);
+			}
+			// Asked again here, after the handlers have run and queued their
+			// answers but before those go out: that is where a real drop hurts,
+			// and where the rules about what survives one are worth testing.
+			if (error == NeuroSDK_None &&
+			    g_DropLinkRequested.load(std::memory_order_acquire) &&
+			    GetTickCount64() >= g_DropLinkAt.load(std::memory_order_acquire)) {
+				g_DropLinkRequested.store(false, std::memory_order_release);
+				Log("[Neuro] Dropping the link on request\n");
+				error = NeuroSDK_ConnectionError;
 			}
 			if (error == NeuroSDK_None) {
 				FlushOutboundContext();
@@ -665,6 +694,15 @@ void NeuroAutoConnect() {
 	}
 	Log(("[Neuro] Autoconnecting to " + url + "\n").c_str());
 	NeuroConnect(url.c_str(), nullptr);
+}
+
+void NeuroDropLinkOnNextResult() {
+	g_DropLinkOnNextResult.store(true, std::memory_order_release);
+}
+
+void NeuroDropLink(unsigned int afterMs) {
+	g_DropLinkAt.store(GetTickCount64() + afterMs, std::memory_order_release);
+	g_DropLinkRequested.store(true, std::memory_order_release);
 }
 
 void NeuroDisconnect() {
@@ -872,6 +910,10 @@ bool NeuroSendActionResult(char const *id, bool success, char const *message) {
 	{
 		std::lock_guard<std::mutex> lock(g_UnansweredActionsMutex);
 		g_UnansweredActions.erase(id);
+	}
+	if (g_DropLinkOnNextResult.exchange(false, std::memory_order_acq_rel)) {
+		g_DropLinkAt.store(0, std::memory_order_release);
+		g_DropLinkRequested.store(true, std::memory_order_release);
 	}
 	ActionTimingResultQueued(id);
 	return true;

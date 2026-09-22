@@ -132,6 +132,33 @@ static tjs_error TJS_INTF_METHOD NeuroConnectClient(tTJSVariant *result,
 	return TJS_S_OK;
 }
 
+static tjs_error TJS_INTF_METHOD NeuroDropLinkFromTJS(tTJSVariant *result,
+                                                      tjs_int numparams,
+                                                      tTJSVariant **param,
+                                                      iTJSDispatch2 *objthis) {
+	// Neuro.dropLink("result") waits for the next answer; a number waits that
+	// many milliseconds; nothing at all drops it now.
+	if (numparams > 0 && param && param[0] && param[0]->Type() == tvtString) {
+		NeuroDropLinkOnNextResult();
+		if (result) {
+			*result = (tTVInteger)1;
+		}
+		return TJS_S_OK;
+	}
+	unsigned int afterMs = 0;
+	if (numparams > 0 && param && param[0] && param[0]->Type() == tvtInteger) {
+		tTVInteger const value = param[0]->AsInteger();
+		if (value > 0) {
+			afterMs = static_cast<unsigned int>(value > 60000 ? 60000 : value);
+		}
+	}
+	NeuroDropLink(afterMs);
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
 static tjs_error TJS_INTF_METHOD NeuroDisconnectClient(tTJSVariant *result,
                                                        tjs_int numparams,
                                                        tTJSVariant **param,
@@ -835,6 +862,7 @@ NCB_ATTACH_FUNCTION(stressBlockNextSyncCall,
 NCB_ATTACH_FUNCTION(stressHoldSyncCalls, Neuro, NeuroStressHoldSyncCalls);
 NCB_ATTACH_FUNCTION(connect, Neuro, NeuroConnectClient);
 NCB_ATTACH_FUNCTION(disconnect, Neuro, NeuroDisconnectClient);
+NCB_ATTACH_FUNCTION(dropLink, Neuro, NeuroDropLinkFromTJS);
 NCB_ATTACH_FUNCTION(isConnected, Neuro, NeuroClientConnected);
 NCB_ATTACH_FUNCTION(isReady, Neuro, NeuroClientReady);
 NCB_ATTACH_FUNCTION(echo, Neuro, NeuroEcho);

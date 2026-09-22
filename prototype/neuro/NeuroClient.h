@@ -23,6 +23,19 @@ void NeuroSetSessionHandler(NeuroSessionHandler handler);
 bool NeuroConnect(char const *url, char const *gameName);
 void NeuroAutoConnect();
 void NeuroDisconnect();
+
+// Drops the link the way a broken connection does, from inside: the poll thread
+// takes it as a connection error and goes through the same teardown and
+// reconnect. For testing what a drop takes with it, which cannot be arranged
+// from the server's side -- an action ordered from there is answered long
+// before the disconnect it is racing. `afterMs` arms it for later, so the drop
+// can be set up first and the action sent into it.
+void NeuroDropLink(unsigned int afterMs);
+
+// Arms the same drop for the moment an action result is queued, before it can
+// be sent. A timer cannot be aimed at that window; this is what puts a result
+// and a broken link in the same turn of the poll loop.
+void NeuroDropLinkOnNextResult();
 bool NeuroIsConnected();
 bool NeuroIsReady();
 
