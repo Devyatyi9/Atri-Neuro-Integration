@@ -209,29 +209,30 @@ void QueueActionsSnapshot(ActionSnapshot snapshot) {
 	g_OutboundMessages.push_back(std::move(message));
 }
 
-// What a failed send leaves behind. The queue is taken whole before sending,
-// so everything after the entry that failed is dropped with the local copy --
-// and until this was written, dropped in silence. Neuro's side of that silence
-// is an action she was answered for and never heard back about.
-void ReportAbandoned(std::vector<OutboundMessage> const &pending,
-                     std::size_t from) {
-	std::size_t results = 0;
-	std::size_t others = 0;
-	for (std::size_t index = from; index < pending.size(); ++index) {
-		if (pending[index].kind == NeuroSDK_MessageKind_ActionResult) {
-			results += 1;
-		} else {
-			others += 1;
-		}
-	}
-	if (results == 0 && others == 0) {
+// The queue is taken whole before sending, so a send that fails partway leaves
+// the rest in a local copy -- and losing it there is losing it for good. It
+// goes back to the front of the queue instead, in its own order and ahead of
+// whatever arrived meanwhile: a failed send is usually a link about to drop,
+// and the next attempt is the same messages' only way out.
+//
+// What happens to them after that is decided on the disconnect, not here: the
+// context is kept across it, the results are not.
+void RequeueUnsent(std::vector<OutboundMessage> &pending, std::size_t from) {
+	if (from >= pending.size()) {
 		return;
 	}
-	char line[144];
-	sprintf_s(line,
-	          "[Neuro] The failed send abandoned %zu result(s) and %zu other "
-	          "message(s)\n",
-	          results, others);
+	std::size_t const count = pending.size() - from;
+	{
+		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
+		g_OutboundMessages.insert(
+		    g_OutboundMessages.begin(),
+		    std::make_move_iterator(pending.begin() +
+		                            static_cast<std::ptrdiff_t>(from)),
+		    std::make_move_iterator(pending.end()));
+	}
+	char line[112];
+	sprintf_s(line, "[Neuro] Put %zu unsent message(s) back in the queue\n",
+	          count);
 	Log(line);
 }
 
@@ -251,10 +252,18 @@ void FlushOutboundContext() {
 		neurosdk_error_e const error = SendMessage(&message);
 		if (error != NeuroSDK_None) {
 			LogError("Send context failed", error);
-			char line[96];
+			{
+				std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
+				g_OutboundContext.insert(
+				    g_OutboundContext.begin(),
+				    std::make_move_iterator(pending.begin() +
+				                            static_cast<std::ptrdiff_t>(index)),
+				    std::make_move_iterator(pending.end()));
+			}
+			char line[112];
 			sprintf_s(line,
-			          "[Neuro] The failed send abandoned %zu context "
-			          "message(s)\n",
+			          "[Neuro] Put %zu unsent context message(s) back in "
+			          "the queue\n",
 			          pending.size() - index);
 			Log(line);
 			return;
@@ -286,7 +295,7 @@ void FlushOutboundMessages() {
 				neurosdk_error_e const error = SendMessage(&unregisterMessage);
 				if (error != NeuroSDK_None) {
 					LogError("Send queued unregister failed", error);
-					ReportAbandoned(pending, index);
+					RequeueUnsent(pending, index);
 					return;
 				}
 			}
@@ -307,7 +316,7 @@ void FlushOutboundMessages() {
 				neurosdk_error_e const error = SendMessage(&registerMessage);
 				if (error != NeuroSDK_None) {
 					LogError("Send queued register failed", error);
-					ReportAbandoned(pending, index);
+					RequeueUnsent(pending, index);
 					return;
 				}
 			}
@@ -355,7 +364,7 @@ void FlushOutboundMessages() {
 		error = SendMessage(&message);
 		if (error != NeuroSDK_None) {
 			LogError("Send queued message failed", error);
-			ReportAbandoned(pending, index);
+			RequeueUnsent(pending, index);
 			return;
 		}
 		if (entry.kind == NeuroSDK_MessageKind_ActionResult) {
@@ -428,23 +437,32 @@ void DestroyContext() {
 	}
 }
 
-// What the link took with it, in the two shapes it can take: answers written
-// but never sent, and actions the game is still working on. Said out loud
-// because both look the same from outside -- Neuro asked and nothing came back.
+// A dropped link, and what each kind of message deserves after it.
+//
+// Context is kept: it is the story, nobody is waiting on it, and a line Neuro
+// never hears is simply gone from what she knows. It goes out on the new
+// connection.
+//
+// Results and registrations are not: a result belongs to an action id from the
+// session that ended, which the server discards, and the action set is asked
+// for again on reconnect anyway. Both are dropped here and counted, because
+// "Neuro asked and nothing came back" is worth a line in the log.
 void ClearOutboundQueues() {
 	std::size_t results = 0;
-	std::size_t context = 0;
+	std::size_t others = 0;
+	std::size_t kept = 0;
 	std::size_t unanswered = 0;
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundContextMutex);
-		context = g_OutboundContext.size();
-		g_OutboundContext.clear();
+		kept = g_OutboundContext.size();
 	}
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
 		for (OutboundMessage const &message : g_OutboundMessages) {
 			if (message.kind == NeuroSDK_MessageKind_ActionResult) {
 				results += 1;
+			} else {
+				others += 1;
 			}
 		}
 		g_OutboundMessages.clear();
@@ -454,12 +472,13 @@ void ClearOutboundQueues() {
 		unanswered = g_UnansweredActions.size();
 		g_UnansweredActions.clear();
 	}
-	if (results != 0 || unanswered != 0 || context != 0) {
-		char line[160];
+	if (results != 0 || unanswered != 0 || others != 0 || kept != 0) {
+		char line[192];
 		sprintf_s(line,
 		          "[Neuro] The link took %zu unsent result(s), %zu action(s) "
-		          "still being answered and %zu context message(s)\n",
-		          results, unanswered, context);
+		          "still being answered and %zu other message(s); %zu context "
+		          "message(s) kept for the next connection\n",
+		          results, unanswered, others, kept);
 		Log(line);
 	}
 }
