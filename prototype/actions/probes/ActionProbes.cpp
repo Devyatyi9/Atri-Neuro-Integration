@@ -626,7 +626,8 @@ bool DispatchChoice(int index, char const *tag) {
 	                 L"if (!isvalid button) return 0;"
 	                 L"button.Butt_mouseOn = 1; button.update(); return 1; })()",
 	                 tag, index)) {
-		Sleep(kHoverPreviewMs);
+		// A redraw, not a preview: the same short wait as the other buttons.
+		Sleep(kHoverSoundMs);
 	}
 	// Nothing is sent to leave again: the choice disappears with the press,
 	// taking its buttons along. The press goes through runOnceDelayedTrigger
@@ -818,7 +819,7 @@ bool DispatchEditMenuItemHover(char const *item, bool on, char const *tag) {
 
 bool DispatchEditMenuItem(char const *item, char const *tag) {
 	if (AskFormatted(kEditMenuItemHover, tag, item, "onMouseEnter")) {
-		Sleep(kHoverPreviewMs);
+		Sleep(kHoverSoundMs);
 	}
 	AskFormatted(kEditMenuItemHover, tag, item, "onMouseLeave");
 	return AskDeferred(Format(kEditMenuItemGuard, item),
@@ -1790,7 +1791,7 @@ bool DispatchDialogLink(bool confirm, char const *tag) {
 	// button has it, once to call it.
 	if (AskFormatted(kDialogLinkHover, tag, button, "onMouseEnter",
 	                 "onMouseEnter")) {
-		Sleep(kHoverPreviewMs);
+		Sleep(kHoverSoundMs);
 	}
 	return AskDeferred(
 	    L"",

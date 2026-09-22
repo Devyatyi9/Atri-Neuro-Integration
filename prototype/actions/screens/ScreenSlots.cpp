@@ -527,7 +527,7 @@ void HandleEditCommentAction(std::string const &id, std::string const &data) {
 	// the highlight off first only made it harder to see that anything was
 	// chosen at all.
 	if (DispatchEditMenuItemHover("comment", true, "edit_comment hover")) {
-		Sleep(kHoverPreviewMs);
+		Sleep(kHoverSoundMs);
 	}
 
 	// The menu is dismissed the way cancelling dismisses it, because the entry
