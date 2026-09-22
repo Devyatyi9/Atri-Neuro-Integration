@@ -155,13 +155,30 @@ def say(text):
 
 
 def open_driver_log(options):
-    """Starts the run's record: --log if given, else beside the tag log."""
+    """Starts the run's record: --log if given, else under the game's Logs.
+
+    Each run writes its own file, named by the minute it started, so nothing
+    here rotates and nothing is overwritten -- which is why these used to pile
+    up in the game's folder next to the tag log they were put beside. They go
+    into Logs\\driver now, beside the folder the plugin rotates its own logs
+    into: the same place a person already looks for a past run, and out of the
+    way of the game's own files.
+    """
     global DRIVER_LOG
     path = options.log
     if not path and options.watch_tag_log:
-        path = os.path.join(
+        directory = os.path.join(
             os.path.dirname(os.path.abspath(options.watch_tag_log)),
-            f"driver-{datetime.now():%Y%m%d-%H%M%S}.log")
+            "Logs", "driver")
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except OSError as error:
+            # Not a reason to lose the run: the log is written beside the tag
+            # log, as it was before, and the failure is said out loud.
+            say(f"could not make {directory}: {error}")
+            directory = os.path.dirname(os.path.abspath(options.watch_tag_log))
+        path = os.path.join(directory,
+                            f"driver-{datetime.now():%Y%m%d-%H%M%S}.log")
     if not path:
         return
     DRIVER_LOG = open(path, "a", encoding="utf-8")
@@ -1549,10 +1566,10 @@ def main():
                              "for the run header: every build calls itself the "
                              "same version, so what identifies one is the file")
     parser.add_argument("--log", metavar="FILE",
-                        help="where to keep this run's record. Defaults to a "
-                             "driver-<time>.log beside the tag log when "
-                             "--watch-tag-log is given. run-timeline.py reads "
-                             "it as --driver-log")
+                        help="where to keep this run's record. Defaults to "
+                             "Logs\\driver\\driver-<time>.log under the game's "
+                             "folder when --watch-tag-log is given. "
+                             "run-timeline.py reads it as --driver-log")
     parser.add_argument("--draw-speed", type=float, default=0.1, metavar="V",
                         help="how fast transitions are drawn under --fast: an "
                              "inverse multiplier, so 0.1 is ten times normal and "
