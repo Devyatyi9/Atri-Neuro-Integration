@@ -612,7 +612,10 @@ bool NeuroConnect(char const *url, char const *gameName) {
 	{
 		std::lock_guard<std::mutex> lock(g_ConfigurationMutex);
 		if (url && *url) {
-			g_NeuroURL = url;
+			// Every way in goes through here -- the config, the command line, the
+			// environment variable, Neuro.connect() from TJS -- so this is where
+			// the scheme is made sure of, rather than at each of them.
+			g_NeuroURL = EnsureWsScheme(url);
 		}
 		if (gameName && *gameName) {
 			g_NeuroGameName = gameName;
@@ -639,7 +642,7 @@ void NeuroAutoConnect() {
 	std::string url = GetPluginConfig().WsUrl;
 	if (url.empty()) {
 		char const *wsUrl = std::getenv("NEURO_WS_URL");
-		url = (wsUrl && *wsUrl) ? wsUrl : "ws://localhost:8000";
+		url = EnsureWsScheme((wsUrl && *wsUrl) ? wsUrl : "ws://localhost:8000");
 	}
 	Log(("[Neuro] Autoconnecting to " + url + "\n").c_str());
 	NeuroConnect(url.c_str(), nullptr);

@@ -125,6 +125,13 @@ void RunPluginConfigTests() {
 	// written down everywhere else, and the SDK cannot connect without one.
 	ExpectWsUrl(L"ws_url = 127.0.0.1:8000", "ws://127.0.0.1:8000");
 	ExpectWsUrl(L"ws_url = wss://example.test/neuro", "wss://example.test/neuro");
+	// The same rule wherever the address comes from, which is why it lives
+	// in one function rather than at each source.
+	ReportCheck(EnsureWsScheme("127.0.0.1:8000") == "ws://127.0.0.1:8000",
+	            __FILE__, __LINE__, "scheme added");
+	ReportCheck(EnsureWsScheme("ws://a") == "ws://a", __FILE__, __LINE__,
+	            "scheme kept");
+	ReportCheck(EnsureWsScheme("").empty(), __FILE__, __LINE__, "empty kept");
 
 	// The switches that are on unless turned off, which is the opposite of the
 	// timestamps: a plugin that quietly stopped logging or stopped showing the

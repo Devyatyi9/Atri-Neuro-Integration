@@ -87,6 +87,12 @@ std::wstring const &GetPluginConfigSource();
 // did these settings come from".
 bool PluginConfigWasCreated();
 
+// An address with a scheme, whoever wrote it down. "127.0.0.1:8000" is what a
+// person types, and the SDK cannot connect without a scheme -- it fails with
+// nothing to say why. Anything that already names one is left exactly as
+// written, including wss:// and whatever a later version wants.
+std::string EnsureWsScheme(std::string const &address);
+
 // Whether `name` is in DisabledActions. Compared whole, so "skip" does not
 // match "skip_movie".
 bool PluginConfigActionDisabled(char const *name);

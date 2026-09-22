@@ -243,14 +243,7 @@ void ApplySetting(PluginConfig &config,
 		return;
 	}
 	if (key == L"ws_url") {
-		// "127.0.0.1:8000" is what a person writes, and the SDK needs a scheme
-		// to connect at all -- without one it fails with nothing to say why.
-		// Anything that already names a scheme is left exactly as written,
-		// including wss:// and whatever a later version may want.
-		std::string const written = Narrow(value);
-		config.WsUrl = (written.empty() || written.find("://") != std::string::npos)
-		                   ? written
-		                   : "ws://" + written;
+		config.WsUrl = EnsureWsScheme(Narrow(value));
 		return;
 	}
 	if (key == L"disabled_actions") {
@@ -455,6 +448,13 @@ std::wstring const &GetPluginConfigSource() {
 bool PluginConfigWasCreated() {
 	GetPluginConfig();
 	return g_ConfigCreated;
+}
+
+std::string EnsureWsScheme(std::string const &address) {
+	if (address.empty() || address.find("://") != std::string::npos) {
+		return address;
+	}
+	return "ws://" + address;
 }
 
 bool PluginConfigActionDisabled(char const *name) {
