@@ -121,6 +121,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
         prototype/actions/common/ParseNumber.h
+        prototype/actions/notebook/NotebookStore.cpp
+        prototype/actions/notebook/NotebookStore.h
         prototype/actions/probes/ActionProbes.cpp
         prototype/actions/probes/ActionProbes.h
         prototype/actions/probes/TJSQuery.cpp
@@ -179,6 +181,7 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype
         prototype/actions
         prototype/actions/common
+        prototype/actions/notebook
         prototype/actions/probes
         prototype/actions/screens
         prototype/plugin
@@ -218,9 +221,12 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ActionJson.cpp
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
+        prototype/actions/notebook/NotebookStore.cpp
         prototype/PluginConfig.cpp
+        prototype/UtfConversion.cpp
         prototype/neuro/ContextPayload.cpp
         prototype/tests/ActionJsonTests.cpp
+        prototype/tests/NotebookStoreTests.cpp
         prototype/tests/ContextPayloadTests.cpp
         prototype/tests/ParseNumberTests.cpp
         prototype/tests/PluginConfigTests.cpp
@@ -234,6 +240,7 @@ if(ATRI_BUILD_PROTOTYPE)
     target_include_directories(atri_prototype_tests PRIVATE
         prototype
         prototype/actions/common
+        prototype/actions/notebook
         prototype/neuro
         prototype/tests
     )

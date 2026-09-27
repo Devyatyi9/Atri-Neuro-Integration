@@ -23,6 +23,7 @@ void RunSlotPayloadTests();
 void RunPluginConfigTests();
 void RunContextPayloadTests();
 void RunVisibleCharacterTests();
+void RunNotebookStoreTests();
 
 int main() {
 	RunParseNumberTests();
@@ -31,6 +32,7 @@ int main() {
 	RunPluginConfigTests();
 	RunContextPayloadTests();
 	RunVisibleCharacterTests();
+	RunNotebookStoreTests();
 
 	printf("%d checks, %d failed\n", g_TestChecks, g_TestFailures);
 	return g_TestFailures == 0 ? 0 : 1;
