@@ -17,6 +17,7 @@
 #include "ScreenBacklog.h"
 #include "ScreenGallery.h"
 #include "ScreenMenu.h"
+#include "ScreenNotebook.h"
 #include "ScreenPlay.h"
 #include "ScreenSlots.h"
 #include "ScreenTitle.h"
@@ -73,6 +74,10 @@ long long CapabilityKey(int kind, int payload) {
 	return (static_cast<long long>(kind) << 32) |
 	       static_cast<unsigned int>(payload);
 }
+// Kinds fit in these bits; the notebook's open state sits above them, so it
+// re-registers the set without changing which screen the key names.
+constexpr long long kCapabilityKindMask = 0xFFFF;
+constexpr int kNotebookKeyShift = 48;
 // Whether the "still starting up" notice reached the server. It cannot simply
 // be sent once on entering the loading state, because that happens before the
 // SDK connects.
@@ -222,7 +227,8 @@ void HandleNeuroAction(std::string const &id,
 	    ScreenMenu::Handle(id, name, data) ||
 	    ScreenSlots::Handle(id, name, data) ||
 	    ScreenBacklog::Handle(id, name, data) ||
-	    ScreenGallery::Handle(id, name, data)) {
+	    ScreenGallery::Handle(id, name, data) ||
+	    ScreenNotebook::Handle(id, name, data)) {
 		return;
 	}
 	// Named, because a refusal reaches her alongside whatever else she has
@@ -234,7 +240,8 @@ void HandleNeuroAction(std::string const &id,
 
 int SyncedCapabilityKind() {
 	long long const key = g_SyncedCapabilityState.load(std::memory_order_acquire);
-	return key < 0 ? kCapabilityStateUnknown : static_cast<int>(key >> 32);
+	return key < 0 ? kCapabilityStateUnknown
+	               : static_cast<int>((key >> 32) & kCapabilityKindMask);
 }
 
 // Names the screen for the context feed. Neuro is otherwise navigating blind:
@@ -274,7 +281,11 @@ char const *ScreenName(int kind) {
 }
 
 void SyncCapabilities(int kind, int payload = 0) {
-	long long const key = CapabilityKey(kind, payload);
+	long long key = CapabilityKey(kind, payload);
+	if (kind == kCapabilityStatePlay) {
+		key |= static_cast<long long>(ScreenNotebook::StateKey())
+		       << kNotebookKeyShift;
+	}
 	int const previousKind = SyncedCapabilityKind();
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
@@ -286,6 +297,9 @@ void SyncCapabilities(int kind, int payload = 0) {
 	// not to do.
 	if (previousKind != kind && previousKind != kCapabilityStateUnknown) {
 		ForgetScreenAnnouncement();
+	}
+	if (kind == kCapabilityStateTitle || kind == kCapabilityStateTitleLoading) {
+		ScreenNotebook::Close();
 	}
 	bool const modal =
 	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu;
@@ -326,6 +340,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 	} else if (kind == kCapabilityStatePlay) {
 		ActionSet set;
 		ScreenPlay::AppendActions(set, payload);
+		ScreenNotebook::AppendActions(set);
 		NeuroSetRegisteredActions(set.data(), set.count());
 		std::string summary = "[Action] Capabilities: ";
 		summary += ScreenPlay::HasChoice(payload) ? "choice" : "game";

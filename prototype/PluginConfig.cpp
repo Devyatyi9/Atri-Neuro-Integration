@@ -82,7 +82,10 @@ wchar_t const *const kDefaultConfigText =
     L"; The red dot that blinks in a corner of the game while the link to "
     L"Neuro\n"
     L"; is down.\n"
-    L"link_indicator = on\n";
+    L"link_indicator = on\n"
+    L"\n"
+    L"; Neuro's notebook: pages she can write and read back during the game.\n"
+    L"notebook = on\n";
 
 bool ReadSwitch(std::wstring const &value, bool &out) {
 	// Every spelling a person reasonably writes for a switch. Anything else
@@ -242,6 +245,10 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.LinkIndicator);
 		return;
 	}
+	if (key == L"notebook") {
+		ReadSwitch(value, config.Notebook);
+		return;
+	}
 	if (key == L"ws_url") {
 		config.WsUrl = EnsureWsScheme(Narrow(value));
 		return;
@@ -383,6 +390,7 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	config.Logs = true;
 	config.FirstRun = FirstRunMode::Auto;
 	config.LinkIndicator = true;
+	config.Notebook = true;
 
 	std::size_t start = 0;
 	while (start <= text.size()) {

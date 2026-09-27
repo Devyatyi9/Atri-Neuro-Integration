@@ -57,6 +57,8 @@ struct PluginConfig {
 	std::string DisabledActions;
 	// The red dot that blinks in the corner while the link is down.
 	bool LinkIndicator;
+	// Neuro's notebook: pages she can write and read back.
+	bool Notebook;
 };
 
 PluginConfig const &GetPluginConfig();

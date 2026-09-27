@@ -42,6 +42,11 @@ void ExpectIndicator(wchar_t const *text, bool expected) {
 	            "link_indicator");
 }
 
+void ExpectNotebook(wchar_t const *text, bool expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.Notebook == expected, __FILE__, __LINE__, "notebook");
+}
+
 void ExpectFirstRun(wchar_t const *text, FirstRunMode expected) {
 	PluginConfig const config = ParsePluginConfig(text);
 	ReportCheck(config.FirstRun == expected, __FILE__, __LINE__, "first_run");
@@ -142,6 +147,9 @@ void RunPluginConfigTests() {
 	ExpectIndicator(L"", true);
 	ExpectIndicator(L"link_indicator = off", false);
 	ExpectIndicator(L"link_indicator = nonsense", true);
+	ExpectNotebook(L"", true);
+	ExpectNotebook(L"notebook = off", false);
+	ExpectNotebook(L"notebook = nonsense", true);
 
 	// The one-time settings: applied once unless the file says otherwise.
 	ExpectFirstRun(L"", FirstRunMode::Auto);

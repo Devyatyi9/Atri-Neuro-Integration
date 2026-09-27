@@ -123,6 +123,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ParseNumber.h
         prototype/actions/notebook/NotebookStore.cpp
         prototype/actions/notebook/NotebookStore.h
+        prototype/actions/notebook/ScreenNotebook.cpp
+        prototype/actions/notebook/ScreenNotebook.h
         prototype/actions/probes/ActionProbes.cpp
         prototype/actions/probes/ActionProbes.h
         prototype/actions/probes/TJSQuery.cpp
