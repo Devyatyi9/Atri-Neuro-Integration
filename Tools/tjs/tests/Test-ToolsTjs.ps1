@@ -53,7 +53,7 @@ $failures = 0
 # and they had no behaviour coverage at all -- which is where the empty bgm
 # field sat unnoticed for as long as it did.
 $repoRoot = Split-Path -Parent $toolsDir
-$deployed = Join-Path $repoRoot "integration-assets\neuro_scripts"
+$deployed = Join-Path $repoRoot "integration-assets\neuro-assets"
 
 function Resolve-Script([string]$Name) {
     $candidate = Join-Path $toolsTjs "$Name.tjs"
@@ -70,7 +70,7 @@ foreach ($check in $checks) {
     $name = $check.Name -replace '\.checks\.tjs$', ''
     $target = Resolve-Script $name
     if (-not $target) {
-        Write-Host "FAIL $name : no script named $name.tjs in Tools\tjs or integration-assets\neuro_scripts"
+        Write-Host "FAIL $name : no script named $name.tjs in Tools\tjs or integration-assets\neuro-assets"
         $failures++
         continue
     }

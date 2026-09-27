@@ -118,14 +118,14 @@ function Restart-Game([switch]$CloseEveryInstance) {
     # Editing these in the repository alone changed nothing in the game, and
     # that cost a full session before anyone noticed the deployed copy was days
     # old.
-    $scriptSource = Join-Path $RepoRoot "integration-assets\neuro_scripts"
+    $scriptSource = Join-Path $RepoRoot "integration-assets\neuro-assets"
     if (Test-Path $scriptSource) {
-        $scriptTarget = Join-Path $GameDir "neuro_scripts"
+        $scriptTarget = Join-Path $GameDir "neuro-assets"
         if (-not (Test-Path $scriptTarget)) {
             New-Item -ItemType Directory -Path $scriptTarget | Out-Null
         }
         # Recursive, and the folders come along: the scripts are loaded by
-        # path (neuro_scripts/install/hooks.tjs), so a flat copy would leave
+        # path (neuro-assets/install/hooks.tjs), so a flat copy would leave
         # the plugin asking for files that are not there.
         $scripts = Get-ChildItem -Path $scriptSource -Filter *.tjs -File -Recurse
         foreach ($script in $scripts) {

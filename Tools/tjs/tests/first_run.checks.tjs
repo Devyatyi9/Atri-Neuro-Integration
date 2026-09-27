@@ -1,4 +1,4 @@
-// Checks for integration-assets/neuro_scripts/install/first_run.tjs.
+// Checks for integration-assets/neuro-assets/install/first_run.tjs.
 //
 // The script already ran once against the stubs before these lines, with an
 // empty sf: that is the first launch of the plugin in a save folder. Its own

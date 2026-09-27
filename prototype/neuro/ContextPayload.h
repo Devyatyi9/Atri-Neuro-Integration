@@ -2,7 +2,7 @@
 
 #include <string>
 
-// Turns the semantic events emitted by neuro_scripts/context_monitor.tjs into
+// Turns the semantic events emitted by neuro-assets/context_monitor.tjs into
 // the single context message Neuro reads.
 //
 // The monitor emits one line per event, `[event] <type>\t<fields...>`, with

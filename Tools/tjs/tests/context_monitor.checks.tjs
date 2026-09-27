@@ -1,4 +1,4 @@
-// Checks for integration-assets/neuro_scripts/context_monitor.tjs.
+// Checks for integration-assets/neuro-assets/context_monitor.tjs.
 //
 // The monitor is a diff, not a reading: it runs every 200ms and must say only
 // what changed. Everything worth catching here is therefore about the second

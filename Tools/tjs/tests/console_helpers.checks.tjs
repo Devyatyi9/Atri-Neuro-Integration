@@ -1,4 +1,4 @@
-// Checks for integration-assets/neuro_scripts/install/console_helpers.tjs.
+// Checks for integration-assets/neuro-assets/install/console_helpers.tjs.
 
 assert(typeof global.pv == "Object", "pv not installed");
 assert(typeof global.pse == "Object", "pse not installed");

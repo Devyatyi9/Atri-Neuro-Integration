@@ -1042,7 +1042,7 @@ static void RetryFirstRunIfReady() {
 	}
 	std::string answer;
 	if (!ExecuteTJSSync(
-	        L"Neuro.execFile('neuro_scripts/install/first_run.tjs', 1)", &answer,
+	        L"Neuro.execFile('neuro-assets/install/first_run.tjs', 1)", &answer,
 	        5000, TJSExecMode::Expression) ||
 	    answer == "0") {
 		return;

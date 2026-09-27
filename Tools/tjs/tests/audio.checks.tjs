@@ -1,4 +1,4 @@
-// Checks for integration-assets/neuro_scripts/collect/audio.tjs.
+// Checks for integration-assets/neuro-assets/collect/audio.tjs.
 //
 // This collector feeds the bgm field of the context. It read only kag.bgm,
 // which serves the title and the menus and is empty in a scene, so the field

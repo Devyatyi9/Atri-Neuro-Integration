@@ -16,7 +16,7 @@
 	var loaded = 0;
 	for (var i = 0; i < files.count; i++) {
 		try {
-			global.Neuro.execFile("neuro_scripts/" + files[i], 1);
+			global.Neuro.execFile("neuro-assets/" + files[i], 1);
 			loaded++;
 		} catch (e) {
 		}

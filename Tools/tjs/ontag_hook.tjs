@@ -30,7 +30,7 @@ if (typeof kag.conductor.__neuronOrigOnTag == "undefined") {
            does not fall back to global, so a bare Neuro is void and the
            catch below would quietly swallow every call. */
         try {
-            var data = global.Neuro.execFile('neuro_scripts/context_monitor.tjs', 1);
+            var data = global.Neuro.execFile('neuro-assets/context_monitor.tjs', 1);
             if (data != '') global.Neuro.sendContextFromTJS(data);
         } catch(e) {
             /* Silence errors to avoid breaking conductor */

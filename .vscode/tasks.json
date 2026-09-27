@@ -173,9 +173,9 @@
       "command": "Copy-Item",
       "args": [
         "-Path",
-        "${workspaceFolder}\\integration-assets\\neuro_scripts\\*",
+        "${workspaceFolder}\\integration-assets\\neuro-assets\\*",
         "-Destination",
-        "D:\\Games\\ATRI-TestVersion\\neuro_scripts",
+        "D:\\Games\\ATRI-TestVersion\\neuro-assets",
         "-Recurse",
         "-Force"
       ],

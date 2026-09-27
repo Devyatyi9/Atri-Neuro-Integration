@@ -1,4 +1,4 @@
-// Checks for integration-assets/neuro_scripts/install/hooks.tjs.
+// Checks for integration-assets/neuro-assets/install/hooks.tjs.
 //
 // These hooks sit on the engine's own dispatch paths, outside the poll's
 // try/catch, so a mistake here is fatal rather than merely wrong. The one-shot
