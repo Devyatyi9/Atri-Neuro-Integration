@@ -159,6 +159,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/plugin/TJSExecutor.cpp
         prototype/ui/ConnectionIndicator.cpp
         prototype/ui/ConnectionIndicator.h
+        prototype/ui/TitleOverlay.cpp
+        prototype/ui/TitleOverlay.h
         prototype/UtfConversion.cpp
         prototype/neuro.def
         lib/krkr-sdk/tp_stub.cpp

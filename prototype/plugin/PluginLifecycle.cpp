@@ -16,6 +16,7 @@
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "ThreadGuard.h"
+#include "TitleOverlay.h"
 
 #pragma warning(push)
 #pragma warning(disable : 26495)  // Uninitialized member variable (tp_stub)
@@ -139,6 +140,8 @@ static void DeferredTJSInitThread() {
 		// would be far too expensive.
 		ExecuteTJSAsync(L"Neuro.execFile('neuro-assets/install/collectors.tjs', 1)",
 		                TJSExecMode::Expression);
+
+		TitleOverlay::Install();
 
 		StartHotkeyThread();
 		NeuroAutoConnect();

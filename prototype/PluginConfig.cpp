@@ -85,7 +85,11 @@ wchar_t const *const kDefaultConfigText =
     L"link_indicator = on\n"
     L"\n"
     L"; Neuro's notebook: pages she can write and read back during the game.\n"
-    L"notebook = on\n";
+    L"notebook = on\n"
+    L"\n"
+    L"; Neuro's picture over the second title background, once all CGs are "
+    L"collected.\n"
+    L"title_overlay = on\n";
 
 bool ReadSwitch(std::wstring const &value, bool &out) {
 	// Every spelling a person reasonably writes for a switch. Anything else
@@ -249,6 +253,10 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.Notebook);
 		return;
 	}
+	if (key == L"title_overlay") {
+		ReadSwitch(value, config.TitleOverlay);
+		return;
+	}
 	if (key == L"ws_url") {
 		config.WsUrl = EnsureWsScheme(Narrow(value));
 		return;
@@ -391,6 +399,7 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	config.FirstRun = FirstRunMode::Auto;
 	config.LinkIndicator = true;
 	config.Notebook = true;
+	config.TitleOverlay = true;
 
 	std::size_t start = 0;
 	while (start <= text.size()) {

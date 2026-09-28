@@ -127,7 +127,7 @@ function Restart-Game([switch]$CloseEveryInstance) {
         # Recursive, and the folders come along: the scripts are loaded by
         # path (neuro-assets/install/hooks.tjs), so a flat copy would leave
         # the plugin asking for files that are not there.
-        $scripts = Get-ChildItem -Path $scriptSource -Filter *.tjs -File -Recurse
+        $scripts = Get-ChildItem -Path $scriptSource -Include *.tjs, *.png -File -Recurse
         foreach ($script in $scripts) {
             $relative = $script.FullName.Substring($scriptSource.Length).TrimStart('\')
             $destination = Join-Path $scriptTarget $relative
@@ -137,7 +137,7 @@ function Restart-Game([switch]$CloseEveryInstance) {
             }
             Copy-Item -LiteralPath $script.FullName -Destination $destination -Force
         }
-        Write-Host "TJS scripts updated: $($scripts.Count) file(s) -> $scriptTarget"
+        Write-Host "Assets updated: $($scripts.Count) file(s) -> $scriptTarget"
     }
 
     if (-not $NoDump) {

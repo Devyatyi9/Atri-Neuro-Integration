@@ -405,6 +405,9 @@ void DispatchAction(std::string const &id,
 	}
 }
 
+std::mutex g_CharacterMutex;
+std::string g_CharacterId;
+
 neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 	neurosdk_error_e result = NeuroSDK_None;
 	for (int index = 0; index < count; ++index) {
@@ -429,11 +432,18 @@ neurosdk_error_e ProcessMessages(neurosdk_message_t *messages, int count) {
 						QueueActionsSnapshot({g_RegisteredActions, {}});
 					}
 					break;
-				case NeuroSDK_MessageKind_StartupAcknowledgement:
-					// Nothing to gate on it; it names the character the socket was
-					// attached to, which is worth seeing in the log.
-					Log("[Neuro] Startup acknowledged\n");
+				case NeuroSDK_MessageKind_StartupAcknowledgement: {
+					char const *character =
+					    message->value.startup_acknowledgement.character_id;
+					std::string const id = character ? character : "";
+					{
+						std::lock_guard<std::mutex> lock(g_CharacterMutex);
+						g_CharacterId = id;
+					}
+					Log(("[Neuro] Startup acknowledged, character '" + id + "'\n")
+					        .c_str());
 					break;
+				}
 				default:
 					break;
 			}
@@ -713,6 +723,11 @@ void NeuroDisconnect() {
 	DestroyContext();
 	g_NeuroConnected.store(false, std::memory_order_release);
 	g_NeuroReady.store(false, std::memory_order_release);
+}
+
+std::string NeuroCharacterId() {
+	std::lock_guard<std::mutex> lock(g_CharacterMutex);
+	return g_CharacterId;
 }
 
 bool NeuroIsConnected() {

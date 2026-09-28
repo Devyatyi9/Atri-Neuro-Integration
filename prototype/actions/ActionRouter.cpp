@@ -21,6 +21,7 @@
 #include "ScreenPlay.h"
 #include "ScreenSlots.h"
 #include "ScreenTitle.h"
+#include "TitleOverlay.h"
 
 namespace {
 
@@ -673,9 +674,13 @@ void RefreshPrototypeActionState() {
 		ClearPendingPresses();
 	}
 
+	if (screen.state != "title") {
+		TitleOverlay::NoteScreen(screen.state, false);
+	}
 	if (screen.state == "title") {
 		bool ready = false;
 		int const title = ScreenTitle::ReadPayload(screen, ready);
+		TitleOverlay::NoteScreen(screen.state, ready);
 		if (ready) {
 			SyncCapabilities(kCapabilityStateTitle, title);
 		} else if (SyncedCapabilityKind() != kCapabilityStateTitle) {

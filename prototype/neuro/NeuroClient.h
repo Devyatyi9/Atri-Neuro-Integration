@@ -37,6 +37,8 @@ void NeuroDropLink(unsigned int afterMs);
 // and a broken link in the same turn of the poll loop.
 void NeuroDropLinkOnNextResult();
 bool NeuroIsConnected();
+// The character the server named at startup; empty until one did.
+std::string NeuroCharacterId();
 bool NeuroIsReady();
 
 bool NeuroSendContext(char const *message, bool silent);

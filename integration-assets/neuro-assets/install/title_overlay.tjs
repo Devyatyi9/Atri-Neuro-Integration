@@ -1,0 +1,363 @@
+// Title overlay: Neuro's or Evil's picture laid over the second title background,
+// revealed by a wipe with pixel squares along its edge. The plugin calls arm()
+// when the title becomes ready; the animation runs only while it plays.
+
+class NeuroTitleOverlay {
+	var W = 707, H = 720, X = 573, Y = 0;
+	var M = 60;             // particle layer margin around the picture
+	var DELAY = 2000;       // wait after the title is ready before the automatic show
+
+	var wcurve = "decel", wms = 900;
+	var fcurve = "accel", fms = 1250;
+	var opFrom = 10, opTo = 255;
+	var feather = 24;
+	var edgeOff = 20;       // particles are born this far below the edge
+	var stopEarly = 50;     // no births in the last ms of the wipe
+	var autoK = 1.5;        // the automatic change runs slower than a manual one
+	var manualK = 0.5;      // and a manual one spawns fewer particles
+	var dens = [1.0, 1.0, 0.15, 0.5];              // start, middle, at, end
+	var env = [255, 235, 0.75, 125];               // emitter opacity envelope
+	var envMs = 50, envCurve = "decel";
+
+	var host, src, pic, pt;
+	var pw = 0.0, pf = 0.0, target = 0.0;
+	var shown = -1, edge = 0, redraw = false;
+	var manual = false, t0 = 0, last = 0, startAt = 0;
+	var running = false, storage = "";
+	var settled = false;    // animation finished; only the page watch is left
+	var watching = false;   // a menu is open; kept until the title is ready again
+
+	function NeuroTitleOverlay() {
+		Storages.addAutoPath(System.exePath + "neuro-assets/images/");
+	}
+
+	function finalize() {
+		stop();
+		freeLayers();
+	}
+
+	function curve(name, t) {
+		if (name == "accel") return t * t;
+		if (name == "decel") return t * (2 - t);
+		return t;
+	}
+
+	function pw3(v, t) {
+		if (t < 0) t = 0;
+		if (t > 1) t = 1;
+		if (t <= v[2]) return v[0] + (v[1] - v[0]) * t / v[2];
+		return v[1] + (v[3] - v[1]) * (t - v[2]) / (1 - v[2]);
+	}
+
+	// The front page first; a title being built on the back page before its
+	// transition counts too, so the picture is there as the title fades in.
+	function findHost() {
+		var h = findOn(kag.fore.base);
+		return h !== void ? h : findOn(kag.back.base);
+	}
+
+	function findOn(b) {
+		for (var i = 0; i < b.children.count; i++) {
+			if (b.children[i].name == "title_image") return b.children[i];
+		}
+		return void;
+	}
+
+	function alive() {
+		return pic !== void && isvalid pic && host !== void && isvalid host;
+	}
+
+	function freeLayers() {
+		if (pt !== void && isvalid pt) invalidate pt;
+		if (pic !== void && isvalid pic) invalidate pic;
+		if (src !== void && isvalid src) invalidate src;
+		pt = pic = src = host = void;
+	}
+
+	// Layers are children of title_image, so they leave together with the title.
+	function build() {
+		freeLayers();
+		host = findHost();
+		if (host === void) return false;
+		src = new Layer(kag, host);
+		src.loadImages(storage);
+		src.visible = false;
+		pic = new Layer(kag, host);
+		pic.setImageSize(W, H);
+		pic.setSizeToImageSize();
+		pic.type = ltAlpha;
+		pic.fillRect(0, 0, W, H, 0);
+		pic.setPos(X, Y);
+		pic.visible = false;
+
+		// ParticleController sizes itself from these; other effects read them
+		// too (the exit fade), so they are put back right after.
+		var exW = kag.exWidth, exH = kag.exHeight;
+		kag.exWidth = W + M * 2;
+		kag.exHeight = H + M * 2;
+		pt = new ParticleController(kag);
+		kag.exWidth = exW;
+		kag.exHeight = exH;
+		pt.parent = host;
+		pt.config = %[
+			storage: "px_flicker_additive_grad.png", rows: 4, columns: 5,
+			angle: "255/285", speed: "60/170", life: "1350/2050",
+			fade: 225, patsp: 140, vibsp: 0, vibsz: 0, ctx: "", cty: "",
+			genratio: 0, genpos: %[x: 0, y: 0], nofast: 0
+		];
+		pt.init();
+		pt.genpos = genpos;
+		pt.setPos(X - M, Y - M);
+		pt.type = ltAdditive;
+		// Shown only once frames flow: before its first flipUpdate the emitter's
+		// buffer is not cleared and reads as a white rectangle.
+		pt.visible = false;
+		return true;
+	}
+
+	// Births only over the opaque part of the picture, on the edge row.
+	function genpos() {
+		var x = pt.rand.random() * W;
+		var row = (int)edge;
+		if (row < 0) row = 0;
+		if (row > H - 1) row = H - 1;
+		for (var i = 0; i < 12; i++) {
+			if (src.getMaskPixel((int)x, row) > 32) break;
+			x = pt.rand.random() * W;
+		}
+		return %[x: M + x, y: M + edge + edgeOff];
+	}
+
+	// Automatic show after the delay; instant puts the picture up at once, for a
+	// return from a menu, where the title comes back as it was left. The menus
+	// swap KAG pages, so layers from before may sit on the other page's
+	// title_image: only layers on the current one count as shown.
+	function arm(name, instant = false) {
+		if (sf.allcflag != 1) return "first background";
+		if (alive() && host === findHost() && target > 0.5 && storage == name) {
+			watching = false;
+			return "already shown";
+		}
+		watching = false;
+		storage = name;
+		build();
+		target = 1.0;
+		manual = false;
+		shown = -1;
+		settled = false;
+		if (instant) {
+			pw = pf = 1.0;
+			redraw = true;
+			startAt = System.getTickCount();
+		} else {
+			pw = pf = 0.0;
+			startAt = System.getTickCount() + DELAY;
+		}
+		start();
+		return instant ? "shown" : "armed";
+	}
+
+	// A menu opened over the title: keep watching the pages so the picture is
+	// on the title_image the title comes back with, before it fades in.
+	function watch() {
+		if (target < 0.5 || storage == "") return;
+		watching = true;
+		if (running) return;
+		System.addContinuousHandler(tick);
+		running = true;
+	}
+
+	// The title is left for the game: nothing to wait for any more.
+	function leave() {
+		watching = false;
+		stop();
+		freeLayers();
+		target = 0.0;
+	}
+
+	// The exit fades the screen without touching title_image, so the picture is
+	// hidden by hand when the game closes.
+	function hideNow() {
+		stop();
+		if (pic !== void && isvalid pic) pic.visible = false;
+		if (pt !== void && isvalid pt) pt.visible = false;
+	}
+
+	// Manual switch: show if hidden, hide if shown; reverses mid-animation.
+	function toggle() {
+		if (!alive()) return "not on title";
+		target = (target > 0.5) ? 0.0 : 1.0;
+		manual = true;
+		settled = false;
+		redraw = true;
+		startAt = System.getTickCount();
+		start();
+		return target > 0.5 ? "shown" : "hidden";
+	}
+
+	function start() {
+		t0 = last = startAt;
+		if (!running) {
+			System.addContinuousHandler(tick);
+			running = true;
+		}
+	}
+
+	function stop() {
+		if (running) {
+			System.removeContinuousHandler(tick);
+			running = false;
+		}
+	}
+
+	function tick(tickCount) {
+		var now = System.getTickCount();
+		// Menus over the title replace title_image. While the picture is meant to
+		// be up it waits through them and follows to the new title_image keeping
+		// its progress; leave() ends the wait when the title is left for good.
+		if (!alive() || host !== findHost()) {
+			if (target < 0.5) {
+				stop();
+				freeLayers();
+				return;
+			}
+			if (findHost() === void || !build()) return;
+			shown = -1;
+			redraw = true;
+			settled = false;
+		}
+		if (settled) {
+			if (!watching && host.parent === kag.fore.base) stop();
+			return;
+		}
+		if (now < startAt) return;
+		if (!pt.visible) {
+			pt.flipUpdate(now, now, 0);
+			pt.visible = true;
+		}
+		var dt = now - last;
+		last = now;
+		if (dt < 0) dt = 0;
+		if (dt > 100) dt = 100;
+		var sk = manual ? 1.0 : autoK;
+
+		var p = pw;
+		var moving = (p != target);
+		if (moving) {
+			var sw = dt / (wms * sk);
+			p = (target > p) ? p + sw : p - sw;
+			if ((target > pw && p > target) || (target < pw && p < target)) p = target;
+			pw = p;
+		}
+		var fading = (pf != target);
+		if (fading) {
+			var sf2 = dt / (fms * sk);
+			var q = (target > pf) ? pf + sf2 : pf - sf2;
+			if ((target > pf && q > target) || (target < pf && q < target)) q = target;
+			pf = q;
+		}
+
+		// Hiding mirrors the appear: the background comes in on the same forward
+		// curves, the part above the edge fading out, the part below still whole.
+		var hiding = target < 0.5;
+		var cur, topOp = 0;
+		if (hiding) {
+			cur = H - (int)(H * curve(wcurve, 1 - pw));
+			var bg = opFrom + (opTo - opFrom) * curve(fcurve, 1 - pf);
+			topOp = (int)(opTo * (1 - bg / 255));
+		} else {
+			cur = (int)(H * curve(wcurve, pw));
+		}
+		var cut = hiding ? H - cur : 0;
+
+		if (cur != shown || redraw || (hiding && fading)) {
+			redraw = false;
+			if (cur < 1 && !(hiding && pf > 0)) {
+				pic.visible = false;
+			} else {
+				draw(cur, cut, hiding, topOp);
+				pic.visible = true;
+			}
+			var delta = (shown < 0) ? 0 : cur - shown;
+			if (delta < 0) delta = -delta;
+			var run = hiding ? 1 - pw : pw;
+			var d = pw3(dens, run) * (manual ? manualK : 1.0);
+			var late = run > 1 - stopEarly / (wms * sk);
+			pt.genratio = (moving && !late) ? (20 + delta * 14) * d : 0;
+			shown = cur;
+		} else if (!moving) {
+			pt.genratio = 0;
+		}
+		if (pic.visible) {
+			var fe = curve(fcurve, pf);
+			pic.opacity = hiding ? 255 : (int)(opFrom + (opTo - opFrom) * fe);
+		}
+
+		var et = (now - t0) / (envMs * sk);
+		if (et > 1) et = 1;
+		var ee, eo;
+		if (et <= env[2]) {
+			ee = curve(envCurve, et / env[2]);
+			eo = env[0] + (env[1] - env[0]) * ee;
+		} else {
+			ee = curve(envCurve, (et - env[2]) / (1 - env[2]));
+			eo = env[1] + (env[3] - env[1]) * ee;
+		}
+		pt.opacity = (int)eo;
+
+		edge = hiding ? cut : cur;
+		pt.flipUpdate(now, now, 0);
+
+		// Done once both clocks arrived and the last particles have died out.
+		// A picture parked on the back page behind a menu keeps the watch going.
+		if (!moving && !fading && now - t0 > (wms + fms) * sk + 2100) {
+			pt.genratio = 0;
+			settled = true;
+			if (!watching && host.parent === kag.fore.base) stop();
+		}
+	}
+
+	function draw(cur, cut, hiding, topOp) {
+		pic.fillRect(0, 0, W, H, 0);
+		var fw = feather;
+		// The band centre runs from -fw/2 to H+fw/2 so no half band is left at the end.
+		var edgeY = (hiding ? cut : cur) * (1 + fw / H) - fw / 2;
+		if (hiding && topOp > 0) {
+			var topEnd = (int)(edgeY - fw / 2);
+			if (topEnd > H) topEnd = H;
+			if (topEnd > 0) pic.operateRect(0, 0, src, 0, 0, W, topEnd, omAuto, topOp);
+		}
+		var solidTop = hiding ? edgeY + fw / 2 : 0;
+		var solidBottom = hiding ? H : edgeY - fw / 2;
+		if (solidTop < 0) solidTop = 0;
+		if (solidBottom > H) solidBottom = H;
+		if (solidBottom > solidTop) {
+			pic.copyRect(0, (int)solidTop, src, 0, (int)solidTop, W, (int)(solidBottom - solidTop));
+		}
+		for (var fy = edgeY - fw / 2; fy < edgeY + fw / 2; fy += 2) {
+			var fr = (fy + 1 - (edgeY - fw / 2)) / fw;
+			var fa = hiding ? fr : 1 - fr;
+			var yy = (int)fy;
+			var fo = (int)(topOp + (255 - topOp) * fa);
+			if (yy < 0 || yy + 2 > H || fo <= 0) continue;
+			pic.operateRect(0, yy, src, 0, yy, W, 2, omAuto, fo);
+		}
+	}
+}
+
+if (typeof global.neuroTitleOverlay != "undefined" && global.neuroTitleOverlay !== void) {
+	invalidate global.neuroTitleOverlay;
+}
+global.neuroTitleOverlay = new NeuroTitleOverlay();
+
+// Hooks outlive a reload of this script, so they are added once and look the
+// current instance up when they fire.
+if (typeof global.neuroTitleOverlayHooked == "undefined") {
+	global.neuroTitleOverlayHooked = true;
+	var hideOverlay = function() {
+		if (typeof global.neuroTitleOverlay == "Object" && isvalid global.neuroTitleOverlay)
+			global.neuroTitleOverlay.hideNow();
+	};
+	kag.addHook("onCloseHook", hideOverlay);
+	kag.addHook("onShutdown", hideOverlay);
+}

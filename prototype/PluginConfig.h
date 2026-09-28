@@ -59,6 +59,8 @@ struct PluginConfig {
 	bool LinkIndicator;
 	// Neuro's notebook: pages she can write and read back.
 	bool Notebook;
+	// Neuro's or Evil's picture over the second title background.
+	bool TitleOverlay;
 };
 
 PluginConfig const &GetPluginConfig();

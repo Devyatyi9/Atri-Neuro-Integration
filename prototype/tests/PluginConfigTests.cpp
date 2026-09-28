@@ -42,6 +42,12 @@ void ExpectIndicator(wchar_t const *text, bool expected) {
 	            "link_indicator");
 }
 
+void ExpectTitleOverlay(wchar_t const *text, bool expected) {
+	PluginConfig const config = ParsePluginConfig(text);
+	ReportCheck(config.TitleOverlay == expected, __FILE__, __LINE__,
+	            "title_overlay");
+}
+
 void ExpectNotebook(wchar_t const *text, bool expected) {
 	PluginConfig const config = ParsePluginConfig(text);
 	ReportCheck(config.Notebook == expected, __FILE__, __LINE__, "notebook");
@@ -150,6 +156,8 @@ void RunPluginConfigTests() {
 	ExpectNotebook(L"", true);
 	ExpectNotebook(L"notebook = off", false);
 	ExpectNotebook(L"notebook = nonsense", true);
+	ExpectTitleOverlay(L"", true);
+	ExpectTitleOverlay(L"title_overlay = off", false);
 
 	// The one-time settings: applied once unless the file says otherwise.
 	ExpectFirstRun(L"", FirstRunMode::Auto);
