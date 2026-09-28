@@ -333,7 +333,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    // isvalid/property access then throws on the void value.
 	    L"var d = 0, c = 0, p = 0, h = 0, a = 0, s2 = 0;"
 	    L"var tr = 0, cv = 0, ce = 0, xv = 0, xe = 0, ev = 0, pn = 0, em = 0;"
-	    L"var qv = 0, mv = 0;"
+	    L"var qv = 0, mv = 0, ov = 0;"
 	    L"var sg = '';"
 	    L"if (typeof kag != 'undefined') {"
 	    L"if (typeof kag.currentDialog == 'Object' && kag.currentDialog.visible) "
@@ -371,6 +371,8 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"xv = 1; if (t['extra'].enabled) xe = 1; }"
 	    L"if (typeof t['tend'] == 'Object' && t['tend'].visible) ev = 1;"
 	    L"}"
+	    L"if (typeof global.neuroTitleOverlay == 'Object' && sf.allcflag == 1) "
+	    L"ov = 1;"
 	    // A panel over the screen, and separately whether it is the per-slot edit
 	    // menu with its entries built. Other screens raise panels of their own,
 	    // so the entry test is what identifies this one.
@@ -385,19 +387,20 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	    L"}"
 	    L"return s + '|' + d + '|' + c + '|' + p + '|' + h + '|' + a + '|' + s2"
 	    L"+ '|' + tr + '|' + cv + '|' + ce + '|' + xv + '|' + xe + '|' + ev"
-	    L"+ '|' + pn + '|' + em + '|' + qv + '|' + mv + '|' + sg; })()",
+	    L"+ '|' + pn + '|' + em + '|' + qv + '|' + mv + '|' + ov + '|' + sg; "
+	    L"})()",
 	    &probe, 5000, TJSExecMode::Expression);
 	if (!executed) {
 		Log("[Action] Refresh state probe failed\n");
 		return false;
 	}
 
-	// "<state>", then sixteen single-digit flags each behind a bar, then the
+	// "<state>", then seventeen single-digit flags each behind a bar, then the
 	// scenario storage. Neither string contains a bar, so the flags sit at fixed
 	// offsets from the first one and the storage is whatever follows them. The
 	// width check is what catches a flag added to the expression and not here.
 	size_t const separator = probe.find('|');
-	size_t const flagsEnd = separator + 32;
+	size_t const flagsEnd = separator + 34;
 	if (separator == std::string::npos || probe.size() <= flagsEnd ||
 	    probe[flagsEnd] != '|') {
 		Log("[Action] Refresh state probe returned an unexpected shape\n");
@@ -420,6 +423,7 @@ bool ProbeScreen(ScreenSnapshot &out) {
 	out.editMenuReady = probe[separator + 27] == '1';
 	out.quickMenuVisible = probe[separator + 29] == '1';
 	out.moviePlaying = probe[separator + 31] == '1';
+	out.titleOverlay = probe[separator + 33] == '1';
 	out.storage = probe.substr(flagsEnd + 1);
 	return true;
 }

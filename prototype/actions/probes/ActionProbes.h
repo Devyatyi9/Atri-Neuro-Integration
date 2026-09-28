@@ -64,6 +64,9 @@ struct ScreenSnapshot {
 	bool titleShowsExtra = false;
 	bool titleCanOpenExtra = false;
 	bool titleShowsTrueEnd = false;
+	// Neuro's picture can be switched on this title: the overlay script is
+	// loaded and the game shows the second background.
+	bool titleOverlay = false;
 	// A panel layer is up over the screen. Read here rather than by a probe of
 	// its own: the per-slot edit menu runs its own scenario, so while it stands
 	// the storage names custom.ks and the screen underneath stops being

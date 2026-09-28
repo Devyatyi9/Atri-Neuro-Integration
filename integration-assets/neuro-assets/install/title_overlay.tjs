@@ -1,4 +1,4 @@
-// Title overlay: Neuro's or Evil's picture laid over the second title background,
+// Title overlay: Picture laid over the second title background,
 // revealed by a wipe with pixel squares along its edge. The plugin calls arm()
 // when the title becomes ready; the animation runs only while it plays.
 
@@ -26,6 +26,10 @@ class NeuroTitleOverlay {
 	var running = false, storage = "";
 	var settled = false;    // animation finished; only the page watch is left
 	var watching = false;   // a menu is open; kept until the title is ready again
+	var wanted = true;      // the player's last choice, kept across menus
+	var hit;                // click area over the picture, on the message layer
+	var hitStorage = "";
+	var hitOn = false;
 
 	function NeuroTitleOverlay() {
 		Storages.addAutoPath(System.exePath + "neuro-assets/images/");
@@ -35,6 +39,7 @@ class NeuroTitleOverlay {
 	function finalize() {
 		stop();
 		freeLayers();
+		if (hit !== void && isvalid hit) invalidate hit;
 	}
 
 	function curve(name, t) {
@@ -130,25 +135,87 @@ class NeuroTitleOverlay {
 		return %[x: M + x, y: M + edge + edgeOff];
 	}
 
-	// Automatic show after the delay; instant puts the picture up at once, for a
-	// return from a menu, where the title comes back as it was left. The menus
-	// swap KAG pages, so layers from before may sit on the other page's
-	// title_image: only layers on the current one count as shown.
+	// The full-screen message layer takes every click on the title, the menu
+	// buttons included, so the click area is a child of it rather than of
+	// title_image. It follows the front page's layer and is only switched on
+	// while the title itself is up.
+	function ensureHit() {
+		var m = kag.fore.messages[0];
+		if (hit === void || !isvalid hit || hit.parent !== m) {
+			if (hit !== void && isvalid hit) invalidate hit;
+			hit = new Layer(kag, m);
+			hit.name = "neuro_overlay_hit";
+			hit.setPos(X - m.left, Y - m.top);
+			hit.hitType = htMask;
+			// Hit only over the opaque part of the picture: the hit test reads the
+			// layer's own alpha, and opacity 0 keeps the copy invisible.
+			hit.hitThreshold = 64;
+			hit.opacity = 0;
+			hitStorage = "";
+			hit.onMouseDown = function(x, y, button, shift) {
+				if (button == mbLeft) global.neuroTitleOverlay.click();
+			};
+			hit.visible = hitOn;
+			updateCursor();
+		}
+		if (hitStorage != storage && storage != "") {
+			hit.loadImages("neuro://./images/" + storage + ".png");
+			hit.setSizeToImageSize();
+			hitStorage = storage;
+		}
+		return hit;
+	}
+
+	function setHit(on) {
+		hitOn = on;
+		if (on) {
+			ensureHit().visible = true;
+			updateCursor();
+		} else if (hit !== void && isvalid hit) {
+			hit.visible = false;
+		}
+	}
+
+	// The hand only while a click would do something; the ordinary arrow while
+	// the wipe is moving. The fade and the particles may still finish after it.
+	function updateCursor() {
+		if (hit === void || !isvalid hit) return;
+		hit.cursor = busy() ? kag.cursorDefault : kag.cursorPointed;
+	}
+
+	// Nothing left to follow: the picture and the click area are on the front page.
+	function canStop() {
+		return !watching && host.parent === kag.fore.base &&
+		       (!hitOn || hit.parent === kag.fore.messages[0]);
+	}
+
+	function busy() {
+		return running && pw != target;
+	}
+
+	// Automatic show after the delay, which also resets the player's choice;
+	// instant is a return from a menu, where the title comes back as it was
+	// left, shown or hidden. The menus swap KAG pages, so layers from before may
+	// sit on the other page's title_image: only layers on the current one count.
 	function arm(name, instant = false) {
 		if (sf.allcflag != 1) return "first background";
-		if (alive() && host === findHost() && target > 0.5 && storage == name) {
+		var same = storage == name;
+		storage = name;
+		setHit(true);
+		if (alive() && host === findHost() && same &&
+		    target == (wanted ? 1.0 : 0.0)) {
 			watching = false;
 			return "already shown";
 		}
 		watching = false;
-		storage = name;
 		build();
-		target = 1.0;
+		if (!instant) wanted = true;
+		target = wanted ? 1.0 : 0.0;
 		manual = false;
 		shown = -1;
 		settled = false;
 		if (instant) {
-			pw = pf = 1.0;
+			pw = pf = target;
 			redraw = true;
 			startAt = System.getTickCount();
 		} else {
@@ -159,10 +226,26 @@ class NeuroTitleOverlay {
 		return instant ? "shown" : "armed";
 	}
 
+	// A new character while the title is up: the picture changes in place.
+	function setPicture(name) {
+		if (name == storage) return "same";
+		storage = name;
+		if (hit !== void && isvalid hit && hit.visible) ensureHit();
+		if (!alive()) return "stored";
+		src.loadImages("neuro://./images/" + storage + ".png");
+		if (settled && target > 0.5) {
+			draw(H, 0, false, 0);
+		} else {
+			redraw = true;
+		}
+		return "changed";
+	}
+
 	// A menu opened over the title: keep watching the pages so the picture is
 	// on the title_image the title comes back with, before it fades in.
 	function watch() {
-		if (target < 0.5 || storage == "") return;
+		setHit(false);
+		if (storage == "") return;
 		watching = true;
 		if (running) return;
 		System.addContinuousHandler(tick);
@@ -171,6 +254,7 @@ class NeuroTitleOverlay {
 
 	// The title is left for the game: nothing to wait for any more.
 	function leave() {
+		setHit(false);
 		watching = false;
 		stop();
 		freeLayers();
@@ -180,15 +264,23 @@ class NeuroTitleOverlay {
 	// The exit fades the screen without touching title_image, so the picture is
 	// hidden by hand when the game closes.
 	function hideNow() {
+		setHit(false);
 		stop();
 		if (pic !== void && isvalid pic) pic.visible = false;
 		if (pt !== void && isvalid pt) pt.visible = false;
 	}
 
-	// Manual switch: show if hidden, hide if shown; reverses mid-animation.
+	function click() {
+		if (!busy()) toggle();
+	}
+
+	// Manual switch, from a click or Neuro's action: show if hidden, hide if
+	// shown. Refused while the wipe is still moving.
 	function toggle() {
-		if (!alive()) return "not on title";
+		if (busy()) return "busy";
+		if (!alive() && (findHost() === void || !build())) return "not on title";
 		target = (target > 0.5) ? 0.0 : 1.0;
+		wanted = target > 0.5;
 		manual = true;
 		settled = false;
 		redraw = true;
@@ -203,6 +295,7 @@ class NeuroTitleOverlay {
 			System.addContinuousHandler(tick);
 			running = true;
 		}
+		updateCursor();
 	}
 
 	function stop() {
@@ -210,6 +303,7 @@ class NeuroTitleOverlay {
 			System.removeContinuousHandler(tick);
 			running = false;
 		}
+		updateCursor();
 	}
 
 	function tick(tickCount) {
@@ -218,18 +312,21 @@ class NeuroTitleOverlay {
 		// be up it waits through them and follows to the new title_image keeping
 		// its progress; leave() ends the wait when the title is left for good.
 		if (!alive() || host !== findHost()) {
-			if (target < 0.5) {
-				stop();
-				freeLayers();
+			if (findHost() === void || !build()) {
+				if (!watching) {
+					stop();
+					freeLayers();
+				}
 				return;
 			}
-			if (findHost() === void || !build()) return;
 			shown = -1;
 			redraw = true;
 			settled = false;
 		}
+		// The click area moves with the front page too.
+		if (hitOn) ensureHit();
 		if (settled) {
-			if (!watching && host.parent === kag.fore.base) stop();
+			if (canStop()) stop();
 			return;
 		}
 		if (now < startAt) return;
@@ -250,6 +347,7 @@ class NeuroTitleOverlay {
 			p = (target > p) ? p + sw : p - sw;
 			if ((target > pw && p > target) || (target < pw && p < target)) p = target;
 			pw = p;
+			if (p == target) updateCursor();
 		}
 		var fading = (pf != target);
 		if (fading) {
@@ -315,7 +413,8 @@ class NeuroTitleOverlay {
 		if (!moving && !fading && now - t0 > (wms + fms) * sk + 2100) {
 			pt.genratio = 0;
 			settled = true;
-			if (!watching && host.parent === kag.fore.base) stop();
+			updateCursor();
+			if (canStop()) stop();
 		}
 	}
 

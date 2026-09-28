@@ -12,6 +12,7 @@
 #include "ActionSet.h"
 #include "Logging.h"
 #include "NeuroClient.h"
+#include "TJSExecutor.h"
 
 namespace {
 
@@ -25,6 +26,8 @@ constexpr int kFlagCanContinue = 1 << 1;
 constexpr int kFlagShowsExtra = 1 << 2;
 constexpr int kFlagCanOpenExtra = 1 << 3;
 constexpr int kFlagShowsTrueEnd = 1 << 4;
+// Her picture over the second background: offered only where it can appear.
+constexpr int kFlagOverlay = 1 << 5;
 
 // Continue leaves the title behind, but not at once: the scene loads for a
 // moment while the screen still reads as the title. Without this the refresh
@@ -236,6 +239,44 @@ void HandleOpenSettingsAction(std::string const &id, std::string const &data) {
 	NeuroSendActionResult(id.c_str(), true, "Opened the settings menu.");
 }
 
+// The same switch as a click on the picture, so what she does is what a player
+// would see happen.
+void HandleSwitchPortraitAction(std::string const &id,
+                                std::string const &data) {
+	if (!IsEmptyJsonObject(data)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "switch_portrait does not accept arguments.");
+		return;
+	}
+	if (!ProbeStateIs("title", "switch_portrait state")) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "That only works on the title screen.");
+		return;
+	}
+	std::string answer;
+	if (!ExecuteTJSSync(L"typeof global.neuroTitleOverlay == 'Object' ? "
+	                    L"global.neuroTitleOverlay.toggle() : 'missing'",
+	                    &answer, 5000, TJSExecMode::Expression)) {
+		NeuroSendActionResult(id.c_str(), false, "Switching the picture failed.");
+		return;
+	}
+	if (answer == "shown") {
+		NeuroSendActionResult(id.c_str(), true,
+		                      "The title screen now shows your picture.");
+	} else if (answer == "hidden") {
+		NeuroSendActionResult(id.c_str(), true,
+		                      "The title screen shows the original picture again.");
+	} else if (answer == "busy") {
+		NeuroSendActionResult(
+		    id.c_str(), false,
+		    "The picture is still changing. Try again in a moment.");
+	} else {
+		Log(("[Action] switch_portrait: " + answer + "\n").c_str());
+		NeuroSendActionResult(id.c_str(), false,
+		                      "The picture cannot be switched right now.");
+	}
+}
+
 }  // namespace
 
 namespace ScreenTitle {
@@ -257,6 +298,8 @@ bool Handle(std::string const &id,
 		HandleOpenExtraAction(id, data);
 	} else if (name == "exit_game") {
 		HandleExitGameAction(id, data);
+	} else if (name == "switch_portrait") {
+		HandleSwitchPortraitAction(id, data);
 	} else {
 		return false;
 	}
@@ -286,6 +329,12 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	set.add("exit_game", "Quit the game. Asks for confirmation first.",
 	        kExitGameSchema);
+	if ((payload & kFlagOverlay) != 0) {
+		set.add("switch_portrait",
+		        "Switch the title screen picture between yourself and the "
+		        "original Atri.",
+		        kSwitchPortraitSchema);
+	}
 }
 
 void SendEnteringContext(int payload) {
@@ -325,6 +374,8 @@ int ReadPayload(ScreenSnapshot const &screen, bool &ready) {
 		payload |= kFlagCanOpenExtra;
 	if (screen.titleShowsTrueEnd)
 		payload |= kFlagShowsTrueEnd;
+	if (screen.titleOverlay)
+		payload |= kFlagOverlay;
 	return payload;
 }
 

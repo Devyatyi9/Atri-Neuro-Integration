@@ -1,7 +1,5 @@
 #include "TitleOverlay.h"
 
-#include <algorithm>
-#include <cctype>
 #include <string>
 
 #include "Logging.h"
@@ -15,6 +13,7 @@ bool g_WasReady = false;
 // The last state other than the title, which decides how the picture returns.
 std::string g_LastOther;
 std::string g_LastState;
+std::string g_Picture;
 // The game was reached since the title was last shown: the way back may pass
 // through a menu (settings -> return to title), and still counts as from the
 // game.
@@ -59,26 +58,39 @@ void NoteScreen(std::string const &state, bool ready) {
 		g_WasReady = false;
 		return;
 	}
-	if (!ready || g_WasReady || !GetPluginConfig().TitleOverlay) {
+	if (!ready || !GetPluginConfig().TitleOverlay) {
+		return;
+	}
+	// Evil only when the server says so; no session or any other character is
+	// Neuro.
+	std::string const picture =
+	    NeuroCharacterId() == "evil" ? "overlay_e" : "overlay_n";
+	std::wstring const widePicture(picture.begin(), picture.end());
+	if (g_WasReady) {
+		// A reconnect to the other twin while the title is up changes the
+		// picture in place.
+		if (picture != g_Picture) {
+			g_Picture = picture;
+			ExecuteTJSAsync((L"typeof global.neuroTitleOverlay == 'Object' && "
+			                 L"global.neuroTitleOverlay.setPicture('" +
+			                 widePicture + L"')")
+			                    .c_str(),
+			                TJSExecMode::Expression);
+			Log(("[Overlay] Picture changed to " + picture + "\n").c_str());
+		}
 		return;
 	}
 	g_WasReady = true;
-	// Evil only when the server says so; no session or any other character is
-	// Neuro.
-	std::string id = NeuroCharacterId();
-	std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c) {
-		return static_cast<char>(std::tolower(c));
-	});
-	bool const evil = id.find("evil") != std::string::npos;
+	g_Picture = picture;
 	bool const instant = !g_LastOther.empty() && !g_SawGame;
 	g_SawGame = false;
 	std::wstring code =
 	    L"typeof global.neuroTitleOverlay == 'Object' && "
 	    L"global.neuroTitleOverlay.arm('";
-	code += evil ? L"overlay_e" : L"overlay_n";
+	code += widePicture;
 	code += instant ? L"', true)" : L"')";
 	ExecuteTJSAsync(code.c_str(), TJSExecMode::Expression);
-	Log(("[Overlay] Armed: " + std::string(evil ? "evil" : "neuro") +
+	Log(("[Overlay] Armed: " + g_Picture +
 	     (instant ? ", at once after '" + g_LastOther + "'" : ", animated") +
 	     "\n")
 	        .c_str());

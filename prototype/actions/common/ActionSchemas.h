@@ -117,6 +117,9 @@ constexpr char const *const kStartTrueEndSchema =
 constexpr char const *const kExitGameSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
+constexpr char const *const kSwitchPortraitSchema =
+    "{\"type\":\"object\",\"properties\":{},"
+    "\"additionalProperties\":false}";
 constexpr char const *const kOpenExtraSchema =
     "{\"type\":\"object\",\"properties\":{},"
     "\"additionalProperties\":false}";
