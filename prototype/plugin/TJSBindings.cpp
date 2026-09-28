@@ -14,6 +14,7 @@
 
 #include "ActionCommon.h"
 #include "ActionRouter.h"
+#include "AssetMedia.h"
 #include "ConnectionIndicator.h"
 #include "ContextPayload.h"
 #include "D3DWatch.h"
@@ -46,6 +47,17 @@ static tjs_error TJS_INTF_METHOD NeuroTestFunction(tTJSVariant *result,
 		*result = TJS_W("Hello from Neuro-integration plugin!");
 	}
 
+	return TJS_S_OK;
+}
+
+static tjs_error TJS_INTF_METHOD NeuroMountAssets(tTJSVariant *result,
+                                                  tjs_int numparams,
+                                                  tTJSVariant **param,
+                                                  iTJSDispatch2 *objthis) {
+	bool const ok = MountAssetMedia();
+	if (result) {
+		*result = (tTVInteger)(ok ? 1 : 0);
+	}
 	return TJS_S_OK;
 }
 
@@ -855,6 +867,7 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 // RegisterTJSBindings creates before these attach to it.
 NCB_ATTACH_FUNCTION(test, Neuro, NeuroTestFunction);
 NCB_ATTACH_FUNCTION(getVersion, Neuro, NeuroGetVersion);
+NCB_ATTACH_FUNCTION(mountAssets, Neuro, NeuroMountAssets);
 NCB_ATTACH_FUNCTION(beginExitShutdown, Neuro, NeuroBeginExitShutdown);
 NCB_ATTACH_FUNCTION(stressBlockNextSyncCall,
                     Neuro,

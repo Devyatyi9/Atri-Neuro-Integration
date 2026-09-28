@@ -127,7 +127,10 @@ function Restart-Game([switch]$CloseEveryInstance) {
         # Recursive, and the folders come along: the scripts are loaded by
         # path (neuro-assets/install/hooks.tjs), so a flat copy would leave
         # the plugin asking for files that are not there.
-        $scripts = Get-ChildItem -Path $scriptSource -Include *.tjs, *.png -File -Recurse
+        # images\ holds pictures stored without an extension (read through neuro://),
+        # so everything there goes along, not only .png.
+        $scripts = Get-ChildItem -Path $scriptSource -File -Recurse |
+            Where-Object { $_.Extension -in '.tjs', '.png' -or $_.Directory.Name -eq 'images' }
         foreach ($script in $scripts) {
             $relative = $script.FullName.Substring($scriptSource.Length).TrimStart('\')
             $destination = Join-Path $scriptTarget $relative

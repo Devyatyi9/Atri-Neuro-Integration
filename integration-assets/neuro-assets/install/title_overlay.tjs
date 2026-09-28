@@ -29,6 +29,7 @@ class NeuroTitleOverlay {
 
 	function NeuroTitleOverlay() {
 		Storages.addAutoPath(System.exePath + "neuro-assets/images/");
+		Neuro.mountAssets();
 	}
 
 	function finalize() {
@@ -80,7 +81,8 @@ class NeuroTitleOverlay {
 		host = findHost();
 		if (host === void) return false;
 		src = new Layer(kag, host);
-		src.loadImages(storage);
+		// The pictures are stored without an extension; neuro:// adds it.
+		src.loadImages("neuro://./images/" + storage + ".png");
 		src.visible = false;
 		pic = new Layer(kag, host);
 		pic.setImageSize(W, H);

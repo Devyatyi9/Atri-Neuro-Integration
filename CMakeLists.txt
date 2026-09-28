@@ -155,6 +155,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/tooling/GameDebugLog.cpp
         prototype/tooling/NeuroConsole.cpp
         prototype/tooling/NeuroTCPServer.cpp
+        prototype/plugin/AssetMedia.cpp
+        prototype/plugin/AssetMedia.h
         prototype/plugin/TJSBindings.cpp
         prototype/plugin/TJSExecutor.cpp
         prototype/ui/ConnectionIndicator.cpp
@@ -201,6 +203,8 @@ if(ATRI_BUILD_PROTOTYPE)
         # The D3D watch reads the device's own table; creating the throwaway
         # device it reads from is the only thing d3d9 is needed for.
         d3d9
+        # SHCreateStreamOnFileEx, for files served through neuro://.
+        shlwapi
     )
     target_link_options(atri_neuro_prototype PRIVATE
         "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/prototype/neuro.def"
