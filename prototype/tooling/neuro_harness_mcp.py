@@ -49,7 +49,30 @@ def _remember_port(port: int | None) -> None:
         handle.write(str(port))
 
 
-HARNESS = Harness(port=_remembered_port())
+# The characterId sent at startup, kept the same way and for the same reason.
+CHARACTER_FILE = os.path.join(tempfile.gettempdir(), "atri-neuro-harness-character")
+
+
+def _remembered_character() -> str:
+    try:
+        with open(CHARACTER_FILE, encoding="utf-8") as handle:
+            return handle.read().strip() or "test"
+    except OSError:
+        return "test"
+
+
+def _remember_character(character: str) -> None:
+    if character in ("", "test"):
+        try:
+            os.remove(CHARACTER_FILE)
+        except OSError:
+            pass
+        return
+    with open(CHARACTER_FILE, "w", encoding="utf-8") as handle:
+        handle.write(character)
+
+
+HARNESS = Harness(port=_remembered_port(), character=_remembered_character())
 MCP = FastMCP("atri-neuro-harness", log_level="ERROR")
 
 
@@ -128,19 +151,21 @@ def harness_disconnect_game() -> str:
     return json.dumps({"disconnected": True})
 
 
-def _delayed_restart(port: int | None) -> None:
+def _delayed_restart(port: int | None, character: str | None) -> None:
     # Give the MCP transport time to flush this tool's response before the
     # process image is replaced; os.execv never returns on success.
     time.sleep(0.3)
     if port is not None:
         _remember_port(None if port == DEFAULT_PORT else port)
+    if character is not None:
+        _remember_character(character)
     HARNESS.prepare_restart()
     sys.stdout.flush()
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 @MCP.tool()
-def harness_restart(port: int = 0) -> str:
+def harness_restart(port: int = 0, character: str = "") -> str:
     """Restart this harness process (re-exec), reloading the script from disk
     and resetting all in-memory state (events, sequence, game connection).
 
@@ -151,6 +176,10 @@ def harness_restart(port: int = 0) -> str:
     `.\Tools
 euro_tcp_client.ps1 -Restart -WsUrl "ws://127.0.0.1:<port>"`.
 
+    character: the characterId the startup acknowledgement names from now on
+    ("neuro", "evil"; "test" is the default). Empty keeps the current one. The
+    game has to reconnect to receive it.
+
     On Windows, os.execv reuses the calling process's inherited stdio handles
     but does not keep the same PID, so the MCP stdio session stays connected
     without a manual reconnect even though the reported PID changes after this
@@ -158,7 +187,7 @@ euro_tcp_client.ps1 -Restart -WsUrl "ws://127.0.0.1:<port>"`.
     if port and not (1 <= port <= 65535):
         return json.dumps({"error": f"port out of range: {port}"})
     threading.Thread(target=_delayed_restart,
-                     args=(port or None,), daemon=True).start()
+                     args=(port or None, character or None), daemon=True).start()
     return json.dumps({"restarting": True, "pid": os.getpid(),
                        "port": port or HARNESS.status()["port"]})
 

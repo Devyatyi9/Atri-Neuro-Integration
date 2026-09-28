@@ -64,11 +64,14 @@ def _send_frame(connection: socket.socket, opcode: int, payload: bytes = b"") ->
 
 
 class Harness:
-    def __init__(self, port: int | None = None) -> None:
+    def __init__(self, port: int | None = None, character: str = "test") -> None:
         # The port is per-instance so a caller can put the harness somewhere
         # else and leave the default free for another server -- Gary and Randy
         # both want 8000 and neither offers a way to move.
         self._port = PORT if port is None else port
+        # The characterId the startup acknowledgement names; the real server
+        # sends "neuro" or "evil".
+        self._character = character
         self._connection: socket.socket | None = None
         self._events: deque[dict[str, Any]] = deque(maxlen=MAX_EVENTS)
         self._next_sequence = 1
@@ -275,7 +278,7 @@ class Harness:
                 self._record("client_to_server", message)
                 if message.get("command") == "startup":
                     self.send({"command": "startup", "data": {"session": {
-                        "sessionId": "neuro-harness", "characterId": "test", "displayName": "Harness"
+                        "sessionId": "neuro-harness", "characterId": self._character, "displayName": "Harness"
                     }}})
                     # Gary and Randy both ask for the set again right after the
                     # connection is up, and the difference showed: a duplicate
