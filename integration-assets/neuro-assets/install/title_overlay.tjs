@@ -18,12 +18,16 @@ class NeuroTitleOverlay {
 	var dens = [1.0, 1.0, 0.15, 0.5];              // start, middle, at, end
 	var env = [255, 235, 0.75, 125];               // emitter opacity envelope
 	var envMs = 50, envCurve = "decel";
+	// The picture comes in from slightly above, settling from the start of the
+	// wipe; only on the way in.
+	var shiftPx = 17, shiftMs = 350, shiftCurve = "decel";
 
 	var host, src, pic, pt;
 	var pw = 0.0, pf = 0.0, target = 0.0;
 	var shown = -1, edge = 0, redraw = false;
 	var manual = false, t0 = 0, last = 0, startAt = 0;
 	var running = false, storage = "";
+	var shifting = false;
 	var settled = false;    // animation finished; only the page watch is left
 	var watching = false;   // a menu is open; kept until the title is ready again
 	var wanted = true;      // the player's last choice, kept across menus
@@ -132,7 +136,7 @@ class NeuroTitleOverlay {
 			if (src.getMaskPixel((int)x, row) > 32) break;
 			x = pt.rand.random() * W;
 		}
-		return %[x: M + x, y: M + edge + edgeOff];
+		return %[x: M + x, y: M + edge + edgeOff + (pic.top - Y)];
 	}
 
 	// The full-screen message layer takes every click on the title, the menu
@@ -214,6 +218,7 @@ class NeuroTitleOverlay {
 		manual = false;
 		shown = -1;
 		settled = false;
+		shifting = !instant && target > 0.5;
 		if (instant) {
 			pw = pf = target;
 			redraw = true;
@@ -281,6 +286,7 @@ class NeuroTitleOverlay {
 		if (!alive() && (findHost() === void || !build())) return "not on title";
 		target = (target > 0.5) ? 0.0 : 1.0;
 		wanted = target > 0.5;
+		shifting = target > 0.5 && pw == 0;
 		manual = true;
 		settled = false;
 		redraw = true;
@@ -360,6 +366,13 @@ class NeuroTitleOverlay {
 		// Hiding mirrors the appear: the background comes in on the same forward
 		// curves, the part above the edge fading out, the part below still whole.
 		var hiding = target < 0.5;
+		var dy = 0;
+		if (shifting && !hiding) {
+			var st = (now - t0) / (shiftMs * sk);
+			if (st >= 1) shifting = false;
+			else dy = (int)(shiftPx * (1 - curve(shiftCurve, st)));
+		}
+		if (pic.top != Y - dy) pic.top = Y - dy;
 		var cur, topOp = 0;
 		if (hiding) {
 			cur = H - (int)(H * curve(wcurve, 1 - pw));
