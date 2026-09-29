@@ -18,6 +18,7 @@ std::string g_Picture;
 // through a menu (settings -> return to title), and still counts as from the
 // game.
 bool g_SawGame = false;
+bool g_ReturnHint = false;
 
 }  // namespace
 
@@ -83,6 +84,7 @@ void NoteScreen(std::string const &state, bool ready) {
 	g_WasReady = true;
 	g_Picture = picture;
 	bool const instant = !g_LastOther.empty() && !g_SawGame;
+	g_ReturnHint = g_SawGame;
 	g_SawGame = false;
 	std::wstring code =
 	    L"typeof global.neuroTitleOverlay == 'Object' && "
@@ -94,6 +96,12 @@ void NoteScreen(std::string const &state, bool ready) {
 	     (instant ? ", at once after '" + g_LastOther + "'" : ", animated") +
 	     "\n")
 	        .c_str());
+}
+
+bool TakeReturnHint() {
+	bool const hint = g_ReturnHint;
+	g_ReturnHint = false;
+	return hint;
 }
 
 }  // namespace TitleOverlay

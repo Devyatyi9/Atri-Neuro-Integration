@@ -13,4 +13,9 @@ void Install();
 // the title as it was.
 void NoteScreen(std::string const &state, bool ready);
 
+// True once after the title was reached from the game with the picture armed,
+// then false until the next such return: the entering context names the switch
+// on that arrival only.
+bool TakeReturnHint();
+
 }  // namespace TitleOverlay

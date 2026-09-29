@@ -13,6 +13,7 @@
 #include "Logging.h"
 #include "NeuroClient.h"
 #include "TJSExecutor.h"
+#include "TitleOverlay.h"
 
 namespace {
 
@@ -349,6 +350,13 @@ void SendEnteringContext(int payload) {
 	}
 	if ((payload & kFlagShowsExtra) != 0 && (payload & kFlagCanOpenExtra) == 0) {
 		message += " Extra is greyed out: it is not unlocked yet.";
+	}
+	// Only on the way back from the game, when the picture is shown again: the
+	// player can switch it too, which is worth her knowing to mention.
+	if (TitleOverlay::TakeReturnHint() && (payload & kFlagOverlay) != 0) {
+		message +=
+		    " switch_portrait is available here now. The player can also switch "
+		    "the picture by clicking it.";
 	}
 	// Where Continue would pick up is deliberately not said. Hovering the button
 	// draws a preview, and that preview carries a picture of the scene with
