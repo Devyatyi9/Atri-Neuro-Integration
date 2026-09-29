@@ -28,6 +28,7 @@ class NeuroTitleOverlay {
 	var manual = false, t0 = 0, last = 0, startAt = 0;
 	var running = false, storage = "";
 	var shifting = false;
+	var syncEmitter = false;
 	var settled = false;    // animation finished; only the page watch is left
 	var watching = false;   // a menu is open; kept until the title is ready again
 	var wanted = true;      // the player's last choice, kept across menus
@@ -297,6 +298,7 @@ class NeuroTitleOverlay {
 
 	function start() {
 		t0 = last = startAt;
+		syncEmitter = true;
 		if (!running) {
 			System.addContinuousHandler(tick);
 			running = true;
@@ -336,9 +338,14 @@ class NeuroTitleOverlay {
 			return;
 		}
 		if (now < startAt) return;
-		if (!pt.visible) {
+		// The emitter births genratio times the time since its last update, and
+		// between animations nothing updates it: its clock is brought up to now
+		// with nothing to birth before the first frame of each animation.
+		if (syncEmitter || !pt.visible) {
+			pt.genratio = 0;
 			pt.flipUpdate(now, now, 0);
 			pt.visible = true;
+			syncEmitter = false;
 		}
 		var dt = now - last;
 		last = now;
