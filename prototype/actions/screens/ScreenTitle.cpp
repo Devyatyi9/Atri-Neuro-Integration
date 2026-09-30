@@ -308,6 +308,13 @@ bool Handle(std::string const &id,
 }
 
 void AppendActions(ActionSet &set, int payload) {
+	// The picture first: it is not a menu button but it fills half the screen.
+	if ((payload & kFlagOverlay) != 0) {
+		set.add("switch_portrait",
+		        "Switch the title screen picture between yourself and the "
+		        "original Atri.",
+		        kSwitchPortraitSchema);
+	}
 	// In the order the buttons sit on screen, so the set reads like the menu it
 	// mirrors, with the conditional entries in their own places rather than
 	// appended at the end.
@@ -330,12 +337,6 @@ void AppendActions(ActionSet &set, int payload) {
 	}
 	set.add("exit_game", "Quit the game. Asks for confirmation first.",
 	        kExitGameSchema);
-	if ((payload & kFlagOverlay) != 0) {
-		set.add("switch_portrait",
-		        "Switch the title screen picture between yourself and the "
-		        "original Atri.",
-		        kSwitchPortraitSchema);
-	}
 }
 
 void SendEnteringContext(int payload) {
