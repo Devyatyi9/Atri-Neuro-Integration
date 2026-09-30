@@ -38,7 +38,10 @@ param(
     # exception. Two crashes were lost before this was wired in, because the
     # tool has to be running *before* the fault, and remembering it by hand does
     # not work. -NoDump opts out.
-    [switch]$NoDump
+    [switch]$NoDump,
+    # With -Restart: deletes Neuro's notebook pages before the game starts, for
+    # a clean test. Never by default -- they may be what she wrote in a real run.
+    [switch]$ClearNotebooks
 )
 
 # Both derived from -GameExe, so pointing at the copy targets only the copy: the
@@ -141,6 +144,14 @@ function Restart-Game([switch]$CloseEveryInstance) {
             Copy-Item -LiteralPath $script.FullName -Destination $destination -Force
         }
         Write-Host "Assets updated: $($scripts.Count) file(s) -> $scriptTarget"
+    }
+
+    if ($ClearNotebooks) {
+        $notebooks = Join-Path $GameDir "neuro-assets\notebooks"
+        if (Test-Path $notebooks) {
+            Remove-Item -LiteralPath $notebooks -Recurse -Force
+            Write-Host "Notebooks cleared: $notebooks"
+        }
     }
 
     if (-not $NoDump) {
