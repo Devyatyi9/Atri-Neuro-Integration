@@ -51,6 +51,12 @@ class NotebookStore {
 		// Characters still free on lastPage. With NoRoom: how many would fit
 		// starting from the requested page.
 		int roomLeft = 0;
+		// Where the text went: the line it starts on, on firstPage, and the
+		// line it ends on, on lastPage.
+		int firstLine = 0;
+		int lastLine = 0;
+		// BadLine: how many lines the page has.
+		int lineCount = 0;
 		// Strike: how many places the text was found.
 		int matches = 0;
 		// NotEnoughLines: blank lines in a row from the one given; with it,

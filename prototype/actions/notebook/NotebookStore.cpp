@@ -43,6 +43,20 @@ std::wstring WithoutCarriageReturns(std::wstring const &text) {
 	return out;
 }
 
+// Spaces and tabs only: blank lines at either end of a note are kept, so room
+// can be left to fill in later.
+std::wstring WithoutEdgeSpaces(std::wstring const &text) {
+	size_t begin = 0;
+	size_t end = text.size();
+	while (begin < end && (text[begin] == L' ' || text[begin] == L'\t')) {
+		++begin;
+	}
+	while (end > begin && (text[end - 1] == L' ' || text[end - 1] == L'\t')) {
+		--end;
+	}
+	return text.substr(begin, end - begin);
+}
+
 std::wstring Trimmed(std::wstring const &text) {
 	size_t begin = 0;
 	size_t end = text.size();
@@ -418,8 +432,8 @@ NotebookStore::WriteOutcome NotebookStore::Append(int book,
 		return outcome;
 	}
 	std::wstring const note =
-	    Trimmed(WithoutNoteMarks(WithoutCarriageReturns(wide)));
-	if (note.empty()) {
+	    WithoutEdgeSpaces(WithoutNoteMarks(WithoutCarriageReturns(wide)));
+	if (Trimmed(note).empty()) {
 		outcome.status = Status::EmptyText;
 		return outcome;
 	}
@@ -484,10 +498,13 @@ NotebookStore::WriteOutcome NotebookStore::Append(int book,
 			outcome.status = Status::IoError;
 			return outcome;
 		}
+		int const lines = (int)SplitLines(text).size();
 		if (outcome.firstPage == 0) {
 			outcome.firstPage = target;
+			outcome.firstLine = lines - (int)SplitLines(pieces[i]).size() + 1;
 		}
 		outcome.lastPage = target;
+		outcome.lastLine = lines;
 		outcome.roomLeft = m_PageCapacity - CountWriting(text);
 	}
 	outcome.status = Status::Ok;
@@ -536,6 +553,7 @@ NotebookStore::WriteOutcome NotebookStore::WriteLine(int book,
 	std::vector<std::wstring> lines = SplitLines(existing);
 	if (line < 1 || line > (int)lines.size()) {
 		outcome.status = Status::BadLine;
+		outcome.lineCount = (int)lines.size();
 		return outcome;
 	}
 	auto blank = [&](size_t index) {
@@ -577,6 +595,8 @@ NotebookStore::WriteOutcome NotebookStore::WriteLine(int book,
 	outcome.status = SavePageLocked(book, page, updated);
 	if (outcome.status == Status::Ok) {
 		outcome.firstPage = outcome.lastPage = page;
+		outcome.firstLine = line;
+		outcome.lastLine = line + (int)added.size() - 1;
 		outcome.roomLeft = m_PageCapacity - CountWriting(updated);
 	}
 	return outcome;
@@ -622,6 +642,7 @@ NotebookStore::WriteOutcome NotebookStore::Annotate(int book,
 	std::vector<std::wstring> lines = SplitLines(existing);
 	if (line < 1 || line > (int)lines.size()) {
 		outcome.status = Status::BadLine;
+		outcome.lineCount = (int)lines.size();
 		return outcome;
 	}
 	LineParts parts = ParseLine(lines[line - 1]);
@@ -642,6 +663,7 @@ NotebookStore::WriteOutcome NotebookStore::Annotate(int book,
 	outcome.status = SavePageLocked(book, page, updated);
 	if (outcome.status == Status::Ok) {
 		outcome.firstPage = outcome.lastPage = page;
+		outcome.firstLine = outcome.lastLine = line;
 		outcome.roomLeft = m_PageCapacity - CountWriting(updated);
 	}
 	return outcome;

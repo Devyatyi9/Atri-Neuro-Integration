@@ -94,6 +94,29 @@ std::string FormatPage(int page, std::string const &utf8) {
 	return header + "\n" + lines;
 }
 
+std::string LineSpan(int first, int last) {
+	return first == last
+	           ? "line " + std::to_string(first)
+	           : "lines " + std::to_string(first) + "-" + std::to_string(last);
+}
+
+// The quoted text echoed back: whole when short, otherwise its start.
+std::string Excerpt(std::string const &utf8) {
+	constexpr int kShown = 40;
+	std::wstring wide;
+	if (!Utf8ToUtf16(utf8.data(), utf8.size(), wide) ||
+	    NotebookStore::CountCharacters(wide) <= kShown) {
+		return utf8;
+	}
+	size_t cut = 0;
+	for (int taken = 0; taken < kShown && cut < wide.size(); ++taken) {
+		cut += (wide[cut] >= 0xD800 && wide[cut] <= 0xDBFF) ? 2 : 1;
+	}
+	std::string start;
+	Utf16ToUtf8(wide.c_str(), cut, start);
+	return start + "...";
+}
+
 // Refusals shared by the actions that change a page.
 bool AnswerRefusal(std::string const &id,
                    NotebookStore::WriteOutcome const &outcome,
@@ -109,8 +132,12 @@ bool AnswerRefusal(std::string const &id,
 			message = PageRangeError();
 			break;
 		case NotebookStore::Status::BadLine:
-			message =
-			    "There is no line " + std::to_string(line) + " on " + where + ".";
+			message = outcome.lineCount == 0
+			              ? "There are no lines on " + where + ": it is blank."
+			              : "There is no line " + std::to_string(line) + " on " +
+			                    where + "; it has " +
+			                    std::to_string(outcome.lineCount) +
+			                    (outcome.lineCount == 1 ? " line." : " lines.");
 			break;
 		case NotebookStore::Status::LineTaken:
 			message = which + " on " + where +
@@ -260,9 +287,9 @@ void HandleWrite(std::string const &id, std::string const &data) {
 		g_CurrentPage = page;
 		NeuroSendActionResult(
 		    id.c_str(), true,
-		    ("Written on line " + std::to_string(line) + " of page " +
-		     std::to_string(page) + ". " + std::to_string(outcome.roomLeft) +
-		     " characters left on that page.")
+		    ("Written on page " + std::to_string(page) + ", " +
+		     LineSpan(outcome.firstLine, outcome.lastLine) + ". " +
+		     std::to_string(outcome.roomLeft) + " characters left on that page.")
 		        .c_str());
 		return;
 	}
@@ -272,11 +299,16 @@ void HandleWrite(std::string const &id, std::string const &data) {
 	switch (outcome.status) {
 		case NotebookStore::Status::Ok: {
 			g_CurrentPage = outcome.lastPage;
+			// With the lines, so a margin note can follow without reading the
+			// page back.
 			std::string message =
 			    outcome.firstPage == outcome.lastPage
-			        ? "Written on page " + std::to_string(outcome.lastPage) + "."
-			        : "Written on pages " + std::to_string(outcome.firstPage) +
-			              " to " + std::to_string(outcome.lastPage) + ".";
+			        ? "Written on page " + std::to_string(outcome.lastPage) + ", " +
+			              LineSpan(outcome.firstLine, outcome.lastLine) + "."
+			        : "Written from page " + std::to_string(outcome.firstPage) +
+			              " line " + std::to_string(outcome.firstLine) + " to page " +
+			              std::to_string(outcome.lastPage) + " line " +
+			              std::to_string(outcome.lastLine) + ".";
 			message += " " + std::to_string(outcome.roomLeft) +
 			           " characters left on that page.";
 			NeuroSendActionResult(id.c_str(), true, message.c_str());
@@ -378,9 +410,10 @@ void HandleStrike(std::string const &id, std::string const &data) {
 		return;
 	}
 	g_CurrentPage = page;
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    ("Struck through on page " + std::to_string(page) + ".").c_str());
+	NeuroSendActionResult(id.c_str(), true,
+	                      ("Struck through \"" + Excerpt(quote) + "\" on page " +
+	                       std::to_string(page) + ".")
+	                          .c_str());
 }
 
 }  // namespace

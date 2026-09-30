@@ -235,6 +235,43 @@ void LineTests() {
 	RemoveTree(root);
 }
 
+void AppendLineTests() {
+	std::wstring const root = MakeTempRoot();
+	{
+		NotebookStore store(root, 3, 60);
+
+		// The outcome names the lines, so a margin note can follow.
+		NotebookStore::WriteOutcome outcome = store.Append(1, 1, "first");
+		CHECK(outcome.firstLine == 1 && outcome.lastLine == 1);
+		outcome = store.Append(1, 1, "second\nthird");
+		CHECK(outcome.firstPage == 1 && outcome.firstLine == 2 &&
+		      outcome.lastLine == 3);
+
+		// Blank lines at the end of a note stay, to be written on later.
+		outcome = store.Append(1, 1, "later:\n\n");
+		CHECK(outcome.status == Status::Ok && outcome.firstLine == 4 &&
+		      outcome.lastLine == 6);
+		CHECK(Read(store, 1, 1) == "first\nsecond\nthird\nlater:\n\n");
+		CHECK(store.WriteLine(1, 1, 5, "one\ntwo").status == Status::Ok);
+		CHECK(Read(store, 1, 1) == "first\nsecond\nthird\nlater:\none\ntwo");
+		CHECK(store.Append(1, 1, "\n  \n").status == Status::EmptyText);
+
+		// A line past the end says how many there are.
+		outcome = store.Annotate(1, 1, 9, "x");
+		CHECK(outcome.status == Status::BadLine && outcome.lineCount == 6);
+		outcome = store.Annotate(1, 2, 1, "x");
+		CHECK(outcome.status == Status::BadLine && outcome.lineCount == 0);
+
+		// Across pages: where it starts on the first, where it ends on the last.
+		outcome = store.Append(1, 2, std::string(50, 'a'));
+		outcome = store.Append(1, 2, "bbbbbbbbbb cccccccccc");
+		CHECK(outcome.status == Status::Ok && outcome.firstPage == 3 &&
+		      outcome.firstLine == 1 && outcome.lastPage == 3 &&
+		      outcome.lastLine == 1);
+	}
+	RemoveTree(root);
+}
+
 void StrikeTests() {
 	std::wstring const root = MakeTempRoot();
 	{
@@ -317,6 +354,7 @@ void RunNotebookStoreTests() {
 	StoreTests();
 	CountAndFormatTests();
 	LineTests();
+	AppendLineTests();
 	StrikeTests();
 	TimeTests();
 }
