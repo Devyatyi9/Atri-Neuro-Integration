@@ -11,6 +11,7 @@
 #include "NeuroClient.h"
 #include "NotebookStore.h"
 #include "PluginConfig.h"
+#include "UtfConversion.h"
 
 namespace {
 
@@ -59,6 +60,102 @@ bool ReadPageArgument(std::string const &data, int &page, bool &valid) {
 	return true;
 }
 
+// A present key must be a positive integer; an absent one leaves `value` alone.
+bool ReadIntArgument(std::string const &data,
+                     char const *key,
+                     int &value,
+                     bool &valid) {
+	valid = true;
+	if (data.find(key) == std::string::npos) {
+		return false;
+	}
+	int parsed = 0;
+	valid = ParseJsonInteger(data, key, parsed) && parsed >= 1;
+	if (valid) {
+		value = parsed;
+	}
+	return true;
+}
+
+// The page as Neuro reads it: when it was started and last written, then
+// numbered lines with the margin notes lined up.
+std::string FormatPage(int page, std::string const &utf8) {
+	std::wstring wide;
+	std::string lines = utf8;
+	if (Utf8ToUtf16(utf8.data(), utf8.size(), wide)) {
+		std::wstring const numbered = NotebookStore::NumberedLines(wide);
+		Utf16ToUtf8(numbered.c_str(), numbered.size(), lines);
+	}
+	std::string header = "Page " + std::to_string(page);
+	NotebookStore::PageTimes const times = Store().Times(kBook, page);
+	if (times.written) {
+		header += ", started " + times.created + ", last written " + times.modified;
+	}
+	return header + "\n" + lines;
+}
+
+// Refusals shared by the actions that change a page.
+bool AnswerRefusal(std::string const &id,
+                   NotebookStore::WriteOutcome const &outcome,
+                   int page,
+                   int line) {
+	std::string const where = "page " + std::to_string(page);
+	std::string const which = "Line " + std::to_string(line);
+	std::string message;
+	switch (outcome.status) {
+		case NotebookStore::Status::Ok:
+			return false;
+		case NotebookStore::Status::BadPage:
+			message = PageRangeError();
+			break;
+		case NotebookStore::Status::BadLine:
+			message =
+			    "There is no line " + std::to_string(line) + " on " + where + ".";
+			break;
+		case NotebookStore::Status::LineTaken:
+			message = which + " on " + where +
+			          " already has writing. Only a blank line can be written on.";
+			break;
+		case NotebookStore::Status::NotEnoughLines:
+			message = which + " on " + where + " has room for " +
+			          std::to_string(outcome.blankLines) + " blank line" +
+			          (outcome.blankLines == 1 ? "" : "s") +
+			          " in a row; the text has " + std::to_string(outcome.textLines) +
+			          ". Writing already there does not move.";
+			break;
+		case NotebookStore::Status::HasNote:
+			message = which + " already has a note.";
+			break;
+		case NotebookStore::Status::TooLong:
+			message = "A margin note holds up to " +
+			          std::to_string(NotebookStore::kMarginNoteMax) + " characters.";
+			break;
+		case NotebookStore::Status::NotFound:
+			message = "Could not find that text on the page.";
+			break;
+		case NotebookStore::Status::Ambiguous:
+			message = "Found " + std::to_string(outcome.matches) +
+			          " matches; give occurrence 1-" +
+			          std::to_string(outcome.matches) + ".";
+			break;
+		case NotebookStore::Status::NoRoom:
+			message = "Not enough room on " + where + ": " +
+			          std::to_string(outcome.roomLeft) + " characters left.";
+			break;
+		case NotebookStore::Status::EmptyText:
+			message = "The text is empty.";
+			break;
+		case NotebookStore::Status::BadText:
+			message = "The text is not valid.";
+			break;
+		case NotebookStore::Status::IoError:
+			message = "The page could not be saved.";
+			break;
+	}
+	NeuroSendActionResult(id.c_str(), false, message.c_str());
+	return true;
+}
+
 void HandleOpen(std::string const &id, std::string const &data) {
 	int requested = kBook;
 	if (data.find("\"notebook\"") != std::string::npos &&
@@ -78,12 +175,17 @@ void HandleOpen(std::string const &id, std::string const &data) {
 	int const last = Store().LastWrittenPage(kBook);
 	g_CurrentPage = last > 0 ? last : 1;
 	g_Open.store(1);
-	std::string const message =
+	std::string message =
 	    last == 0 ? "Opened your notebook. It is blank."
 	              : "Opened your notebook. " + std::to_string(last) + " of " +
 	                    std::to_string(NotebookStore::kPageCount) +
 	                    " pages have writing; it is open on page " +
 	                    std::to_string(last) + ".";
+	// After a break this is the first thing worth knowing.
+	NotebookStore::PageTimes const times = Store().Times(kBook, g_CurrentPage);
+	if (last != 0 && times.written) {
+		message += " Last written " + times.modified + ".";
+	}
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
 
@@ -113,15 +215,14 @@ void HandleRead(std::string const &id, std::string const &data) {
 		NeuroSendActionResult(id.c_str(), true, (name + " is blank.").c_str());
 		return;
 	}
-	if (text.size() <= kInlinePageBytes) {
-		NeuroSendActionResult(id.c_str(), true, (name + ":\n" + text).c_str());
+	std::string const shown = FormatPage(page, text);
+	if (shown.size() <= kInlinePageBytes) {
+		NeuroSendActionResult(id.c_str(), true, shown.c_str());
 		return;
 	}
 	NeuroSendActionResult(id.c_str(), true,
 	                      ("Reading page " + std::to_string(page) + ".").c_str());
-	NeuroSendContext(
-	    ("Your notebook, page " + std::to_string(page) + ":\n\n" + text).c_str(),
-	    true);
+	NeuroSendContext(("Your notebook. " + shown).c_str(), true);
 }
 
 void HandleWrite(std::string const &id, std::string const &data) {
@@ -134,9 +235,35 @@ void HandleWrite(std::string const &id, std::string const &data) {
 	int const last = Store().LastWrittenPage(kBook);
 	int page = last > 0 ? last : 1;
 	bool valid = true;
-	ReadPageArgument(data, page, valid);
+	bool const pageGiven = ReadPageArgument(data, page, valid);
 	if (!valid) {
 		NeuroSendActionResult(id.c_str(), false, PageRangeError().c_str());
+		return;
+	}
+	int line = 0;
+	ReadIntArgument(data, "\"line\"", line, valid);
+	if (!valid) {
+		NeuroSendActionResult(id.c_str(), false, "\"line\" must be 1 or more.");
+		return;
+	}
+	if (line > 0) {
+		// On a blank line, instead of after the last note: of the page she is
+		// on, like reading, unless she names one.
+		if (!pageGiven) {
+			page = g_CurrentPage;
+		}
+		NotebookStore::WriteOutcome const outcome =
+		    Store().WriteLine(kBook, page, line, text);
+		if (AnswerRefusal(id, outcome, page, line)) {
+			return;
+		}
+		g_CurrentPage = page;
+		NeuroSendActionResult(
+		    id.c_str(), true,
+		    ("Written on line " + std::to_string(line) + " of page " +
+		     std::to_string(page) + ". " + std::to_string(outcome.roomLeft) +
+		     " characters left on that page.")
+		        .c_str());
 		return;
 	}
 
@@ -187,7 +314,73 @@ void HandleWrite(std::string const &id, std::string const &data) {
 			              .c_str()
 			        : "The note could not be saved.");
 			return;
+		default:
+			AnswerRefusal(id, outcome, page, 0);
+			return;
 	}
+}
+
+void HandleAnnotate(std::string const &id, std::string const &data) {
+	std::string text;
+	if (!ParseJsonString(data, "\"text\"", text)) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "annotate_line requires \"text\".");
+		return;
+	}
+	int line = 0;
+	bool valid = true;
+	if (!ReadIntArgument(data, "\"line\"", line, valid) || !valid) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "annotate_line requires \"line\", 1 or more.");
+		return;
+	}
+	int page = g_CurrentPage;
+	ReadPageArgument(data, page, valid);
+	if (!valid) {
+		NeuroSendActionResult(id.c_str(), false, PageRangeError().c_str());
+		return;
+	}
+	NotebookStore::WriteOutcome const outcome =
+	    Store().Annotate(kBook, page, line, text);
+	if (AnswerRefusal(id, outcome, page, line)) {
+		return;
+	}
+	g_CurrentPage = page;
+	NeuroSendActionResult(id.c_str(), true,
+	                      ("Noted beside line " + std::to_string(line) +
+	                       " of page " + std::to_string(page) + ".")
+	                          .c_str());
+}
+
+void HandleStrike(std::string const &id, std::string const &data) {
+	std::string quote;
+	if (!ParseJsonString(data, "\"quote\"", quote)) {
+		NeuroSendActionResult(id.c_str(), false, "strike_text requires \"quote\".");
+		return;
+	}
+	bool valid = true;
+	int page = g_CurrentPage;
+	ReadPageArgument(data, page, valid);
+	if (!valid) {
+		NeuroSendActionResult(id.c_str(), false, PageRangeError().c_str());
+		return;
+	}
+	int occurrence = 0;
+	ReadIntArgument(data, "\"occurrence\"", occurrence, valid);
+	if (!valid) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "\"occurrence\" must be 1 or more.");
+		return;
+	}
+	NotebookStore::WriteOutcome const outcome =
+	    Store().Strike(kBook, page, quote, occurrence);
+	if (AnswerRefusal(id, outcome, page, 0)) {
+		return;
+	}
+	g_CurrentPage = page;
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    ("Struck through on page " + std::to_string(page) + ".").c_str());
 }
 
 }  // namespace
@@ -198,7 +391,8 @@ bool Handle(std::string const &id,
             std::string const &name,
             std::string const &data) {
 	bool const ours = name == "open_notebook" || name == "read_page" ||
-	                  name == "write_note" || name == "close_notebook";
+	                  name == "write_note" || name == "annotate_line" ||
+	                  name == "strike_text" || name == "close_notebook";
 	if (!ours || !GetPluginConfig().Notebook) {
 		return false;
 	}
@@ -221,6 +415,10 @@ bool Handle(std::string const &id,
 		HandleRead(id, data);
 	} else if (name == "write_note") {
 		HandleWrite(id, data);
+	} else if (name == "annotate_line") {
+		HandleAnnotate(id, data);
+	} else if (name == "strike_text") {
+		HandleStrike(id, data);
 	} else {
 		g_Open.store(0);
 		NeuroSendActionResult(id.c_str(), true, "Closed the notebook.");
@@ -233,33 +431,61 @@ void AppendActions(ActionSet &set) {
 		return;
 	}
 	if (g_Open.load() == 0) {
+		// No notebook to choose while there is only one: a number offered
+		// here only invites wrong ones.
 		set.add("open_notebook", "Open your notebook to read or write in it.",
-		        "{\"type\":\"object\",\"properties\":{\"notebook\":"
-		        "{\"type\":\"integer\",\"minimum\":1}},"
+		        "{\"type\":\"object\",\"properties\":{},"
 		        "\"additionalProperties\":false}");
 		return;
 	}
 	std::string const pages = std::to_string(NotebookStore::kPageCount);
 	std::string const capacity = std::to_string(NotebookStore::kPageCapacity);
+	std::string const pageField =
+	    "\"page\":{\"type\":\"integer\",\"minimum\":1,"
+	    "\"maximum\":" +
+	    pages + "}";
+	std::string const lineField = "\"line\":{\"type\":\"integer\",\"minimum\":1}";
 	set.add("read_page",
 	        set.keep("Read a page of your notebook (" + pages +
-	                 " pages). Without \"page\", reads the page you are on."),
-	        set.keep("{\"type\":\"object\",\"properties\":{\"page\":"
-	                 "{\"type\":\"integer\",\"minimum\":1,\"maximum\":" +
-	                 pages + "}},\"additionalProperties\":false}"));
+	                 " pages). Without \"page\", reads the page you are on. "
+	                 "Lines come numbered, margin notes after the second bar."),
+	        set.keep("{\"type\":\"object\",\"properties\":{" + pageField +
+	                 "},\"additionalProperties\":false}"));
 	set.add("write_note",
-	        set.keep("Write a note in your notebook. It goes after your last "
-	                 "note unless \"page\" is given; a page holds " +
+	        set.keep("Write in your notebook; what is written stays. It goes "
+	                 "after your last note unless \"page\" is given; a page "
+	                 "holds " +
 	                 capacity +
 	                 " characters, and a longer note continues on the next "
-	                 "blank pages."),
+	                 "blank pages. With \"line\", writes on that blank line of "
+	                 "the page instead."),
 	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
 	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
-	                 capacity +
-	                 "},\"page\":{\"type\":\"integer\",\"minimum\":1,"
-	                 "\"maximum\":" +
-	                 pages +
-	                 "}},\"required\":[\"text\"],"
+	                 capacity + "}," + pageField + "," + lineField +
+	                 "},\"required\":[\"text\"],"
+	                 "\"additionalProperties\":false}"));
+	std::string const noteMax = std::to_string(NotebookStore::kMarginNoteMax);
+	set.add("annotate_line",
+	        set.keep("Add a short note in the margin beside a line, up to " +
+	                 noteMax +
+	                 " characters; one per line, blank lines too. Without "
+	                 "\"page\", on the page you are on."),
+	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
+	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
+	                 noteMax + "}," + lineField + "," + pageField +
+	                 "},\"required\":[\"text\",\"line\"],"
+	                 "\"additionalProperties\":false}"));
+	set.add("strike_text",
+	        set.keep(std::string(
+	            "Strike through text on a page; it stays readable. Give it "
+	            "exactly as written. If it appears more than once, choose "
+	            "which with \"occurrence\". Without \"page\", on the page you "
+	            "are on.")),
+	        set.keep("{\"type\":\"object\",\"properties\":{\"quote\":"
+	                 "{\"type\":\"string\",\"minLength\":1},"
+	                 "\"occurrence\":{\"type\":\"integer\",\"minimum\":1}," +
+	                 pageField +
+	                 "},\"required\":[\"quote\"],"
 	                 "\"additionalProperties\":false}"));
 	set.add("close_notebook", "Close your notebook.",
 	        "{\"type\":\"object\",\"properties\":{},"

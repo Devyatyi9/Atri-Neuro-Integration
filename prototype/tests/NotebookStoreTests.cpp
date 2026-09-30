@@ -161,9 +161,162 @@ void StoreTests() {
 	RemoveTree(root);
 }
 
+void CountAndFormatTests() {
+	// Strike marks and the note mark take no room.
+	CHECK(NotebookStore::CountWriting(L"a ~~bc~~ d") == 6);
+	CHECK(NotebookStore::CountWriting(L"x | y\x1F") == 5);
+	// An unclosed "~~" is writing like any other.
+	CHECK(NotebookStore::CountWriting(L"a ~~b") == 5);
+
+	// Numbers on the left, margin notes lined up, the mark hidden, a blank
+	// line kept.
+	std::wstring const shown = NotebookStore::NumberedLines(
+	    L"Met Atri.\n| train was late?\x1F\nNatsuki. | again\x1F");
+	std::wstring const blank(NotebookStore::kMarginColumn, L' ');
+	CHECK(shown == L"1 | Met Atri.\n2 | " + blank + L" | train was late?\n3 | " +
+	                   L"Natsuki." +
+	                   std::wstring(NotebookStore::kMarginColumn - 8, L' ') +
+	                   L" | again");
+	CHECK(NotebookStore::NumberedLines(L"").empty());
+}
+
+void LineTests() {
+	std::wstring const root = MakeTempRoot();
+	{
+		NotebookStore store(root, 3, 60);
+
+		// Line breaks and blank lines in a note are kept.
+		CHECK(store.Append(1, 1, "one\n\nthree").status == Status::Ok);
+		CHECK(Read(store, 1, 1) == "one\n\nthree");
+
+		// Margin notes: one per line, blank lines too, length capped.
+		CHECK(store.Annotate(1, 1, 1, "first").status == Status::Ok);
+		CHECK(store.Annotate(1, 1, 1, "again").status == Status::HasNote);
+		CHECK(store.Annotate(1, 1, 2, "on a blank line").status == Status::Ok);
+		CHECK(store.Annotate(1, 1, 4, "no such line").status == Status::BadLine);
+		CHECK(store.Annotate(1, 1, 3, std::string(31, 'x')).status ==
+		      Status::TooLong);
+		CHECK(store.Annotate(1, 1, 3, "  ").status == Status::EmptyText);
+		CHECK(Read(store, 1, 1) == "one | first\x1F\n| on a blank line\x1F\nthree");
+
+		// A note mark typed by Neuro is dropped.
+		CHECK(store.Annotate(1, 1, 3, "x\x1Fy").status == Status::Ok);
+		CHECK(Read(store, 1, 1).find("three | xy\x1F") != std::string::npos);
+
+		// Writing on the blank line keeps its note. Two lines of text need two
+		// blank lines in a row: nothing written moves.
+		CHECK(store.WriteLine(1, 1, 1, "taken").status == Status::LineTaken);
+		NotebookStore::WriteOutcome outcome = store.WriteLine(1, 1, 2, "two\nmore");
+		CHECK(outcome.status == Status::NotEnoughLines && outcome.blankLines == 1 &&
+		      outcome.textLines == 2);
+		outcome = store.WriteLine(1, 1, 2, "two");
+		CHECK(outcome.status == Status::Ok && outcome.lastPage == 1);
+		CHECK(Read(store, 1, 1) ==
+		      "one | first\x1F\ntwo | on a blank line\x1F\nthree | xy\x1F");
+
+		// A run of blank lines takes as many lines of text, notes staying put.
+		CHECK(store.Append(1, 3, "top\n\n\n\nbottom").status == Status::Ok);
+		CHECK(store.Annotate(1, 3, 3, "mid").status == Status::Ok);
+		CHECK(store.WriteLine(1, 3, 2, "a\nb\nc\nd").status ==
+		      Status::NotEnoughLines);
+		CHECK(store.WriteLine(1, 3, 2, "a\nb\nc").status == Status::Ok);
+		CHECK(Read(store, 1, 3) == "top\na\nb | mid\x1F\nc\nbottom");
+
+		// No room on the page: refused, nothing changes.
+		CHECK(store.Append(1, 2, std::string(50, 'a') + "\n\ny").status ==
+		      Status::Ok);
+		std::string const before = Read(store, 1, 2);
+		outcome = store.WriteLine(1, 2, 2, "ten chars!");
+		CHECK(outcome.status == Status::NoRoom && outcome.roomLeft == 7);
+		CHECK(store.Annotate(1, 2, 3, "abcdefgh").status == Status::NoRoom);
+		CHECK(store.WriteLine(1, 2, 4, "x").status == Status::BadLine);
+		CHECK(Read(store, 1, 2) == before);
+	}
+	RemoveTree(root);
+}
+
+void StrikeTests() {
+	std::wstring const root = MakeTempRoot();
+	{
+		NotebookStore store(root, 3, 60);
+		CHECK(store.Append(1, 1, "a cat and a cat\nthe dog").status == Status::Ok);
+
+		// Twice on the page: needs an occurrence.
+		NotebookStore::WriteOutcome outcome = store.Strike(1, 1, "cat", 0);
+		CHECK(outcome.status == Status::Ambiguous && outcome.matches == 2);
+		CHECK(store.Strike(1, 1, "cat", 3).status == Status::NotFound);
+		CHECK(store.Strike(1, 1, "cow", 0).status == Status::NotFound);
+
+		// Several strikes on one line, side by side.
+		CHECK(store.Strike(1, 1, "cat", 2).status == Status::Ok);
+		CHECK(store.Strike(1, 1, "cat", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 1) == "a ~~cat~~ and a ~~cat~~\nthe dog");
+		CHECK(store.Strike(1, 1, "and", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 1) == "a ~~cat~~ ~~and~~ a ~~cat~~\nthe dog");
+
+		// Text already struck is not found again, even in part.
+		CHECK(store.Strike(1, 1, "cat", 0).status == Status::NotFound);
+		CHECK(store.Strike(1, 1, "at", 0).status == Status::NotFound);
+
+		// Quoting the marks of struck text finds nothing; the marks cost no room.
+		CHECK(store.Strike(1, 1, "a ~~cat~~\nthe", 0).status == Status::NotFound);
+		outcome = store.Strike(1, 1, "the dog", 0);
+		CHECK(outcome.status == Status::Ok);
+		CHECK(outcome.roomLeft ==
+		      60 - NotebookStore::CountWriting(L"a cat and a cat\nthe dog"));
+
+		// Across the bar into a margin note: struck on each side, never the bar.
+		CHECK(store.Append(1, 2, "left side\nnext").status == Status::Ok);
+		CHECK(store.Annotate(1, 2, 1, "right").status == Status::Ok);
+		CHECK(store.Annotate(1, 2, 2, "far").status == Status::Ok);
+		CHECK(store.Strike(1, 2, " | ", 0).status == Status::NotFound);
+		CHECK(store.Strike(1, 2, "side | right", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 2) == "left ~~side~~ | ~~right~~\x1F\nnext | far\x1F");
+		CHECK(store.Strike(1, 2, " | far", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 2) ==
+		      "left ~~side~~ | ~~right~~\x1F\nnext | ~~far~~\x1F");
+
+		// Across a line break.
+		CHECK(store.Append(1, 3, "end of\nnext line").status == Status::Ok);
+		CHECK(store.Strike(1, 3, "of\nnext", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 3) == "end ~~of\nnext~~ line");
+	}
+	RemoveTree(root);
+}
+
+void TimeTests() {
+	std::wstring const root = MakeTempRoot();
+	{
+		NotebookStore store(root, 3, 60);
+		CHECK(!store.Times(1, 1).written);
+		CHECK(store.Append(1, 1, "first").status == Status::Ok);
+
+		// Pretend the page was started long ago; later writes keep that date.
+		std::wstring const path = root + L"\\book1\\page_001.txt";
+		HANDLE const file = CreateFileW(path.c_str(), FILE_WRITE_ATTRIBUTES, 0,
+		                                nullptr, OPEN_EXISTING, 0, nullptr);
+		SYSTEMTIME old = {2020, 1, 0, 2, 12, 0, 0, 0};
+		FILETIME created = {};
+		SystemTimeToFileTime(&old, &created);
+		SetFileTime(file, &created, nullptr, nullptr);
+		CloseHandle(file);
+
+		CHECK(store.Append(1, 1, "second").status == Status::Ok);
+		NotebookStore::PageTimes const times = store.Times(1, 1);
+		CHECK(times.written);
+		CHECK(times.created.substr(0, 4) == "2020");
+		CHECK(times.modified.substr(0, 4) != "2020");
+	}
+	RemoveTree(root);
+}
+
 }  // namespace
 
 void RunNotebookStoreTests() {
 	SplitTests();
 	StoreTests();
+	CountAndFormatTests();
+	LineTests();
+	StrikeTests();
+	TimeTests();
 }
