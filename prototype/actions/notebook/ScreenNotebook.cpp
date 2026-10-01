@@ -122,6 +122,8 @@ char const *const kOpenDescription =
 
 std::mutex g_Mutex;
 std::atomic<int> g_Open(0);
+// Whether the notebook's rules have gone to context this run.
+std::atomic<bool> g_RulesSaid(false);
 // The page reading goes to when no page is named. Guarded by g_Mutex.
 int g_CurrentPage = 1;
 
@@ -373,6 +375,25 @@ void HandleOpen(std::string const &id, std::string const &data) {
 		message += times.written ? ", " + times.modified + "." : ".";
 	}
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
+	// The rules, said once: the action descriptions stay a sentence each.
+	if (!g_RulesSaid.exchange(true)) {
+		std::string const rules =
+		    "How your notebook works. It has " +
+		    std::to_string(NotebookStore::kPageCount) + " pages of " +
+		    std::to_string(NotebookStore::kPageCapacity) +
+		    " characters; what is written stays. Without \"page\" an action "
+		    "works on the page you are on, and with it moves you there. A note "
+		    "too long for the page runs on to the next blank pages; line breaks "
+		    "are kept, empty lines too. \"line\" in write_note must name a "
+		    "blank line, which may be past the last one. A margin note is up "
+		    "to " +
+		    std::to_string(NotebookStore::kMarginNoteMax) +
+		    " characters, one per line. read_page numbers the lines and shows "
+		    "margin notes after a second bar. strike_text needs the text "
+		    "exactly as written, and \"occurrence\" when it appears more than "
+		    "once.";
+		NeuroSendContext(rules.c_str(), true);
+	}
 }
 
 void HandleRead(std::string const &id, std::string const &data) {
@@ -657,44 +678,28 @@ void AppendActions(ActionSet &set, bool quickMenuOut) {
 	    pages + "}";
 	std::string const lineField = "\"line\":{\"type\":\"integer\",\"minimum\":1}";
 	set.add("read_page",
-	        set.keep("Read a page of your notebook (" + pages +
-	                 " pages). Without \"page\", reads the page you are on. "
-	                 "Lines come numbered, margin notes after the second bar."),
+	        "Read a page of your notebook; without \"page\", the one you are on.",
 	        set.keep("{\"type\":\"object\",\"properties\":{" + pageField +
 	                 "},\"additionalProperties\":false}"));
-	set.add(
-	    "write_note",
-	    set.keep("Write in your notebook; what is written stays. Without "
-	             "\"page\", it goes at the end of the page you are on; a page "
-	             "holds " +
-	             capacity +
-	             " characters, and a longer note continues on the next "
-	             "blank pages. Line breaks in the text are kept, empty lines "
-	             "too. With \"line\", writes on that line of the page instead: "
-	             "it must be blank, and may be past the last line."),
-	    set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
-	             "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
-	             capacity + "}," + pageField + "," + lineField +
-	             "},\"required\":[\"text\"],"
-	             "\"additionalProperties\":false}"));
+	set.add("write_note",
+	        "Write in your notebook, at the end of the page you are on or of "
+	        "\"page\". With \"line\", on that blank line of the page instead.",
+	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
+	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
+	                 capacity + "}," + pageField + "," + lineField +
+	                 "},\"required\":[\"text\"],"
+	                 "\"additionalProperties\":false}"));
 	std::string const noteMax = std::to_string(NotebookStore::kMarginNoteMax);
 	set.add("annotate_line",
-	        set.keep("Add a short note in the margin beside a line, up to " +
-	                 noteMax +
-	                 " characters; one per line, blank lines and lines past the "
-	                 "last one too. Without "
-	                 "\"page\", on the page you are on."),
+	        "Add a short note in the margin beside a line of the page.",
 	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
 	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
 	                 noteMax + "}," + lineField + "," + pageField +
 	                 "},\"required\":[\"text\",\"line\"],"
 	                 "\"additionalProperties\":false}"));
 	set.add("strike_text",
-	        set.keep(std::string(
-	            "Strike through text on a page; it stays readable. Give it "
-	            "exactly as written. If it appears more than once, choose "
-	            "which with \"occurrence\". Without \"page\", on the page you "
-	            "are on.")),
+	        "Strike through text on the page, quoted as it is written; it stays "
+	        "readable.",
 	        set.keep("{\"type\":\"object\",\"properties\":{\"quote\":"
 	                 "{\"type\":\"string\",\"minLength\":1},"
 	                 "\"occurrence\":{\"type\":\"integer\",\"minimum\":1}," +

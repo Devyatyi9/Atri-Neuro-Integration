@@ -39,7 +39,7 @@ constexpr DWORD kHoverPreviewMs = 400;
 // -- only the game's own highlight and hover sound, which start as soon as the
 // handler runs. Long enough for the engine to get to them, short enough not to
 // be a third of the action's time.
-constexpr DWORD kHoverSoundMs = 120;
+constexpr DWORD kHoverSoundMs = 250;
 
 // How often WaitForScreen asks. One ask is a crossing to the game's main
 // thread, about ten milliseconds of it, so asking much faster would spend
