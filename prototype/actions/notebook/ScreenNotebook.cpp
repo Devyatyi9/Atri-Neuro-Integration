@@ -161,14 +161,6 @@ bool AnswerRefusal(std::string const &id,
 		case NotebookStore::Status::BadPage:
 			message = PageRangeError();
 			break;
-		case NotebookStore::Status::BadLine:
-			message = outcome.lineCount == 0
-			              ? "There are no lines on " + where + ": it is blank."
-			              : "There is no line " + std::to_string(line) + " on " +
-			                    where + "; it has " +
-			                    std::to_string(outcome.lineCount) +
-			                    (outcome.lineCount == 1 ? " line." : " lines.");
-			break;
 		case NotebookStore::Status::LineTaken:
 			message = which + " on " + where +
 			          " already has writing. Only a blank line can be written on.";
@@ -188,7 +180,8 @@ bool AnswerRefusal(std::string const &id,
 			          std::to_string(NotebookStore::kMarginNoteMax) + " characters.";
 			break;
 		case NotebookStore::Status::NotFound:
-			message = "Could not find that text on the page.";
+			message = "Could not find that text on " + where +
+			          ". Give it exactly as written, capitals included.";
 			break;
 		case NotebookStore::Status::AlreadyStruck:
 			message = "That text is already struck through.";
@@ -237,18 +230,20 @@ void HandleOpen(std::string const &id, std::string const &data) {
 		return;
 	}
 	Store().RemoveLeftovers(kBook);
-	int const last = Store().LastWrittenPage(kBook);
+	// Where she wrote last, so a note without a page carries on from there.
+	int const last = Store().LatestWrittenPage(kBook);
 	g_CurrentPage = last > 0 ? last : 1;
 	g_Open.store(1);
 	std::string message =
 	    last == 0 ? "Opened your notebook. It is blank."
 	              : "Opened your notebook. Pages with writing: " +
 	                    PageRanges(Store().WrittenPages(kBook)) +
-	                    ". It is open on page " + std::to_string(last) + ".";
+	                    ". It is open on page " + std::to_string(last) +
+	                    ", the last one you wrote on";
 	// After a break this is the first thing worth knowing.
 	NotebookStore::PageTimes const times = Store().Times(kBook, g_CurrentPage);
-	if (last != 0 && times.written) {
-		message += " Last written " + times.modified + ".";
+	if (last != 0) {
+		message += times.written ? ", " + times.modified + "." : ".";
 	}
 	NeuroSendActionResult(id.c_str(), true, message.c_str());
 }
@@ -295,11 +290,10 @@ void HandleWrite(std::string const &id, std::string const &data) {
 		NeuroSendActionResult(id.c_str(), false, "write_note requires \"text\".");
 		return;
 	}
-	// Without a page the note goes after the last one written.
-	int const last = Store().LastWrittenPage(kBook);
-	int page = last > 0 ? last : 1;
+	// Without a page: the one she is on, like every other action.
+	int page = g_CurrentPage;
 	bool valid = true;
-	bool const pageGiven = ReadPageArgument(data, page, valid);
+	ReadPageArgument(data, page, valid);
 	if (!valid) {
 		NeuroSendActionResult(id.c_str(), false, PageRangeError().c_str());
 		return;
@@ -311,11 +305,6 @@ void HandleWrite(std::string const &id, std::string const &data) {
 		return;
 	}
 	if (line > 0) {
-		// On a blank line, instead of after the last note: of the page she is
-		// on, like reading, unless she names one.
-		if (!pageGiven) {
-			page = g_CurrentPage;
-		}
 		NotebookStore::WriteOutcome const outcome =
 		    Store().WriteLine(kBook, page, line, text);
 		if (AnswerRefusal(id, outcome, page, line)) {
@@ -361,13 +350,10 @@ void HandleWrite(std::string const &id, std::string const &data) {
 			              std::to_string(outcome.roomLeft) +
 			              " characters before existing writing or the end of the "
 			              "notebook.";
-			if (!pageGiven) {
-				message += " Give \"page\" to write on another page.";
-				int const blank = FirstBlankPage(Store().WrittenPages(kBook));
-				if (blank != 0) {
-					message +=
-					    " Page " + std::to_string(blank) + " is the first blank one.";
-				}
+			int const blank = FirstBlankPage(Store().WrittenPages(kBook));
+			if (blank != 0) {
+				message += " Page " + std::to_string(blank) +
+				           " is the first blank one; give \"page\" to write there.";
 			}
 			NeuroSendActionResult(id.c_str(), false, message.c_str());
 			return;
@@ -503,11 +489,15 @@ bool Handle(std::string const &id,
 	return true;
 }
 
-void AppendActions(ActionSet &set) {
+void AppendActions(ActionSet &set, bool quickMenuOut) {
 	if (!GetPluginConfig().Notebook) {
 		return;
 	}
 	if (g_Open.load() == 0) {
+		// The notebook is taken out from the quick menu, like its buttons.
+		if (!quickMenuOut) {
+			return;
+		}
 		// No notebook to choose while there is only one: a number offered
 		// here only invites wrong ones.
 		set.add("open_notebook", "Open your notebook to read or write in it.",
@@ -530,8 +520,8 @@ void AppendActions(ActionSet &set) {
 	                 "},\"additionalProperties\":false}"));
 	set.add(
 	    "write_note",
-	    set.keep("Write in your notebook; what is written stays. It goes "
-	             "after your last note unless \"page\" is given; a page "
+	    set.keep("Write in your notebook; what is written stays. Without "
+	             "\"page\", it goes at the end of the page you are on; a page "
 	             "holds " +
 	             capacity +
 	             " characters, and a longer note continues on the next "
@@ -547,7 +537,8 @@ void AppendActions(ActionSet &set) {
 	set.add("annotate_line",
 	        set.keep("Add a short note in the margin beside a line, up to " +
 	                 noteMax +
-	                 " characters; one per line, blank lines too. Without "
+	                 " characters; one per line, blank lines and lines past the "
+	                 "last one too. Without "
 	                 "\"page\", on the page you are on."),
 	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
 	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
@@ -577,7 +568,9 @@ int StateKey() {
 
 void Close() {
 	std::lock_guard<std::mutex> lock(g_Mutex);
-	g_Open.store(0);
+	if (g_Open.exchange(0) != 0) {
+		NeuroSendContext("Your notebook was closed.", true);
+	}
 }
 
 }  // namespace ScreenNotebook

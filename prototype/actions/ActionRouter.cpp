@@ -341,7 +341,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 	} else if (kind == kCapabilityStatePlay) {
 		ActionSet set;
 		ScreenPlay::AppendActions(set, payload);
-		ScreenNotebook::AppendActions(set);
+		ScreenNotebook::AppendActions(set, ScreenPlay::HasPanel(payload));
 		NeuroSetRegisteredActions(set.data(), set.count());
 		std::string summary = "[Action] Capabilities: ";
 		summary += ScreenPlay::HasChoice(payload) ? "choice" : "game";

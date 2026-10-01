@@ -418,6 +418,32 @@ int NotebookStore::LastWrittenPage(int book) {
 	return 0;
 }
 
+int NotebookStore::LatestWrittenPage(int book) {
+	if (!ValidPage(book, 1)) {
+		return 0;
+	}
+	std::lock_guard<std::mutex> lock(m_Mutex);
+	int latest = 0;
+	FILETIME when = {};
+	for (int page = 1; page <= m_PageCount; ++page) {
+		WIN32_FILE_ATTRIBUTE_DATA data = {};
+		if (GetFileAttributesExW(PagePath(book, page).c_str(),
+		                         GetFileExInfoStandard, &data) &&
+		    (data.nFileSizeLow != 0 || data.nFileSizeHigh != 0) &&
+		    (latest == 0 || CompareFileTime(&data.ftLastWriteTime, &when) >= 0)) {
+			latest = page;
+			when = data.ftLastWriteTime;
+		}
+	}
+	return latest;
+}
+
+int NotebookStore::RoomAfter(std::wstring const &text) const {
+	// The next note starts on its own line.
+	int const room = m_PageCapacity - CountWriting(text) - (text.empty() ? 0 : 1);
+	return room > 0 ? room : 0;
+}
+
 std::vector<int> NotebookStore::WrittenPages(int book) {
 	std::vector<int> pages;
 	if (!ValidPage(book, 1)) {
@@ -522,7 +548,7 @@ NotebookStore::WriteOutcome NotebookStore::Append(int book,
 		}
 		outcome.lastPage = target;
 		outcome.lastLine = lines;
-		outcome.roomLeft = m_PageCapacity - CountWriting(text);
+		outcome.roomLeft = RoomAfter(text);
 	}
 	outcome.status = Status::Ok;
 	return outcome;
@@ -620,7 +646,7 @@ NotebookStore::WriteOutcome NotebookStore::WriteLine(int book,
 		outcome.firstPage = outcome.lastPage = page;
 		outcome.firstLine = line;
 		outcome.lastLine = line + (int)added.size() - 1;
-		outcome.roomLeft = m_PageCapacity - CountWriting(updated);
+		outcome.roomLeft = RoomAfter(updated);
 	}
 	return outcome;
 }
@@ -663,10 +689,14 @@ NotebookStore::WriteOutcome NotebookStore::Annotate(int book,
 		return outcome;
 	}
 	std::vector<std::wstring> lines = SplitLines(existing);
-	if (line < 1 || line > (int)lines.size()) {
-		outcome.status = Status::BadLine;
-		outcome.lineCount = (int)lines.size();
+	if (line < 1 || line > m_PageCapacity) {
+		outcome.status = Status::NoRoom;
+		outcome.roomLeft = m_PageCapacity - CountWriting(existing);
 		return outcome;
+	}
+	// Past the end the page is blank.
+	if ((int)lines.size() < line) {
+		lines.resize(line);
 	}
 	LineParts parts = ParseLine(lines[line - 1]);
 	if (parts.hasNote) {
@@ -687,7 +717,7 @@ NotebookStore::WriteOutcome NotebookStore::Annotate(int book,
 	if (outcome.status == Status::Ok) {
 		outcome.firstPage = outcome.lastPage = page;
 		outcome.firstLine = outcome.lastLine = line;
-		outcome.roomLeft = m_PageCapacity - CountWriting(updated);
+		outcome.roomLeft = RoomAfter(updated);
 	}
 	return outcome;
 }
@@ -737,10 +767,22 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 			separators.push_back({offset - 1, offset});
 		}
 	}
+	// A quote may give a line break as a space: the page is read as numbered
+	// lines, and that is how they join.
+	auto flat = [](std::wstring text) {
+		for (wchar_t &c : text) {
+			if (c == L'\n') {
+				c = L' ';
+			}
+		}
+		return text;
+	};
+	std::wstring const page_ = flat(existing);
+	std::wstring const quote_ = flat(wanted);
 	std::vector<size_t> found;
 	bool inStruck = false;
-	for (size_t at = existing.find(wanted); at != std::wstring::npos;
-	     at = existing.find(wanted, at + 1)) {
+	for (size_t at = page_.find(quote_); at != std::wstring::npos;
+	     at = page_.find(quote_, at + 1)) {
 		size_t const end = at + wanted.size();
 		bool overlaps = false;
 		for (auto const &span : struck) {
@@ -803,7 +845,7 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 	outcome.status = SavePageLocked(book, page, updated);
 	if (outcome.status == Status::Ok) {
 		outcome.firstPage = outcome.lastPage = page;
-		outcome.roomLeft = m_PageCapacity - CountWriting(updated);
+		outcome.roomLeft = RoomAfter(updated);
 	}
 	return outcome;
 }

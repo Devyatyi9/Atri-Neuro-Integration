@@ -27,8 +27,6 @@ class NotebookStore {
 		EmptyText,
 		NoRoom,
 		IoError,
-		// No such line on the page.
-		BadLine,
 		// Writing on a line that already has writing.
 		LineTaken,
 		// More lines of text than blank lines in a row from the one given.
@@ -52,15 +50,13 @@ class NotebookStore {
 		// Pages that received text; 0 when none did.
 		int firstPage = 0;
 		int lastPage = 0;
-		// Characters still free on lastPage. With NoRoom: how many would fit
-		// starting from the requested page.
+		// Characters a further note could take on lastPage. With NoRoom: how many
+		// would fit starting from the requested page.
 		int roomLeft = 0;
 		// Where the text went: the line it starts on, on firstPage, and the
 		// line it ends on, on lastPage.
 		int firstLine = 0;
 		int lastLine = 0;
-		// BadLine, from Annotate: how many lines the page has.
-		int lineCount = 0;
 		// Strike: how many places the text was found.
 		int matches = 0;
 		// NotEnoughLines: blank lines in a row from the one given; with it,
@@ -86,6 +82,9 @@ class NotebookStore {
 	// The last page with anything on it, or 0 for a blank notebook.
 	int LastWrittenPage(int book);
 
+	// The page written on most recently, or 0 for a blank notebook.
+	int LatestWrittenPage(int book);
+
 	// The pages with anything on them, in order.
 	std::vector<int> WrittenPages(int book);
 
@@ -101,7 +100,8 @@ class NotebookStore {
 	// Nothing continues onto the next page.
 	WriteOutcome WriteLine(int book, int page, int line, std::string const &utf8);
 
-	// Adds a margin note to a line, blank lines included. One per line.
+	// Adds a margin note to a line, blank lines and lines past the end
+	// included. One per line.
 	WriteOutcome Annotate(int book, int page, int line, std::string const &utf8);
 
 	// Strikes through the text where it is found, leaving it readable.
@@ -145,6 +145,8 @@ class NotebookStore {
 	bool ValidPage(int book, int page) const;
 	Status ReadPageLocked(int book, int page, std::wstring &text);
 	Status SavePageLocked(int book, int page, std::wstring const &text);
+	// Characters a further note could take on a page holding `text`.
+	int RoomAfter(std::wstring const &text) const;
 
 	std::wstring m_Root;
 	int m_PageCount;

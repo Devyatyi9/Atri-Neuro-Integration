@@ -110,7 +110,7 @@ void StoreTests() {
 
 		NotebookStore::WriteOutcome outcome = store.Append(1, 1, "first note");
 		CHECK(outcome.status == Status::Ok && outcome.firstPage == 1 &&
-		      outcome.lastPage == 1 && outcome.roomLeft == 10);
+		      outcome.lastPage == 1 && outcome.roomLeft == 9);
 		CHECK(Read(store, 1, 1) == "first note");
 		CHECK(store.LastWrittenPage(1) == 1);
 
@@ -193,7 +193,7 @@ void LineTests() {
 		CHECK(store.Annotate(1, 1, 1, "first").status == Status::Ok);
 		CHECK(store.Annotate(1, 1, 1, "again").status == Status::HasNote);
 		CHECK(store.Annotate(1, 1, 2, "on a blank line").status == Status::Ok);
-		CHECK(store.Annotate(1, 1, 4, "no such line").status == Status::BadLine);
+		CHECK(store.Annotate(1, 1, 100000, "far").status == Status::NoRoom);
 		CHECK(store.Annotate(1, 1, 3, std::string(31, 'x')).status ==
 		      Status::TooLong);
 		CHECK(store.Annotate(1, 1, 3, "  ").status == Status::EmptyText);
@@ -272,11 +272,27 @@ void AppendLineTests() {
 		CHECK(Read(store, 1, 1) == "first\nsecond\nthird\nlater:\none\ntwo");
 		CHECK(store.Append(1, 1, "\n  \n").status == Status::EmptyText);
 
-		// A line past the end says how many there are.
-		outcome = store.Annotate(1, 1, 9, "x");
-		CHECK(outcome.status == Status::BadLine && outcome.lineCount == 6);
-		outcome = store.Annotate(1, 2, 1, "x");
-		CHECK(outcome.status == Status::BadLine && outcome.lineCount == 0);
+		// A line past the end takes a margin note too, on a blank page as well.
+		NotebookStore margin(root + L"\\margin", 3, 60);
+		CHECK(margin.Annotate(1, 1, 2, "x").status == Status::Ok);
+		CHECK(Read(margin, 1, 1) == "\n| x\x1F");
+		CHECK(margin.Append(1, 1, "end").status == Status::Ok);
+		CHECK(margin.Annotate(1, 1, 5, "y").status == Status::Ok);
+		CHECK(Read(margin, 1, 1) == "\n| x\x1F\nend\n\n| y\x1F");
+
+		// What is left is what the next note can take: its line break is spent.
+		outcome = margin.Append(1, 2, std::string(40, 'a'));
+		CHECK(outcome.roomLeft == 19);
+		outcome = margin.Append(1, 2, std::string(19, 'b'));
+		CHECK(outcome.status == Status::Ok && outcome.lastPage == 2 &&
+		      outcome.roomLeft == 0);
+
+		// The page written on last, not the furthest one.
+		CHECK(margin.LatestWrittenPage(1) == 2);
+		CHECK(margin.Append(1, 3, "far").status == Status::Ok);
+		Sleep(20);
+		CHECK(margin.Annotate(1, 1, 3, "z").status == Status::Ok);
+		CHECK(margin.LatestWrittenPage(1) == 1 && margin.LastWrittenPage(1) == 3);
 
 		// Across pages: where it starts on the first, where it ends on the last.
 		outcome = store.Append(1, 2, std::string(50, 'a'));
@@ -319,7 +335,7 @@ void StrikeTests() {
 		outcome = store.Strike(1, 1, "the dog", 0);
 		CHECK(outcome.status == Status::Ok);
 		CHECK(outcome.roomLeft ==
-		      60 - NotebookStore::CountWriting(L"a cat and a cat\nthe dog"));
+		      60 - NotebookStore::CountWriting(L"a cat and a cat\nthe dog") - 1);
 
 		// Across the bar into a margin note: struck on each side, never the bar.
 		CHECK(store.Append(1, 2, "left side\nnext").status == Status::Ok);
@@ -338,6 +354,12 @@ void StrikeTests() {
 		CHECK(Read(store, 1, 3) == "end ~~of~~\n~~next~~ line\n\nlast");
 		CHECK(store.Strike(1, 3, "line\n\nlast", 0).status == Status::Ok);
 		CHECK(Read(store, 1, 3) == "end ~~of~~\n~~next~~ ~~line~~\n\n~~last~~");
+
+		// A line break quoted as a space is found too.
+		NotebookStore joined(root + L"\\joined", 3, 60);
+		CHECK(joined.Append(1, 1, "beach day\nfound a crab").status == Status::Ok);
+		CHECK(joined.Strike(1, 1, "day found", 0).status == Status::Ok);
+		CHECK(Read(joined, 1, 1) == "beach ~~day~~\n~~found~~ a crab");
 	}
 	RemoveTree(root);
 }
