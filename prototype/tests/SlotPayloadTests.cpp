@@ -52,6 +52,12 @@ void ExpectAloneAtMaximum(int SlotPayload::*field,
 }  // namespace
 
 void RunSlotPayloadTests() {
+	CHECK(IsoDate("2026/01/03 16:45") == "2026-01-03 16:45");
+	CHECK(IsoDate("2026/01/03") == "2026-01-03");
+	CHECK(IsoDate("") == "");
+	CHECK(IsoDate("2026-01-03 16:45") == "2026-01-03 16:45");
+	CHECK(IsoDate("Salvage") == "Salvage");
+
 	SlotPayload empty;
 	CHECK(PackSlotPayload(empty) == 0);
 	ExpectRoundTrip(empty, "empty");

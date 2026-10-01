@@ -216,7 +216,7 @@ void HandleReadSaveSlotAction(std::string const &id, std::string const &data) {
 	int page = -1;
 	std::string message =
 	    ProbeSaveWindow(base, page) ? PlateLabel(base + position) : "That slot";
-	message += ": " + fields[1] + ", saved " + fields[2] + ".";
+	message += ": " + fields[1] + ", saved " + IsoDate(fields[2]) + ".";
 	// The comment replaces the last line on screen once it is set, so it is
 	// reported the same way round: what the player chose to see, and then what
 	// it was written over.
@@ -762,7 +762,7 @@ void SendWindowContext(std::string const &opening,
 		filled += slot;
 		filled += ") ";
 		filled += what;
-		filled += when.empty() ? ";" : ", " + when + ";";
+		filled += when.empty() ? ";" : ", " + IsoDate(when) + ";";
 	}
 
 	std::string message = opening;

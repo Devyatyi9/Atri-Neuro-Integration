@@ -72,3 +72,19 @@ SlotPayload UnpackSlotPayload(int payload) {
 	value.copyMode = Get(payload, kCopyMode);
 	return value;
 }
+
+std::string IsoDate(std::string const &text) {
+	// yyyy/mm/dd, digits where digits go.
+	if (text.size() < 10 || text[4] != '/' || text[7] != '/') {
+		return text;
+	}
+	for (size_t i : {0, 1, 2, 3, 5, 6, 8, 9}) {
+		if (text[i] < '0' || text[i] > '9') {
+			return text;
+		}
+	}
+	std::string out = text;
+	out[4] = '-';
+	out[7] = '-';
+	return out;
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 // The save, load and voice screens describe themselves to the action set with a
 // single int, because the key that carries the state through is one number.
 // This is what that number holds.
@@ -42,3 +44,8 @@ constexpr int kSlotTabVoice = 1 << 3;
 // next one, so a misread probe cannot silently rewrite an unrelated field.
 int PackSlotPayload(SlotPayload const &value);
 SlotPayload UnpackSlotPayload(int payload);
+
+// The game writes a save's date as "2026/01/03 16:45". Everything else the
+// plugin says about time reads "2026-01-03 16:45", so this one is brought into
+// line; text that does not start with such a date is returned as it is.
+std::string IsoDate(std::string const &text);
