@@ -13,6 +13,7 @@
 #include "ActionSchemas.h"
 #include "ActionSet.h"
 #include "NeuroClient.h"
+#include "ScreenNotebook.h"
 
 namespace {
 
@@ -58,7 +59,11 @@ void HandleReadShortcutsAction(std::string const &id, std::string const &data) {
 		                      "read_shortcuts does not accept arguments.");
 		return;
 	}
-	std::string const reference = ScreenPlay::QuickMenuReference();
+	std::string reference = ScreenPlay::QuickMenuReference();
+	std::string const notebook = ScreenNotebook::ReferenceLine();
+	if (!reference.empty() && !notebook.empty()) {
+		reference += "\n" + notebook;
+	}
 	if (reference.empty()) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "There is nothing to list for the quick menu.");

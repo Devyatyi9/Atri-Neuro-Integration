@@ -21,6 +21,9 @@ constexpr int kBook = 1;
 // to context, and the result only says which page is being read.
 constexpr size_t kInlinePageBytes = 300;
 
+char const *const kOpenDescription =
+    "Open your notebook to read or write in it.";
+
 std::mutex g_Mutex;
 std::atomic<int> g_Open(0);
 // The page reading goes to when no page is named. Guarded by g_Mutex.
@@ -500,7 +503,7 @@ void AppendActions(ActionSet &set, bool quickMenuOut) {
 		}
 		// No notebook to choose while there is only one: a number offered
 		// here only invites wrong ones.
-		set.add("open_notebook", "Open your notebook to read or write in it.",
+		set.add("open_notebook", kOpenDescription,
 		        "{\"type\":\"object\",\"properties\":{},"
 		        "\"additionalProperties\":false}");
 		return;
@@ -560,6 +563,12 @@ void AppendActions(ActionSet &set, bool quickMenuOut) {
 	set.add("close_notebook", "Close your notebook.",
 	        "{\"type\":\"object\",\"properties\":{},"
 	        "\"additionalProperties\":false}");
+}
+
+std::string ReferenceLine() {
+	return GetPluginConfig().Notebook
+	           ? std::string("open_notebook -- ") + kOpenDescription
+	           : std::string();
 }
 
 int StateKey() {

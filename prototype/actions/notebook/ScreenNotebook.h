@@ -17,6 +17,10 @@ bool Handle(std::string const &id,
 // actions stay whatever the bar does.
 void AppendActions(ActionSet &set, bool quickMenuOut);
 
+// open_notebook as a line of the quick menu reference; empty when the notebook
+// is switched off.
+std::string ReferenceLine();
+
 // Nonzero while the notebook is open. Part of the capability key, so opening
 // and closing re-register the set.
 int StateKey();

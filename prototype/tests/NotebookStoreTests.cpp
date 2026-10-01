@@ -355,6 +355,15 @@ void StrikeTests() {
 		CHECK(store.Strike(1, 3, "line\n\nlast", 0).status == Status::Ok);
 		CHECK(Read(store, 1, 3) == "end ~~of~~\n~~next~~ ~~line~~\n\n~~last~~");
 
+		// Her own marks pair only within a line: a stray one strikes nothing.
+		NotebookStore stray(root + L"\\stray", 3, 60);
+		CHECK(stray.Append(1, 1, "~~ about five\nplain\nmore ~~ here").status ==
+		      Status::Ok);
+		CHECK(stray.Strike(1, 1, "plain", 0).status == Status::Ok);
+		CHECK(stray.Append(1, 2, "~~gone~~ kept").status == Status::Ok);
+		CHECK(stray.Strike(1, 2, "gone", 0).status == Status::AlreadyStruck);
+		CHECK(stray.Strike(1, 2, "kept", 0).status == Status::Ok);
+
 		// A line break quoted as a space is found too.
 		NotebookStore joined(root + L"\\joined", 3, 60);
 		CHECK(joined.Append(1, 1, "beach day\nfound a crab").status == Status::Ok);

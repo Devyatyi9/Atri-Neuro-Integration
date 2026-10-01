@@ -146,7 +146,7 @@ std::wstring ComposeLine(LineParts const &parts) {
 }
 
 // Where struck text already is: from each opening "~~" to just past its closing
-// one. An unclosed "~~" strikes nothing.
+// one on the same line. An unclosed "~~" strikes nothing.
 std::vector<std::pair<size_t, size_t>> StruckSpans(std::wstring const &text) {
 	std::vector<std::pair<size_t, size_t>> spans;
 	size_t from = 0;
@@ -155,9 +155,14 @@ std::vector<std::pair<size_t, size_t>> StruckSpans(std::wstring const &text) {
 		if (open == std::wstring::npos) {
 			break;
 		}
+		size_t lineEnd = text.find(L'\n', open);
+		if (lineEnd == std::wstring::npos) {
+			lineEnd = text.size();
+		}
 		size_t const close = text.find(kStrike, open + 2);
-		if (close == std::wstring::npos) {
-			break;
+		if (close == std::wstring::npos || close >= lineEnd) {
+			from = lineEnd;
+			continue;
 		}
 		spans.push_back({open, close + 2});
 		from = close + 2;
