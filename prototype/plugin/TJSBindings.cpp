@@ -1063,10 +1063,51 @@ static void RetryFirstRunIfReady() {
 		return;
 	}
 	g_FirstRunChecked = true;
+	// Only a profile that is genuinely new: with first_run = apply the script
+	// answers "applied" on every start.
+	if (answer == "2" && mode == FirstRunMode::Auto) {
+		ScreenNotebook::SetAsideNotebooks();
+	}
 	Log(answer == "2" ? "[FirstRun] one-time settings applied\n"
 	    : answer == "1"
 	        ? "[FirstRun] one-time settings already applied\n"
 	        : ("[FirstRun] unexpected answer: " + answer + "\n").c_str());
+}
+
+// Keeps the notebooks' unlock mark in the game's system variables, beside the
+// first-run mark: read once the game can answer, written when an ending earns
+// something new.
+static void SyncNotebookUnlock() {
+	static bool read = false;
+	if (!read) {
+		std::string answer;
+		if (!ExecuteTJSSync(
+		        L"(function(){ if (typeof kag != 'Object' || typeof kag.sflags != "
+		        L"'Object') return -1; var v = kag.sflags.neuroNotebookUnlocked;"
+		        L" return v === void ? 0 : +v; })()",
+		        &answer, 5000, TJSExecMode::Expression) ||
+		    answer.empty() || answer == "-1") {
+			return;
+		}
+		read = true;
+		ScreenNotebook::SetUnlocked(atoi(answer.c_str()));
+	}
+	int const books = ScreenNotebook::UnlockToSave();
+	if (books == 0) {
+		return;
+	}
+	wchar_t code[256] = {};
+	swprintf(code, 256,
+	         L"(function(){ if (typeof kag.saveSystemVariables != 'Object') "
+	         L"return 0; kag.sflags.neuroNotebookUnlocked = %d; "
+	         L"kag.saveSystemVariables(); return 1; })()",
+	         books);
+	std::string saved;
+	if (ExecuteTJSSync(code, &saved, 5000, TJSExecMode::Expression) &&
+	    saved == "1") {
+		ScreenNotebook::SetUnlocked(books);
+		Log("[Notebook] kept for the next time through\n");
+	}
 }
 
 static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
@@ -1078,6 +1119,7 @@ static tjs_error TJS_INTF_METHOD NeuroPrototypeUpkeep(tTJSVariant *result,
 	RefreshPrototypeActionState();
 	RetryInstallExitHookIfReady();
 	RetryFirstRunIfReady();
+	SyncNotebookUnlock();
 	ConnectionIndicator::Update(NeuroIsConnected());
 	if (result) {
 		*result = (tTVInteger)1;

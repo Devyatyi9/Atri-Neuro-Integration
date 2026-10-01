@@ -33,4 +33,8 @@ struct Access {
 // the conductor stands on.
 Access At(std::string const &scenario, int line);
 
+// Whether the scene is one of the endings: reaching one is what keeps the
+// notebooks in hand for the next time through.
+bool IsEnding(std::string const &scenario);
+
 }  // namespace NotebookGate

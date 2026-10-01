@@ -4,8 +4,10 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <cwchar>
 #include <mutex>
 #include <string>
+#include <thread>
 
 #include "ActionJson.h"
 #include "ActionSet.h"
@@ -53,6 +55,30 @@ NotebookGate::Access Unpack(int packed) {
 	return access;
 }
 
+// Notebooks kept from an earlier time through, as the access bits: the story
+// no longer takes these away. Kept by the game with its system variables.
+std::atomic<int> g_Unlocked(0);
+// Bits an ending has earned that are not saved yet.
+std::atomic<int> g_UnlockPending(0);
+
+// What the story allows, plus what an earlier time through has kept.
+int Effective(int packed) {
+	if (packed == kAccessUnknown) {
+		return packed;
+	}
+	NotebookGate::Access access = Unpack(packed);
+	if (access.reason == NotebookGate::Reason::NotInStory) {
+		return packed;
+	}
+	int const kept = g_Unlocked.load();
+	access.first = access.first || (kept & kAccessFirst) != 0;
+	access.second = access.second || (kept & kAccessSecond) != 0;
+	if (access.Any()) {
+		access.reason = NotebookGate::Reason::InHand;
+	}
+	return Pack(access);
+}
+
 // With the story gate off there is one notebook, always in hand.
 NotebookGate::Access CurrentAccess() {
 	if (!GetPluginConfig().NotebookStoryGate) {
@@ -61,7 +87,7 @@ NotebookGate::Access CurrentAccess() {
 		access.reason = NotebookGate::Reason::InHand;
 		return access;
 	}
-	return Unpack(g_StoryAccess.load());
+	return Unpack(Effective(g_StoryAccess.load()));
 }
 
 bool Has(NotebookGate::Access const &access, int book) {
@@ -707,15 +733,59 @@ void NoteMonitorOutput(std::string const &output) {
 	}
 	if (replay) {
 		access = NotebookGate::Access();
+	} else if (NotebookGate::IsEnding(scenario)) {
+		g_UnlockPending.fetch_or(Pack(access) & (kAccessFirst | kAccessSecond));
 	}
 	g_StoryAccess.store(Pack(access));
+}
+
+int UnlockToSave() {
+	int const pending = g_UnlockPending.load();
+	int const kept = g_Unlocked.load();
+	return (pending & ~kept) != 0 ? (pending | kept) : 0;
+}
+
+void SetUnlocked(int books) {
+	g_Unlocked.store(books & (kAccessFirst | kAccessSecond));
+}
+
+void SetAsideNotebooks() {
+	// The folder is renamed, never deleted: what is in it may be what she
+	// wrote on stream. Off the main thread, because it waits on the disk.
+	std::thread([] {
+		std::lock_guard<std::mutex> lock(g_Mutex);
+		std::wstring const root = NotebookRoot();
+		if (GetFileAttributesW(root.c_str()) == INVALID_FILE_ATTRIBUTES) {
+			return;
+		}
+		g_Open.store(0);
+		SYSTEMTIME now = {};
+		GetLocalTime(&now);
+		wchar_t stamp[32] = {};
+		swprintf(stamp, 32, L"-%04u%02u%02u-%02u%02u%02u", now.wYear, now.wMonth,
+		         now.wDay, now.wHour, now.wMinute, now.wSecond);
+		// A scanner or an open Explorer window can hold the folder for a moment.
+		bool moved = false;
+		for (int attempt = 0; attempt < 10 && !moved; ++attempt) {
+			moved = MoveFileW(root.c_str(), (root + stamp).c_str()) != 0;
+			if (!moved) {
+				Sleep(300);
+			}
+		}
+		DWORD const error = moved ? 0 : GetLastError();
+		Log(moved ? "[Notebook] new profile: earlier notebooks set aside\n"
+		          : ("[Notebook] new profile: could not set the notebooks "
+		             "aside, error " +
+		             std::to_string(error) + "\n")
+		                .c_str());
+	}).detach();
 }
 
 void FollowStory() {
 	if (!GetPluginConfig().Notebook || !GetPluginConfig().NotebookStoryGate) {
 		return;
 	}
-	int const now = g_StoryAccess.load();
+	int const now = Effective(g_StoryAccess.load());
 	int const before = g_FollowedAccess.exchange(now);
 	if (now == before || now == kAccessUnknown) {
 		return;
@@ -744,9 +814,11 @@ void FollowStory() {
 		Tell("You lost your notebook.", true);
 	} else if (!was.Both() && access.Both()) {
 		Tell(
-		    "Your first notebook is back: open_notebook now takes "
+		    "You have two notebooks now: open_notebook takes "
 		    "\"notebook\", 1 for the first or 2 for the second.",
 		    false);
+	} else if (was.Both() && !access.Both()) {
+		Tell("You are down to one notebook.", true);
 	}
 }
 

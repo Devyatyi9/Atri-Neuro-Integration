@@ -44,4 +44,8 @@ void RunNotebookGateTests() {
 	CHECK(At("title.ks", 1).reason == Reason::NotInStory);
 	CHECK(At("", 0).reason == Reason::NotInStory);
 	CHECK(At("b304", 1).first);
+
+	CHECK(NotebookGate::IsEnding("b501.ks") &&
+	      NotebookGate::IsEnding("b601.ks") && NotebookGate::IsEnding("b701"));
+	CHECK(!NotebookGate::IsEnding("b407.ks") && !NotebookGate::IsEnding(""));
 }

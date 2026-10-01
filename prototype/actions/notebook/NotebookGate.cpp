@@ -73,4 +73,9 @@ Access At(std::string const &scenario, int line) {
 	return access;
 }
 
+bool IsEnding(std::string const &scenario) {
+	std::string const scene = scenario.substr(0, scenario.find('.'));
+	return scene == "b501" || scene == "b601" || scene == "b701";
+}
+
 }  // namespace NotebookGate

@@ -34,6 +34,17 @@ void NoteMonitorOutput(std::string const &output);
 // longer in hand and tells Neuro when one is gained or lost.
 void FollowStory();
 
+// Reaching an ending keeps the notebooks then in hand for later times through.
+// The mark lives in the game's system variables, which the caller reads and
+// writes: UnlockToSave is the value to write when there is something new, 0
+// otherwise; SetUnlocked takes what was read or just written.
+int UnlockToSave();
+void SetUnlocked(int books);
+
+// A new profile starts with empty notebooks: the folder is renamed with the
+// date, on a thread of its own.
+void SetAsideNotebooks();
+
 void Close();
 
 }  // namespace ScreenNotebook
