@@ -821,6 +821,8 @@ int UnlockToSave() {
 
 void SetUnlocked(int books) {
 	g_Unlocked.store(books & (kAccessFirst | kAccessSecond));
+	// What an ending earned before is either saved by now or being replaced.
+	g_UnlockPending.store(0);
 }
 
 void SetAsideNotebooks() {

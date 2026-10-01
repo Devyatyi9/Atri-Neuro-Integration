@@ -117,6 +117,16 @@ TROUBLE_IN_THE_GAME_LOG = (
     "An exception occured at system.tjs",
 )
 
+# What the plugin says when a notebook comes into hand. Counted in the prompt,
+# which carries the whole context, so a new one shows up as a higher count.
+NOTEBOOK_GAINED = ("You've got a notebook", "You have two notebooks now")
+
+# Sets the mark that keeps notebooks after an ending, and tells the plugin, which
+# holds its own copy.
+NOTEBOOK_SET_UNLOCK = ("(function(){ kag.sflags.neuroNotebookUnlocked = %d;"
+                       " kag.saveSystemVariables();"
+                       " Neuro.syncNotebookUnlock(%d); return 1; })()")
+
 # The route's answer for an ordinary turn: nothing of its own to do, hand over
 # to the mode. Named so it can be told apart from a route that cannot proceed.
 ROUTE_IDLE = "route: nothing to do this turn"
@@ -791,6 +801,17 @@ class Engine:
                 say(f"cannot watch the game's log: {error}")
                 self.watch_log = None
         self.cache_limit = None
+        # --notebook: open the notebook whenever one comes into hand, and leave
+        # the game to close it. What each step did is counted for the summary.
+        self.scene = None
+        self.notebook_gains_seen = 0
+        self.notebook_wanted = False
+        self.notebook_open = False
+        self.notebook_panel = False
+        self.notebook_closing = False
+        self.notebook_opened = 0
+        self.notebook_closed_by_game = 0
+        self.notebook_unlock_before = None
         if self.game_pid is None:
             say(f"no process is listening on {options.tjs_port}; "
                 "memory will not be recorded")
@@ -912,6 +933,7 @@ class Engine:
             if line.startswith("[scenario] "):
                 scene = line[len("[scenario] "):].strip()
         if scene:
+            self.scene = scene
             self.note_memory(f"scene {scene}")
 
     def stop_on_trouble(self):
@@ -1244,6 +1266,100 @@ class Engine:
         except OSError as error:
             say(f"could not turn auto mode on: {error}")
 
+    def reset_notebook_unlock(self):
+        """Starts a --notebook run with no notebook kept from an earlier one.
+
+        The mark that keeps notebooks after an ending lives in the game's system
+        variables, so a run that follows a finished one would begin with both in
+        hand and never see them arrive. The value is kept to be put back: it is
+        the player's profile that is being changed.
+        """
+        try:
+            before = send_tjs(self.options.tjs_port,
+                              "(function(){ var v = kag.sflags.neuroNotebookUnlocked;"
+                              " return v === void ? 0 : +v; })()").strip()
+            self.notebook_unlock_before = int(float(before))
+            say("notebook: unlock was " + str(self.notebook_unlock_before)
+                + "; " + send_tjs(self.options.tjs_port,
+                                  NOTEBOOK_SET_UNLOCK % (0, 0)).strip())
+        except (OSError, ValueError) as error:
+            say(f"notebook: could not clear the unlock mark: {error}")
+
+    def restore_notebook_unlock(self):
+        if self.notebook_unlock_before is None:
+            return
+        value, self.notebook_unlock_before = self.notebook_unlock_before, None
+        try:
+            send_tjs(self.options.tjs_port, NOTEBOOK_SET_UNLOCK % (value, value))
+            say(f"notebook: unlock put back to {value}")
+        except OSError as error:
+            say(f"notebook: could not put the unlock mark back: {error}")
+
+    def tend_notebook(self, actions, messages):
+        """Opens a notebook as it comes into hand; the game closes it itself.
+
+        A run that never touches the notebook cannot say whether it opens when it
+        is gained, closes when it is lost, or survives a jump. The gain is read
+        from the context, because the open action is only offered with the quick
+        menu out and nothing else says a notebook arrived.
+        """
+        if not self.options.notebook:
+            return None, None
+        at_title = "start_new_game" in actions
+        in_play = ("advance_text" in actions or "select_choice" in actions
+                   or "skip_movie" in actions)
+        is_open = "close_notebook" in actions
+
+        gains = sum(1 for text in context_texts(messages)
+                    if any(phrase in text for phrase in NOTEBOOK_GAINED))
+        if gains > self.notebook_gains_seen:
+            self.notebook_wanted = True
+        # The prompt is trimmed to the client's window, so the count can drop.
+        self.notebook_gains_seen = gains
+
+        if is_open and not self.notebook_open:
+            self.notebook_open = True
+            self.notebook_opened += 1
+            self.notebook_wanted = False
+            say(f"notebook: open in {self.scene or 'an unknown scene'}")
+        elif self.notebook_open and not is_open and (in_play or at_title):
+            self.notebook_open = False
+            if self.notebook_closing:
+                self.notebook_closing = False
+            else:
+                self.notebook_closed_by_game += 1
+                say("notebook: closed by the game in "
+                    f"{self.scene or 'an unknown scene'}")
+
+        # Nothing is started over a question or a screen that is not the story.
+        if "select_choice" in actions or "answer_dialog" in actions or not in_play:
+            return None, None
+        if self.notebook_wanted and is_open:
+            # A second notebook came into hand while one is open, and opening
+            # is only offered with none open: put this one down first.
+            self.notebook_closing = True
+            return (command_for("close_notebook", actions),
+                    "notebook: closing it to open the other")
+        if self.notebook_wanted:
+            if "open_notebook" in actions:
+                self.notebook_panel = True
+                return (command_for("open_notebook", actions),
+                        "notebook: opening it")
+            if "open_quick_menu" in actions:
+                return (command_for("open_quick_menu", actions),
+                        "notebook: reaching for the quick menu")
+        elif self.notebook_panel and "close_quick_menu" in actions:
+            self.notebook_panel = False
+            return (command_for("close_quick_menu", actions),
+                    "notebook: putting the quick menu away")
+        return None, None
+
+    def say_notebook_summary(self):
+        if not self.options.notebook:
+            return
+        say(f"notebook: opened {self.notebook_opened} time(s), "
+            f"closed by the game {self.notebook_closed_by_game} time(s)")
+
     def restore_speed(self):
         """Puts the player's own speed settings back.
 
@@ -1253,6 +1369,7 @@ class Engine:
         it is the player's settings that change. Restoring is therefore part of
         finishing, not a courtesy.
         """
+        self.restore_notebook_unlock()
         if not self.options.fast or self.speed_restored:
             return
         self.speed_restored = True
@@ -1374,6 +1491,10 @@ class Engine:
             self.arm_auto_mode(actions)
         if self.options.action in actions and not self.timed_out:
             self.note_refusals(messages)
+        if not self.timed_out:
+            command, why = self.tend_notebook(actions, messages)
+            if command is not None:
+                return command, why
 
         if not self.timed_out and (self.decisions or self.route
                                    or self.start_action or self.finish):
@@ -1588,6 +1709,11 @@ def main():
                              "route is left where it stands, the speeds are put "
                              "back, and the server keeps answering so the client "
                              "is not left without an engine. 0 means never")
+    parser.add_argument("--notebook", action="store_true",
+                        help="open the notebook whenever one comes into hand and "
+                             "leave it for the game to close, and start from no "
+                             "notebooks kept by an earlier run: the mark is "
+                             "cleared first and put back when the run ends")
     parser.add_argument("--fast", action="store_true",
                         help="turn the game's speed knobs up; safe here because "
                              "nothing is waiting on a model")
@@ -1625,6 +1751,8 @@ def main():
     Handler.engine = Engine(options, routes)
     Handler.engine.say_run_header()
     prepare_game(options)
+    if options.notebook:
+        Handler.engine.reset_notebook_unlock()
 
     server = HTTPServer(("127.0.0.1", options.port), Handler)
     # Same shutdown the stop endpoint uses, from a thread for the same reason:
@@ -1665,6 +1793,7 @@ def main():
         # Also on the way out of an interrupted run: the speeds are the
         # player's, and leaving them turned up outlives this process.
         Handler.engine.restore_speed()
+        Handler.engine.say_notebook_summary()
 
 
 if __name__ == "__main__":

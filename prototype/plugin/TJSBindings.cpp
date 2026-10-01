@@ -98,6 +98,23 @@ void ReadAudioContextTable() {
 	        .c_str());
 }
 
+// For the driver of a long run: it sets the mark that keeps notebooks in the
+// game's system variables itself, and this brings the plugin's own copy in
+// line.
+static tjs_error TJS_INTF_METHOD
+NeuroSyncNotebookUnlock(tTJSVariant *result,
+                        tjs_int numparams,
+                        tTJSVariant **param,
+                        iTJSDispatch2 *objthis) {
+	if (numparams >= 1) {
+		ScreenNotebook::SetUnlocked(static_cast<int>(param[0]->AsInteger()));
+	}
+	if (result) {
+		*result = (tTVInteger)1;
+	}
+	return TJS_S_OK;
+}
+
 static tjs_error TJS_INTF_METHOD NeuroMountAssets(tTJSVariant *result,
                                                   tjs_int numparams,
                                                   tTJSVariant **param,
@@ -1090,6 +1107,7 @@ NCB_ATTACH_FUNCTION(dump, Neuro, NeuroDump);
 NCB_ATTACH_FUNCTION(getCurrentContext, Neuro, NeuroGetCurrentContext);
 NCB_ATTACH_FUNCTION(buildVoiceMap, Neuro, NeuroBuildVoiceMap);
 NCB_ATTACH_FUNCTION(execFile, Neuro, NeuroExecFile);
+NCB_ATTACH_FUNCTION(syncNotebookUnlock, Neuro, NeuroSyncNotebookUnlock);
 
 static bool g_FirstRunChecked = false;
 
