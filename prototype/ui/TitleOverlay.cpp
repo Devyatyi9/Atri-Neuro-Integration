@@ -38,16 +38,23 @@ void Install() {
 
 void NoteScreen(std::string const &state, bool ready) {
 	if (state != g_LastState) {
-		// Leaving the title: for the game the picture is dropped, for a menu it
-		// waits on the pages so it is back before the title fades in again.
-		if (g_LastState == "title" && !state.empty() &&
-		    GetPluginConfig().TitleOverlay) {
-			ExecuteTJSAsync(state == "game"
-			                    ? L"typeof global.neuroTitleOverlay == 'Object' && "
-			                      L"global.neuroTitleOverlay.leave()"
-			                    : L"typeof global.neuroTitleOverlay == 'Object' && "
-			                      L"global.neuroTitleOverlay.watch()",
-			                TJSExecMode::Expression);
+		// Leaving the title for a menu, the picture waits on the pages so it is
+		// back before the title fades in again. Reaching the game drops it,
+		// whichever way the game was reached: a save loaded from the title's
+		// load screen passes through a menu first, and a picture left waiting
+		// there would come back at once instead of being shown anew.
+		if (!state.empty() && GetPluginConfig().TitleOverlay) {
+			if (state == "game") {
+				ExecuteTJSAsync(
+				    L"typeof global.neuroTitleOverlay == 'Object' && "
+				    L"global.neuroTitleOverlay.leave()",
+				    TJSExecMode::Expression);
+			} else if (g_LastState == "title") {
+				ExecuteTJSAsync(
+				    L"typeof global.neuroTitleOverlay == 'Object' && "
+				    L"global.neuroTitleOverlay.watch()",
+				    TJSExecMode::Expression);
+			}
 		}
 		g_LastState = state;
 	}
