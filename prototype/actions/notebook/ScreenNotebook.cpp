@@ -777,6 +777,10 @@ void NoteMonitorOutput(std::string const &output) {
 	g_StoryAccess.store(Pack(access));
 }
 
+void NoteJump() {
+	g_Jumps.fetch_add(1);
+}
+
 int UnlockToSave() {
 	int const pending = g_UnlockPending.load();
 	int const kept = g_Unlocked.load();

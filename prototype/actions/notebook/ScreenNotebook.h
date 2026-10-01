@@ -30,6 +30,10 @@ int StateKey();
 // block.
 void NoteMonitorOutput(std::string const &output);
 
+// A save is being loaded or a jump taken: the open notebook is put away on the
+// next refresh, and where the story lands is not news.
+void NoteJump();
+
 // Acts on a change in what the story allows: closes a notebook that is no
 // longer in hand and tells Neuro when one is gained or lost.
 void FollowStory();

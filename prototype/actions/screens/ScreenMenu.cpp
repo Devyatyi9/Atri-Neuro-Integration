@@ -192,6 +192,14 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 		        : "The dialog is up but its buttons did not answer.");
 		return;
 	}
+	// The story is about to stand somewhere else. Said here because a jump
+	// forward inside a scene leaves no other trace: the position only moves on,
+	// as it does when reading.
+	if (part == "AskLoad" || part == "AskQLoad" || part == "AskJump" ||
+	    part == "AskNext" || part == "AskBackTo" || part == "AskPrevScn" ||
+	    part == "AskNextScn") {
+		ScreenNotebook::NoteJump();
+	}
 	if (!loadTitle.empty()) {
 		NeuroSendActionResult(
 		    id.c_str(), true,
