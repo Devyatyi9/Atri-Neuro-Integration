@@ -109,8 +109,15 @@ void HandleExitGameAction(std::string const &id, std::string const &data) {
 		                      "That only works on the title screen.");
 		return;
 	}
+	// Read before the request: with the question switched off the game is gone
+	// a moment after it, and nothing can be asked of it then.
+	bool const asks = ProbeAsksBefore("askExit", "exit_game asks");
 	if (!DispatchExitRequest("exit_game dispatch")) {
 		NeuroSendActionResult(id.c_str(), false, "Quitting is unavailable.");
+		return;
+	}
+	if (!asks) {
+		NeuroSendActionResult(id.c_str(), true, "The game is quitting.");
 		return;
 	}
 	Sleep(kDialogSettleMs);

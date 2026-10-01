@@ -459,6 +459,10 @@ int ProbeTabCount();
 // Whether a modal confirmation is on screen right now.
 bool ProbeDialogVisible(char const *tag);
 
+// Whether the game is set to ask before doing something: `setting` is the
+// game's own name for the question, "askExit". A player can switch each off.
+bool ProbeAsksBefore(char const *setting, char const *tag);
+
 // What the dialog on screen is asking, as the engine's own tag: "AskTitle",
 // "AskExit", "AskJump", "AskLoad", and so on. The field keeps its last value
 // after the dialog closes, so only read it while one is up.

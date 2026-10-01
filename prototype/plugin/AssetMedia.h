@@ -5,3 +5,7 @@
 // one still loads, and the extension exists only in the name TJS asks for.
 // Call on the game's main thread; later calls do nothing.
 bool MountAssetMedia();
+
+// Takes the media back out of the engine. Must run before the plugin unloads,
+// while the engine's import stub is still up.
+void UnmountAssetMedia();

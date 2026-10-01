@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "ActionRouter.h"
+#include "AssetMedia.h"
 #include "D3DWatch.h"
 #include "GameDebugLog.h"
 #include "Logging.h"
@@ -365,6 +366,7 @@ void ShutdownPluginLifecycle() {
 
 	UnregisterTJSBindings();
 	ShutdownTJSExecutor();
+	UnmountAssetMedia();
 	TVPUninitImportStub();
 
 	Log("Cleanup complete\n");

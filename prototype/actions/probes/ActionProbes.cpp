@@ -1761,6 +1761,15 @@ bool ProbeDialogVisible(char const *tag) {
 	    tag);
 }
 
+bool ProbeAsksBefore(char const *setting, char const *tag) {
+	// Unreadable counts as asking: the cautious answer is the one that sends
+	// her to look for a dialog.
+	return AskFormatted(
+	    L"(function(){ try { return SystemConfig['%hs'] ? 1 : 0; "
+	    L"} catch (e) { return 1; } })()",
+	    tag, setting);
+}
+
 bool ProbeDialogTextPart(std::string &part) {
 	std::string raw;
 	if (!QueryString(L"(function(){ try { return '' + "

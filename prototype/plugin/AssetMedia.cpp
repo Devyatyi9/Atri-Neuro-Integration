@@ -90,18 +90,33 @@ class NeuroAssetMedia : public iTVPStorageMedia {
 	}
 };
 
-bool g_Mounted = false;
+NeuroAssetMedia *g_Media = nullptr;
 
 }  // namespace
 
 bool MountAssetMedia() {
-	if (g_Mounted) {
+	if (g_Media) {
 		return true;
 	}
-	// The engine's media table takes no reference of its own, so ours is kept
-	// for as long as the process lives.
-	TVPRegisterStorageMedia(new NeuroAssetMedia());
-	g_Mounted = true;
+	g_Media = new NeuroAssetMedia();
+	TVPRegisterStorageMedia(g_Media);
 	Log("[Assets] neuro:// storage mounted\n");
 	return true;
+}
+
+void UnmountAssetMedia() {
+	if (!g_Media) {
+		return;
+	}
+	// The engine's media table holds a reference and releases it as the process
+	// exits, after this DLL is gone: left registered, that call lands in
+	// unloaded code.
+	try {
+		TVPUnregisterStorageMedia(g_Media);
+		g_Media->Release();
+		g_Media = nullptr;
+		Log("[Assets] neuro:// storage unmounted\n");
+	} catch (...) {
+		Log("[Assets] could not unmount neuro://\n");
+	}
 }

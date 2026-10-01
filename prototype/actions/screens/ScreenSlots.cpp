@@ -432,8 +432,13 @@ void HandleChooseDestinationAction(std::string const &id,
 		    "already in one of the slots, and that one is refused.");
 		return;
 	}
-	NeuroSendActionResult(id.c_str(), true,
-	                      "Chose that slot. The game is asking to confirm it.");
+	// The question is a setting; without it the save is already there.
+	Sleep(kDialogSettleMs);
+	NeuroSendActionResult(
+	    id.c_str(), true,
+	    ProbeDialogVisible("choose_destination asked")
+	        ? "Chose that slot. The game is asking to confirm it."
+	        : "Chose that slot; the save is in it now.");
 }
 
 void HandleCancelCopyAction(std::string const &id) {
