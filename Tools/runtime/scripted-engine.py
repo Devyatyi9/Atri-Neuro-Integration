@@ -28,6 +28,11 @@ Two ways to keep the story moving, because they exercise different paths:
 Auto mode also allows the speed-up: nothing here is waiting for a model, so the
 run is bounded by the scenario rather than by generation.
 
+Auto mode is the slower of the two even with --fast, because the game turns the
+pages itself at its own pace: a scene that takes about two minutes in advance mode
+takes about twelve here. For a long run that only needs the chain of scenes, leave
+--mode out.
+
 Several routes can be given at once and are played back to back, each starting
 from the title the previous one came back to -- which is also how the end of a
 route is recognised, so a chain needs no knowledge of where any of them ends.
