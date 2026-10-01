@@ -25,12 +25,17 @@
     stops and takes its dump.
 .PARAMETER MaxRounds
     How many rounds at most.
+.PARAMETER Mode
+    manual (the default) clicks the story on by itself, as the scripted engine's
+    plain mode does: a scene takes about two minutes. auto leaves the game to turn
+    its own pages, which takes about twelve.
 #>
 param(
     [string]$Scene = "b111.ks",
     [double]$Minutes = 25,
     [int]$JumpMb = 150,
     [int]$MaxRounds = 12,
+    [ValidateSet("manual", "auto")][string]$Mode = "manual",
     [string]$ProcDump = "C:\ProgramData\procdump\procdump.exe"
 )
 
@@ -42,6 +47,14 @@ $Port = 18701
 $DumpDir = Join-Path $env:APPDATA "Aniplex\ATRI-MyDearMoments-"
 $SampleSeconds = 15
 $WindowSeconds = 300
+
+# One click on a story waiting for one -- the conditions the plugin's advance action
+# checks -- and a click on a movie, which waits for nothing.
+$Advance = '(function(){ if (SystemHook.currentState != "game") return 0;' +
+    ' if (kag.isMoviePlaying()) { runOnceDelayedTrigger(function { kag.onPrimaryClick(); } incontextof global); return 2; }' +
+    ' if (!kag.clickWaiting) return 0; var c = kag.conductor;' +
+    ' if (c.status != c.mWait || c.waitUntil["click"] === void) return 0;' +
+    ' runOnceDelayedTrigger(function { kag.onPrimaryClick(); } incontextof global); return 1; })()'
 
 function Say($text) { Write-Host ("{0} {1}" -f (Get-Date -Format "HH:mm:ss"), $text) }
 
@@ -66,7 +79,11 @@ function Start-Round {
     Send 'kag.QuickMenu.setVisible(%[fadein: 1, notify: 1])' | Out-Null
     $fast = Get-Content (Join-Path $Repo "Tools\tjs\fast-playback-on.tjs") -Raw
     $fast | & $Client -Port $Port 6>&1 | Out-Null
-    Say ("auto mode: " + (Send 'kag.enterAutoMode(), kag.autoMode'))
+    if ($Mode -eq "auto") {
+        Say ("auto mode: " + (Send 'kag.enterAutoMode(), kag.autoMode'))
+    } else {
+        Say "manual mode: the story is clicked on from here"
+    }
 }
 
 # A normal exit, which is what makes the engine write its report of live objects.
@@ -91,13 +108,16 @@ function Take-Evidence($proc, $why) {
 }
 
 for ($round = 1; $round -le $MaxRounds; $round++) {
-    Say "round $round of ${MaxRounds}: $Scene for $Minutes min, jump limit $JumpMb MB"
+    Say "round $round of ${MaxRounds}: $Scene for $Minutes min, $Mode mode, jump limit $JumpMb MB"
     Start-Round
     $started = Get-Date
     $samples = New-Object System.Collections.ArrayList
     $logBefore = if (Test-Path $CopyLog) { (Get-Item $CopyLog).Length } else { 0 }
     while (((Get-Date) - $started).TotalMinutes -lt $Minutes) {
-        Start-Sleep $SampleSeconds
+        $until = (Get-Date).AddSeconds($SampleSeconds)
+        while ((Get-Date) -lt $until) {
+            if ($Mode -eq "manual") { Send $Advance | Out-Null; Start-Sleep -Milliseconds 120 } else { Start-Sleep 1 }
+        }
         $proc = CopyProcess
         if (-not $proc) { Say "the copy is gone; ending the watch"; return }
         $now = Get-Date
