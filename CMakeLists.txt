@@ -121,6 +121,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
         prototype/actions/common/ParseNumber.h
+        prototype/actions/notebook/NotebookGate.cpp
+        prototype/actions/notebook/NotebookGate.h
         prototype/actions/notebook/NotebookStore.cpp
         prototype/actions/notebook/NotebookStore.h
         prototype/actions/notebook/ScreenNotebook.cpp
@@ -229,11 +231,13 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/common/ActionJson.cpp
         prototype/actions/common/ParseNumber.cpp
         prototype/actions/common/SlotPayload.cpp
+        prototype/actions/notebook/NotebookGate.cpp
         prototype/actions/notebook/NotebookStore.cpp
         prototype/PluginConfig.cpp
         prototype/UtfConversion.cpp
         prototype/neuro/ContextPayload.cpp
         prototype/tests/ActionJsonTests.cpp
+        prototype/tests/NotebookGateTests.cpp
         prototype/tests/NotebookStoreTests.cpp
         prototype/tests/ContextPayloadTests.cpp
         prototype/tests/ParseNumberTests.cpp

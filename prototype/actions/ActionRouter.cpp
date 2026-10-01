@@ -284,6 +284,7 @@ char const *ScreenName(int kind) {
 void SyncCapabilities(int kind, int payload = 0) {
 	long long key = CapabilityKey(kind, payload);
 	if (kind == kCapabilityStatePlay) {
+		ScreenNotebook::FollowStory();
 		key |= static_cast<long long>(ScreenNotebook::StateKey())
 		       << kNotebookKeyShift;
 	}

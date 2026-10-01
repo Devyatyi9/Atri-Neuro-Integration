@@ -24,6 +24,7 @@
 #include "NeuroConsole.h"
 #include "PluginConfig.h"
 #include "PluginLifecycle.h"
+#include "ScreenNotebook.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "UtfConversion.h"
@@ -370,6 +371,7 @@ NeuroSendContextFromTJS(tTJSVariant *result,
 	}
 
 	LogTagFile(utf8Output.c_str());
+	ScreenNotebook::NoteMonitorOutput(utf8Output);
 
 	ContextPayload const payload = BuildContextPayload(utf8Output);
 	if (!payload.Empty()) {

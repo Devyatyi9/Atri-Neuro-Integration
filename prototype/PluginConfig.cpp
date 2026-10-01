@@ -87,6 +87,11 @@ wchar_t const *const kDefaultConfigText =
     L"; Neuro's notebook: pages she can write and read back during the game.\n"
     L"notebook = on\n"
     L"\n"
+    L"; She has a notebook only while Atri does in the story. Off: one "
+    L"notebook "
+    L"through the whole game.\n"
+    L"notebook_story_gate = on\n"
+    L"\n"
     L"; Neuro's picture over the second title background, once all CGs are "
     L"collected.\n"
     L"title_overlay = on\n";
@@ -253,6 +258,10 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.Notebook);
 		return;
 	}
+	if (key == L"notebook_story_gate") {
+		ReadSwitch(value, config.NotebookStoryGate);
+		return;
+	}
 	if (key == L"title_overlay") {
 		ReadSwitch(value, config.TitleOverlay);
 		return;
@@ -399,6 +408,7 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	config.FirstRun = FirstRunMode::Auto;
 	config.LinkIndicator = true;
 	config.Notebook = true;
+	config.NotebookStoryGate = true;
 	config.TitleOverlay = true;
 
 	std::size_t start = 0;

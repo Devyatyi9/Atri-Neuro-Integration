@@ -59,6 +59,9 @@ struct PluginConfig {
 	bool LinkIndicator;
 	// Neuro's notebook: pages she can write and read back.
 	bool Notebook;
+	// Whether she has a notebook only while Atri does. Off, there is one
+	// notebook through the whole game.
+	bool NotebookStoryGate;
 	// Neuro's or Evil's picture over the second title background.
 	bool TitleOverlay;
 };

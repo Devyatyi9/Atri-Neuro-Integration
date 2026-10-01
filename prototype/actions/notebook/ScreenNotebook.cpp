@@ -3,20 +3,70 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cstdlib>
 #include <mutex>
 #include <string>
 
 #include "ActionJson.h"
 #include "ActionSet.h"
+#include "Logging.h"
 #include "NeuroClient.h"
+#include "NotebookGate.h"
 #include "NotebookStore.h"
 #include "PluginConfig.h"
 #include "UtfConversion.h"
 
 namespace {
 
-// Only one notebook exists until the story decides which are in hand.
-constexpr int kBook = 1;
+// The notebook that is open, or was last: 1 or 2.
+std::atomic<int> g_Book(1);
+
+int Book() {
+	return g_Book.load();
+}
+
+// What the story last said about the notebooks, packed so the main thread can
+// leave it without a lock: bit 0 the first, bit 1 the second, then the reason.
+constexpr int kAccessFirst = 1;
+constexpr int kAccessSecond = 2;
+constexpr int kAccessReasonShift = 2;
+constexpr int kAccessUnknown = -1;
+std::atomic<int> g_StoryAccess(kAccessUnknown);
+// The access the last refresh acted on, to tell a change from a standing state.
+std::atomic<int> g_FollowedAccess(kAccessUnknown);
+
+int Pack(NotebookGate::Access const &access) {
+	return (access.first ? kAccessFirst : 0) |
+	       (access.second ? kAccessSecond : 0) |
+	       (static_cast<int>(access.reason) << kAccessReasonShift);
+}
+
+NotebookGate::Access Unpack(int packed) {
+	NotebookGate::Access access;
+	if (packed == kAccessUnknown) {
+		return access;
+	}
+	access.first = (packed & kAccessFirst) != 0;
+	access.second = (packed & kAccessSecond) != 0;
+	access.reason =
+	    static_cast<NotebookGate::Reason>(packed >> kAccessReasonShift);
+	return access;
+}
+
+// With the story gate off there is one notebook, always in hand.
+NotebookGate::Access CurrentAccess() {
+	if (!GetPluginConfig().NotebookStoryGate) {
+		NotebookGate::Access access;
+		access.first = true;
+		access.reason = NotebookGate::Reason::InHand;
+		return access;
+	}
+	return Unpack(g_StoryAccess.load());
+}
+
+bool Has(NotebookGate::Access const &access, int book) {
+	return book == 1 ? access.first : access.second;
+}
 // A page up to this size comes back in the result itself; a longer one goes
 // to context, and the result only says which page is being read.
 constexpr size_t kInlinePageBytes = 300;
@@ -90,7 +140,7 @@ std::string FormatPage(int page, std::string const &utf8) {
 		Utf16ToUtf8(numbered.c_str(), numbered.size(), lines);
 	}
 	std::string header = "Page " + std::to_string(page);
-	NotebookStore::PageTimes const times = Store().Times(kBook, page);
+	NotebookStore::PageTimes const times = Store().Times(Book(), page);
 	if (times.written) {
 		header += ", started " + times.created + ", last written " + times.modified;
 	}
@@ -218,33 +268,61 @@ bool AnswerRefusal(std::string const &id,
 }
 
 void HandleOpen(std::string const &id, std::string const &data) {
-	int requested = kBook;
-	if (data.find("\"notebook\"") != std::string::npos &&
-	    (!ParseJsonInteger(data, "\"notebook\"", requested) ||
-	     requested != kBook)) {
-		NeuroSendActionResult(id.c_str(), false, "Only notebook 1 is available.");
+	NotebookGate::Access const access = CurrentAccess();
+	if (!access.Any()) {
+		char const *why = "There is no notebook to open here.";
+		if (access.reason == NotebookGate::Reason::NotYet) {
+			why = "You do not have a notebook yet.";
+		} else if (access.reason == NotebookGate::Reason::Lost) {
+			why = "You lost your notebook.";
+		}
+		NeuroSendActionResult(id.c_str(), false, why);
 		return;
 	}
-	if (g_Open.load() != 0) {
+	int requested = access.first ? 1 : 2;
+	if (data.find("\"notebook\"") != std::string::npos) {
+		if (!ParseJsonInteger(data, "\"notebook\"", requested) ||
+		    (requested != 1 && requested != 2)) {
+			NeuroSendActionResult(id.c_str(), false, "\"notebook\" must be 1 or 2.");
+			return;
+		}
+		if (!Has(access, requested)) {
+			NeuroSendActionResult(
+			    id.c_str(), false,
+			    ("You do not have notebook " + std::to_string(requested) + " now.")
+			        .c_str());
+			return;
+		}
+	} else if (access.Both()) {
+		NeuroSendActionResult(id.c_str(), false,
+		                      "You have two notebooks; give \"notebook\": 1 for "
+		                      "the first, 2 for the second.");
+		return;
+	}
+	if (g_Open.load() != 0 && requested == Book()) {
 		NeuroSendActionResult(id.c_str(), true,
 		                      ("The notebook is already open on page " +
 		                       std::to_string(g_CurrentPage) + ".")
 		                          .c_str());
 		return;
 	}
-	Store().RemoveLeftovers(kBook);
+	g_Book.store(requested);
+	std::string const opened =
+	    access.Both() ? "Opened notebook " + std::to_string(requested)
+	                  : std::string("Opened your notebook");
+	Store().RemoveLeftovers(Book());
 	// Where she wrote last, so a note without a page carries on from there.
-	int const last = Store().LatestWrittenPage(kBook);
+	int const last = Store().LatestWrittenPage(Book());
 	g_CurrentPage = last > 0 ? last : 1;
 	g_Open.store(1);
 	std::string message =
-	    last == 0 ? "Opened your notebook. It is blank."
-	              : "Opened your notebook. Pages with writing: " +
-	                    PageRanges(Store().WrittenPages(kBook)) +
+	    last == 0 ? opened + ". It is blank."
+	              : opened + ". Pages with writing: " +
+	                    PageRanges(Store().WrittenPages(Book())) +
 	                    ". It is open on page " + std::to_string(last) +
 	                    ", the last one you wrote on";
 	// After a break this is the first thing worth knowing.
-	NotebookStore::PageTimes const times = Store().Times(kBook, g_CurrentPage);
+	NotebookStore::PageTimes const times = Store().Times(Book(), g_CurrentPage);
 	if (last != 0) {
 		message += times.written ? ", " + times.modified + "." : ".";
 	}
@@ -260,7 +338,7 @@ void HandleRead(std::string const &id, std::string const &data) {
 		return;
 	}
 	std::string text;
-	NotebookStore::Status const status = Store().ReadPage(kBook, page, text);
+	NotebookStore::Status const status = Store().ReadPage(Book(), page, text);
 	std::string const name = "Page " + std::to_string(page);
 	if (status == NotebookStore::Status::BadText) {
 		NeuroSendActionResult(id.c_str(), false,
@@ -309,7 +387,7 @@ void HandleWrite(std::string const &id, std::string const &data) {
 	}
 	if (line > 0) {
 		NotebookStore::WriteOutcome const outcome =
-		    Store().WriteLine(kBook, page, line, text);
+		    Store().WriteLine(Book(), page, line, text);
 		if (AnswerRefusal(id, outcome, page, line)) {
 			return;
 		}
@@ -323,7 +401,8 @@ void HandleWrite(std::string const &id, std::string const &data) {
 		return;
 	}
 
-	NotebookStore::WriteOutcome const outcome = Store().Append(kBook, page, text);
+	NotebookStore::WriteOutcome const outcome =
+	    Store().Append(Book(), page, text);
 	std::string const from = std::to_string(page);
 	switch (outcome.status) {
 		case NotebookStore::Status::Ok: {
@@ -353,7 +432,7 @@ void HandleWrite(std::string const &id, std::string const &data) {
 			              std::to_string(outcome.roomLeft) +
 			              " characters before existing writing or the end of the "
 			              "notebook.";
-			int const blank = FirstBlankPage(Store().WrittenPages(kBook));
+			int const blank = FirstBlankPage(Store().WrittenPages(Book()));
 			if (blank != 0) {
 				message += " Page " + std::to_string(blank) +
 				           " is the first blank one; give \"page\" to write there.";
@@ -406,7 +485,7 @@ void HandleAnnotate(std::string const &id, std::string const &data) {
 		return;
 	}
 	NotebookStore::WriteOutcome const outcome =
-	    Store().Annotate(kBook, page, line, text);
+	    Store().Annotate(Book(), page, line, text);
 	if (AnswerRefusal(id, outcome, page, line)) {
 		return;
 	}
@@ -438,7 +517,7 @@ void HandleStrike(std::string const &id, std::string const &data) {
 		return;
 	}
 	NotebookStore::WriteOutcome const outcome =
-	    Store().Strike(kBook, page, quote, occurrence);
+	    Store().Strike(Book(), page, quote, occurrence);
 	if (AnswerRefusal(id, outcome, page, 0)) {
 		return;
 	}
@@ -447,6 +526,13 @@ void HandleStrike(std::string const &id, std::string const &data) {
 	                      ("Struck through \"" + Excerpt(quote) + "\" on page " +
 	                       std::to_string(page) + ".")
 	                          .c_str());
+}
+
+// Story news about the notebook, into the log as well: it is the only trace of
+// when the story took one away or gave one back.
+void Tell(char const *text, bool silent) {
+	Log((std::string("[Notebook] ") + text + "\n").c_str());
+	NeuroSendContext(text, silent);
 }
 
 }  // namespace
@@ -503,9 +589,18 @@ void AppendActions(ActionSet &set, bool quickMenuOut) {
 		}
 		// No notebook to choose while there is only one: a number offered
 		// here only invites wrong ones.
-		set.add("open_notebook", kOpenDescription,
-		        "{\"type\":\"object\",\"properties\":{},"
-		        "\"additionalProperties\":false}");
+		if (CurrentAccess().Both()) {
+			set.add("open_notebook",
+			        "Open one of your notebooks to read or write in it: 1 is "
+			        "the first, 2 is the one bought after the first was lost.",
+			        "{\"type\":\"object\",\"properties\":{\"notebook\":"
+			        "{\"type\":\"integer\",\"enum\":[1,2]}},"
+			        "\"required\":[\"notebook\"],\"additionalProperties\":false}");
+		} else {
+			set.add("open_notebook", kOpenDescription,
+			        "{\"type\":\"object\",\"properties\":{},"
+			        "\"additionalProperties\":false}");
+		}
 		return;
 	}
 	std::string const pages = std::to_string(NotebookStore::kPageCount);
@@ -572,7 +667,86 @@ std::string ReferenceLine() {
 }
 
 int StateKey() {
-	return g_Open.load();
+	return g_Open.load() | (CurrentAccess().Both() ? 2 : 0);
+}
+
+void NoteMonitorOutput(std::string const &output) {
+	// Main thread only. The monitor reports a field when it changes, so the
+	// last scene and line are kept between calls.
+	static std::string scenario;
+	static int line = 0;
+	static bool replay = false;
+	bool changed = false;
+	size_t start = 0;
+	while (start < output.size()) {
+		size_t end = output.find('\n', start);
+		if (end == std::string::npos) {
+			end = output.size();
+		}
+		std::string const field = output.substr(start, end - start);
+		start = end + 1;
+		if (field.compare(0, 11, "[scenario] ") == 0) {
+			scenario = field.substr(11);
+			changed = true;
+		} else if (field.compare(0, 7, "[line] ") == 0) {
+			line = atoi(field.c_str() + 7);
+			changed = true;
+		} else if (field.compare(0, 12, "[recollect] ") == 0) {
+			replay = atoi(field.c_str() + 12) == 1;
+			changed = true;
+		}
+	}
+	if (!changed) {
+		return;
+	}
+	NotebookGate::Access access = NotebookGate::At(scenario, line);
+	// A menu or the title runs a scenario of its own behind the story; the
+	// story has not moved, so what was known stands.
+	if (access.reason == NotebookGate::Reason::NotInStory) {
+		return;
+	}
+	if (replay) {
+		access = NotebookGate::Access();
+	}
+	g_StoryAccess.store(Pack(access));
+}
+
+void FollowStory() {
+	if (!GetPluginConfig().Notebook || !GetPluginConfig().NotebookStoryGate) {
+		return;
+	}
+	int const now = g_StoryAccess.load();
+	int const before = g_FollowedAccess.exchange(now);
+	if (now == before || now == kAccessUnknown) {
+		return;
+	}
+	NotebookGate::Access const access = Unpack(now);
+	if (g_Open.load() != 0 && !Has(access, Book())) {
+		g_Open.store(0);
+		Tell("Your notebook was closed: you no longer have it.", true);
+	}
+	// Where this run starts is not news; only what changes while she watches.
+	if (before == kAccessUnknown) {
+		return;
+	}
+	NotebookGate::Access const was = Unpack(before);
+	if (was.reason == NotebookGate::Reason::NotInStory ||
+	    access.reason == NotebookGate::Reason::NotInStory) {
+		return;
+	}
+	if (!was.Any() && access.Any()) {
+		Tell(
+		    "You have a notebook now: open_notebook, in the quick "
+		    "menu, opens it to read or write.",
+		    false);
+	} else if (was.Any() && !access.Any()) {
+		Tell("You lost your notebook.", false);
+	} else if (!was.Both() && access.Both()) {
+		Tell(
+		    "Your first notebook is back: open_notebook now takes "
+		    "\"notebook\", 1 for the first or 2 for the second.",
+		    false);
+	}
 }
 
 void Close() {

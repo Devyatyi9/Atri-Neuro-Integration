@@ -156,6 +156,8 @@ void RunPluginConfigTests() {
 	ExpectNotebook(L"", true);
 	ExpectNotebook(L"notebook = off", false);
 	ExpectNotebook(L"notebook = nonsense", true);
+	CHECK(ParsePluginConfig(L"").NotebookStoryGate);
+	CHECK(!ParsePluginConfig(L"notebook_story_gate = off").NotebookStoryGate);
 	ExpectTitleOverlay(L"", true);
 	ExpectTitleOverlay(L"title_overlay = off", false);
 

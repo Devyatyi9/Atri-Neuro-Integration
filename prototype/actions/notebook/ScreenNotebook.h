@@ -21,9 +21,18 @@ void AppendActions(ActionSet &set, bool quickMenuOut);
 // is switched off.
 std::string ReferenceLine();
 
-// Nonzero while the notebook is open. Part of the capability key, so opening
-// and closing re-register the set.
+// Changes when the notebook opens or closes and when a second one comes into
+// hand. Part of the capability key, so each of those re-registers the set.
 int StateKey();
+
+// Follows the story from the context monitor's output: which scene and line it
+// stands on decides which notebooks are in hand. Game main thread; does not
+// block.
+void NoteMonitorOutput(std::string const &output);
+
+// Acts on a change in what the story allows: closes a notebook that is no
+// longer in hand and tells Neuro when one is gained or lost.
+void FollowStory();
 
 void Close();
 
