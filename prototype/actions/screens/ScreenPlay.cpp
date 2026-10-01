@@ -11,6 +11,7 @@
 #include "ActionSchemas.h"
 #include "ActionSet.h"
 #include "NeuroClient.h"
+#include "ScreenNotebook.h"
 
 namespace {
 
@@ -237,10 +238,13 @@ void HandleSceneStepAction(std::string const &id,
 		return;
 	}
 	Sleep(kDialogSettleMs);
-	NeuroSendActionResult(id.c_str(), true,
-	                      ProbeDialogVisible((tag + " asked").c_str())
-	                          ? action.asked
-	                          : action.done);
+	bool const asked = ProbeDialogVisible((tag + " asked").c_str());
+	if (!asked) {
+		// With no question raised the jump is under way, and nothing else will
+		// tell the notebook.
+		ScreenNotebook::NoteJump();
+	}
+	NeuroSendActionResult(id.c_str(), true, asked ? action.asked : action.done);
 }
 
 // Builds the schema for a single integer field bounded to what is actually on

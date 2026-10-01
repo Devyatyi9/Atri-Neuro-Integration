@@ -14,6 +14,7 @@
 #include "ContextPayload.h"
 #include "NeuroClient.h"
 #include "ParseNumber.h"
+#include "ScreenNotebook.h"
 #include "SlotPayload.h"
 #include "UtfConversion.h"
 
@@ -30,6 +31,9 @@ constexpr char const *kVoiceScenario = "voice.ks";
 // read. Actions number the ten by what is on screen; the list behind them is
 // reached through the window base, which the page buttons move.
 constexpr int kVisibleSlots = 10;
+// How many times a load taken without a confirmation is looked for before the
+// press is called a failure.
+constexpr int kLoadSettleAttempts = 12;
 constexpr int kSlotColumns = 5;
 
 // The tab bar, carried in the payload: which tabs the bar shows, and which of
@@ -260,15 +264,31 @@ void HandleLoadSaveAction(std::string const &id, std::string const &data) {
 	// state change -- so silence is the failure signal. A load that took either
 	// raises the confirmation or, when SystemConfig.askload is off, lands
 	// straight in play.
+	//
+	// Without the question the load screen stays up for a moment while the save
+	// loads, so the screen is given time to change before the press is called a
+	// failure.
 	Sleep(kDialogSettleMs);
-	if (!ProbeLoadAccepted("load_save accepted")) {
+	if (ProbeDialogVisible("load_save asked")) {
+		NeuroSendActionResult(
+		    id.c_str(), true,
+		    "Selected the save. Confirm or cancel the dialog to load it.");
+		return;
+	}
+	bool loaded = false;
+	for (int attempt = 0; attempt < kLoadSettleAttempts && !loaded; ++attempt) {
+		loaded = ProbeLoadAccepted("load_save accepted");
+		if (!loaded) {
+			Sleep(kDialogSettleMs);
+		}
+	}
+	if (!loaded) {
 		NeuroSendActionResult(id.c_str(), false,
 		                      "Selecting that slot had no effect.");
 		return;
 	}
-	NeuroSendActionResult(
-	    id.c_str(), true,
-	    "Selected the save. Confirm or cancel the dialog to load it.");
+	ScreenNotebook::NoteJump();
+	NeuroSendActionResult(id.c_str(), true, "Loading that save.");
 }
 
 void HandleSaveGameAction(std::string const &id, std::string const &data) {

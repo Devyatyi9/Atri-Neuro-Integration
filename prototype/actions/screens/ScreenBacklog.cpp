@@ -13,6 +13,7 @@
 #include "ContextPayload.h"
 #include "NeuroClient.h"
 #include "ParseNumber.h"
+#include "ScreenNotebook.h"
 
 namespace {
 
@@ -96,6 +97,16 @@ void HandleBacklogLineAction(std::string const &id,
 		    id.c_str(), false,
 		    busy ? kPressStillRunning : "That line did not respond.");
 		return;
+	}
+	// The question before a jump is a setting: with it off the jump has already
+	// happened, and saying a dialog is waiting would send her to answer nothing.
+	if (which == 0) {
+		Sleep(kDialogSettleMs);
+		if (!ProbeDialogVisible((tag + " asked").c_str())) {
+			ScreenNotebook::NoteJump();
+			NeuroSendActionResult(id.c_str(), true, "Went back there.");
+			return;
+		}
 	}
 	NeuroSendActionResult(id.c_str(), true, okMessage);
 }

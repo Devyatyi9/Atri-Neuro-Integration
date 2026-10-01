@@ -105,9 +105,19 @@ void HandleReturnToTitleAction(std::string const &id, std::string const &data) {
 	// action deliberately stops at the question rather than answering it: losing
 	// unsaved progress should not happen from one call. answer_dialog becomes
 	// available as soon as the dialog is up.
+	//
+	// With the question switched off in the game's settings there is no dialog,
+	// and the answer says so instead of sending her to confirm nothing.
+	bool asked = true;
+	if (ok) {
+		Sleep(kDialogSettleMs);
+		asked = ProbeDialogVisible("return_to_title asked");
+	}
 	AnswerPress(
 	    id, ok,
-	    "Asked to return to the title screen; confirm or cancel the dialog.",
+	    asked
+	        ? "Asked to return to the title screen; confirm or cancel the dialog."
+	        : "Going back to the title screen.",
 	    "Returning to the title screen is unavailable.");
 }
 
