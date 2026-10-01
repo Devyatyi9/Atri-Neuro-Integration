@@ -964,7 +964,7 @@ void AppendEditMenuActions(ActionSet &set, int payload) {
 		        kEditMenuItemSchema);
 	}
 	if ((items & 8) != 0) {
-		set.add("edit_erase", "Erase this save. Asks for confirmation first.",
+		set.add("edit_erase", "Erase this save. May ask for confirmation first.",
 		        kEditMenuItemSchema);
 	}
 	set.add("close_edit_menu", "Close the edit menu without choosing.",
@@ -1080,7 +1080,7 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	        kGoBackSchema);
 	if (mode != Mode::Voice) {
 		set.add("return_to_title",
-		        "Leave the game and go back to the title screen. Asks for "
+		        "Leave the game and go back to the title screen. May ask for "
 		        "confirmation first.",
 		        kReturnToTitleSchema);
 	}
@@ -1097,7 +1097,7 @@ void AppendActions(ActionSet &set, Mode mode, int payload) {
 	if (mode == Mode::Load) {
 		set.add("load_save",
 		        set.keep("Load a saved game by its number on screen, " + range +
-		                 ". Asks for confirmation first."),
+		                 ". May ask for confirmation first."),
 		        slotSchema);
 	} else if (mode == Mode::Save) {
 		set.add("save_game",

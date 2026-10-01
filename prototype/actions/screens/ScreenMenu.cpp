@@ -294,7 +294,7 @@ void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle) {
 	        kGoBackSchema);
 	if (canReturnToTitle) {
 		set.add("return_to_title",
-		        "Leave the game and go back to the title screen. Asks for "
+		        "Leave the game and go back to the title screen. May ask for "
 		        "confirmation first.",
 		        kReturnToTitleSchema);
 	}

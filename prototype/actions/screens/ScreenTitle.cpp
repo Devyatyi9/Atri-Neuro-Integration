@@ -342,7 +342,7 @@ void AppendActions(ActionSet &set, int payload) {
 		        "Open the Extra screen: the picture gallery and the music list.",
 		        kOpenExtraSchema);
 	}
-	set.add("exit_game", "Quit the game. Asks for confirmation first.",
+	set.add("exit_game", "Quit the game. May ask for confirmation first.",
 	        kExitGameSchema);
 }
 

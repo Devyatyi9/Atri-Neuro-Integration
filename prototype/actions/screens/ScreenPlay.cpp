@@ -428,15 +428,17 @@ void AppendQuickMenuActions(ActionSet &set, int payload) {
 	        "Save straight into the quick slot, without opening the save screen.",
 	        kQuickSaveSchema);
 	set.add("quick_load",
-	        "Load the most recent quick save. Asks for confirmation first.",
+	        "Load the most recent quick save. May ask for confirmation first.",
 	        kQuickLoadSchema);
-	set.add("previous_scene",
-	        "Go back to the previous choice point. Asks for confirmation first.",
-	        kPreviousSceneSchema);
-	set.add("next_scene",
-	        "Jump ahead to the next choice point, where skipping stops too. Asks "
-	        "for confirmation first.",
-	        kNextSceneSchema);
+	set.add(
+	    "previous_scene",
+	    "Go back to the previous choice point. May ask for confirmation first.",
+	    kPreviousSceneSchema);
+	set.add(
+	    "next_scene",
+	    "Jump ahead to the next choice point, where skipping stops too. May ask "
+	    "for confirmation first.",
+	    kNextSceneSchema);
 	// Auto and skip are each one bar button pressed twice, so only the direction
 	// that would change something is offered.
 	if ((payload & kFlagAuto) != 0) {

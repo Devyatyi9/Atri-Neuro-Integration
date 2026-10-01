@@ -497,7 +497,7 @@ void AppendActions(ActionSet &set, int payload) {
 		        set.keep(std::string("Go back to one of the ") +
 		                 (sceneList ? "scenes" : "lines") +
 		                 " on screen, numbered from the top. Available now: " +
-		                 jumpList + ". Asks for confirmation first."),
+		                 jumpList + ". May ask for confirmation first."),
 		        set.keep(BoundedIntSchema("line", highest)));
 	}
 	std::string const saveList = RowList(saveMask);
