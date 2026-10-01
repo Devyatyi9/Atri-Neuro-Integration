@@ -45,9 +45,12 @@ void RunNotebookGateTests() {
 	CHECK(At("", 0).reason == Reason::NotInStory);
 	CHECK(At("b304", 1).first);
 
-	CHECK(NotebookGate::IsEnding("b501.ks") &&
-	      NotebookGate::IsEnding("b601.ks") && NotebookGate::IsEnding("b701"));
-	CHECK(!NotebookGate::IsEnding("b407.ks") && !NotebookGate::IsEnding(""));
+	// The happy and the true ending keep the notebooks; the bad one does not.
+	CHECK(NotebookGate::KeepsNotebooks("b501.ks") &&
+	      NotebookGate::KeepsNotebooks("b701"));
+	CHECK(!NotebookGate::KeepsNotebooks("b601.ks") &&
+	      !NotebookGate::KeepsNotebooks("b407.ks") &&
+	      !NotebookGate::KeepsNotebooks(""));
 
 	CHECK(NotebookGate::SceneIndex("b999.ks") == 0);
 	CHECK(NotebookGate::SceneIndex("b101.ks") == 1);

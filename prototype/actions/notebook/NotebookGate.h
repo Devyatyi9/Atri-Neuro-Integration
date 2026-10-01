@@ -41,8 +41,8 @@ int SceneIndex(std::string const &scenario);
 // indices. Anything else that changes the scene is a jump.
 bool FollowsOn(int from, int to);
 
-// Whether the scene is one of the endings: reaching one is what keeps the
-// notebooks in hand for the next time through.
-bool IsEnding(std::string const &scenario);
+// Whether reaching the scene keeps the notebooks for the next time through:
+// the happy and the true ending. The bad ending keeps nothing.
+bool KeepsNotebooks(std::string const &scenario);
 
 }  // namespace NotebookGate

@@ -34,6 +34,12 @@ void NoteMonitorOutput(std::string const &output);
 // next refresh, and where the story lands is not news.
 void NoteJump();
 
+// The same for an answer given by the player's own click: a dialog asking
+// about a load or a jump came up, then closed. If the story's position moves
+// right after it closes, the answer was yes.
+void NoteJumpAsked(bool asked);
+void NoteJumpDialogClosed();
+
 // Acts on a change in what the story allows: closes a notebook that is no
 // longer in hand and tells Neuro when one is gained or lost.
 void FollowStory();

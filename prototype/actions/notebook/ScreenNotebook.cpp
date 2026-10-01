@@ -48,6 +48,14 @@ std::atomic<int> g_FollowedJumps(0);
 // position can reach us a poll later than the jump itself.
 std::atomic<ULONGLONG> g_QuietUntil(0);
 constexpr ULONGLONG kJumpSettleMs = 2000;
+// A dialog asking about a load or a jump is up; and, once it has closed, until
+// when a move of the story's position means it was agreed to.
+std::atomic<bool> g_JumpAsked(false);
+std::atomic<ULONGLONG> g_JumpAnswerUntil(0);
+// The game takes a while to land: the scene fades out and the next one loads.
+constexpr ULONGLONG kJumpAnswerMs = 15000;
+// Lines moved between two reports that reading does not cover.
+constexpr int kJumpStride = 60;
 
 int Pack(NotebookGate::Access const &access) {
 	return (access.first ? kAccessFirst : 0) |
@@ -757,7 +765,7 @@ void NoteMonitorOutput(std::string const &output) {
 	}
 	if (replay) {
 		access = NotebookGate::Access();
-	} else if (NotebookGate::IsEnding(scenario)) {
+	} else if (NotebookGate::KeepsNotebooks(scenario)) {
 		g_UnlockPending.fetch_or(Pack(access) & (kAccessFirst | kAccessSecond));
 	}
 	// The engine's restore hook does not see every jump: going back to a choice
@@ -770,6 +778,15 @@ void NoteMonitorOutput(std::string const &output) {
 	    (scene == lastScene ? line < lastLine
 	                        : !NotebookGate::FollowsOn(lastScene, scene))) {
 		g_Jumps.fetch_add(1);
+	} else if ((scene != lastScene || line - lastLine > kJumpStride) &&
+	           (g_JumpAsked.load() ||
+	            GetTickCount64() < g_JumpAnswerUntil.load())) {
+		// Far forward in one step, while a jump is being asked about or just
+		// after: it was agreed to. The position can move before the dialog is
+		// seen to be gone. Reading on, even skipping, moves a few lines between
+		// reports.
+		g_JumpAnswerUntil.store(0);
+		g_Jumps.fetch_add(1);
 	}
 	lastScene = scene;
 	lastLine = line;
@@ -779,6 +796,16 @@ void NoteMonitorOutput(std::string const &output) {
 
 void NoteJump() {
 	g_Jumps.fetch_add(1);
+}
+
+void NoteJumpAsked(bool asked) {
+	g_JumpAsked.store(asked);
+}
+
+void NoteJumpDialogClosed() {
+	if (g_JumpAsked.exchange(false)) {
+		g_JumpAnswerUntil.store(GetTickCount64() + kJumpAnswerMs);
+	}
 }
 
 int UnlockToSave() {
@@ -871,8 +898,6 @@ void FollowStory() {
 		    "You have two notebooks now: open_notebook takes "
 		    "\"notebook\", 1 for the first or 2 for the second.",
 		    false);
-	} else if (was.Both() && !access.Both()) {
-		Tell("You are down to one notebook.", true);
 	}
 }
 

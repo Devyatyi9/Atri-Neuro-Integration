@@ -85,9 +85,9 @@ bool FollowsOn(int from, int to) {
 	return from >= 0 && from < IndexOf("b501") && to == from + 1;
 }
 
-bool IsEnding(std::string const &scenario) {
+bool KeepsNotebooks(std::string const &scenario) {
 	std::string const scene = scenario.substr(0, scenario.find('.'));
-	return scene == "b501" || scene == "b601" || scene == "b701";
+	return scene == "b501" || scene == "b701";
 }
 
 }  // namespace NotebookGate

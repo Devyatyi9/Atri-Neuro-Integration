@@ -22,6 +22,8 @@ void AppendMenuActions(ActionSet &set, int tabs, bool canReturnToTitle);
 // thing that can succeed, so the answer is forced rather than merely offered.
 void AppendDialogActions(ActionSet &set);
 void ForceDialogAnswer();
+// Whether the dialog on screen asks about a load or a jump through the story.
+bool DialogAsksForJump();
 
 // The first-run language screen, and the notice that explains it. The notice is
 // retried because that screen is up while the SDK may still be connecting; it

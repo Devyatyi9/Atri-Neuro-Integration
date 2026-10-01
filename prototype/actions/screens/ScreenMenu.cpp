@@ -147,6 +147,13 @@ char const *ConfirmedOutcome(std::string const &part) {
 	return nullptr;
 }
 
+// Whether agreeing to this question puts the story somewhere else.
+bool IsJumpQuestion(std::string const &part) {
+	return part == "AskLoad" || part == "AskQLoad" || part == "AskJump" ||
+	       part == "AskNext" || part == "AskBackTo" || part == "AskPrevScn" ||
+	       part == "AskNextScn";
+}
+
 void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	int confirmValue = 0;
 	if (!ParseJsonBoolean(data, "\"confirm\"", confirmValue)) {
@@ -195,9 +202,7 @@ void HandleAnswerDialogAction(std::string const &id, std::string const &data) {
 	// The story is about to stand somewhere else. Said here because a jump
 	// forward inside a scene leaves no other trace: the position only moves on,
 	// as it does when reading.
-	if (part == "AskLoad" || part == "AskQLoad" || part == "AskJump" ||
-	    part == "AskNext" || part == "AskBackTo" || part == "AskPrevScn" ||
-	    part == "AskNextScn") {
+	if (IsJumpQuestion(part)) {
 		ScreenNotebook::NoteJump();
 	}
 	if (!loadTitle.empty()) {
@@ -312,6 +317,11 @@ void AppendDialogActions(ActionSet &set) {
 	        "Answer the dialog on screen: confirm true to accept, false to "
 	        "cancel.",
 	        kAnswerDialogSchema);
+}
+
+bool DialogAsksForJump() {
+	std::string part;
+	return ProbeDialogTextPart(part) && IsJumpQuestion(part);
 }
 
 void ForceDialogAnswer() {

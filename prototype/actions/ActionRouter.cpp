@@ -303,6 +303,14 @@ void SyncCapabilities(int kind, int payload = 0) {
 	if (kind == kCapabilityStateTitle || kind == kCapabilityStateTitleLoading) {
 		ScreenNotebook::Close();
 	}
+	// A question about a load or a jump may be answered by the player's own
+	// click, which no action of ours sees: the notebook is told when one comes
+	// up and when it goes.
+	if (kind == kCapabilityStateDialog) {
+		ScreenNotebook::NoteJumpAsked(ScreenMenu::DialogAsksForJump());
+	} else if (previousKind == kCapabilityStateDialog) {
+		ScreenNotebook::NoteJumpDialogClosed();
+	}
 	bool const modal =
 	    kind == kCapabilityStateDialog || kind == kCapabilityStateEditMenu;
 	g_DialogForcePending.store(modal, std::memory_order_release);
