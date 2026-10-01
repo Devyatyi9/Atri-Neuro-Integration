@@ -201,6 +201,22 @@
       };
     }
 
+    // restore: a save loaded, or a jump taken through the backlog. The engine
+    // tells its plugins as it puts the flags back, and nothing else marks the
+    // moment -- afterwards the story simply stands somewhere else. A dictionary
+    // rather than an object: the engine asks each plugin for members by name,
+    // and a dictionary answers void for the ones it does not have.
+    if (typeof global.__cm_restorePlugin == "undefined" &&
+        typeof kag.addPlugin == "Object") {
+      global.__cm_restores = 0;
+      global.__cm_restorePlugin = %[
+        "onRestore" => function(flags, clear, options) {
+          try { global.__cm_restores++; } catch (e) {}
+        } incontextof global
+      ];
+      kag.addPlugin(global.__cm_restorePlugin);
+    }
+
     // choice_made: the engine's own click dispatch, which is also what the
     // select_choice action calls. The button object carries the chosen option,
     // so its localized text comes from the same getLangInfo path as the render.

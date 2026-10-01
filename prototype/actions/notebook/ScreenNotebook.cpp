@@ -41,6 +41,13 @@ std::atomic<int> g_FollowedAccess(kAccessUnknown);
 // save loaded or a jump, not something that happened.
 std::atomic<int> g_StoryScene(-1);
 std::atomic<int> g_FollowedScene(-1);
+// Saves loaded and backlog jumps taken, and how many the last refresh had seen.
+std::atomic<int> g_Jumps(0);
+std::atomic<int> g_FollowedJumps(0);
+// Until when a change in the notebooks is the jump landing, not news. The
+// position can reach us a poll later than the jump itself.
+std::atomic<ULONGLONG> g_QuietUntil(0);
+constexpr ULONGLONG kJumpSettleMs = 2000;
 
 int Pack(NotebookGate::Access const &access) {
 	return (access.first ? kAccessFirst : 0) |
@@ -718,13 +725,25 @@ void NoteMonitorOutput(std::string const &output) {
 		start = end + 1;
 		if (field.compare(0, 11, "[scenario] ") == 0) {
 			scenario = field.substr(11);
+			line = 0;
 			changed = true;
 		} else if (field.compare(0, 7, "[line] ") == 0) {
-			line = atoi(field.c_str() + 7);
-			changed = true;
+			// Line 0 is the conductor between places -- a scene ending, a choice
+			// being taken -- not a place in the scene.
+			int const reported = atoi(field.c_str() + 7);
+			if (reported != 0) {
+				line = reported;
+				changed = true;
+			}
 		} else if (field.compare(0, 12, "[recollect] ") == 0) {
 			replay = atoi(field.c_str() + 12) == 1;
 			changed = true;
+		} else if (field.compare(0, 10, "[restore] ") == 0) {
+			// Counted by the engine's restore hook; the first report is the
+			// standing count, zero, and not a jump.
+			if (atoi(field.c_str() + 10) != 0) {
+				g_Jumps.fetch_add(1);
+			}
 		}
 	}
 	if (!changed) {
@@ -741,7 +760,20 @@ void NoteMonitorOutput(std::string const &output) {
 	} else if (NotebookGate::IsEnding(scenario)) {
 		g_UnlockPending.fetch_or(Pack(access) & (kAccessFirst | kAccessSecond));
 	}
-	g_StoryScene.store(NotebookGate::SceneIndex(scenario));
+	// The engine's restore hook does not see every jump: going back to a choice
+	// point leaves no mark but the position. Text only runs forward, so a line
+	// that went back, or a scene that is not the one this leads to, is a jump.
+	static int lastScene = -1;
+	static int lastLine = 0;
+	int const scene = NotebookGate::SceneIndex(scenario);
+	if (lastScene >= 0 &&
+	    (scene == lastScene ? line < lastLine
+	                        : !NotebookGate::FollowsOn(lastScene, scene))) {
+		g_Jumps.fetch_add(1);
+	}
+	lastScene = scene;
+	lastLine = line;
+	g_StoryScene.store(scene);
 	g_StoryAccess.store(Pack(access));
 }
 
@@ -791,6 +823,14 @@ void FollowStory() {
 	if (!GetPluginConfig().Notebook || !GetPluginConfig().NotebookStoryGate) {
 		return;
 	}
+	// A save loaded or a backlog jump puts the notebook away, wherever it lands.
+	int const jumps = g_Jumps.load();
+	if (g_FollowedJumps.exchange(jumps) != jumps) {
+		g_QuietUntil.store(GetTickCount64() + kJumpSettleMs);
+		if (g_Open.exchange(0) != 0) {
+			Tell("Your notebook was closed: the story moved somewhere else.", true);
+		}
+	}
 	int const scene = g_StoryScene.load();
 	bool const sameScene = g_FollowedScene.exchange(scene) == scene;
 	int const now = Effective(g_StoryAccess.load());
@@ -801,11 +841,12 @@ void FollowStory() {
 	NotebookGate::Access const access = Unpack(now);
 	if (g_Open.load() != 0 && !Has(access, Book())) {
 		g_Open.store(0);
-		Tell("Your notebook was closed.", true);
+		Tell("Your notebook was closed: you no longer have it.", true);
 	}
-	// Where this run starts is not news, nor is where a loaded save lands; only
-	// what changes while she watches.
-	if (before == kAccessUnknown || !sameScene) {
+	// Where this run starts is not news, nor is where a jump lands; only what
+	// changes while she watches.
+	if (before == kAccessUnknown || !sameScene ||
+	    GetTickCount64() < g_QuietUntil.load()) {
 		return;
 	}
 	NotebookGate::Access const was = Unpack(before);

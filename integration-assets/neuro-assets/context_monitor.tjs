@@ -43,6 +43,10 @@
       var recollect = -1;
       if (typeof tf != "undefined" && typeof tf.recollect != "undefined") recollect = tf.recollect;
 
+      // How many times a save or a backlog jump put the story somewhere else.
+      var restores = (typeof global.__cm_restores == "undefined")
+          ? 0 : global.__cm_restores;
+
       // --- Audio, collected by neuro-assets/collect_audio.tjs ---
       // Absent when the collector failed to install; the section is then left
       // out of this poll rather than reported as empty values.
@@ -80,7 +84,8 @@
         %[ "n" => "state", "v" => state ],
         %[ "n" => "movie", "v" => moviePlaying ],
         %[ "n" => "bgchange", "v" => bgChange ],
-        %[ "n" => "recollect", "v" => recollect ]
+        %[ "n" => "recollect", "v" => recollect ],
+        %[ "n" => "restore", "v" => restores ]
       ];
       for (var pi = 0; pi < plain.count; pi++) {
         var pf = plain[pi];

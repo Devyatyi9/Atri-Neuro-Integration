@@ -52,4 +52,19 @@ void RunNotebookGateTests() {
 	CHECK(NotebookGate::SceneIndex("b999.ks") == 0);
 	CHECK(NotebookGate::SceneIndex("b101.ks") == 1);
 	CHECK(NotebookGate::SceneIndex("title.ks") == -1);
+
+	// Playing on leads to the next scene in order, and from b403 to the bad
+	// ending as well; anything else is a jump.
+	auto index = [](char const *scene) {
+		return NotebookGate::SceneIndex(scene);
+	};
+	CHECK(NotebookGate::FollowsOn(index("b304"), index("b401")));
+	CHECK(NotebookGate::FollowsOn(index("b999"), index("b101")));
+	CHECK(NotebookGate::FollowsOn(index("b407"), index("b501")));
+	CHECK(NotebookGate::FollowsOn(index("b403"), index("b601")));
+	CHECK(NotebookGate::FollowsOn(index("b403"), index("b404")));
+	CHECK(!NotebookGate::FollowsOn(index("b201"), index("b404")));
+	CHECK(!NotebookGate::FollowsOn(index("b404"), index("b403")));
+	CHECK(!NotebookGate::FollowsOn(index("b501"), index("b601")));
+	CHECK(!NotebookGate::FollowsOn(-1, index("b101")));
 }

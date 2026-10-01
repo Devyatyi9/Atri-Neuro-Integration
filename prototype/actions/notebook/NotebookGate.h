@@ -37,6 +37,10 @@ Access At(std::string const &scenario, int line);
 // the story's.
 int SceneIndex(std::string const &scenario);
 
+// Whether playing on from scene `from` leads into scene `to`, both as scene
+// indices. Anything else that changes the scene is a jump.
+bool FollowsOn(int from, int to);
+
 // Whether the scene is one of the endings: reaching one is what keeps the
 // notebooks in hand for the next time through.
 bool IsEnding(std::string const &scenario);

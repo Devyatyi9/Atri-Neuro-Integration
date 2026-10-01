@@ -77,6 +77,14 @@ int SceneIndex(std::string const &scenario) {
 	return IndexOf(scenario.substr(0, scenario.find('.')));
 }
 
+bool FollowsOn(int from, int to) {
+	// The bad ending branches off b403; the endings lead nowhere.
+	if (from == IndexOf("b403") && to == IndexOf("b601")) {
+		return true;
+	}
+	return from >= 0 && from < IndexOf("b501") && to == from + 1;
+}
+
 bool IsEnding(std::string const &scenario) {
 	std::string const scene = scenario.substr(0, scenario.find('.'));
 	return scene == "b501" || scene == "b601" || scene == "b701";
