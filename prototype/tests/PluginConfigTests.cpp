@@ -158,6 +158,12 @@ void RunPluginConfigTests() {
 	ExpectNotebook(L"notebook = nonsense", true);
 	CHECK(ParsePluginConfig(L"").NotebookStoryGate);
 	CHECK(!ParsePluginConfig(L"notebook_story_gate = off").NotebookStoryGate);
+	CHECK(ParsePluginConfig(L"").AudioContext);
+	CHECK(!ParsePluginConfig(L"audio_context = off").AudioContext);
+	CHECK(ParsePluginConfig(L"").AudioContextMusic &&
+	      ParsePluginConfig(L"").AudioContextSounds);
+	CHECK(!ParsePluginConfig(L"audio_context_music = off").AudioContextMusic);
+	CHECK(!ParsePluginConfig(L"audio_context_sounds = off").AudioContextSounds);
 	ExpectTitleOverlay(L"", true);
 	ExpectTitleOverlay(L"title_overlay = off", false);
 

@@ -94,7 +94,15 @@ wchar_t const *const kDefaultConfigText =
     L"\n"
     L"; Neuro's picture over the second title background, once all CGs are "
     L"collected.\n"
-    L"title_overlay = on\n";
+    L"title_overlay = on\n"
+    L"\n"
+    L"; Tell Neuro what she would hear: music and sound effects, worded by "
+    L"neuro-assets\\audio_context.tsv.\n"
+    L"audio_context = on\n"
+    L"; The two kinds apart: the music, and the sounds (looping background "
+    L"sounds and sound effects).\n"
+    L"audio_context_music = on\n"
+    L"audio_context_sounds = on\n";
 
 bool ReadSwitch(std::wstring const &value, bool &out) {
 	// Every spelling a person reasonably writes for a switch. Anything else
@@ -266,6 +274,18 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.TitleOverlay);
 		return;
 	}
+	if (key == L"audio_context") {
+		ReadSwitch(value, config.AudioContext);
+		return;
+	}
+	if (key == L"audio_context_music") {
+		ReadSwitch(value, config.AudioContextMusic);
+		return;
+	}
+	if (key == L"audio_context_sounds") {
+		ReadSwitch(value, config.AudioContextSounds);
+		return;
+	}
 	if (key == L"ws_url") {
 		config.WsUrl = EnsureWsScheme(Narrow(value));
 		return;
@@ -410,6 +430,9 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	config.Notebook = true;
 	config.NotebookStoryGate = true;
 	config.TitleOverlay = true;
+	config.AudioContext = true;
+	config.AudioContextMusic = true;
+	config.AudioContextSounds = true;
 
 	std::size_t start = 0;
 	while (start <= text.size()) {

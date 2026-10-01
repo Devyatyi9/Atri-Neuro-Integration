@@ -30,9 +30,10 @@ bool WaitForScreen(std::function<bool()> const &ready, DWORD timeoutMs);
 // both land late, and neither has a readable "ready" flag to poll instead.
 constexpr DWORD kPageChangeSettleMs = 1200;
 constexpr DWORD kDialogSettleMs = 150;
-// How long the backlog's jump preview stays up before the row is pressed. A
-// player sees it while moving the cursor; without the pause the confirmation
-// would open over a preview that never rendered.
+// How long a hover preview stays up before the press: the backlog's jump
+// preview, the gallery's picture. A player sees it while moving the cursor;
+// without the pause the next screen would open over a preview that never
+// rendered.
 constexpr DWORD kHoverPreviewMs = 400;
 
 // The same gesture on an ordinary button, where there is no preview to render

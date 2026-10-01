@@ -41,6 +41,8 @@ static void StartHotkeyThread();
 
 static void DeferredTJSInitThread() {
 	Log("Deferred TJS init thread started...\n");
+	// Read here, off the main thread, before the monitor has anything to say.
+	LoadAudioContextTable();
 
 	int const maxAttempts = 100;
 	int const intervalMs = 100;

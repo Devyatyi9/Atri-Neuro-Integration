@@ -15,6 +15,7 @@
 #include "ActionCommon.h"
 #include "ActionRouter.h"
 #include "AssetMedia.h"
+#include "AudioContext.h"
 #include "ConnectionIndicator.h"
 #include "ContextPayload.h"
 #include "D3DWatch.h"
@@ -49,6 +50,52 @@ static tjs_error TJS_INTF_METHOD NeuroTestFunction(tTJSVariant *result,
 	}
 
 	return TJS_S_OK;
+}
+
+// The table is filled once by the init thread and only read afterwards, on the
+// game's main thread; the flag is what keeps the two apart without a lock.
+static AudioContext g_AudioContext;
+static std::atomic<bool> g_AudioTableLoaded(false);
+
+void ReadAudioContextTable() {
+	if (!GetPluginConfig().AudioContext) {
+		return;
+	}
+	wchar_t exe[MAX_PATH] = {};
+	DWORD const length = GetModuleFileNameW(nullptr, exe, MAX_PATH);
+	std::wstring path(exe, length);
+	path.resize(path.find_last_of(L'\\') + 1);
+	path += L"neuro-assets\\audio_context.tsv";
+
+	std::string text;
+	HANDLE const file =
+	    CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+	                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (file != INVALID_HANDLE_VALUE) {
+		LARGE_INTEGER size = {};
+		if (GetFileSizeEx(file, &size) && size.QuadPart > 0 &&
+		    size.QuadPart < (1 << 20)) {
+			text.resize(static_cast<size_t>(size.QuadPart));
+			DWORD read = 0;
+			if (!ReadFile(file, &text[0], static_cast<DWORD>(text.size()), &read,
+			              nullptr)) {
+				read = 0;
+			}
+			text.resize(read);
+		}
+		CloseHandle(file);
+	}
+	// A table saved by an editor may open with a byte order mark.
+	if (text.compare(0, 3, "\xEF\xBB\xBF") == 0) {
+		text.erase(0, 3);
+	}
+	g_AudioContext.LoadTable(text);
+	g_AudioContext.SetKinds(GetPluginConfig().AudioContextMusic,
+	                        GetPluginConfig().AudioContextSounds);
+	g_AudioTableLoaded.store(true, std::memory_order_release);
+	Log(("[Audio] table: " + std::to_string(g_AudioContext.RowCount()) +
+	     " row(s)\n")
+	        .c_str());
 }
 
 static tjs_error TJS_INTF_METHOD NeuroMountAssets(tTJSVariant *result,
@@ -373,7 +420,16 @@ NeuroSendContextFromTJS(tTJSVariant *result,
 	LogTagFile(utf8Output.c_str());
 	ScreenNotebook::NoteMonitorOutput(utf8Output);
 
-	ContextPayload const payload = BuildContextPayload(utf8Output);
+	ContextPayload payload = BuildContextPayload(utf8Output);
+	// Sound first: the scenario starts it before the line it belongs to.
+	if (GetPluginConfig().AudioContext &&
+	    g_AudioTableLoaded.load(std::memory_order_acquire)) {
+		std::string const heard = g_AudioContext.Describe(utf8Output);
+		if (!heard.empty()) {
+			payload.message =
+			    payload.message.empty() ? heard : heard + "\n" + payload.message;
+		}
+	}
 	if (!payload.Empty()) {
 		NeuroSendContext(payload.message.c_str(), payload.silent);
 	}
@@ -864,6 +920,10 @@ static tjs_error TJS_INTF_METHOD NeuroExec(tTJSVariant *result,
 }
 
 }  // namespace
+
+void LoadAudioContextTable() {
+	ReadAudioContextTable();
+}
 
 // Everything the plugin gives TJS hangs off one global object, Neuro, which
 // RegisterTJSBindings creates before these attach to it.

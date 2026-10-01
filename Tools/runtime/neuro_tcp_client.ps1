@@ -133,7 +133,7 @@ function Restart-Game([switch]$CloseEveryInstance) {
         # images\ holds pictures stored without an extension (read through neuro://),
         # so everything there goes along, not only .png.
         $scripts = Get-ChildItem -Path $scriptSource -File -Recurse |
-            Where-Object { $_.Extension -in '.tjs', '.png' -or $_.Directory.Name -eq 'images' }
+            Where-Object { $_.Extension -in '.tjs', '.png', '.tsv' -or $_.Directory.Name -eq 'images' }
         foreach ($script in $scripts) {
             $relative = $script.FullName.Substring($scriptSource.Length).TrimStart('\')
             $destination = Join-Path $scriptTarget $relative

@@ -22,6 +22,7 @@ void RunActionJsonTests();
 void RunSlotPayloadTests();
 void RunPluginConfigTests();
 void RunContextPayloadTests();
+void RunAudioContextTests();
 void RunVisibleCharacterTests();
 void RunNotebookStoreTests();
 void RunNotebookGateTests();
@@ -32,6 +33,7 @@ int main() {
 	RunSlotPayloadTests();
 	RunPluginConfigTests();
 	RunContextPayloadTests();
+	RunAudioContextTests();
 	RunVisibleCharacterTests();
 	RunNotebookStoreTests();
 	RunNotebookGateTests();

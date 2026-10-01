@@ -64,6 +64,13 @@ struct PluginConfig {
 	bool NotebookStoryGate;
 	// Neuro's or Evil's picture over the second title background.
 	bool TitleOverlay;
+	// Whether Neuro is told what she would hear: music, looping background
+	// sounds and sound effects, worded by the table in neuro-assets.
+	bool AudioContext;
+	// The two kinds apart, under the switch above: the music, and the sounds
+	// -- looping background sounds and sound effects.
+	bool AudioContextMusic;
+	bool AudioContextSounds;
 };
 
 PluginConfig const &GetPluginConfig();

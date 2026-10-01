@@ -146,6 +146,8 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/diagnostics/D3DWatch.cpp
         prototype/diagnostics/D3DWatch.h
         prototype/plugin/PluginLifecycle.cpp
+        prototype/neuro/AudioContext.cpp
+        prototype/neuro/AudioContext.h
         prototype/neuro/ContextPayload.cpp
         prototype/neuro/ContextPayload.h
         prototype/Logging.cpp
@@ -235,8 +237,10 @@ if(ATRI_BUILD_PROTOTYPE)
         prototype/actions/notebook/NotebookStore.cpp
         prototype/PluginConfig.cpp
         prototype/UtfConversion.cpp
+        prototype/neuro/AudioContext.cpp
         prototype/neuro/ContextPayload.cpp
         prototype/tests/ActionJsonTests.cpp
+        prototype/tests/AudioContextTests.cpp
         prototype/tests/NotebookGateTests.cpp
         prototype/tests/NotebookStoreTests.cpp
         prototype/tests/ContextPayloadTests.cpp

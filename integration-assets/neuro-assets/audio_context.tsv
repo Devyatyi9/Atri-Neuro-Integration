@@ -1,0 +1,242 @@
+# What Neuro is told she hears. One row per sound file, fields separated by tabs:
+#
+#   file    report    name    description
+#
+# description  How the sound is put into words: "You hear <description>."
+#              Empty means not written yet, and the name is said instead, in
+#              brackets: "You hear [se171]."
+# name         What to call the sound until it is described. Music carries its
+#              soundtrack title; effects only have their file name.
+# report       When to speak of it:
+#                start  when it starts
+#                both   when it starts and when it stops
+#                off    never
+#              Empty takes the usual: music and looping sounds "both", a
+#              one-shot effect "start" -- nothing tells us when one of those ends.
+#
+# A sound missing from this table is still reported, by its file name.
+
+# Music
+bgm01		The Sunken City
+bgm01b		The Sunken City, variant b
+bgm01s		The Sunken City, short version
+bgm02		Hope's Light
+bgm03		Tranquil Moments
+bgm03s		Tranquil Moments, short version
+bgm04		Vertigo
+bgm04sa		Vertigo, variant sa
+bgm05		The Face I See When I Close My Eyes
+bgm05s		The Face I See When I Close My Eyes, short version
+bgm06		The Happy Little Killer Robot
+bgm07		Good Morning, Sunshine
+bgm07c		Good Morning, Sunshine, variant c
+bgm08		The Brink Of Death
+bgm08b		The Brink Of Death, variant b
+bgm09		Walking In The Twilight
+bgm10		A Soothing Breeze
+bgm11		Working
+bgm11b		Working, variant b
+bgm12		Halation
+bgm12b		Halation, variant b
+bgm13		Dumb Heap Of Scrap!
+bgm14		The Children Play
+bgm15		A Lull In The Sea
+bgm16		Weigh Anchor!
+bgm16s		Weigh Anchor!, short version
+bgm17		Shadowy Footsteps
+bgm17b		Shadowy Footsteps, variant b
+bgm18		Sunshine On Deck
+bgm19		When I See The Sparkle Of Your Tears
+bgm20		Days Of Love
+ed_short1		Dear Moments short version
+ed_short_voonly		ed_short_voonly
+ed_voonly		ed_voonly
+op_short		Light Across the Seas short version
+
+# Sound effects
+se001		se001
+se002		se002
+se003		se003
+se004		se004
+se005		se005
+se006		se006
+se007		se007
+se008		se008
+se008b		se008b
+se009b		se009b
+se010		se010
+se012		se012
+se014		se014
+se015		se015
+se015b		se015b
+se016		se016
+se017		se017
+se017b		se017b
+se021		se021
+se021b		se021b
+se022		se022
+se023b		se023b
+se024c		se024c
+se033		se033
+se033b		se033b
+se033c		se033c
+se034		se034
+se035		se035
+se037		se037
+se037b		se037b
+se037c		se037c
+se037d		se037d
+se037e		se037e
+se038		se038
+se038c		se038c
+se040		se040
+se045		se045
+se045b		se045b
+se048b		se048b
+se049b		se049b
+se050		se050
+se050c		se050c
+se052		se052
+se053		se053
+se054		se054
+se054c		se054c
+se061f		se061f
+se063		se063
+se064		se064
+se065		se065
+se068		se068
+se069		se069
+se071d		se071d
+se074		se074
+se080		se080
+se086		se086
+se086b		se086b
+se086d		se086d
+se088		se088
+se089		se089
+se090		se090
+se091		se091
+se091c		se091c
+se093b		se093b
+se100b		se100b
+se100c		se100c
+se102		se102
+se102b		se102b
+se102c		se102c
+se102d		se102d
+se103b		se103b
+se103c		se103c
+se109b		se109b
+se109d		se109d
+se110		se110
+se111		se111
+se113b		se113b
+se114		se114
+se116		se116
+se116b		se116b
+se116c		se116c
+se118b		se118b
+se121		se121
+se122		se122
+se122b		se122b
+se122d		se122d
+se123b		se123b
+se124b		se124b
+se125		se125
+se125b		se125b
+se125c		se125c
+se127		se127
+se127b		se127b
+se131		se131
+se131b		se131b
+se132d		se132d
+se134d		se134d
+se135b		se135b
+se137		se137
+se139		se139
+se139b		se139b
+se139c		se139c
+se142		se142
+se151		se151
+se154		se154
+se156		se156
+se156b		se156b
+se157		se157
+se157b		se157b
+se158		se158
+se159		se159
+se159b		se159b
+se160		se160
+se162		se162
+se162b		se162b
+se162c		se162c
+se165		se165
+se165c		se165c
+se167b		se167b
+se169		se169
+se170		se170
+se171		se171
+se171b		se171b
+se172		se172
+se172b		se172b
+se174		se174
+se175b		se175b
+se176		se176
+se177		se177
+se179		se179
+se183		se183
+se184b		se184b
+se184c		se184c
+se196		se196
+se196b		se196b
+se199		se199
+se218f		se218f
+se241		se241
+se243		se243
+se243b		se243b
+se243e		se243e
+se246		se246
+se254		se254
+se256		se256
+se256b		se256b
+se259		se259
+se264		se264
+se266		se266
+se270		se270
+se271b		se271b
+se272		se272
+se279		se279
+se508		se508
+se528		se528
+se529		se529
+se554		se554
+se567		se567
+se572		se572
+se574b		se574b
+se577		se577
+se612		se612
+se627		se627
+se627c		se627c
+se629		se629
+se633		se633
+se640		se640
+se652		se652
+se666		se666
+se671		se671
+se672		se672
+se682		se682
+se686		se686
+se710		se710
+se723		se723
+se727		se727
+se749		se749
+se765		se765
+se766		se766
+se767		se767
+se768		se768
+se769		se769
+se770		se770
+
+# Named by the scenarios, but no such file exists
+se05	off	se05
+top	off	top
