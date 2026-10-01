@@ -73,6 +73,10 @@ Access At(std::string const &scenario, int line) {
 	return access;
 }
 
+int SceneIndex(std::string const &scenario) {
+	return IndexOf(scenario.substr(0, scenario.find('.')));
+}
+
 bool IsEnding(std::string const &scenario) {
 	std::string const scene = scenario.substr(0, scenario.find('.'));
 	return scene == "b501" || scene == "b601" || scene == "b701";

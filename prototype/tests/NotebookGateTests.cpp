@@ -48,4 +48,8 @@ void RunNotebookGateTests() {
 	CHECK(NotebookGate::IsEnding("b501.ks") &&
 	      NotebookGate::IsEnding("b601.ks") && NotebookGate::IsEnding("b701"));
 	CHECK(!NotebookGate::IsEnding("b407.ks") && !NotebookGate::IsEnding(""));
+
+	CHECK(NotebookGate::SceneIndex("b999.ks") == 0);
+	CHECK(NotebookGate::SceneIndex("b101.ks") == 1);
+	CHECK(NotebookGate::SceneIndex("title.ks") == -1);
 }

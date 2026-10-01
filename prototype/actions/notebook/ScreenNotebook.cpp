@@ -36,6 +36,11 @@ constexpr int kAccessUnknown = -1;
 std::atomic<int> g_StoryAccess(kAccessUnknown);
 // The access the last refresh acted on, to tell a change from a standing state.
 std::atomic<int> g_FollowedAccess(kAccessUnknown);
+// The scene the story stands in, and the one the last refresh saw. A notebook
+// changes hands inside a scene; a change that comes with another scene is a
+// save loaded or a jump, not something that happened.
+std::atomic<int> g_StoryScene(-1);
+std::atomic<int> g_FollowedScene(-1);
 
 int Pack(NotebookGate::Access const &access) {
 	return (access.first ? kAccessFirst : 0) |
@@ -736,6 +741,7 @@ void NoteMonitorOutput(std::string const &output) {
 	} else if (NotebookGate::IsEnding(scenario)) {
 		g_UnlockPending.fetch_or(Pack(access) & (kAccessFirst | kAccessSecond));
 	}
+	g_StoryScene.store(NotebookGate::SceneIndex(scenario));
 	g_StoryAccess.store(Pack(access));
 }
 
@@ -785,6 +791,8 @@ void FollowStory() {
 	if (!GetPluginConfig().Notebook || !GetPluginConfig().NotebookStoryGate) {
 		return;
 	}
+	int const scene = g_StoryScene.load();
+	bool const sameScene = g_FollowedScene.exchange(scene) == scene;
 	int const now = Effective(g_StoryAccess.load());
 	int const before = g_FollowedAccess.exchange(now);
 	if (now == before || now == kAccessUnknown) {
@@ -793,10 +801,11 @@ void FollowStory() {
 	NotebookGate::Access const access = Unpack(now);
 	if (g_Open.load() != 0 && !Has(access, Book())) {
 		g_Open.store(0);
-		Tell("Your notebook was closed: you no longer have it.", true);
+		Tell("Your notebook was closed.", true);
 	}
-	// Where this run starts is not news; only what changes while she watches.
-	if (before == kAccessUnknown) {
+	// Where this run starts is not news, nor is where a loaded save lands; only
+	// what changes while she watches.
+	if (before == kAccessUnknown || !sameScene) {
 		return;
 	}
 	NotebookGate::Access const was = Unpack(before);

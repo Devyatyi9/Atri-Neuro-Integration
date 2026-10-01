@@ -33,6 +33,10 @@ struct Access {
 // the conductor stands on.
 Access At(std::string const &scenario, int line);
 
+// The scene's place in the order they are played, or -1 when it is not one of
+// the story's.
+int SceneIndex(std::string const &scenario);
+
 // Whether the scene is one of the endings: reaching one is what keeps the
 // notebooks in hand for the next time through.
 bool IsEnding(std::string const &scenario);
