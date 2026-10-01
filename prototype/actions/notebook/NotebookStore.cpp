@@ -418,21 +418,21 @@ int NotebookStore::LastWrittenPage(int book) {
 	return 0;
 }
 
-int NotebookStore::WrittenPageCount(int book) {
+std::vector<int> NotebookStore::WrittenPages(int book) {
+	std::vector<int> pages;
 	if (!ValidPage(book, 1)) {
-		return 0;
+		return pages;
 	}
 	std::lock_guard<std::mutex> lock(m_Mutex);
-	int count = 0;
 	for (int page = 1; page <= m_PageCount; ++page) {
 		WIN32_FILE_ATTRIBUTE_DATA data = {};
 		if (GetFileAttributesExW(PagePath(book, page).c_str(),
 		                         GetFileExInfoStandard, &data) &&
 		    (data.nFileSizeLow != 0 || data.nFileSizeHigh != 0)) {
-			++count;
+			pages.push_back(page);
 		}
 	}
-	return count;
+	return pages;
 }
 
 NotebookStore::WriteOutcome NotebookStore::Append(int book,

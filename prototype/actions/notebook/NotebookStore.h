@@ -86,8 +86,8 @@ class NotebookStore {
 	// The last page with anything on it, or 0 for a blank notebook.
 	int LastWrittenPage(int book);
 
-	// How many pages have anything on them.
-	int WrittenPageCount(int book);
+	// The pages with anything on them, in order.
+	std::vector<int> WrittenPages(int book);
 
 	// Adds the note after what the page holds. What does not fit continues on
 	// the following pages, which must be blank: a note is never threaded

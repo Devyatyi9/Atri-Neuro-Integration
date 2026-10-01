@@ -243,9 +243,10 @@ void LineTests() {
 		outcome = fresh.WriteLine(1, 1, 2, "second");
 		CHECK(outcome.status == Status::Ok && outcome.firstLine == 2);
 		CHECK(Read(fresh, 1, 1) == "\nsecond");
-		CHECK(fresh.WrittenPageCount(1) == 1);
+		CHECK(fresh.WrittenPages(1) == std::vector<int>({1}));
 		CHECK(fresh.Append(1, 3, "last").status == Status::Ok);
-		CHECK(fresh.WrittenPageCount(1) == 2 && fresh.LastWrittenPage(1) == 3);
+		CHECK(fresh.WrittenPages(1) == std::vector<int>({1, 3}) &&
+		      fresh.LastWrittenPage(1) == 3);
 	}
 	RemoveTree(root);
 }

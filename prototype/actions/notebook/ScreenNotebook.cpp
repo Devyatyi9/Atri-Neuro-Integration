@@ -100,6 +100,36 @@ std::string LineSpan(int first, int last) {
 	           : "lines " + std::to_string(first) + "-" + std::to_string(last);
 }
 
+// "1, 7-8, 99-100" from pages in order.
+std::string PageRanges(std::vector<int> const &pages) {
+	std::string out;
+	for (size_t i = 0; i < pages.size(); ++i) {
+		size_t end = i;
+		while (end + 1 < pages.size() && pages[end + 1] == pages[end] + 1) {
+			++end;
+		}
+		if (!out.empty()) {
+			out += ", ";
+		}
+		out += std::to_string(pages[i]);
+		if (end > i) {
+			out += "-" + std::to_string(pages[end]);
+		}
+		i = end;
+	}
+	return out;
+}
+
+// 0 when every page has writing.
+int FirstBlankPage(std::vector<int> const &written) {
+	for (int page = 1; page <= NotebookStore::kPageCount; ++page) {
+		if ((size_t)page > written.size() || written[page - 1] != page) {
+			return page;
+		}
+	}
+	return 0;
+}
+
 // The quoted text echoed back: whole when short, otherwise its start.
 std::string Excerpt(std::string const &utf8) {
 	constexpr int kShown = 40;
@@ -212,11 +242,9 @@ void HandleOpen(std::string const &id, std::string const &data) {
 	g_Open.store(1);
 	std::string message =
 	    last == 0 ? "Opened your notebook. It is blank."
-	              : "Opened your notebook. " +
-	                    std::to_string(Store().WrittenPageCount(kBook)) + " of " +
-	                    std::to_string(NotebookStore::kPageCount) +
-	                    " pages have writing; it is open on page " +
-	                    std::to_string(last) + ".";
+	              : "Opened your notebook. Pages with writing: " +
+	                    PageRanges(Store().WrittenPages(kBook)) +
+	                    ". It is open on page " + std::to_string(last) + ".";
 	// After a break this is the first thing worth knowing.
 	NotebookStore::PageTimes const times = Store().Times(kBook, g_CurrentPage);
 	if (last != 0 && times.written) {
@@ -335,6 +363,11 @@ void HandleWrite(std::string const &id, std::string const &data) {
 			              "notebook.";
 			if (!pageGiven) {
 				message += " Give \"page\" to write on another page.";
+				int const blank = FirstBlankPage(Store().WrittenPages(kBook));
+				if (blank != 0) {
+					message +=
+					    " Page " + std::to_string(blank) + " is the first blank one.";
+				}
 			}
 			NeuroSendActionResult(id.c_str(), false, message.c_str());
 			return;
