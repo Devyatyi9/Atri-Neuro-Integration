@@ -160,6 +160,14 @@ bool AnswerRefusal(std::string const &id,
 		case NotebookStore::Status::NotFound:
 			message = "Could not find that text on the page.";
 			break;
+		case NotebookStore::Status::AlreadyStruck:
+			message = "That text is already struck through.";
+			break;
+		case NotebookStore::Status::NoSuchOccurrence:
+			message = "Found only " + std::to_string(outcome.matches) +
+			          (outcome.matches == 1 ? " match" : " matches") +
+			          " not yet struck through.";
+			break;
 		case NotebookStore::Status::Ambiguous:
 			message = "Found " + std::to_string(outcome.matches) +
 			          " matches; give occurrence 1-" +
@@ -204,7 +212,8 @@ void HandleOpen(std::string const &id, std::string const &data) {
 	g_Open.store(1);
 	std::string message =
 	    last == 0 ? "Opened your notebook. It is blank."
-	              : "Opened your notebook. " + std::to_string(last) + " of " +
+	              : "Opened your notebook. " +
+	                    std::to_string(Store().WrittenPageCount(kBook)) + " of " +
 	                    std::to_string(NotebookStore::kPageCount) +
 	                    " pages have writing; it is open on page " +
 	                    std::to_string(last) + ".";
@@ -314,20 +323,22 @@ void HandleWrite(std::string const &id, std::string const &data) {
 			NeuroSendActionResult(id.c_str(), true, message.c_str());
 			return;
 		}
-		case NotebookStore::Status::NoRoom:
-			NeuroSendActionResult(
-			    id.c_str(), false,
+		case NotebookStore::Status::NoRoom: {
+			std::string message =
 			    outcome.roomLeft == 0
-			        ? ("There is no room from page " + from +
-			           ": the pages after it already have writing or the "
-			           "notebook ends.")
-			              .c_str()
-			        : ("Too long: from page " + from + " there is room for " +
-			           std::to_string(outcome.roomLeft) +
-			           " characters before existing writing or the end of the "
-			           "notebook.")
-			              .c_str());
+			        ? "There is no room from page " + from +
+			              ": the pages after it already have writing or the "
+			              "notebook ends."
+			        : "Too long: from page " + from + " there is room for " +
+			              std::to_string(outcome.roomLeft) +
+			              " characters before existing writing or the end of the "
+			              "notebook.";
+			if (!pageGiven) {
+				message += " Give \"page\" to write on another page.";
+			}
+			NeuroSendActionResult(id.c_str(), false, message.c_str());
 			return;
+		}
 		case NotebookStore::Status::EmptyText:
 			NeuroSendActionResult(id.c_str(), false, "The note is empty.");
 			return;
@@ -484,19 +495,21 @@ void AppendActions(ActionSet &set) {
 	                 "Lines come numbered, margin notes after the second bar."),
 	        set.keep("{\"type\":\"object\",\"properties\":{" + pageField +
 	                 "},\"additionalProperties\":false}"));
-	set.add("write_note",
-	        set.keep("Write in your notebook; what is written stays. It goes "
-	                 "after your last note unless \"page\" is given; a page "
-	                 "holds " +
-	                 capacity +
-	                 " characters, and a longer note continues on the next "
-	                 "blank pages. With \"line\", writes on that blank line of "
-	                 "the page instead."),
-	        set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
-	                 "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
-	                 capacity + "}," + pageField + "," + lineField +
-	                 "},\"required\":[\"text\"],"
-	                 "\"additionalProperties\":false}"));
+	set.add(
+	    "write_note",
+	    set.keep("Write in your notebook; what is written stays. It goes "
+	             "after your last note unless \"page\" is given; a page "
+	             "holds " +
+	             capacity +
+	             " characters, and a longer note continues on the next "
+	             "blank pages. Line breaks in the text are kept, empty lines "
+	             "too. With \"line\", writes on that line of the page instead: "
+	             "it must be blank, and may be past the last line."),
+	    set.keep("{\"type\":\"object\",\"properties\":{\"text\":"
+	             "{\"type\":\"string\",\"minLength\":1,\"maxLength\":" +
+	             capacity + "}," + pageField + "," + lineField +
+	             "},\"required\":[\"text\"],"
+	             "\"additionalProperties\":false}"));
 	std::string const noteMax = std::to_string(NotebookStore::kMarginNoteMax);
 	set.add("annotate_line",
 	        set.keep("Add a short note in the margin beside a line, up to " +

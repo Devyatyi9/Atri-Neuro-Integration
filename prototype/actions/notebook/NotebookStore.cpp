@@ -418,6 +418,23 @@ int NotebookStore::LastWrittenPage(int book) {
 	return 0;
 }
 
+int NotebookStore::WrittenPageCount(int book) {
+	if (!ValidPage(book, 1)) {
+		return 0;
+	}
+	std::lock_guard<std::mutex> lock(m_Mutex);
+	int count = 0;
+	for (int page = 1; page <= m_PageCount; ++page) {
+		WIN32_FILE_ATTRIBUTE_DATA data = {};
+		if (GetFileAttributesExW(PagePath(book, page).c_str(),
+		                         GetFileExInfoStandard, &data) &&
+		    (data.nFileSizeLow != 0 || data.nFileSizeHigh != 0)) {
+			++count;
+		}
+	}
+	return count;
+}
+
 NotebookStore::WriteOutcome NotebookStore::Append(int book,
                                                   int page,
                                                   std::string const &utf8) {
@@ -551,10 +568,19 @@ NotebookStore::WriteOutcome NotebookStore::WriteLine(int book,
 		return outcome;
 	}
 	std::vector<std::wstring> lines = SplitLines(existing);
-	if (line < 1 || line > (int)lines.size()) {
-		outcome.status = Status::BadLine;
-		outcome.lineCount = (int)lines.size();
+	// The capacity check below would refuse it anyway, with a huge allocation
+	// first.
+	if (line < 1 || line > m_PageCapacity) {
+		outcome.status = Status::NoRoom;
+		outcome.roomLeft = m_PageCapacity - CountWriting(existing);
 		return outcome;
+	}
+	// Each line of the text takes one blank line; margin notes stay where
+	// they are.
+	std::vector<std::wstring> const added = SplitLines(text);
+	// Past the end the page is blank.
+	if (lines.size() < line - 1 + added.size()) {
+		lines.resize(line - 1 + added.size());
 	}
 	auto blank = [&](size_t index) {
 		return Trimmed(ParseLine(lines[index]).writing).empty();
@@ -563,9 +589,6 @@ NotebookStore::WriteOutcome NotebookStore::WriteLine(int book,
 		outcome.status = Status::LineTaken;
 		return outcome;
 	}
-	// Each line of the text takes one blank line; margin notes stay where
-	// they are.
-	std::vector<std::wstring> const added = SplitLines(text);
 	size_t free = 0;
 	while (line - 1 + free < lines.size() && free < added.size() &&
 	       blank(line - 1 + free)) {
@@ -701,6 +724,7 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 	// The " | " between a line and its margin note is not writing: a quote
 	// running across it is struck on each side, never across the bar.
 	std::vector<std::pair<size_t, size_t>> separators;
+	// Nor is a line break: each line is struck on its own.
 	size_t offset = 0;
 	for (std::wstring const &text : SplitLines(existing)) {
 		LineParts const parts = ParseLine(text);
@@ -709,8 +733,12 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 			separators.push_back({parts.writing.empty() ? bar : bar - 1, bar + 2});
 		}
 		offset += text.size() + 1;
+		if (offset <= existing.size()) {
+			separators.push_back({offset - 1, offset});
+		}
 	}
 	std::vector<size_t> found;
+	bool inStruck = false;
 	for (size_t at = existing.find(wanted); at != std::wstring::npos;
 	     at = existing.find(wanted, at + 1)) {
 		size_t const end = at + wanted.size();
@@ -718,6 +746,7 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 		for (auto const &span : struck) {
 			if (at < span.second && end > span.first) {
 				overlaps = true;
+				inStruck = true;
 				break;
 			}
 		}
@@ -733,8 +762,12 @@ NotebookStore::WriteOutcome NotebookStore::Strike(int book,
 		}
 	}
 	outcome.matches = (int)found.size();
-	if (found.empty() || occurrence > (int)found.size() || occurrence < 0) {
-		outcome.status = Status::NotFound;
+	if (found.empty()) {
+		outcome.status = inStruck ? Status::AlreadyStruck : Status::NotFound;
+		return outcome;
+	}
+	if (occurrence > (int)found.size() || occurrence < 0) {
+		outcome.status = Status::NoSuchOccurrence;
 		return outcome;
 	}
 	if (occurrence == 0 && found.size() > 1) {

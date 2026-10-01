@@ -37,8 +37,12 @@ class NotebookStore {
 		HasNote,
 		// A margin note longer than kMarginNoteMax.
 		TooLong,
-		// Text to strike: not on the page, or only inside struck text.
+		// Text to strike is not on the page.
 		NotFound,
+		// Text to strike is there only inside what is already struck.
+		AlreadyStruck,
+		// The occurrence given is past the number of matches.
+		NoSuchOccurrence,
 		// Text to strike occurs more than once and no occurrence was given.
 		Ambiguous,
 	};
@@ -55,7 +59,7 @@ class NotebookStore {
 		// line it ends on, on lastPage.
 		int firstLine = 0;
 		int lastLine = 0;
-		// BadLine: how many lines the page has.
+		// BadLine, from Annotate: how many lines the page has.
 		int lineCount = 0;
 		// Strike: how many places the text was found.
 		int matches = 0;
@@ -82,6 +86,9 @@ class NotebookStore {
 	// The last page with anything on it, or 0 for a blank notebook.
 	int LastWrittenPage(int book);
 
+	// How many pages have anything on them.
+	int WrittenPageCount(int book);
+
 	// Adds the note after what the page holds. What does not fit continues on
 	// the following pages, which must be blank: a note is never threaded
 	// between existing writing, and nothing is written when it would have to.
@@ -89,8 +96,9 @@ class NotebookStore {
 
 	// Writes on a blank line of the page (1-based); a margin note already on it
 	// stays. Text with line breaks fills that many blank lines in a row and is
-	// refused when they are not there: nothing written ever moves. Nothing
-	// continues onto the next page.
+	// refused when they are not there: nothing written ever moves. A line past
+	// the end of the page is blank, and the lines up to it are left blank.
+	// Nothing continues onto the next page.
 	WriteOutcome WriteLine(int book, int page, int line, std::string const &utf8);
 
 	// Adds a margin note to a line, blank lines included. One per line.

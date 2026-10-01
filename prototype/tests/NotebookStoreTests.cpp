@@ -229,8 +229,23 @@ void LineTests() {
 		outcome = store.WriteLine(1, 2, 2, "ten chars!");
 		CHECK(outcome.status == Status::NoRoom && outcome.roomLeft == 7);
 		CHECK(store.Annotate(1, 2, 3, "abcdefgh").status == Status::NoRoom);
-		CHECK(store.WriteLine(1, 2, 4, "x").status == Status::BadLine);
+		CHECK(store.WriteLine(1, 2, 30, "x").status == Status::NoRoom);
 		CHECK(Read(store, 1, 2) == before);
+
+		// A line past the end is blank: the lines up to it stay blank, and a
+		// blank page takes any line.
+		CHECK(store.WriteLine(1, 3, 7, "far\nend").status == Status::Ok);
+		CHECK(Read(store, 1, 3) == "top\na\nb | mid\x1F\nc\nbottom\n\nfar\nend");
+		CHECK(store.WriteLine(1, 3, 5, "x\ny").status == Status::LineTaken);
+		CHECK(store.WriteLine(1, 3, 6, "x\ny").status == Status::NotEnoughLines);
+		CHECK(store.WriteLine(1, 3, 100000, "x").status == Status::NoRoom);
+		NotebookStore fresh(root + L"\\fresh", 3, 60);
+		outcome = fresh.WriteLine(1, 1, 2, "second");
+		CHECK(outcome.status == Status::Ok && outcome.firstLine == 2);
+		CHECK(Read(fresh, 1, 1) == "\nsecond");
+		CHECK(fresh.WrittenPageCount(1) == 1);
+		CHECK(fresh.Append(1, 3, "last").status == Status::Ok);
+		CHECK(fresh.WrittenPageCount(1) == 2 && fresh.LastWrittenPage(1) == 3);
 	}
 	RemoveTree(root);
 }
@@ -281,7 +296,8 @@ void StrikeTests() {
 		// Twice on the page: needs an occurrence.
 		NotebookStore::WriteOutcome outcome = store.Strike(1, 1, "cat", 0);
 		CHECK(outcome.status == Status::Ambiguous && outcome.matches == 2);
-		CHECK(store.Strike(1, 1, "cat", 3).status == Status::NotFound);
+		outcome = store.Strike(1, 1, "cat", 3);
+		CHECK(outcome.status == Status::NoSuchOccurrence && outcome.matches == 2);
 		CHECK(store.Strike(1, 1, "cow", 0).status == Status::NotFound);
 
 		// Several strikes on one line, side by side.
@@ -291,12 +307,14 @@ void StrikeTests() {
 		CHECK(store.Strike(1, 1, "and", 0).status == Status::Ok);
 		CHECK(Read(store, 1, 1) == "a ~~cat~~ ~~and~~ a ~~cat~~\nthe dog");
 
-		// Text already struck is not found again, even in part.
-		CHECK(store.Strike(1, 1, "cat", 0).status == Status::NotFound);
-		CHECK(store.Strike(1, 1, "at", 0).status == Status::NotFound);
+		// Text already struck is not struck again, even in part.
+		CHECK(store.Strike(1, 1, "cat", 0).status == Status::AlreadyStruck);
+		CHECK(store.Strike(1, 1, "at", 0).status == Status::AlreadyStruck);
 
-		// Quoting the marks of struck text finds nothing; the marks cost no room.
-		CHECK(store.Strike(1, 1, "a ~~cat~~\nthe", 0).status == Status::NotFound);
+		// Quoting the marks of struck text strikes nothing; the marks cost no
+		// room.
+		CHECK(store.Strike(1, 1, "a ~~cat~~\nthe", 0).status ==
+		      Status::AlreadyStruck);
 		outcome = store.Strike(1, 1, "the dog", 0);
 		CHECK(outcome.status == Status::Ok);
 		CHECK(outcome.roomLeft ==
@@ -313,10 +331,12 @@ void StrikeTests() {
 		CHECK(Read(store, 1, 2) ==
 		      "left ~~side~~ | ~~right~~\x1F\nnext | ~~far~~\x1F");
 
-		// Across a line break.
-		CHECK(store.Append(1, 3, "end of\nnext line").status == Status::Ok);
+		// Across line breaks: struck line by line, blank lines left alone.
+		CHECK(store.Append(1, 3, "end of\nnext line\n\nlast").status == Status::Ok);
 		CHECK(store.Strike(1, 3, "of\nnext", 0).status == Status::Ok);
-		CHECK(Read(store, 1, 3) == "end ~~of\nnext~~ line");
+		CHECK(Read(store, 1, 3) == "end ~~of~~\n~~next~~ line\n\nlast");
+		CHECK(store.Strike(1, 3, "line\n\nlast", 0).status == Status::Ok);
+		CHECK(Read(store, 1, 3) == "end ~~of~~\n~~next~~ ~~line~~\n\n~~last~~");
 	}
 	RemoveTree(root);
 }
