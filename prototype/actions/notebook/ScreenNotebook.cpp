@@ -736,11 +736,12 @@ void FollowStory() {
 	}
 	if (!was.Any() && access.Any()) {
 		Tell(
-		    "You have a notebook now: open_notebook, in the quick "
+		    "You've got a notebook! open_notebook, in the quick "
 		    "menu, opens it to read or write.",
 		    false);
 	} else if (was.Any() && !access.Any()) {
-		Tell("You lost your notebook.", false);
+		// The story says so itself, and there is nothing for her to do about it.
+		Tell("You lost your notebook.", true);
 	} else if (!was.Both() && access.Both()) {
 		Tell(
 		    "Your first notebook is back: open_notebook now takes "
