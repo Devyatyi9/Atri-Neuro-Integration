@@ -85,6 +85,9 @@ constexpr int kNotebookKeyShift = 48;
 std::atomic<bool> g_TitleLoadingNoticeSent(false);
 // The same problem for the first-run language screen, which comes up in the
 constexpr int kCapabilityStateUnknown = -1;
+// The screen Neuro was last told about. Unlike the synced state it survives a
+// reconnect, because what she was told survives it too.
+std::atomic<int> g_AnnouncedKind(kCapabilityStateUnknown);
 // The title screen. What it offers lives in ScreenTitle; only its identity
 // is needed here.
 constexpr int kCapabilityStateTitle = 0;
@@ -289,6 +292,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 		       << kNotebookKeyShift;
 	}
 	int const previousKind = SyncedCapabilityKind();
+	int const announcedKind = g_AnnouncedKind.load(std::memory_order_acquire);
 	if (key == g_SyncedCapabilityState.load(std::memory_order_acquire)) {
 		return;
 	}
@@ -405,7 +409,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 		// Only on the way in. The payload changes whenever a picture opens or a
 		// page turns, and repeating the whole track list at each of those would
 		// bury everything else.
-		if (SyncedCapabilityKind() != kCapabilityStateGallery) {
+		if (announcedKind != kCapabilityStateGallery) {
 			ScreenGallery::SendEnteringContext();
 		}
 		ActionSet set;
@@ -415,7 +419,7 @@ void SyncCapabilities(int kind, int payload = 0) {
 	} else if (kind == kCapabilityStateBacklog) {
 		// Only on the way in, not on every scroll: the flags change constantly
 		// while paging, and the size of the history does not.
-		if (SyncedCapabilityKind() != kCapabilityStateBacklog) {
+		if (announcedKind != kCapabilityStateBacklog) {
 			ScreenBacklog::SendEnteringContext();
 		}
 		ActionSet set;
@@ -442,11 +446,16 @@ void SyncCapabilities(int kind, int payload = 0) {
 	}
 	// Only when the screen itself changed, not when its actions merely shifted:
 	// the quick menu sliding in and out must not narrate itself.
-	if (previousKind != kind) {
+	if (announcedKind != kind) {
 		char const *const name = ScreenName(kind);
 		if (name) {
 			NeuroSendContext((std::string("Now on ") + name + ".").c_str(), true);
 		}
+	}
+	// Only once it can have reached her: a screen entered while the link is down
+	// was told to nobody.
+	if (NeuroIsReady()) {
+		g_AnnouncedKind.store(kind, std::memory_order_release);
 	}
 	g_SyncedCapabilityState.store(key, std::memory_order_release);
 }
@@ -497,6 +506,7 @@ void ShutdownPrototypeActionRouter() {
 	// Unloading is not a reconnect: nothing of ours survives it, notices
 	// included, and the next load starts a game that has said nothing yet.
 	g_TitleLoadingNoticeSent.store(false, std::memory_order_release);
+	g_AnnouncedKind.store(kCapabilityStateUnknown, std::memory_order_release);
 	ScreenMenu::ResetLanguageNotice();
 }
 
