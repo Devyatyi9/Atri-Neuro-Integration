@@ -284,11 +284,25 @@ void FlushOutboundContext() {
 	}
 }
 
-void FlushOutboundMessages() {
+// With `resultsOnly`, takes just the action results and leaves the rest queued,
+// so a result can go out ahead of the context queued in the same pass.
+void FlushOutboundMessages(bool resultsOnly = false) {
 	std::vector<OutboundMessage> pending;
 	{
 		std::lock_guard<std::mutex> lock(g_OutboundMessagesMutex);
-		pending.swap(g_OutboundMessages);
+		if (resultsOnly) {
+			auto const firstOther = std::stable_partition(
+			    g_OutboundMessages.begin(), g_OutboundMessages.end(),
+			    [](OutboundMessage const &entry) {
+				    return !entry.isActionsSnapshot &&
+				           entry.kind == NeuroSDK_MessageKind_ActionResult;
+			    });
+			pending.assign(std::make_move_iterator(g_OutboundMessages.begin()),
+			               std::make_move_iterator(firstOther));
+			g_OutboundMessages.erase(g_OutboundMessages.begin(), firstOther);
+		} else {
+			pending.swap(g_OutboundMessages);
+		}
 	}
 
 	for (std::size_t index = 0; index < pending.size(); ++index) {
@@ -621,6 +635,11 @@ void NeuroPollThread() {
 				g_DropLinkRequested.store(false, std::memory_order_release);
 				Log("[Neuro] Dropping the link on request\n");
 				error = NeuroSDK_ConnectionError;
+			}
+			// Results first: the server holds context sent while one is pending,
+			// but the action is not finished at her end until it arrives.
+			if (error == NeuroSDK_None) {
+				FlushOutboundMessages(true);
 			}
 			if (error == NeuroSDK_None) {
 				FlushOutboundContext();
