@@ -164,6 +164,8 @@ void RunPluginConfigTests() {
 	      ParsePluginConfig(L"").AudioContextSounds);
 	CHECK(!ParsePluginConfig(L"audio_context_music = off").AudioContextMusic);
 	CHECK(!ParsePluginConfig(L"audio_context_sounds = off").AudioContextSounds);
+	CHECK(ParsePluginConfig(L"").D3DWatch);
+	CHECK(!ParsePluginConfig(L"d3d_watch = off").D3DWatch);
 	ExpectTitleOverlay(L"", true);
 	ExpectTitleOverlay(L"title_overlay = off", false);
 

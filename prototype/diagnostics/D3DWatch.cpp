@@ -49,6 +49,16 @@ constexpr int kUnlockRectSlot = 20;
 // resets only when the answer says the device needs one.
 constexpr int kTestCooperativeLevelSlot = 3;
 
+// Reset sits after the swap chain functions on the device, and CreateDevice is
+// the seventeenth entry of IDirect3D9's table: QueryInterface, AddRef, Release,
+// RegisterSoftwareDevice, GetAdapterCount, GetAdapterIdentifier,
+// GetAdapterModeCount, EnumAdapterModes, GetAdapterDisplayMode,
+// CheckDeviceType, CheckDeviceFormat, CheckDeviceMultiSampleType,
+// CheckDepthStencilMatch, CheckDeviceFormatConversion, GetDeviceCaps,
+// GetAdapterMonitor, CreateDevice.
+constexpr int kResetSlot = 16;
+constexpr int kCreateDeviceSlot = 16;
+
 using CreateTextureFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *,
                                                      UINT,
                                                      UINT,
@@ -69,7 +79,20 @@ using UnlockRectFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DTexture9 *, UINT);
 
 using TestCooperativeLevelFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *);
 
+using ResetFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3DDevice9 *,
+                                             D3DPRESENT_PARAMETERS *);
+
+using CreateDeviceFn = HRESULT(STDMETHODCALLTYPE *)(IDirect3D9 *,
+                                                    UINT,
+                                                    D3DDEVTYPE,
+                                                    HWND,
+                                                    DWORD,
+                                                    D3DPRESENT_PARAMETERS *,
+                                                    IDirect3DDevice9 **);
+
 CreateTextureFn g_OriginalCreateTexture = nullptr;
+ResetFn g_OriginalReset = nullptr;
+CreateDeviceFn g_OriginalCreateDevice = nullptr;
 
 // The table our own device carries.
 void **g_OurDeviceTable = nullptr;
@@ -81,6 +104,7 @@ void **g_OurDeviceTable = nullptr;
 struct DisplacedFunctions {
 	CreateTextureFn createTexture;
 	TestCooperativeLevelFn test;
+	ResetFn reset;
 };
 
 constexpr int kDisplacedSlots = 4;
@@ -119,6 +143,8 @@ DisplacedFunctions const *DisplacedFor(IDirect3DDevice9 *device) {
 // other witness of a rebuild.
 std::atomic<void *> g_LastGameDevice(nullptr);
 std::atomic<long long> g_DeviceChanges(0);
+std::atomic<long long> g_DeviceCreations(0);
+std::atomic<long long> g_DeviceResets(0);
 
 // The intervention: off unless asked for, armed by a refusal, and spent on the
 // next question the draw device asks about its device.
@@ -425,6 +451,98 @@ WatchedTestCooperativeLevel(IDirect3DDevice9 *device) {
 	return D3DERR_DEVICENOTRESET;
 }
 
+// The frames above a call, as module+offset, so a creation or a reset can be
+// traced to the code that asked for it.
+void DescribeStack(char *out, size_t size) {
+	void *frames[8] = {};
+	USHORT const count = CaptureStackBackTrace(2, 8, frames, nullptr);
+	out[0] = '\0';
+	size_t used = 0;
+	for (USHORT i = 0; i < count && used + 1 < size; ++i) {
+		char one[96];
+		DescribeAddress(frames[i], one, sizeof(one));
+		int const written =
+		    sprintf_s(out + used, size - used, "%s%s", i ? " < " : "", one);
+		if (written < 0) {
+			break;
+		}
+		used += static_cast<size_t>(written);
+	}
+}
+
+void DescribePresent(D3DPRESENT_PARAMETERS const *present,
+                     char *out,
+                     size_t size) {
+	if (!present) {
+		sprintf_s(out, size, "no parameters");
+		return;
+	}
+	sprintf_s(
+	    out, size,
+	    "%ux%u fmt=%d buffers=%u swap=%d windowed=%d interval=0x%x flags=0x%lx",
+	    present->BackBufferWidth, present->BackBufferHeight,
+	    static_cast<int>(present->BackBufferFormat), present->BackBufferCount,
+	    static_cast<int>(present->SwapEffect), present->Windowed ? 1 : 0,
+	    present->PresentationInterval,
+	    static_cast<unsigned long>(present->Flags));
+}
+
+// Both are rare, so each is written out in full: when, with what, from where,
+// and how it ended.
+HRESULT STDMETHODCALLTYPE WatchedReset(IDirect3DDevice9 *device,
+                                       D3DPRESENT_PARAMETERS *present) {
+	DisplacedFunctions const *const watched = DisplacedFor(device);
+	ResetFn const original =
+	    (watched && watched->reset) ? watched->reset : g_OriginalReset;
+	long long const number =
+	    g_DeviceResets.fetch_add(1, std::memory_order_relaxed) + 1;
+	char stamp[96];
+	Stamp(stamp, sizeof(stamp));
+	char params[160];
+	DescribePresent(present, params, sizeof(params));
+	char stack[640];
+	DescribeStack(stack, sizeof(stack));
+	char line[1024];
+	sprintf_s(line, "[D3D] Reset (%lld) of %p: %s, %s, from %s\n", number,
+	          static_cast<void *>(device), params, stamp, stack);
+	Log(line);
+	HRESULT const hr = original ? original(device, present) : E_FAIL;
+	sprintf_s(line, "[D3D] Reset (%lld) returned hr=0x%08lX\n", number,
+	          static_cast<unsigned long>(hr));
+	Log(line);
+	return hr;
+}
+
+HRESULT STDMETHODCALLTYPE WatchedCreateDevice(IDirect3D9 *self,
+                                              UINT adapter,
+                                              D3DDEVTYPE type,
+                                              HWND focus,
+                                              DWORD flags,
+                                              D3DPRESENT_PARAMETERS *present,
+                                              IDirect3DDevice9 **device) {
+	long long const number =
+	    g_DeviceCreations.fetch_add(1, std::memory_order_relaxed) + 1;
+	char stamp[96];
+	Stamp(stamp, sizeof(stamp));
+	char params[160];
+	DescribePresent(present, params, sizeof(params));
+	char stack[640];
+	DescribeStack(stack, sizeof(stack));
+	char line[1024];
+	sprintf_s(line, "[D3D] CreateDevice (%lld): flags=0x%lx %s, %s, from %s\n",
+	          number, static_cast<unsigned long>(flags), params, stamp, stack);
+	Log(line);
+	HRESULT const hr = g_OriginalCreateDevice
+	                       ? g_OriginalCreateDevice(self, adapter, type, focus,
+	                                                flags, present, device)
+	                       : E_FAIL;
+	sprintf_s(line, "[D3D] CreateDevice (%lld) returned hr=0x%08lX device=%p\n",
+	          number, static_cast<unsigned long>(hr),
+	          (device && SUCCEEDED(hr)) ? static_cast<void *>(*device) : nullptr);
+	Log(line);
+	return hr;
+}
+
 // The texture tables are shared by every device, so a device of our own is
 // enough to reach them. It is not enough for CreateTexture: the game's device
 // is a class of its own, and that one is watched through WatchGameDevice once
@@ -495,12 +613,14 @@ bool WatchGameDevice(IDirect3DDevice9 *game) {
 	DisplacedFunctions const pair = {
 	    reinterpret_cast<CreateTextureFn>(table[kCreateTextureSlot]),
 	    reinterpret_cast<TestCooperativeLevelFn>(
-	        table[kTestCooperativeLevelSlot])};
+	        table[kTestCooperativeLevelSlot]),
+	    reinterpret_cast<ResetFn>(table[kResetSlot])};
 	int const count = g_DisplacedCount.load(std::memory_order_acquire);
 	int index = 0;
 	while (index < count &&
 	       (g_Displaced[index].createTexture != pair.createTexture ||
-	        g_Displaced[index].test != pair.test)) {
+	        g_Displaced[index].test != pair.test ||
+	        g_Displaced[index].reset != pair.reset)) {
 		++index;
 	}
 	if (index == count) {
@@ -523,6 +643,8 @@ bool WatchGameDevice(IDirect3DDevice9 *game) {
 	              reinterpret_cast<void *>(&WatchedCreateTexture), &displaced) &&
 	    PatchSlot(table, kTestCooperativeLevelSlot,
 	              reinterpret_cast<void *>(&WatchedTestCooperativeLevel),
+	              &displaced) &&
+	    PatchSlot(table, kResetSlot, reinterpret_cast<void *>(&WatchedReset),
 	              &displaced);
 	char line[160];
 	sprintf_s(line,
@@ -629,6 +751,19 @@ bool D3DWatchInstall() {
 	// A texture's table cannot be reached through the device, only through a
 	// texture, so a sample of each kind the game uses is made here purely to be
 	// looked at. Two kinds because they need not be one class inside d3d9.
+	void *displacedReset = nullptr;
+	if (PatchSlot(table, kResetSlot, reinterpret_cast<void *>(&WatchedReset),
+	              &displacedReset)) {
+		g_OriginalReset = reinterpret_cast<ResetFn>(displacedReset);
+	}
+	void **const d3dTable = *reinterpret_cast<void ***>(d3d);
+	void *displacedCreate = nullptr;
+	if (PatchSlot(d3dTable, kCreateDeviceSlot,
+	              reinterpret_cast<void *>(&WatchedCreateDevice),
+	              &displacedCreate)) {
+		g_OriginalCreateDevice = reinterpret_cast<CreateDeviceFn>(displacedCreate);
+	}
+
 	WatchTextureTable(device, D3DUSAGE_DYNAMIC, D3DPOOL_DEFAULT);
 	WatchTextureTable(device, 0, D3DPOOL_MANAGED);
 
@@ -667,7 +802,7 @@ void D3DWatchPressure(char *out, size_t size) {
 	sprintf_s(out, size,
 	          "textures=%lld devices=%lld locks=%lld unlocks=%lld refused=%lld"
 	          " tests=%lld nudges=%lld window=%d avg_us=%.0f worst_us=%.0f"
-	          " peak_us=%.0f",
+	          " peak_us=%.0f creates=%lld resets=%lld",
 	          g_Created.load(std::memory_order_relaxed),
 	          g_DeviceChanges.load(std::memory_order_relaxed),
 	          g_Locked.load(std::memory_order_relaxed),
@@ -676,7 +811,9 @@ void D3DWatchPressure(char *out, size_t size) {
 	          g_Tests.load(std::memory_order_relaxed),
 	          g_Nudges.load(std::memory_order_relaxed), held,
 	          held ? sum * scale / held : 0.0, worst * scale,
-	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale);
+	          g_LockTicksWorst.load(std::memory_order_relaxed) * scale,
+	          g_DeviceCreations.load(std::memory_order_relaxed),
+	          g_DeviceResets.load(std::memory_order_relaxed));
 }
 
 void D3DWatchNudgeResetOnRefusal(bool on) {

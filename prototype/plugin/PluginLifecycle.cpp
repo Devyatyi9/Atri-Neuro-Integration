@@ -14,6 +14,7 @@
 #include "NeuroClient.h"
 #include "NeuroConsole.h"
 #include "NeuroTCPServer.h"
+#include "PluginConfig.h"
 #include "TJSBindings.h"
 #include "TJSExecutor.h"
 #include "ThreadGuard.h"
@@ -81,7 +82,9 @@ static void DeferredTJSInitThread() {
 		// Before the game builds its own device, so the table is already patched
 		// when it does. Failing to install is reported and otherwise ignored: a
 		// watch that cannot be set up must not keep the game from starting.
-		D3DWatchInstall();
+		if (GetPluginConfig().D3DWatch) {
+			D3DWatchInstall();
+		}
 
 		Log("Setting up Debug.addLoggingHandler...\n");
 		// Keep the registered callback in TJS so it cannot reference an unloaded

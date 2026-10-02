@@ -64,6 +64,8 @@ struct PluginConfig {
 	bool NotebookStoryGate;
 	// Neuro's or Evil's picture over the second title background.
 	bool TitleOverlay;
+	// Whether the plugin watches the game's Direct3D calls and logs them.
+	bool D3DWatch;
 	// Whether Neuro is told what she would hear: music, looping background
 	// sounds and sound effects, worded by the table in neuro-assets.
 	bool AudioContext;

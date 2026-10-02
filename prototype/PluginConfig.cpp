@@ -96,6 +96,10 @@ wchar_t const *const kDefaultConfigText =
     L"collected.\n"
     L"title_overlay = on\n"
     L"\n"
+    L"; Log the game's Direct3D device creations, resets and refused locks. "
+    L"Takes effect at the next start.\n"
+    L"d3d_watch = on\n"
+    L"\n"
     L"; Tell Neuro what she would hear: music and sound effects, worded by "
     L"neuro-assets\\audio_context.tsv.\n"
     L"audio_context = on\n"
@@ -274,6 +278,10 @@ void ApplySetting(PluginConfig &config,
 		ReadSwitch(value, config.TitleOverlay);
 		return;
 	}
+	if (key == L"d3d_watch") {
+		ReadSwitch(value, config.D3DWatch);
+		return;
+	}
 	if (key == L"audio_context") {
 		ReadSwitch(value, config.AudioContext);
 		return;
@@ -430,6 +438,7 @@ PluginConfig ParsePluginConfig(std::wstring const &text) {
 	config.Notebook = true;
 	config.NotebookStoryGate = true;
 	config.TitleOverlay = true;
+	config.D3DWatch = true;
 	config.AudioContext = true;
 	config.AudioContextMusic = true;
 	config.AudioContextSounds = true;
