@@ -380,7 +380,7 @@ void FlushOutboundMessages(bool resultsOnly = false) {
 				message.value.actions_force.action_names = forceNames.data();
 				message.value.actions_force.action_names_len =
 				    static_cast<int>(forceNames.size());
-				message.value.actions_force.priority = NeuroSDK_Priority_Medium;
+				message.value.actions_force.priority = NeuroSDK_Priority_Low;
 				break;
 			}
 
