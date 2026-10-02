@@ -2,6 +2,8 @@
 
 #include <windows.h>
 
+#include <psapi.h>
+
 #include <atomic>
 #include <cstdio>
 #include <mutex>
@@ -130,6 +132,21 @@ std::atomic<long long> g_Tests(0);
 
 // Set to refuse one lock on purpose; cleared by the refusal it causes.
 std::atomic<bool> g_FailNextLock(false);
+
+// True from a refused lock until the next one that succeeds.
+std::atomic<bool> g_Refusing(false);
+
+// Wall-clock time and private bytes, in the form the other logs use, so a line
+// here can be lined up with the game's own log.
+void Stamp(char *out, size_t size) {
+	SYSTEMTIME now = {};
+	GetLocalTime(&now);
+	PROCESS_MEMORY_COUNTERS counters = {};
+	K32GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters));
+	sprintf_s(out, size, "at %02d:%02d:%02d.%03d private=%zuMB", now.wHour,
+	          now.wMinute, now.wSecond, now.wMilliseconds,
+	          counters.PagefileUsage / (1024 * 1024));
+}
 
 bool WatchGameDevice(IDirect3DDevice9 *game);
 void NoteGameDevice(IDirect3DTexture9 *texture);
@@ -330,9 +347,21 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 			g_LockTicksWorst.store(ticks, std::memory_order_relaxed);
 		}
 		g_Locked.fetch_add(1, std::memory_order_relaxed);
+		if (g_Refusing.load(std::memory_order_relaxed) &&
+		    g_Refusing.exchange(false)) {
+			char stamp[96];
+			Stamp(stamp, sizeof(stamp));
+			char line[224];
+			sprintf_s(line,
+			          "[D3D] locks work again after %lld refusals, %s locked=%lld\n",
+			          g_LockRefused.load(std::memory_order_relaxed), stamp,
+			          g_Locked.load(std::memory_order_relaxed));
+			Log(line);
+		}
 		return hr;
 	}
 
+	g_Refusing.store(true, std::memory_order_relaxed);
 	long long const refused =
 	    g_LockRefused.fetch_add(1, std::memory_order_relaxed);
 	if (g_NudgeEnabled.load(std::memory_order_relaxed)) {
@@ -345,16 +374,19 @@ HRESULT STDMETHODCALLTYPE WatchedLockRect(IDirect3DTexture9 *texture,
 		texture->GetLevelDesc(level, &desc);
 		char where[128];
 		DescribeAddress(caller, where, sizeof(where));
-		char line[384];
+		char stamp[96];
+		Stamp(stamp, sizeof(stamp));
+		char line[448];
 		sprintf_s(line,
 		          "[D3D] LockRect refused: %ux%u fmt=%d usage=0x%lx pool=%d"
 		          " level=%u flags=0x%lx hr=0x%08lX from=%s refusals=%lld"
-		          " locked=%lld\n",
+		          " locked=%lld %s\n",
 		          desc.Width, desc.Height, static_cast<int>(desc.Format),
 		          static_cast<unsigned long>(desc.Usage),
 		          static_cast<int>(desc.Pool), level,
 		          static_cast<unsigned long>(flags), static_cast<unsigned long>(hr),
-		          where, refused + 1, g_Locked.load(std::memory_order_relaxed));
+		          where, refused + 1, g_Locked.load(std::memory_order_relaxed),
+		          stamp);
 		Log(line);
 	}
 	return hr;
@@ -517,11 +549,16 @@ void NoteGameDevice(IDirect3DTexture9 *texture) {
 		if (previous != nullptr) {
 			long long const changes =
 			    g_DeviceChanges.fetch_add(1, std::memory_order_relaxed) + 1;
-			char line[224];
-			sprintf_s(line, "[D3D] the game's device changed (%lld): %p -> %p, %s\n",
-			          changes, previous, static_cast<void *>(game),
-			          newClass ? "a new table, now watched too"
-			                   : "a table already watched");
+			char stamp[96];
+			Stamp(stamp, sizeof(stamp));
+			char line[320];
+			sprintf_s(
+			    line,
+			    "[D3D] the game's device changed (%lld): %p -> %p, %s, %s"
+			    " refusals=%lld\n",
+			    changes, previous, static_cast<void *>(game),
+			    newClass ? "a new table, now watched too" : "a table already watched",
+			    stamp, g_LockRefused.load(std::memory_order_relaxed));
 			Log(line);
 		}
 	}
